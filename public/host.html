@@ -30,43 +30,54 @@
             border: 2px solid #007bff;
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0, 123, 255, 0.2);
-            padding: 30px;
+            padding: 15px 20px;
             margin-bottom: 30px;
-            text-align: center;
             backdrop-filter: blur(10px);
+        }
+
+        .game-created-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .game-created-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
 
         .game-created-header {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 8px;
         }
 
         .game-created-header h2 {
             color: #ffffff;
             margin: 0;
-            font-size: 1.8em;
+            font-size: 1.4em;
         }
 
         .game-code-display {
-            margin: 25px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
 
         .game-code {
-            font-size: 4em;
+            font-size: 2.8em;
             font-weight: bold;
             color: #007bff;
             text-shadow: 2px 2px 4px rgba(0, 123, 255, 0.3);
-            margin: 15px 0;
-            letter-spacing: 8px;
+            letter-spacing: 4px;
         }
 
         .game-code-label {
             color: #cccccc;
-            font-size: 16px;
-            margin-bottom: 15px;
+            font-size: 13px;
+            white-space: nowrap;
         }
 
         .copy-btn {
@@ -88,26 +99,25 @@
 
         .quick-actions {
             display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 25px;
+            justify-content: flex-end;
+            gap: 8px;
             flex-wrap: wrap;
         }
 
         .action-btn {
             background: linear-gradient(135deg, #007bff, #0056b3);
             border: none;
-            border-radius: 12px;
-            padding: 12px 20px;
+            border-radius: 8px;
+            padding: 8px 12px;
             color: white;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s ease;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 4px;
         }
 
         .action-btn:hover {
@@ -457,19 +467,23 @@
         <div id="activeGameState" style="display: none;">
             <!-- Game Created Successfully Section -->
             <div class="game-created-section">
-                <div class="game-created-header">
-                    <span style="font-size: 1.5em;">⏰</span>
-                    <h2>Game Created Successfully!</h2>
-                </div>
-                <div class="game-code-display">
-                    <div class="game-code-label">Share this code with your players to join the game</div>
-                    <div class="game-code" id="gameCodeDisplay">----</div>
-                    <button class="copy-btn" onclick="copyGameCode()">Copy Code</button>
-                </div>
-                <div class="quick-actions">
-                    <a href="/" target="_blank" class="action-btn">👤 Player Join Page</a>
-                    <a href="/display" target="_blank" class="action-btn">📺 Display Screen</a>
-                    <a href="/grading" target="_blank" class="action-btn">📝 Grading Console</a>
+                <div class="game-created-content">
+                    <div class="game-created-left">
+                        <div class="game-created-header">
+                            <span style="font-size: 1.2em;">⏰</span>
+                            <h2>Game Created Successfully!</h2>
+                        </div>
+                        <div class="game-code-display">
+                            <div class="game-code-label">Share this code:</div>
+                            <div class="game-code" id="gameCodeDisplay">----</div>
+                            <button class="copy-btn" onclick="copyGameCode()">Copy Code</button>
+                        </div>
+                    </div>
+                    <div class="quick-actions">
+                        <a href="/" target="_blank" class="action-btn">👤 Player Join Page</a>
+                        <a href="/display" target="_blank" class="action-btn">📺 Display Screen</a>
+                        <a href="/grading" target="_blank" class="action-btn">📝 Grading Console</a>
+                    </div>
                 </div>
             </div>
 
