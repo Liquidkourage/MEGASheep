@@ -486,31 +486,31 @@
             <!-- Wrong and Uncategorized Answers Section -->
             <div class="wrong-uncategorized-section">
                 <h4>❌ Wrong & 📦 Uncategorized Answers</h4>
-                <div class="wrong-uncategorized-grid">
-                    <!-- Wrong Answers Bucket -->
-                    <div class="answer-bucket wrong-bucket">
-                        <h4 onclick="toggleBucket(this)">
-                            <span class="bucket-toggle">▼</span>
-                            ❌ Wrong Answers
-                            <span class="answer-count-badge" id="wrongAnswersCount">0</span>
-                        </h4>
-                        <div id="wrongAnswers" class="answer-items" data-bucket="wrong">
-                            <!-- Wrong answers will be dragged here -->
-                        </div>
-                    </div>
+                                 <div class="wrong-uncategorized-grid">
+                     <!-- Uncategorized Answers Bucket -->
+                     <div class="answer-bucket uncategorized-bucket">
+                         <h4 onclick="toggleBucket(this)">
+                             <span class="bucket-toggle">▼</span>
+                             📦 Uncategorized Answers
+                             <span class="answer-count-badge" id="uncategorizedAnswersCount">0</span>
+                         </h4>
+                         <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized">
+                             <!-- Uncategorized answers will be here initially -->
+                         </div>
+                     </div>
 
-                    <!-- Uncategorized Answers Bucket -->
-                    <div class="answer-bucket uncategorized-bucket">
-                        <h4 onclick="toggleBucket(this)">
-                            <span class="bucket-toggle">▼</span>
-                            📦 Uncategorized Answers
-                            <span class="answer-count-badge" id="uncategorizedAnswersCount">0</span>
-                        </h4>
-                        <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized">
-                            <!-- Uncategorized answers will be here initially -->
-                        </div>
-                    </div>
-                </div>
+                     <!-- Wrong Answers Bucket -->
+                     <div class="answer-bucket wrong-bucket">
+                         <h4 onclick="toggleBucket(this)">
+                             <span class="bucket-toggle">▼</span>
+                             ❌ Wrong Answers
+                             <span class="answer-count-badge" id="wrongAnswersCount">0</span>
+                         </h4>
+                         <div id="wrongAnswers" class="answer-items" data-bucket="wrong">
+                             <!-- Wrong answers will be dragged here -->
+                         </div>
+                     </div>
+                 </div>
             </div>
 
             <div class="grading-controls">
@@ -663,13 +663,13 @@
             console.log('🔍 Current question data:', currentQuestion);
             console.log('✅ Correct answers from DB:', correctAnswers);
             
-            // Create correct answer buckets
-            const correctAnswerBuckets = correctAnswers.map((correctAnswer, index) => ({
-                id: `correct_${index}`,
-                name: correctAnswer,
-                correctAnswer: correctAnswer,
-                answers: []
-            }));
+                         // Create correct answer buckets and sort alphabetically
+             const correctAnswerBuckets = correctAnswers.map((correctAnswer, index) => ({
+                 id: `correct_${index}`,
+                 name: correctAnswer,
+                 correctAnswer: correctAnswer,
+                 answers: []
+             })).sort((a, b) => a.name.localeCompare(b.name));
             
             // Auto-categorize matching answers
             const answersToRemove = [];
@@ -677,8 +677,8 @@
             currentGame.currentAnswerGroups.forEach(answerGroup => {
                 // Check if this answer matches any correct answer
                 const matchingBucket = correctAnswerBuckets.find(bucket => {
-                    const normalizedAnswer = answerGroup.answer.toLowerCase().trim();
-                    const normalizedCorrect = bucket.correctAnswer.toLowerCase().trim();
+                    const normalizedAnswer = normalizeAnswer(answerGroup.answer);
+                    const normalizedCorrect = normalizeAnswer(bucket.correctAnswer);
                     return normalizedAnswer === normalizedCorrect;
                 });
                 
@@ -889,6 +889,15 @@
             document.getElementById('gradingInterface').style.display = 'none';
             document.getElementById('gameSelection').style.display = 'block';
             updateGameList();
+        }
+
+        function normalizeAnswer(answer) {
+            return answer
+                .toLowerCase()                    // Convert to lowercase
+                .trim()                          // Remove leading/trailing spaces
+                .replace(/\s+/g, ' ')            // Replace multiple spaces with single space
+                .replace(/[^\w\s]/g, '')         // Remove all punctuation except spaces
+                .trim();                         // Trim again after punctuation removal
         }
 
         function updateCountBadges() {
