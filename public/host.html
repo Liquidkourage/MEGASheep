@@ -448,6 +448,16 @@
             max-height: 800px;
             position: relative;
             backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .modal-content.fullscreen {
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            max-height: none;
+            margin: 0;
+            border-radius: 0;
         }
 
         .modal-header {
@@ -479,6 +489,34 @@
             transform: scale(1.1);
         }
 
+        .modal-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-btn {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+        }
+
+        .control-btn.small {
+            padding: 6px 10px;
+            font-size: 11px;
+        }
+
         .modal-body {
             padding: 0;
             height: calc(100% - 80px);
@@ -490,6 +528,10 @@
             height: 100%;
             border: none;
             border-radius: 0 0 18px 18px;
+        }
+
+        .modal-content.fullscreen .modal-body iframe {
+            border-radius: 0;
         }
 
         @media (max-width: 768px) {
@@ -632,10 +674,13 @@
 
     <!-- Single User Grading Interface Modal -->
     <div id="gradingSingleModal" class="modal" style="display: none;">
-        <div class="modal-content">
+        <div class="modal-content" id="gradingSingleModalContent">
             <div class="modal-header">
                 <h2>📝 Single User Grading Interface</h2>
-                <span class="close" onclick="closeGradingSingleModal()">&times;</span>
+                <div class="modal-controls">
+                    <button id="fullscreenSingleBtn" class="control-btn small" title="Toggle Fullscreen" onclick="toggleSingleModalFullscreen()">⛶</button>
+                    <span class="close" onclick="closeGradingSingleModal()">&times;</span>
+                </div>
             </div>
             <div class="modal-body">
                 <iframe id="gradingSingleFrame" src="/grading-single" width="100%" height="600px" frameborder="0"></iframe>
@@ -881,22 +926,39 @@
             document.getElementById('gradingMultiFrame').src = '/grading';
         }
 
-        function closeGradingMultiModal() {
-            document.getElementById('gradingMultiModal').style.display = 'none';
-        }
+            function closeGradingMultiModal() {
+        document.getElementById('gradingMultiModal').style.display = 'none';
+    }
 
-        // Close modals when clicking outside of them
-        window.onclick = function(event) {
-            const singleModal = document.getElementById('gradingSingleModal');
-            const multiModal = document.getElementById('gradingMultiModal');
-            
-            if (event.target === singleModal) {
-                closeGradingSingleModal();
-            }
-            if (event.target === multiModal) {
-                closeGradingMultiModal();
-            }
+    function toggleSingleModalFullscreen() {
+        const modalContent = document.getElementById('gradingSingleModalContent');
+        const fullscreenBtn = document.getElementById('fullscreenSingleBtn');
+        
+        if (modalContent.classList.contains('fullscreen')) {
+            // Exit fullscreen
+            modalContent.classList.remove('fullscreen');
+            fullscreenBtn.textContent = '⛶';
+            fullscreenBtn.title = 'Enter Fullscreen';
+        } else {
+            // Enter fullscreen
+            modalContent.classList.add('fullscreen');
+            fullscreenBtn.textContent = '⛶';
+            fullscreenBtn.title = 'Exit Fullscreen';
         }
+    }
+
+    // Close modals when clicking outside of them
+    window.onclick = function(event) {
+        const singleModal = document.getElementById('gradingSingleModal');
+        const multiModal = document.getElementById('gradingMultiModal');
+        
+        if (event.target === singleModal) {
+            closeGradingSingleModal();
+        }
+        if (event.target === multiModal) {
+            closeGradingMultiModal();
+        }
+    }
 
         // Grading interface buttons
         document.getElementById('gradingBtn').addEventListener('click', () => {
@@ -910,6 +972,26 @@
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
             initializeConnection();
+        });
+
+        // Keyboard shortcuts for modal fullscreen
+        document.addEventListener('keydown', (e) => {
+            const singleModal = document.getElementById('gradingSingleModal');
+            const modalContent = document.getElementById('gradingSingleModalContent');
+            
+            // Only handle keyboard shortcuts when the single user grading modal is open
+            if (singleModal.style.display === 'block') {
+                // F11 key to toggle fullscreen
+                if (e.key === 'F11') {
+                    e.preventDefault();
+                    toggleSingleModalFullscreen();
+                }
+                
+                // Escape key to exit fullscreen
+                if (e.key === 'Escape' && modalContent.classList.contains('fullscreen')) {
+                    toggleSingleModalFullscreen();
+                }
+            }
         });
     </script>
 </body>

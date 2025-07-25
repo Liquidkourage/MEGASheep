@@ -238,6 +238,7 @@ class Game {
       players: Array.from(this.players.values()),
       currentRound: this.currentRound,
       currentQuestion: this.currentQuestion,
+      currentQuestionData: this.questions[this.currentQuestion] || null,
       gameState: this.gameState,
       scores: Object.fromEntries(this.scores),
       questions: this.questions,
@@ -1211,6 +1212,22 @@ io.on('connection', (socket) => {
             console.log('📭 No active games found');
             socket.emit('activeGameState', null);
         }
+    });
+
+    // Get all active games for grading interface
+    socket.on('getActiveGames', () => {
+        console.log('🔍 Grading interface requesting all active games');
+        console.log('🔍 Total active games:', activeGames.size);
+        
+        const gamesArray = [];
+        for (const [gameCode, game] of activeGames) {
+            const gameState = game.getGameState();
+            gamesArray.push(gameState);
+            console.log(`📋 Game ${gameCode}: state=${game.gameState}, players=${game.players.size}`);
+        }
+        
+        socket.emit('activeGamesUpdate', gamesArray);
+        console.log(`📤 Sent ${gamesArray.length} active games to grading interface`);
     });
 
     // Get specific game state by game code
