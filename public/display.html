@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>MEGASheep Display</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Modern Player Card Animations */
+        @keyframes cardSlideIn {
+            0% {
+                transform: translateY(30px) scale(0.8);
+                opacity: 0;
+            }
+            60% {
+                transform: translateY(-5px) scale(1.05);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes cardPulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            }
+            50% {
+                transform: scale(1.02);
+                box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            }
+        }
+
+        @keyframes scoreGlow {
+            0%, 100% {
+                text-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+            }
+            50% {
+                text-shadow: 0 0 15px rgba(0, 255, 136, 0.9), 0 0 25px rgba(0, 255, 136, 0.5);
+            }
+        }
+
+        /* Staggered animation delay for cards */
+        .modern-player-card:nth-child(1) { animation-delay: 0ms; }
+        .modern-player-card:nth-child(2) { animation-delay: 50ms; }
+        .modern-player-card:nth-child(3) { animation-delay: 100ms; }
+        .modern-player-card:nth-child(4) { animation-delay: 150ms; }
+        .modern-player-card:nth-child(5) { animation-delay: 200ms; }
+        .modern-player-card:nth-child(6) { animation-delay: 250ms; }
+        .modern-player-card:nth-child(7) { animation-delay: 300ms; }
+        .modern-player-card:nth-child(8) { animation-delay: 350ms; }
+        .modern-player-card:nth-child(9) { animation-delay: 400ms; }
+        .modern-player-card:nth-child(10) { animation-delay: 450ms; }
+        .modern-player-card:nth-child(11) { animation-delay: 500ms; }
+        .modern-player-card:nth-child(12) { animation-delay: 550ms; }
+        .modern-player-card:nth-child(13) { animation-delay: 600ms; }
+        .modern-player-card:nth-child(14) { animation-delay: 650ms; }
+        .modern-player-card:nth-child(15) { animation-delay: 700ms; }
+        .modern-player-card:nth-child(16) { animation-delay: 750ms; }
+        .modern-player-card:nth-child(17) { animation-delay: 800ms; }
+        .modern-player-card:nth-child(18) { animation-delay: 850ms; }
+        .modern-player-card:nth-child(19) { animation-delay: 900ms; }
+        .modern-player-card:nth-child(20) { animation-delay: 950ms; }
+
+        /* For cards beyond 20, use a cycling pattern */
+        .modern-player-card:nth-child(n+21) {
+            animation-delay: calc((var(--card-index, 0) % 20) * 50ms);
+        }
+
+        /* Hover effects for modern cards */
+        .modern-player-card:hover {
+            transform: translateY(-8px) scale(1.05) !important;
+            border-color: rgba(0, 123, 255, 0.8) !important;
+            background: linear-gradient(135deg, rgba(0, 123, 255, 0.35), rgba(0, 86, 179, 0.25)) !important;
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+            animation: cardPulse 1.5s ease-in-out infinite !important;
+        }
+
+        /* Shimmer effect overlay */
+        .modern-player-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.15),
+                transparent
+            );
+            transition: left 0.6s ease;
+            border-radius: 12px;
+        }
+
+        .modern-player-card:hover::before {
+            left: 100%;
+        }
+
+        /* Enhanced text styling */
+        .modern-player-name {
+            font-size: 1.3rem !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            line-height: 1.1 !important;
+            flex: 1 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7), 0 0 8px rgba(0, 123, 255, 0.3) !important;
+            letter-spacing: 0.5px !important;
+            transition: all 0.3s ease !important;
+        }
+
+        .modern-player-score {
+            font-size: 1.1rem !important;
+            color: #00ff88 !important;
+            font-weight: 800 !important;
+            white-space: nowrap !important;
+            line-height: 1 !important;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.7), 0 2px 4px rgba(0, 0, 0, 0.8) !important;
+            letter-spacing: 0.3px !important;
+            background: linear-gradient(45deg, #00ff88, #00cc6a) !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            background-clip: text !important;
+            animation: scoreGlow 2s ease-in-out infinite !important;
+            transition: all 0.3s ease !important;
+        }
+
+        /* Special effects for top players */
+        .modern-player-card.top-player {
+            border-color: rgba(255, 215, 0, 0.8) !important;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 179, 0, 0.15)) !important;
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .modern-player-card.top-player::after {
+            content: '👑';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: linear-gradient(135deg, #ffd700, #ffb300);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+            animation: cardPulse 2s ease-in-out infinite;
+        }
+
+        /* Host player special styling */
+        .modern-player-card.host-player {
+            border-color: rgba(255, 255, 255, 0.8) !important;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1)) !important;
+        }
+
+        .modern-player-card.host-player::after {
+            content: '⭐';
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            background: linear-gradient(135deg, #ffffff, #f0f0f0);
+            color: #333;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.4);
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Check if QRCode library loaded
+        window.addEventListener('load', function() {
+            console.log('📄 Page fully loaded at:', new Date().toLocaleTimeString());
+            if (typeof QRCode === 'undefined') {
+                console.error('QRCode library not loaded!');
+            } else {
+                console.log('QRCode library loaded successfully');
+            }
+        });
+        
+        // Debug: Monitor for any automatic refreshes
+        let pageLoadCount = 0;
+        window.addEventListener('beforeunload', function() {
+            console.log('⚠️ Page unloading at:', new Date().toLocaleTimeString());
+        });
+        
+        // Track page loads
+        if (sessionStorage.getItem('pageLoadCount')) {
+            pageLoadCount = parseInt(sessionStorage.getItem('pageLoadCount')) + 1;
+        } else {
+            pageLoadCount = 1;
+        }
+        sessionStorage.setItem('pageLoadCount', pageLoadCount.toString());
+        console.log('📊 Page load count:', pageLoadCount, 'at:', new Date().toLocaleTimeString());
+    </script>
+</head>
+<body>
+    <!-- Display Screen (for projector/streaming) -->
+    <div id="displayScreen" class="display-mode">
+        <!-- Content will be dynamically generated by JavaScript -->
+                </div>
+
+
+        </div>
+    </div>
+
+    <script>
+        // Display-only JavaScript
+        // Old showDisplayScreen function removed - using individual screen functions now
+
+        // Removed updateDisplayScreen function - now using individual screen functions
+
+        function updateDisplayQuestion(question, questionNumber, timer) {
+            document.getElementById('displayQuestionNumber').textContent = questionNumber;
+            document.getElementById('displayQuestionText').textContent = question;
+            document.getElementById('displayTimer').textContent = timer;
+        }
+
+        function updateDisplayAnswers(answers) {
+            const displayAnswersList = document.getElementById('displayAnswersList');
+            displayAnswersList.innerHTML = '';
+            
+            if (answers && answers.length > 0) {
+                // Sort answers by count (most popular first)
+                const sortedAnswers = [...answers].sort((a, b) => b.count - a.count);
+                
+                // Limit display for large answer sets
+                const maxAnswers = answers.length > 15 ? 15 : answers.length;
+                const displayAnswers = sortedAnswers.slice(0, maxAnswers);
+                
+                displayAnswers.forEach((answer, index) => {
+                    const answerCard = document.createElement('div');
+                    answerCard.className = `answer-card ${index < 3 ? 'top-answer' : ''}`;
+                    answerCard.innerHTML = `
+                        <div class="answer-rank">#${index + 1}</div>
+                        <div class="answer-text">${answer.answer}</div>
+                        <div class="answer-count">${answer.count} players</div>
+                    `;
+                    displayAnswersList.appendChild(answerCard);
+                });
+                
+                // Add indicator if there are more answers
+                if (answers.length > maxAnswers) {
+                    const moreIndicator = document.createElement('div');
+                    moreIndicator.className = 'more-answers-indicator';
+                    moreIndicator.innerHTML = `
+                        <p>... and ${answers.length - maxAnswers} more answers</p>
+                    `;
+                    displayAnswersList.appendChild(moreIndicator);
+                }
+            }
+        }
+
+        function updateDisplayScoring(answers, scores) {
+            const displayAnswersResults = document.getElementById('displayAnswersResults');
+            displayAnswersResults.innerHTML = '';
+            
+            if (answers && answers.length > 0) {
+                // Sort answers by points (highest scoring first)
+                const sortedAnswers = [...answers].sort((a, b) => b.points - a.points);
+                
+                // Limit display for large answer sets
+                const maxAnswers = answers.length > 12 ? 12 : answers.length;
+                const displayAnswers = sortedAnswers.slice(0, maxAnswers);
+                
+                displayAnswers.forEach((answer, index) => {
+                    const answerCard = document.createElement('div');
+                    answerCard.className = `answer-card ${answer.correct ? 'correct' : 'incorrect'} ${index < 3 ? 'top-answer' : ''}`;
+                    answerCard.innerHTML = `
+                        <div class="answer-rank">#${index + 1}</div>
+                        <div class="answer-text">${answer.answer}</div>
+                        <div class="answer-count">${answer.count} players</div>
+                        <div class="answer-points">${answer.points} points</div>
+                    `;
+                    displayAnswersResults.appendChild(answerCard);
+                });
+                
+                // Add indicator if there are more answers
+                if (answers.length > maxAnswers) {
+                    const moreIndicator = document.createElement('div');
+                    moreIndicator.className = 'more-answers-indicator';
+                    moreIndicator.innerHTML = `
+                        <p>... and ${answers.length - maxAnswers} more answers</p>
+                    `;
+                    displayAnswersResults.appendChild(moreIndicator);
+                }
+            }
+            
+            const displayCurrentScores = document.getElementById('displayCurrentScores');
+            displayCurrentScores.innerHTML = '';
+            
+            if (scores && scores.length > 0) {
+                // Sort by score (highest first)
+                const sortedScores = [...scores].sort((a, b) => b.score - a.score);
+                
+                // Show top 15 players for large groups
+                const maxScores = scores.length > 15 ? 15 : scores.length;
+                const displayScores = sortedScores.slice(0, maxScores);
+                
+                displayScores.forEach((score, index) => {
+                    const scoreCard = document.createElement('div');
+                    scoreCard.className = `score-card ${index < 3 ? 'top-score' : ''}`;
+                    scoreCard.innerHTML = `
+                        <div class="score-rank">#${index + 1}</div>
+                        <div class="player-name">${score.name}</div>
+                        <div class="player-score">${score.score} points</div>
+                    `;
+                    displayCurrentScores.appendChild(scoreCard);
+                });
+                
+                // Add indicator if there are more players
+                if (scores.length > maxScores) {
+                    const moreIndicator = document.createElement('div');
+                    moreIndicator.className = 'more-scores-indicator';
+                    moreIndicator.innerHTML = `
+                        <p>... and ${scores.length - maxScores} more players</p>
+                    `;
+                    displayCurrentScores.appendChild(moreIndicator);
+                }
+            }
+        }
+
+        function updateDisplayGameOver(scores) {
+            const displayFinalScores = document.getElementById('displayFinalScores');
+            displayFinalScores.innerHTML = '';
+            
+            if (scores && scores.length > 0) {
+                // Sort by score (highest first)
+                const sortedScores = [...scores].sort((a, b) => b.score - a.score);
+                
+                // Show top 20 players for large groups
+                const maxScores = scores.length > 20 ? 20 : scores.length;
+                const displayScores = sortedScores.slice(0, maxScores);
+                
+                displayScores.forEach((score, index) => {
+                    const scoreCard = document.createElement('div');
+                    scoreCard.className = `final-score-card ${index === 0 ? 'winner' : ''} ${index < 5 ? 'top-finisher' : ''}`;
+                    scoreCard.innerHTML = `
+                        <div class="score-rank">#${index + 1}</div>
+                        <div class="player-name">${score.name}</div>
+                        <div class="player-score">${score.score} points</div>
+                        ${index === 0 ? '<div class="winner-badge">🏆 Winner!</div>' : ''}
+                    `;
+                    displayFinalScores.appendChild(scoreCard);
+                });
+                
+                // Add indicator if there are more players
+                if (scores.length > maxScores) {
+                    const moreIndicator = document.createElement('div');
+                    moreIndicator.className = 'more-scores-indicator';
+                    moreIndicator.innerHTML = `
+                        <p>... and ${scores.length - maxScores} more players</p>
+                    `;
+                    displayFinalScores.appendChild(moreIndicator);
+                }
+            }
+        }
+
+        // Display state management
+        let gameState = null;
+        let socket = null;
+        let lastPlayerCount = 0; // Track player count to detect new additions
+        let displayGameCode = null;
+        
+        function initializeSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('🔌 Display connected to server');
+                
+                // Get game code from URL parameter or sessionStorage
+                const urlParams = new URLSearchParams(window.location.search);
+                displayGameCode = urlParams.get('game') || sessionStorage.getItem('displayGameCode');
+                
+                if (displayGameCode) {
+                    console.log('📺 Display connecting to game:', displayGameCode);
+                    // Join the specific game room
+                    socket.emit('joinDisplayRoom', { gameCode: displayGameCode });
+                } else {
+                    console.log('📺 No game code specified, showing welcome screen');
+                    showIntroScreen();
+                }
+            });
+            
+            socket.on('disconnect', () => {
+                console.log('Display disconnected from server');
+                showIntroScreen();
+            });
+            
+            socket.on('connect_error', (error) => {
+                console.error('Display connection error:', error);
+                showIntroScreen();
+            });
+            
+            socket.on('displayGameState', (gameStateData) => {
+                console.log('📊 Display received game state:', gameStateData);
+                if (gameStateData) {
+                    // Store the game code for future reference
+                    if (gameStateData.gameCode) {
+                        displayGameCode = gameStateData.gameCode;
+                        sessionStorage.setItem('displayGameCode', displayGameCode);
+                    }
+                    updateDisplayFromGameState(gameStateData);
+                } else {
+                    // No active game, show welcome screen
+                    showIntroScreen();
+                }
+            });
+
+            socket.on('displayError', (data) => {
+                console.error('📺 Display error:', data.message);
+                showIntroScreen();
+            });
+            
+            socket.on('gameCreated', (gameStateData) => {
+                console.log('🎮 Display: Game created', gameStateData);
+                if (gameStateData) {
+                    updateDisplayFromGameState(gameStateData);
+                } else {
+                    showWaitingScreen();
+                }
+            });
+            
+            socket.on('gameStarted', (gameStateData) => {
+                console.log('Display: Game started');
+                updateDisplayFromGameState(gameStateData);
+            });
+            
+            socket.on('nextQuestion', (gameStateData) => {
+                console.log('Display: Next question');
+                updateDisplayFromGameState(gameStateData);
+            });
+            
+            socket.on('roundComplete', (gameStateData) => {
+                console.log('Display: Round complete');
+                updateDisplayFromGameState(gameStateData);
+            });
+            
+            socket.on('gradingComplete', (gameStateData) => {
+                console.log('Display: Grading complete');
+                updateDisplayFromGameState(gameStateData);
+            });
+            
+            socket.on('gameFinished', (gameStateData) => {
+                console.log('Display: Game finished');
+                updateDisplayFromGameState(gameStateData);
+            });
+            
+            socket.on('timerUpdate', (data) => {
+                console.log('Display: Timer update', data.timeLeft);
+                if (gameState && gameState.gameState === 'playing') {
+                    updateDisplayTimer(data.timeLeft);
+                }
+            });
+            
+            socket.on('playerJoined', (gameStateData) => {
+                console.log('Display: Player joined');
+                updatePlayersOnly(gameStateData);
+            });
+            
+            socket.on('gameSettingsUpdated', (settings) => {
+                console.log('Display: Game settings updated', settings);
+                // Update display if needed for settings changes
+                if (gameState) {
+                    updateDisplayFromGameState(gameState);
+                }
+            });
+            
+            socket.on('playerLeft', (gameStateData) => {
+                console.log('Display: Player left');
+                updatePlayersOnly(gameStateData);
+            });
+            
+            socket.on('answerUpdate', (data) => {
+                console.log('Display: Answer update', data);
+                if (gameState && gameState.gameState === 'playing') {
+                    updateResponseIndicator(data.answersReceived, data.totalPlayers);
+                }
+            });
+        }
+
+        function updateDisplayFromGameState(newGameState) {
+            gameState = newGameState;
+            
+            if (!gameState) {
+                showIntroScreen();
+                return;
+            }
+            
+            console.log('📺 Updating display with game state:', gameState.gameState);
+            
+            switch (gameState.gameState) {
+                case 'waiting':
+                    showWaitingScreen();
+                    break;
+                case 'playing':
+                    showPlayingScreen();
+                    break;
+                case 'grading':
+                    showGradingScreen();
+                    break;
+                case 'scoring':
+                    showScoringScreen();
+                    break;
+                case 'roundComplete':
+                    showRoundCompleteScreen();
+                    break;
+                case 'leaderboard':
+                    showLeaderboardScreen();
+                    break;
+                case 'finished':
+                    showGameFinishedScreen();
+                    break;
+                default:
+                    showIntroScreen();
+            }
+        }
+
+        // Efficient update function - only updates player grid and count
+        function updatePlayersOnly(newGameState) {
+            if (!newGameState || newGameState.gameState !== 'waiting') {
+                // If not in waiting state, do full update
+                updateDisplayFromGameState(newGameState);
+                return;
+            }
+            
+            // Update global game state
+            gameState = newGameState;
+            
+            // Update player count in header
+            const playerCountElement = document.querySelector('.display-status');
+            if (playerCountElement) {
+                playerCountElement.textContent = `👥 Players: ${gameState.players.length}`;
+            }
+            
+            // Update only the player grid
+            const playersContainer = document.querySelector('.display-players');
+            if (playersContainer) {
+                playersContainer.innerHTML = generatePlayerListDisplay(gameState.players);
+            }
+            
+            console.log(`📺 Updated players only: ${gameState.players.length} players`);
+        }
+
+        function showIntroScreen() {
+            preventAllScrolling();
+            document.getElementById('displayScreen').innerHTML = `
+                <div class="display-content">
+                    <div class="display-section">
+                        <div class="display-header">
+                            <h1 class="display-title">🐑 MEGASheep</h1>
+                            <p class="display-subtitle">The Ultimate Word Association Game</p>
+                            <p class="display-brand">by Liquid Kourage Entertainment</p>
+                        </div>
+                        <div class="display-status">
+                            ${displayGameCode ? 
+                                `<p>Connecting to game ${displayGameCode}...</p>` : 
+                                `<p>Waiting for game to start...</p>`
+                            }
+                            <div class="loading-spinner"></div>
+                        </div>
+                        <div class="qr-code-section">
+                            <p class="qr-label">Scan to join the game:</p>
+                            <div id="qrCodeIntro" class="qr-code"></div>
+                            <p class="game-url">Or go to <strong>localhost:3001</strong> and enter game code <span class="game-code-highlight">${displayGameCode || 'XXXX'}</span></p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Generate QR code after DOM is updated
+            setTimeout(() => {
+                generateQRCode('qrCodeIntro', 'http://localhost:3001');
+            }, 100);
+        }
+
+        function preventAllScrolling() {
+            // Aggressive scroll prevention - NO SCROLLING EVER
+            document.body.style.overflow = 'hidden !important';
+            document.documentElement.style.overflow = 'hidden !important';
+            document.body.style.height = '100vh';
+            document.documentElement.style.height = '100vh';
+            document.body.style.width = '100vw';
+            document.documentElement.style.width = '100vw';
+            document.body.style.margin = '0';
+            document.body.style.padding = '0';
+            document.documentElement.style.margin = '0';
+            document.documentElement.style.padding = '0';
+            
+            // Prevent any possible overflow on the main container
+            const displayScreen = document.getElementById('displayScreen');
+            if (displayScreen) {
+                displayScreen.style.overflow = 'hidden !important';
+                displayScreen.style.height = '100vh';
+                displayScreen.style.width = '100vw';
+                displayScreen.style.boxSizing = 'border-box';
+            }
+        }
+
+        function showWaitingScreen() {
+            preventAllScrolling();
+            document.getElementById('displayScreen').innerHTML = `
+                <div class="display-content" style="
+                    width: 100vw !important;
+                    height: 100vh !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    box-sizing: border-box !important;
+                    overflow: hidden !important;
+                ">
+                    <!-- Top Header -->
+                    <div class="display-header" style="
+                        width: 100% !important;
+                        text-align: center !important;
+                        padding: 20px 0 10px 0 !important;
+                        flex-shrink: 0 !important;
+                        z-index: 1001 !important;
+                    ">
+                        <h1 class="display-title" style="font-size: 2.5rem !important; margin: 0 0 10px 0 !important;">🎮 Game Lobby</h1>
+                        <p class="display-subtitle" style="font-size: 1.2rem !important; margin: 0 0 5px 0 !important;">Players are joining...</p>
+                        <p class="display-status" style="font-size: 1rem !important; margin: 0 !important;">👥 Players: ${gameState.players.length}</p>
+                        </div>
+                    
+                    <!-- Players Grid (will position itself) -->
+                    <div class="display-players" style="
+                        flex: 1 !important; 
+                        position: relative !important;
+                        width: 100% !important;
+                        overflow: hidden !important;
+                        display: flex !important;
+                        justify-content: center !important;
+                        align-items: center !important;
+                        box-sizing: border-box !important;
+                    ">
+                            ${generatePlayerListDisplay(gameState.players)}
+                        </div>
+                    
+                    <!-- Bottom QR Code -->
+                    <div class="qr-code-section" style="
+                        width: 100% !important;
+                        text-align: center !important;
+                        padding: 10px 0 20px 0 !important;
+                        flex-shrink: 0 !important;
+                        z-index: 1001 !important;
+                        background: rgba(0, 0, 0, 0.4) !important;
+                        backdrop-filter: blur(8px) !important;
+                    ">
+                        <p class="qr-label" style="font-size: 0.9rem !important; margin: 0 0 8px 0 !important;">Scan to join:</p>
+                        <div id="qrCodeWaiting" class="qr-code" style="display: inline-block !important;"></div>
+                        <p class="game-url" style="font-size: 1rem !important; margin: 8px 0 0 0 !important;">Or go to <strong>localhost:3001</strong> and enter game code <span class="game-code-highlight">${displayGameCode || 'XXXX'}</span></p>
+                    </div>
+                </div>
+            `;
+            
+            // Generate QR code after DOM is updated
+            setTimeout(() => {
+                generateQRCode('qrCodeWaiting', 'http://localhost:3001');
+            }, 100);
+        }
+
+        function showPlayingScreen() {
+            const currentQuestion = gameState.questions[gameState.currentQuestion];
+            const questionNumber = gameState.currentQuestion + 1;
+            const roundNumber = Math.ceil(questionNumber / gameState.questionsPerRound);
+            const questionInRound = ((questionNumber - 1) % gameState.questionsPerRound) + 1;
+            
+            document.getElementById('displayScreen').innerHTML = `
+                <div class="playing-container">
+                    <!-- Timer - Upper Right -->
+                        <div class="timer-display">
+                        <div class="timer-circle" id="timerCircle">
+                            <span class="timer-text" id="displayTimer">${gameState.timeLeft || 30}</span>
+                            </div>
+                        </div>
+                    
+                    <!-- Round/Question Info - Top Center -->
+                    <div class="round-info">
+                        <h2>Round ${roundNumber} • Question ${questionInRound}/${gameState.questionsPerRound}</h2>
+                    </div>
+                    
+                    <!-- Question Card -->
+                    <div class="question-content">
+                        <div class="question-card">
+                        <h1 class="question-prompt">${currentQuestion ? currentQuestion.prompt : 'Loading question...'}</h1>
+                        </div>
+                    </div>
+                    
+                    <!-- Response Progress Indicator -->
+                    <div class="response-indicator" id="responseIndicator">
+                        <div class="response-progress">
+                            <div class="response-bar" id="responseBar"></div>
+                        </div>
+                        <div class="response-text" id="responseText">
+                            <span id="responseCount">0</span> of <span id="totalPlayerCount">${gameState.players.length}</span> responses
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Set initial timer state
+            updateDisplayTimer(gameState.timeLeft || 30);
+            
+            // Initialize response indicator
+            updateResponseIndicator(0, gameState.players.length);
+        }
+        
+        function updateDisplayTimer(timeLeft) {
+            const timerText = document.getElementById('displayTimer');
+            const timerCircle = document.getElementById('timerCircle');
+            
+            if (!timerText || !timerCircle) return;
+            
+            // Add tick animation for countdown effect
+            timerText.classList.add('tick');
+            setTimeout(() => timerText.classList.remove('tick'), 300);
+            
+            // Update timer display
+            timerText.textContent = timeLeft;
+            
+            // Remove existing timer classes
+            timerCircle.classList.remove('urgent', 'warning');
+            
+            // Add appropriate class based on time remaining
+            if (timeLeft <= 5) {
+                timerCircle.classList.add('urgent');
+            } else if (timeLeft <= 10) {
+                timerCircle.classList.add('warning');
+            }
+            
+            // Update gameState for consistency
+            if (gameState) {
+                gameState.timeLeft = timeLeft;
+            }
+        }
+        
+        function updateResponseIndicator(responses, totalPlayers) {
+            const responseCount = document.getElementById('responseCount');
+            const totalPlayerCount = document.getElementById('totalPlayerCount');
+            const responseBar = document.getElementById('responseBar');
+            
+            if (!responseCount || !totalPlayerCount || !responseBar) return;
+            
+            // Update text
+            responseCount.textContent = responses;
+            totalPlayerCount.textContent = totalPlayers;
+            
+            // Update progress bar
+            const percentage = totalPlayers > 0 ? (responses / totalPlayers) * 100 : 0;
+            responseBar.style.width = `${percentage}%`;
+            
+            // Add completion pulse when all responses are in
+            if (responses === totalPlayers && totalPlayers > 0) {
+                responseBar.style.background = 'linear-gradient(90deg, #2ecc71 0%, #27ae60 100%)';
+                responseBar.style.boxShadow = '0 0 15px rgba(46, 204, 113, 0.6)';
+            } else {
+                responseBar.style.background = 'linear-gradient(90deg, #3498db 0%, #2ecc71 100%)';
+                responseBar.style.boxShadow = 'none';
+            }
+        }
+
+        function showGradingScreen() {
+            document.getElementById('displayScreen').innerHTML = `
+                <div class="grading-container">
+                    <div class="grading-header">
+                        <h1>📝 Host Grading in Progress</h1>
+                        <p class="grading-subtitle">Please wait while answers are being reviewed</p>
+                    </div>
+                    
+                    <div class="grading-content">
+                        <div class="grading-animation">
+                            <div class="grading-spinner"></div>
+                            <h3>🎯 Categorizing Answers</h3>
+                            <p>The host is reviewing and grouping similar responses</p>
+                            <p>This ensures fair and accurate scoring</p>
+                        </div>
+                        
+                        <div class="grading-stats">
+                            <div class="stat-box">
+                                <span class="stat-number">${gameState.answers ? Object.keys(gameState.answers).length : gameState.players?.length || 0}</span>
+                                <span class="stat-label">Responses Received</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-number">${gameState.players?.length || 0}</span>
+                                <span class="stat-label">Players</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="grading-message">
+                        <p>✨ Results will appear shortly after grading is complete</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showScoringScreen() {
+            document.getElementById('displayScreen').innerHTML = `
+                <div class="scoring-container">
+                    <div class="scoring-header">
+                        <h1>📊 Question Results</h1>
+                        <p class="scoring-subtitle">Answer Breakdown</p>
+                    </div>
+                    
+                    <div class="scoring-content">
+                        <div class="answers-section">
+                            <h3>🏆 Top Answers</h3>
+                            ${generateAnswersDisplay(gameState.currentAnswerGroups)}
+                        </div>
+                        
+                        <div class="scores-section">
+                            <h3>📈 Current Scores</h3>
+                            ${generateScoresDisplay(gameState.players)}
+                        </div>
+                    </div>
+                    
+                    <div class="scoring-navigation">
+                        <p>Next question starting soon...</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generatePlayerListDisplay(players) {
+            if (!players || players.length === 0) {
+                lastPlayerCount = 0; // Reset when no players
+                return '<p>No players yet...</p>';
+            }
+            
+            // Simple grid calculation - aim for roughly square, optimized for perfect fit
+            const totalPlayers = players.length;
+            
+            // SMART GRID: Calculate optimal cols/rows based on available space and card aspect ratio
+            let cols, rows;
+            
+            // Get green container dimensions first for smarter calculation
+            const greenContainer = document.querySelector('.display-players');
+            const greenRect = greenContainer ? greenContainer.getBoundingClientRect() : {
+                width: window.innerWidth * 0.8,
+                height: window.innerHeight * 0.6
+            };
+            
+            const parentPadding = 20;
+            const parentMargin = 10;
+            const parentBorder = 4;
+            const gap = 8;
+            
+            // Available space inside yellow container - MAX 80% of screen width
+            const maxScreenWidth = window.innerWidth * 0.8; // 80% constraint
+            const maxYellowWidth = Math.min(
+                greenRect.width - (parentMargin * 2) - parentBorder,
+                maxScreenWidth
+            );
+            const maxYellowHeight = greenRect.height - (parentMargin * 2) - parentBorder;
+            const availableWidth = maxYellowWidth - (parentPadding * 2);
+            const availableHeight = maxYellowHeight - (parentPadding * 2);
+            
+            // Card aspect ratio is 1.6:1 (width:height)
+            const cardAspectRatio = 1.6;
+            
+            // SPECIAL LOGIC FOR FIRST 20 CARDS: More balanced layouts
+            let bestCols = Math.ceil(Math.sqrt(totalPlayers));
+            let bestCardSize = 0;
+            
+            // For small groups (≤20), prefer more balanced/square layouts
+            let minCols, maxCols;
+            if (totalPlayers <= 20) {
+                // Special handling for very small groups
+                if (totalPlayers <= 6) {
+                    // Force minimum 2 columns for tiny groups
+                    minCols = 2;
+                    maxCols = Math.max(3, bestCols + 1);
+                    console.log(`📊 Tiny group optimization: forcing ${minCols}-${maxCols} columns for ${totalPlayers} players`);
+                } else if (totalPlayers >= 7 && totalPlayers <= 12) {
+                    // Special fixes for problematic counts 7-12
+                    if (totalPlayers === 7 || totalPlayers === 8) {
+                        // Force 4x2 layout instead of 2x4
+                        minCols = 4;
+                        maxCols = 4;
+                        console.log(`📊 Fixed layout for ${totalPlayers} players: forcing 4 columns`);
+                    } else if (totalPlayers === 9) {
+                        // Force 3x3 layout
+                        minCols = 3;
+                        maxCols = 3;
+                        console.log(`📊 Fixed layout for ${totalPlayers} players: forcing 3x3 square`);
+                    } else if (totalPlayers >= 10 && totalPlayers <= 12) {
+                        // Force 4 columns for 3x4 layout (3 rows, 4 columns)
+                        minCols = 4;
+                        maxCols = 4;
+                        console.log(`📊 Fixed layout for ${totalPlayers} players: forcing 4 columns for 3x4 layout`);
+                    }
+                } else {
+                    // Prefer balanced layouts for other small groups
+                    minCols = Math.max(2, bestCols - 2); // Ensure at least 2 columns
+                    maxCols = bestCols + 2;
+                    console.log(`📊 Small group optimization: testing ${minCols}-${maxCols} columns for ${totalPlayers} players`);
+                }
+            } else {
+                // Normal range for larger groups
+                minCols = Math.max(1, bestCols - 3);
+                maxCols = bestCols + 8;
+            }
+            
+            for (let testCols = minCols; testCols <= maxCols; testCols++) {
+                const testRows = Math.ceil(totalPlayers / testCols);
+                
+                // Calculate maximum card size for this grid
+                const maxCardWidth = (availableWidth - (gap * (testCols - 1))) / testCols;
+                const maxCardHeight = (availableHeight - (gap * (testRows - 1))) / testRows;
+                
+                // Respect aspect ratio - card width should be 1.6 * card height
+                const cardWidthByRatio = maxCardHeight * cardAspectRatio;
+                const cardHeightByRatio = maxCardWidth / cardAspectRatio;
+                
+                // Use the limiting dimension
+                const finalCardWidth = Math.min(maxCardWidth, cardWidthByRatio);
+                const finalCardHeight = Math.min(maxCardHeight, cardHeightByRatio);
+                
+                const cardArea = finalCardWidth * finalCardHeight;
+                
+                // Track the configuration that gives the largest cards
+                // NEW LIMITS: Min 120x75, Max 320x200
+                // PREFER VERTICAL EXPANSION: When card sizes are similar, prefer taller layouts
+                if (finalCardWidth >= 120 && finalCardHeight >= 75 &&
+                    finalCardWidth <= 320 && finalCardHeight <= 200) {
+                    
+                    const isCurrentBetter = cardArea > bestCardSize;
+                    const isSimilarSize = bestCardSize > 0 && Math.abs(cardArea - bestCardSize) < (bestCardSize * 0.05); // Within 5%
+                    
+                    let shouldUpdate = isCurrentBetter;
+                    
+                    // Special logic for small groups (≤20): prefer square grids
+                    if (totalPlayers <= 20 && isSimilarSize) {
+                        const currentDiff = Math.abs(testCols - testRows); // How far from square
+                        const bestDiff = bestCardSize > 0 ? Math.abs(cols - rows) : 999;
+                        
+                        // Prefer the layout closer to square (cols ≈ rows)
+                        if (currentDiff < bestDiff) {
+                            shouldUpdate = true;
+                            console.log(`📐 More square: ${testCols}x${testRows} (diff ${currentDiff}) vs ${cols}x${rows} (diff ${bestDiff})`);
+                        }
+                    } else if (totalPlayers > 20 && isSimilarSize) {
+                        // For larger groups, prefer vertical expansion
+                        const isTaller = testRows > rows;
+                        if (isTaller) {
+                            shouldUpdate = true;
+                        }
+                    }
+                    
+                    if (shouldUpdate) {
+                        bestCardSize = cardArea;
+                        cols = testCols;
+                        rows = testRows;
+                    }
+                }
+            }
+            
+            // Fallback if no valid horizontal layout found
+            if (bestCardSize === 0) {
+                console.log(`⚠️ No horizontal layout found, using square fallback`);
+                cols = Math.ceil(Math.sqrt(totalPlayers));
+                rows = Math.ceil(totalPlayers / cols);
+                bestCardSize = 1; // Ensure we proceed
+            }
+            
+            console.log(`🎯 SMART GRID: ${cols}x${rows} for ${totalPlayers} players (${totalPlayers <= 20 ? 'prefer square' : 'vertical expansion'}, max 80% width)`);
+            
+            // Calculate optimal card size for the chosen grid
+            const maxCardWidth = (availableWidth - (gap * (cols - 1))) / cols;
+            const maxCardHeight = (availableHeight - (gap * (rows - 1))) / rows;
+            
+            // Respect aspect ratio
+            const cardWidthByRatio = maxCardHeight * cardAspectRatio;
+            const cardHeightByRatio = maxCardWidth / cardAspectRatio;
+            
+            // Use the limiting dimension
+            let cardWidth = Math.min(maxCardWidth, cardWidthByRatio);
+            let cardHeight = Math.min(maxCardHeight, cardHeightByRatio);
+            
+            // Enforce size limits: Min 120x75, Max 320x200
+            cardWidth = Math.min(320, Math.max(120, cardWidth));
+            cardHeight = Math.min(200, Math.max(75, cardHeight));
+            
+            console.log(`🖥️ Screen: ${window.innerWidth}x${window.innerHeight}, Available: ${availableWidth}x${availableHeight}`);
+            console.log(`📊 Target grid: ${cols}x${rows} = ${totalPlayers} players`);
+            
+            // Keep reducing card size until grid fits
+            let attempts = 0;
+            while (attempts < 20) {
+                const gridWidth = (cardWidth * cols) + (gap * (cols - 1));
+                const gridHeight = (cardHeight * rows) + (gap * (rows - 1));
+                
+                console.log(`   Attempt ${attempts + 1}: Cards ${cardWidth}x${cardHeight}, Grid ${gridWidth}x${gridHeight}`);
+                
+                if (gridWidth <= availableWidth && gridHeight <= availableHeight) {
+                    console.log(`✅ SUCCESS: Grid fits in available space`);
+                    break;
+                }
+                
+                // Reduce card size by 10px and maintain aspect ratio
+                cardWidth -= 10;
+                cardHeight = Math.round(cardWidth / 1.6);
+                attempts++;
+            }
+            
+            if (attempts >= 20) {
+                console.error(`🚨 EMERGENCY: Using minimum card size`);
+                cardWidth = 60;
+                cardHeight = 37;
+            }
+            
+            let finalGridWidth = (cardWidth * cols) + (gap * (cols - 1));
+            let finalGridHeight = (cardHeight * rows) + (gap * (rows - 1));
+            
+            // HARD STOP: If yellow would overflow green, force emergency reduction
+            const finalYellowWidth = finalGridWidth + (parentPadding * 2);
+            const finalYellowHeight = finalGridHeight + (parentPadding * 2);
+            
+            if (finalYellowWidth > maxYellowWidth || finalYellowHeight > maxYellowHeight) {
+                console.error(`🚨 EMERGENCY OVERRIDE: Yellow ${finalYellowWidth}x${finalYellowHeight} > Green ${maxYellowWidth}x${maxYellowHeight}`);
+                
+                // Force cards to be tiny if needed to fit
+                const maxCardWidth = Math.floor((maxYellowWidth - (parentPadding * 2) - (gap * (cols - 1))) / cols);
+                const maxCardHeight = Math.floor((maxYellowHeight - (parentPadding * 2) - (gap * (rows - 1))) / rows);
+                
+                cardWidth = Math.max(120, maxCardWidth);  // Minimum 120px wide
+                cardHeight = Math.max(75, maxCardHeight); // Minimum 75px tall
+                
+                console.log(`🔒 HARD STOP: Forced cards to ${cardWidth}x${cardHeight}`);
+                
+                // Recalculate with forced dimensions
+                finalGridWidth = (cardWidth * cols) + (gap * (cols - 1));
+                finalGridHeight = (cardHeight * rows) + (gap * (rows - 1));
+            }
+            
+            console.log(`🎯 FINAL: Cards ${cardWidth}x${cardHeight}, Grid ${finalGridWidth}x${finalGridHeight}`);
+            
+            let html = `
+                <div class="parent-container" style="
+                    padding: 20px;
+                    margin: 10px auto;
+                    border-radius: 8px;
+                    display: inline-block;
+                ">
+                <div class="stable-players-grid" style="
+                    display: grid;
+                    grid-template-columns: repeat(${cols}, ${cardWidth}px);
+                    grid-template-rows: repeat(${rows}, ${cardHeight}px);
+                    gap: ${gap}px;
+                    width: ${finalGridWidth}px;
+                    height: ${finalGridHeight}px;
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                ">
+            `;
+            
+            // Detect if this is a re-render with new players
+            const isNewPlayerAdded = players.length > lastPlayerCount;
+            
+            // If players left, reset the counter to re-enable animations
+            if (players.length < lastPlayerCount) {
+                lastPlayerCount = 0;
+            }
+            
+            players.forEach((player, index) => {
+                // Determine special classes
+                let specialClasses = '';
+                if (player.isHost) {
+                    specialClasses += ' host-player';
+                }
+                
+                // Only animate new cards (those added beyond the last count)
+                const isNewCard = index >= lastPlayerCount;
+                const animationDelay = isNewCard ? ((index - lastPlayerCount) % 20) * 50 : 0;
+                
+                html += `
+                    <div class="modern-player-card${specialClasses}" style="
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;
+                        align-items: center;
+                        padding: 8px 6px;
+                        background: linear-gradient(135deg, rgba(0, 123, 255, 0.2), rgba(0, 86, 179, 0.15));
+                        border: 2px solid rgba(0, 123, 255, 0.4);
+                        border-radius: 12px;
+                        aspect-ratio: 1.6/1;
+                        box-sizing: border-box;
+                        text-align: center;
+                        backdrop-filter: blur(10px);
+                        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                        position: relative;
+                        overflow: hidden;
+                        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                        ${isNewCard ? `
+                            animation: cardSlideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+                            animation-delay: ${animationDelay}ms;
+                            transform: translateY(30px) scale(0.8);
+                            opacity: 0;
+                            animation-fill-mode: forwards;
+                        ` : `
+                            transform: translateY(0) scale(1);
+                            opacity: 1;
+                        `}
+                    ">
+                        <span class="modern-player-name">${player.name}</span>
+                        <span class="modern-player-score">${player.score || 0} pts</span>
+                    </div>
+                `;
+            });
+            
+            html += '</div>'; // Close stable-players-grid
+            html += '</div>'; // Close parent-container
+            
+            // Update player count tracking
+            lastPlayerCount = players.length;
+            
+            return html;
+        }
+
+        function generateAnswersDisplay(answerGroups) {
+            if (!answerGroups || answerGroups.length === 0) {
+                return '<p>No answers submitted.</p>';
+            }
+            
+            const displayCount = answerGroups.length <= 15 ? answerGroups.length : 15;
+            const answersToShow = answerGroups.slice(0, displayCount);
+            
+            let html = '<div class="answers-grid">';
+            
+            answersToShow.forEach((group, index) => {
+                const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                html += `
+                    <div class="answer-card ${rankClass}">
+                        <div class="answer-rank">#${index + 1}</div>
+                        <div class="answer-text">${group.answer}</div>
+                        <div class="answer-stats">
+                            <span class="answer-count">${group.count} players</span>
+                            <span class="answer-points">${group.points} pts</span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            if (answerGroups.length > 15) {
+                html += `<div class="more-answers-indicator">And ${answerGroups.length - 15} more answers...</div>`;
+            }
+            
+            return html;
+        }
+
+        function generateScoresDisplay(players) {
+            if (!players || players.length === 0) {
+                return '<p>No players yet.</p>';
+            }
+            
+            const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+            const displayCount = players.length <= 20 ? players.length : 20;
+            const playersToShow = sortedPlayers.slice(0, displayCount);
+            
+            let html = '<div class="scores-list">';
+            
+            playersToShow.forEach((player, index) => {
+                const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                html += `
+                    <div class="score-entry ${rankClass}">
+                        <div class="score-rank">#${index + 1}</div>
+                        <div class="score-name">${player.name}</div>
+                        <div class="score-points">${player.score} pts</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            if (players.length > 20) {
+                html += `<div class="more-scores-indicator">And ${players.length - 20} more players...</div>`;
+            }
+            
+            return html;
+        }
+
+        function showRoundCompleteScreen() {
+            const currentRound = gameState.currentRound;
+            const roundHistory = gameState.roundHistory;
+            const currentRoundData = roundHistory[roundHistory.length - 1];
+            
+            document.getElementById('displayScreen').innerHTML = `
+                <div class="display-content">
+                    <div class="display-section">
+                        <div class="display-header">
+                            <h1 class="display-title">🎯 Round ${currentRound} Complete!</h1>
+                            <p class="display-subtitle">Detailed Score Breakdown</p>
+                            <p class="display-brand">by Liquid Kourage Entertainment</p>
+                    </div>
+                    
+                    <div class="round-details">
+                        <div class="round-info">
+                            <h3>📊 Round Summary</h3>
+                            <p>Questions ${currentRoundData.questionStart} - ${currentRoundData.questionEnd}</p>
+                            <p>Total Players: ${gameState.players.length}</p>
+                        </div>
+                        
+                        <div class="round-answers">
+                            <h3>🏆 Top Answers This Round</h3>
+                            ${generateRoundAnswersDisplay(currentRoundData.answerGroups)}
+                        </div>
+                        
+                        <div class="round-scores">
+                            <h3>📈 Round Scores</h3>
+                            ${generateRoundScoresDisplay(currentRoundData.players)}
+                        </div>
+                    </div>
+                    
+                    <div class="round-navigation">
+                        <button onclick="showLeaderboard()" class="btn btn-primary">View Overall Leaderboard</button>
+                        <button onclick="continueToNextRound()" class="btn btn-secondary">Continue to Next Round</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showLeaderboardScreen() {
+            const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
+            
+            document.getElementById('displayScreen').innerHTML = `
+                <div class="display-content">
+                    <div class="display-section">
+                        <div class="display-header">
+                            <h1 class="display-title">🏆 Overall Leaderboard</h1>
+                            <p class="display-subtitle">Final Standings</p>
+                            <p class="display-brand">by Liquid Kourage Entertainment</p>
+                    </div>
+                    
+                    <div class="leaderboard-content">
+                        ${generateLeaderboardDisplay(sortedPlayers)}
+                    </div>
+                    
+                    <div class="leaderboard-navigation">
+                        <button onclick="showRoundHistory()" class="btn btn-secondary">View Round History</button>
+                        <button onclick="showIntroScreen()" class="btn btn-primary">Back to Intro</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showGameFinishedScreen() {
+            const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
+            const winner = sortedPlayers[0];
+            
+            document.getElementById('displayScreen').innerHTML = `
+                <div class="display-content">
+                    <div class="display-section">
+                        <div class="display-header">
+                            <h1 class="display-title">🎉 Game Complete!</h1>
+                            <p class="display-subtitle">Final Results</p>
+                            <p class="display-brand">by Liquid Kourage Entertainment</p>
+                        </div>
+                        
+                    <div class="winner-announcement">
+                        <div class="winner-card">
+                            <h2>🏆 Winner: ${winner.name}</h2>
+                            <p class="winner-score">Final Score: ${winner.score} points</p>
+                        </div>
+                    </div>
+                    
+                    <div class="final-leaderboard">
+                        <h3>📊 Final Standings</h3>
+                        ${generateLeaderboardDisplay(sortedPlayers)}
+                    </div>
+                    
+                    <div class="game-navigation">
+                        <button onclick="showRoundHistory()" class="btn btn-secondary">View Round History</button>
+                        <button onclick="showIntroScreen()" class="btn btn-primary">Play Again</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateRoundAnswersDisplay(answerGroups) {
+            if (!answerGroups || answerGroups.length === 0) {
+                return '<p>No answers submitted this round.</p>';
+            }
+            
+            const displayCount = answerGroups.length <= 15 ? answerGroups.length : 15;
+            const answersToShow = answerGroups.slice(0, displayCount);
+            
+            let html = '<div class="round-answers-grid">';
+            
+            answersToShow.forEach((group, index) => {
+                const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                html += `
+                    <div class="answer-group ${rankClass}">
+                        <div class="answer-rank">#${index + 1}</div>
+                        <div class="answer-content">
+                            <div class="answer-text">${group.answer}</div>
+                            <div class="answer-stats">
+                                <span class="answer-count">${group.count} players</span>
+                                <span class="answer-points">${group.points} pts</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            if (answerGroups.length > 15) {
+                html += `<div class="more-answers-indicator">And ${answerGroups.length - 15} more answers...</div>`;
+            }
+            
+            return html;
+        }
+
+        function generateRoundScoresDisplay(players) {
+            const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+            const displayCount = players.length <= 20 ? players.length : 20;
+            const playersToShow = sortedPlayers.slice(0, displayCount);
+            
+            let html = '<div class="round-scores-list">';
+            
+            playersToShow.forEach((player, index) => {
+                const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                html += `
+                    <div class="player-score ${rankClass}">
+                        <div class="score-rank">#${index + 1}</div>
+                        <div class="score-name">${player.name}</div>
+                        <div class="score-points">${player.score} pts</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            if (players.length > 20) {
+                html += `<div class="more-scores-indicator">And ${players.length - 20} more players...</div>`;
+            }
+            
+            return html;
+        }
+
+        function generateLeaderboardDisplay(sortedPlayers) {
+            const displayCount = sortedPlayers.length <= 20 ? sortedPlayers.length : 20;
+            const playersToShow = sortedPlayers.slice(0, displayCount);
+            
+            let html = '<div class="leaderboard-list">';
+            
+            playersToShow.forEach((player, index) => {
+                const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                const medal = index < 3 ? ['🥇', '🥈', '🥉'][index] : '';
+                html += `
+                    <div class="leaderboard-entry ${rankClass}">
+                        <div class="leaderboard-rank">
+                            ${medal} #${index + 1}
+                        </div>
+                        <div class="leaderboard-name">${player.name}</div>
+                        <div class="leaderboard-score">${player.score} pts</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            if (sortedPlayers.length > 20) {
+                html += `<div class="more-leaderboard-indicator">And ${sortedPlayers.length - 20} more players...</div>`;
+            }
+            
+            return html;
+        }
+
+        function showRoundHistory() {
+            const roundHistory = gameState.roundHistory;
+            
+            document.getElementById('displayScreen').innerHTML = `
+                <div class="round-history-container">
+                    <div class="history-header">
+                        <h1>📚 Round History</h1>
+                        <p class="history-subtitle">Complete Game Breakdown</p>
+                    </div>
+                    
+                    <div class="history-content">
+                        ${roundHistory.map((round, index) => `
+                            <div class="history-round">
+                                <h3>Round ${round.roundNumber}</h3>
+                                <p>Questions ${round.questionStart} - ${round.questionEnd}</p>
+                                <div class="round-summary">
+                                    <div class="top-answers">
+                                        <h4>Top Answers:</h4>
+                                        ${round.answerGroups.slice(0, 3).map(group => 
+                                            `<span class="answer-tag">${group.answer} (${group.points}pts)</span>`
+                                        ).join('')}
+                                    </div>
+                                    <div class="top-players">
+                                        <h4>Top Players:</h4>
+                                        ${round.players.slice(0, 3).map(player => 
+                                            `<span class="player-tag">${player.name} (${player.score}pts)</span>`
+                                        ).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="history-navigation">
+                        <button onclick="showLeaderboardScreen()" class="btn btn-primary">Back to Leaderboard</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showLeaderboard() {
+            updateDisplayFromGameState({...gameState, gameState: 'leaderboard'});
+        }
+
+        function continueToNextRound() {
+            // This would be triggered by the host, but for now we'll simulate it
+            updateDisplayFromGameState({...gameState, gameState: 'playing'});
+        }
+
+        // Initialize display (handled by the new event listener below)
+        
+        // Debug: Log any page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            console.log('👁️ Page visibility changed:', document.visibilityState, 'at:', new Date().toLocaleTimeString());
+        });
+        
+        // Debug: Log any page focus changes
+        window.addEventListener('focus', () => {
+            console.log('🎯 Page focused at:', new Date().toLocaleTimeString());
+        });
+        
+        window.addEventListener('blur', () => {
+            console.log('💤 Page blurred at:', new Date().toLocaleTimeString());
+        });
+
+        function generateQRCode(elementId, url) {
+            const element = document.getElementById(elementId);
+            if (!element) {
+                console.error(`Element with id '${elementId}' not found`);
+                return;
+            }
+            
+            console.log(`Generating QR code for ${url} in element ${elementId}`);
+            
+            // Create a larger QR code using a reliable online service
+            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+            
+            element.innerHTML = `
+                <img src="${qrCodeUrl}" 
+                     alt="QR Code to join game" 
+                     style="width: 300px; height: 300px; background: white; border-radius: 12px;"
+                     onerror="this.parentElement.innerHTML='<div style=\\'width: 300px; height: 300px; background: white; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-size: 16px; text-align: center; padding: 20px;\\'><a href=\\'${url}\\' target=\\'_blank\\' style=\\'color: #333; text-decoration: none;\\'>Click to join<br>${url}</a></div>'">
+            `;
+        }
+
+        // Dynamic Sheep Carousel System
+        async function initializeSheepCarousel() {
+            try {
+                console.log('🐑 Fetching sheep photos...');
+                const response = await fetch('/api/sheep-urls');
+                console.log('🐑 API Response status:', response.status);
+                const data = await response.json();
+                console.log('🐑 API Response data:', data);
+                
+                if (data.urls && data.urls.length > 0) {
+                    updateSheepCarousel(data.urls);
+                    console.log(`🐑 Loaded ${data.urls.length} sheep photos for background carousel`);
+                    
+                    // Test if first image loads
+                    const img = new Image();
+                    img.onload = () => console.log('✅ First sheep image loaded successfully:', data.urls[0]);
+                    img.onerror = () => console.error('❌ Failed to load first sheep image:', data.urls[0]);
+                    img.src = data.urls[0];
+                } else {
+                    console.log('🐑 No uploaded sheep photos found, using default background');
+                }
+            } catch (error) {
+                console.error('Failed to load sheep photos:', error);
+            }
+        }
+
+        function updateSheepCarousel(sheepUrls) {
+            console.log('🐑 Updating carousel with', sheepUrls.length, 'sheep photos');
+            
+            // Remove existing animation if it exists
+            const existingStyle = document.getElementById('dynamic-sheep-carousel');
+            if (existingStyle) {
+                existingStyle.remove();
+            }
+
+            if (sheepUrls.length === 0) {
+                console.log('🐑 No sheep URLs provided');
+                return;
+            }
+
+            // Calculate timing for smooth transitions
+            const totalDuration = Math.max(60, sheepUrls.length * 5); // At least 60s, 5s per photo
+            const stepPercentage = 100 / sheepUrls.length;
+
+            // Generate CSS keyframes
+            let keyframes = '@keyframes sheepCarousel {\n';
+            sheepUrls.forEach((url, index) => {
+                const percentage = (index * stepPercentage).toFixed(2);
+                keyframes += `    ${percentage}% { background-image: url('${url}'); }\n`;
+            });
+            // Loop back to first image
+            keyframes += `    100% { background-image: url('${sheepUrls[0]}'); }\n`;
+            keyframes += '}\n\n';
+
+            // Set initial background and animation
+            keyframes += `.playing-container::after {\n`;
+            keyframes += `    background-image: url('${sheepUrls[0]}');\n`;
+            keyframes += `    animation: sheepCarousel ${totalDuration}s linear infinite;\n`;
+            keyframes += `}\n`;
+
+            console.log('🐑 Generated CSS for carousel:', keyframes.slice(0, 200) + '...');
+
+            // Inject the CSS
+            const style = document.createElement('style');
+            style.id = 'dynamic-sheep-carousel';
+            style.textContent = keyframes;
+            document.head.appendChild(style);
+            
+            console.log('🐑 Carousel CSS injected, total duration:', totalDuration + 's');
+        }
+
+        // Initialize socket connection on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeSocket();
+            initializeSheepCarousel();
+        });
+
+        // Refresh carousel every 5 minutes to pick up new uploads
+        setInterval(initializeSheepCarousel, 5 * 60 * 1000);
+        
+
+    </script>
+</body>
+</html> 

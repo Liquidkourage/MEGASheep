@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-User Grading Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .grader-window {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 400px;
+        }
+        .grader-window.active {
+            border-color: #4CAF50;
+        }
+        .status {
+            background: #e8f5e8;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .answer-item {
+            background: #f9f9f9;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            border-left: 4px solid #ddd;
+        }
+        .answer-item:hover {
+            background: #f0f0f0;
+        }
+        .bucket {
+            background: #f0f8ff;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        .bucket-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .controls {
+            margin-bottom: 15px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .log {
+            background: #f8f8f8;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Multi-User Grading Collaboration Test</h1>
+    <p>This demonstrates how multiple graders can work together in real-time. Open this page in multiple browser tabs to test the collaboration.</p>
+    
+    <div class="test-container">
+        <div class="grader-window" id="grader1">
+            <h3>👤 Grader 1</h3>
+            <div class="status" id="status1">
+                🔴 Disconnected
+            </div>
+            <div class="controls">
+                <button onclick="connectGrader(1)">Connect</button>
+                <button onclick="disconnectGrader(1)">Disconnect</button>
+                <button onclick="addTestAnswer(1)">Add Test Answer</button>
+            </div>
+            <div class="bucket">
+                <div class="bucket-title">📝 Uncategorized Answers</div>
+                <div id="uncategorized1"></div>
+            </div>
+            <div class="bucket">
+                <div class="bucket-title">✅ Correct Answers</div>
+                <div id="correct1"></div>
+            </div>
+            <div class="bucket">
+                <div class="bucket-title">❌ Wrong Answers</div>
+                <div id="wrong1"></div>
+            </div>
+            <div class="log" id="log1"></div>
+        </div>
+        
+        <div class="grader-window" id="grader2">
+            <h3>👤 Grader 2</h3>
+            <div class="status" id="status2">
+                🔴 Disconnected
+            </div>
+            <div class="controls">
+                <button onclick="connectGrader(2)">Connect</button>
+                <button onclick="disconnectGrader(2)">Disconnect</button>
+                <button onclick="addTestAnswer(2)">Add Test Answer</button>
+            </div>
+            <div class="bucket">
+                <div class="bucket-title">📝 Uncategorized Answers</div>
+                <div id="uncategorized2"></div>
+            </div>
+            <div class="bucket">
+                <div class="bucket-title">✅ Correct Answers</div>
+                <div id="correct2"></div>
+            </div>
+            <div class="bucket">
+                <div class="bucket-title">❌ Wrong Answers</div>
+                <div id="wrong2"></div>
+            </div>
+            <div class="log" id="log2"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const sockets = {};
+        const graderIds = {};
+        const answers = {
+            1: [],
+            2: []
+        };
+
+        function connectGrader(graderNum) {
+            const socket = io();
+            const graderId = `test_grader_${graderNum}_${Date.now()}`;
+            
+            sockets[graderNum] = socket;
+            graderIds[graderNum] = graderId;
+            
+            // Join grading room
+            socket.emit('joinGradingRoom', {
+                gameId: 'test_game',
+                questionIndex: 0,
+                graderId: graderId
+            });
+            
+            // Update status
+            document.getElementById(`status${graderNum}`).innerHTML = '🟢 Connected';
+            document.getElementById(`grader${graderNum}`).classList.add('active');
+            
+            // Listen for real-time updates
+            socket.on('gradingUpdate', (data) => {
+                logMessage(graderNum, `👥 Other grader moved "${data.answerText}" to ${data.targetBucket}`);
+                moveAnswer(graderNum, data.answerText, data.targetBucket);
+            });
+            
+            socket.on('newAnswerSubmitted', (data) => {
+                logMessage(graderNum, `🆕 New answer: "${data.answerText}" (${data.count} responses)`);
+                addAnswer(graderNum, data.answerText, data.count);
+            });
+            
+            socket.on('graderJoined', (data) => {
+                logMessage(graderNum, `👥 Another grader joined (${data.graderCount} total)`);
+            });
+            
+            socket.on('graderLeft', (data) => {
+                logMessage(graderNum, `👥 A grader left (${data.graderCount} remaining)`);
+            });
+            
+            logMessage(graderNum, `🔌 Connected as ${graderId}`);
+        }
+        
+        function disconnectGrader(graderNum) {
+            if (sockets[graderNum]) {
+                sockets[graderNum].emit('leaveGradingRoom', {
+                    gameId: 'test_game',
+                    graderId: graderIds[graderNum]
+                });
+                sockets[graderNum].disconnect();
+                delete sockets[graderNum];
+                delete graderIds[graderNum];
+                
+                document.getElementById(`status${graderNum}`).innerHTML = '🔴 Disconnected';
+                document.getElementById(`grader${graderNum}`).classList.remove('active');
+                logMessage(graderNum, '🔌 Disconnected');
+            }
+        }
+        
+        function addTestAnswer(graderNum) {
+            const testAnswers = [
+                'pizza', 'pasta', 'potato', 'pear', 'peach',
+                'pancake', 'popcorn', 'pineapple', 'pumpkin', 'pepper'
+            ];
+            const randomAnswer = testAnswers[Math.floor(Math.random() * testAnswers.length)];
+            
+            if (sockets[graderNum]) {
+                sockets[graderNum].emit('newAnswerSubmitted', {
+                    gameId: 'test_game',
+                    questionIndex: 0,
+                    answerText: randomAnswer,
+                    count: Math.floor(Math.random() * 5) + 1
+                });
+            }
+        }
+        
+        function addAnswer(graderNum, answerText, count) {
+            const container = document.getElementById(`uncategorized${graderNum}`);
+            const answerDiv = document.createElement('div');
+            answerDiv.className = 'answer-item';
+            answerDiv.textContent = `"${answerText}" (${count} responses)`;
+            answerDiv.onclick = () => categorizeAnswer(graderNum, answerText, 'correct');
+            answerDiv.oncontextmenu = (e) => {
+                e.preventDefault();
+                categorizeAnswer(graderNum, answerText, 'wrong');
+            };
+            container.appendChild(answerDiv);
+        }
+        
+        function categorizeAnswer(graderNum, answerText, bucket) {
+            if (sockets[graderNum]) {
+                sockets[graderNum].emit('categorizeAnswer', {
+                    gameId: 'test_game',
+                    questionIndex: 0,
+                    answerText: answerText,
+                    targetBucket: bucket,
+                    graderId: graderIds[graderNum]
+                });
+                
+                logMessage(graderNum, `🎯 Moved "${answerText}" to ${bucket}`);
+            }
+        }
+        
+        function moveAnswer(graderNum, answerText, bucket) {
+            // Remove from current location
+            const containers = [
+                document.getElementById(`uncategorized${graderNum}`),
+                document.getElementById(`correct${graderNum}`),
+                document.getElementById(`wrong${graderNum}`)
+            ];
+            
+            containers.forEach(container => {
+                const items = container.querySelectorAll('.answer-item');
+                items.forEach(item => {
+                    if (item.textContent.includes(`"${answerText}"`)) {
+                        item.remove();
+                    }
+                });
+            });
+            
+            // Add to new location
+            const targetContainer = document.getElementById(`${bucket}${graderNum}`);
+            const answerDiv = document.createElement('div');
+            answerDiv.className = 'answer-item';
+            answerDiv.style.background = '#e8f5e8';
+            answerDiv.textContent = `"${answerText}" (moved by other grader)`;
+            targetContainer.appendChild(answerDiv);
+        }
+        
+        function logMessage(graderNum, message) {
+            const log = document.getElementById(`log${graderNum}`);
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `[${timestamp}] ${message}\n`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        // Auto-connect both graders for demo
+        setTimeout(() => {
+            connectGrader(1);
+            setTimeout(() => connectGrader(2), 1000);
+        }, 500);
+    </script>
+</body>
+</html> 

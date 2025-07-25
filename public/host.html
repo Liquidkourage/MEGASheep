@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEGASheep - Host</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .host-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .main-panel {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .header p {
+            margin: 0;
+            color: #b0b0b0;
+            font-size: 14px;
+        }
+
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            text-align: center;
+        }
+
+        .welcome-screen h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #b0b0b0;
+            margin-bottom: 40px;
+        }
+
+        .welcome-buttons {
+            display: flex;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            color: white;
+        }
+
+        .game-created-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+        }
+
+        .game-created-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .game-created-header h2 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .game-code {
+            font-size: 48px;
+            font-weight: 700;
+            margin: 20px 0;
+            color: #ffffff;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-instructions {
+            font-size: 16px;
+            color: #e0e0e0;
+            margin-bottom: 30px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .action-buttons .btn {
+            padding: 12px 24px;
+            font-size: 13px;
+            min-width: 160px;
+            justify-content: center;
+        }
+
+        .sidebar-section {
+            margin-bottom: 30px;
+        }
+
+        .sidebar-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #ffffff;
+        }
+
+        .sidebar-section .btn {
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 10px 15px;
+            font-size: 12px;
+        }
+
+        .player-list {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .player-item:last-child {
+            border-bottom: none;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 20px;
+            width: 80%;
+            max-width: 800px;
+            color: white;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: white;
+        }
+
+        .grading-interface {
+            margin-top: 20px;
+        }
+
+        .answer-group {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .answer-group h4 {
+            margin: 0 0 10px 0;
+            color: #ffffff;
+        }
+
+        .answer-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .answer-input::placeholder {
+            color: #b0b0b0;
+        }
+
+        .category-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .category-btn {
+            padding: 5px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .category-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .category-btn.selected {
+            background: #667eea;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="host-container">
+        <div class="main-panel">
+            <div class="header">
+                <h1>MEGASheep Host Console</h1>
+                <p>Create and manage your game sessions</p>
+            </div>
+
+            <!-- Welcome Screen -->
+            <div id="welcomeScreen" class="screen active">
+                <div class="welcome-screen">
+                    <h1>🐑 MEGASheep</h1>
+                    <p class="subtitle">Host a Game</p>
+                    <div class="welcome-buttons">
+                        <button id="createGameBtn" class="btn btn-primary">Create New Game</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Created Screen -->
+            <div id="gameCreatedScreen" class="screen">
+                <div class="game-created-section">
+                    <div class="game-created-header">
+                        <span>🎮</span>
+                        <h2>Game Created Successfully!</h2>
+                        <span>✅</span>
+                    </div>
+                    <div class="game-code" id="gameCodeDisplay">----</div>
+                    <p class="game-instructions">Share this code with your players to join the game</p>
+                    <div class="action-buttons">
+                        <button id="copyCodeBtn" class="btn btn-secondary">Copy Code</button>
+                        <button id="playerJoinBtn" class="btn btn-primary">Player Join Page</button>
+                        <button id="displayScreenBtn" class="btn btn-secondary">Display Screen</button>
+                        <button id="gradingConsoleBtn" class="btn btn-success">Grading Console</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h3>Host Controls</h3>
+                <button id="startGameBtn" class="btn btn-success" disabled>Start Game</button>
+                <button id="pauseGameBtn" class="btn btn-warning" disabled>Pause Game</button>
+                <button id="endGameBtn" class="btn btn-danger" disabled>End Game</button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Game Settings</h3>
+                <button id="loadQuestionsBtn" class="btn btn-secondary">Load Questions</button>
+                <button id="gameSettingsBtn" class="btn btn-secondary">Game Settings</button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Quick Actions</h3>
+                <button id="fullscreenBtn" class="btn btn-secondary">Fullscreen</button>
+                <button id="reconnectBtn" class="btn btn-secondary">Reconnect</button>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Players (<span id="playerCount">0</span>)</h3>
+                <div id="playerList" class="player-list">
+                    <p style="text-align: center; color: #b0b0b0; margin: 0;">No players joined yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grading Modal -->
+    <div id="gradingModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeGradingModal">&times;</span>
+            <h2>Grading Console</h2>
+            <div id="gradingUncategorizedAnswers" class="grading-interface">
+                <!-- Answer groups will be populated here -->
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="completeGradingBtn" class="btn btn-success">Complete Grading</button>
+            </div>
+        </div>
+    </div>
+
+    <script>window.screens = undefined; window.isHostPage = true;</script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+    <script>
+        let hostSocket;
+        let hostIsHost = false;
+        let currentGameCode = null;
+        let currentHostName = null;
+        let gameStarting = false;
+        let hostGameState = {};
+
+        function initializeSocket() {
+            console.log('🔌 initializeSocket called');
+            
+            if (hostSocket) {
+                console.log('🔌 Disconnecting existing socket before creating new one');
+                hostSocket.disconnect();
+            }
+            
+            hostSocket = io();
+            console.log('🔌 Socket created:', hostSocket);
+            console.log('🔌 Setting up socket listeners...');
+            console.log('🔌 Socket object:', hostSocket);
+            console.log('🔌 Socket connected:', hostSocket.connected);
+
+            hostSocket.on('connect', () => {
+                console.log('🔌 Socket connected successfully');
+                checkExistingHostSession();
+            });
+
+            hostSocket.on('gameCreated', (data) => {
+                console.log('Game created via socket:', data);
+                currentGameCode = data.gameCode;
+                currentHostName = data.hostName;
+                hostIsHost = true;
+                
+                // Store in session storage
+                sessionStorage.setItem('hostGameCode', currentGameCode);
+                sessionStorage.setItem('hostName', currentHostName);
+                
+                console.log('🎮 Game code stored:', currentGameCode);
+                
+                // Join the room for this game
+                console.log('🏠 Host joining room for game:', currentGameCode);
+                hostSocket.emit('joinGame', { gameCode: currentGameCode, playerName: currentHostName });
+                
+                // Auto-load questions for new game
+                console.log('🔄 Auto-loading questions for new game...');
+                loadQuestionsForGame();
+            });
+
+            hostSocket.on('gameJoined', (data) => {
+                console.log('✅ Host joined game room:', data);
+                showHostScreen('gameCreatedScreen');
+                updateGameCodeDisplay();
+            });
+
+            hostSocket.on('questionsLoaded', (data) => {
+                console.log('✅ Questions loaded successfully via socket:', data.questions.length);
+                hostGameState.questions = data.questions;
+                console.log('✅ Game state updated in Promise handler with', data.questions.length, 'questions');
+            });
+
+            hostSocket.on('playerJoined', (data) => {
+                console.log('Player joined:', data);
+                updatePlayerList();
+                updatePlayerCount();
+            });
+
+            hostSocket.on('playerLeft', (data) => {
+                console.log('Player left:', data);
+                updatePlayerList();
+                updatePlayerCount();
+            });
+
+            hostSocket.on('gameStarted', (data) => {
+                console.log('Game started:', data);
+                hostGameState = data;
+                document.getElementById('startGameBtn').disabled = true;
+                document.getElementById('startGameBtn').textContent = 'Game Started';
+            });
+
+            hostSocket.on('questionComplete', (data) => {
+                console.log('🎮 questionComplete event received!');
+                console.log('🎮 Game state data:', data);
+                
+                hostGameState = data;
+                currentGameCode = data.gameCode;
+                
+                console.log('🎮 Question complete - game state updated:', data);
+                console.log('🎮 Current game code set to:', currentGameCode);
+                console.log('📝 Current answer groups:', data.currentAnswerGroups);
+                console.log('📝 Answer groups length:', data.currentAnswerGroups.length);
+                console.log('📝 Answer groups details:', data.currentAnswerGroups);
+                console.log('📝 Game state:', data.gameState);
+                
+                if (data.gameState === 'grading') {
+                    console.log('🎯 Forcing grading interface to open with answer data');
+                    forceMandatoryGrading(data.currentAnswerGroups);
+                }
+            });
+
+            hostSocket.on('reconnectHost', (data) => {
+                console.log('Reconnecting host to game:', data);
+                currentGameCode = data.gameCode;
+                currentHostName = data.hostName;
+                hostIsHost = true;
+                showHostScreen('gameCreatedScreen');
+                updateGameCodeDisplay();
+                updatePlayerList();
+                updatePlayerCount();
+            });
+        }
+
+        function setupEventListeners() {
+            document.getElementById('createGameBtn').addEventListener('click', createGameDirectly);
+            document.getElementById('copyCodeBtn').addEventListener('click', copyGameCode);
+            document.getElementById('playerJoinBtn').addEventListener('click', openPlayerJoinPage);
+            document.getElementById('displayScreenBtn').addEventListener('click', openDisplayScreen);
+            document.getElementById('gradingConsoleBtn').addEventListener('click', openGradingModal);
+            document.getElementById('startGameBtn').addEventListener('click', startGame);
+            document.getElementById('pauseGameBtn').addEventListener('click', pauseGame);
+            document.getElementById('endGameBtn').addEventListener('click', endGame);
+            document.getElementById('loadQuestionsBtn').addEventListener('click', loadQuestionsForGame);
+            document.getElementById('gameSettingsBtn').addEventListener('click', openGameSettings);
+            document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+            document.getElementById('reconnectBtn').addEventListener('click', reconnectToGame);
+            document.getElementById('closeGradingModal').addEventListener('click', closeGradingModal);
+            document.getElementById('completeGradingBtn').addEventListener('click', completeGrading);
+        }
+
+        function showHostScreen(screenId) {
+            const screens = document.querySelectorAll('.screen');
+            screens.forEach(screen => screen.classList.remove('active'));
+            
+            const targetScreen = document.getElementById(screenId);
+            if (targetScreen) {
+                targetScreen.classList.add('active');
+            }
+        }
+
+        function createGameDirectly() {
+            const hostName = prompt('Enter your name as host:');
+            if (!hostName) return;
+
+            const gameData = {
+                hostName: hostName,
+                questionsPerRound: 20,
+                timePerQuestion: 180
+            };
+
+            console.log('🎮 Creating game with data:', gameData);
+
+            fetch('/api/create-game', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(gameData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('✅ Game created via API:', data);
+                    currentGameCode = data.gameCode;
+                    currentHostName = data.hostName;
+                    
+                    // Join the game room via socket
+                    hostSocket.emit('joinGame', { 
+                        gameCode: data.gameCode, 
+                        playerName: data.hostName 
+                    });
+                } else {
+                    console.error('❌ Failed to create game:', data.error);
+                    alert('Failed to create game: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error creating game:', error);
+                alert('Error creating game. Please try again.');
+            });
+        }
+
+        function loadQuestionsForGame() {
+            console.log('🔄 Requesting questions from database via socket...');
+            hostSocket.emit('loadQuestions', { 
+                gameCode: currentGameCode, 
+                loadFromDatabase: true 
+            });
+        }
+
+        function updateGameCodeDisplay() {
+            const gameCodeElement = document.getElementById('gameCodeDisplay');
+            if (gameCodeElement && currentGameCode) {
+                gameCodeElement.textContent = currentGameCode;
+            }
+        }
+
+        function copyGameCode() {
+            if (currentGameCode) {
+                navigator.clipboard.writeText(currentGameCode).then(() => {
+                    const btn = document.getElementById('copyCodeBtn');
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                    }, 2000);
+                });
+            }
+        }
+
+        function openPlayerJoinPage() {
+            if (currentGameCode) {
+                window.open(`/game.html?code=${currentGameCode}`, '_blank');
+            }
+        }
+
+        function openDisplayScreen() {
+            if (currentGameCode) {
+                window.open(`/display.html?code=${currentGameCode}`, '_blank');
+            }
+        }
+
+        function openGradingModal() {
+            console.log('🚀 openGradingModal() called');
+            const modal = document.getElementById('gradingModal');
+            console.log('🔍 Modal element found:', modal);
+            
+            if (modal) {
+                console.log('📱 Setting modal display to block...');
+                modal.style.display = 'block';
+                console.log('✅ Modal display set, current style:', modal.style.display);
+                
+                // Set the current game code for the grading modal
+                console.log('🎮 Grading modal: Set currentGameCode to', currentGameCode);
+                
+                // Initialize grading interface with current game state
+                if (hostGameState && hostGameState.currentAnswerGroups) {
+                    console.log('🎮 Using LIVE game questions:', hostGameState.questions ? hostGameState.questions.length : 'unknown');
+                    initializeGradingInterface(hostGameState.currentAnswerGroups);
+                } else {
+                    console.log('🔍 Grading modal: Requesting current game state for live answers...');
+                    // Request current game state from server
+                    hostSocket.emit('getGameState', { gameCode: currentGameCode });
+                }
+            }
+        }
+
+        function closeGradingModal() {
+            const modal = document.getElementById('gradingModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function forceMandatoryGrading(answerGroups) {
+            console.log('🎯 forceMandatoryGrading called');
+            console.log('🎯 Current game state:', hostGameState);
+            console.log('🎯 Current answer groups:', answerGroups);
+            
+            if (answerGroups && answerGroups.length > 0) {
+                console.log('🎯 Grading modal opened');
+                openGradingModal();
+                console.log('🎯 Initializing grading interface with answer data');
+                initializeGradingInterface(answerGroups);
+            }
+        }
+
+        function initializeGradingInterface(answerGroups) {
+            console.log('🎯 populateGradingWithAnswerData called');
+            const container = document.getElementById('gradingUncategorizedAnswers');
+            
+            if (!container) {
+                console.log('⚠️ Uncategorized answers container not found');
+                return;
+            }
+            
+            console.log('🎯 Processing answer groups:', answerGroups);
+            container.innerHTML = '';
+            
+            answerGroups.forEach((group, index) => {
+                console.log('🎯 Adding answer group', index + ':', group);
+                
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'answer-group';
+                groupDiv.innerHTML = `
+                    <h4>Answer: "${group.answer}" (${group.count} players)</h4>
+                    <input type="text" class="answer-input" placeholder="Enter category name" value="">
+                    <div class="category-buttons">
+                        <button class="category-btn" data-category="correct">Correct</button>
+                        <button class="category-btn" data-category="incorrect">Incorrect</button>
+                        <button class="category-btn" data-category="creative">Creative</button>
+                        <button class="category-btn" data-category="funny">Funny</button>
+                    </div>
+                `;
+                
+                container.appendChild(groupDiv);
+                
+                // Add event listeners for category buttons
+                const categoryBtns = groupDiv.querySelectorAll('.category-btn');
+                categoryBtns.forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        categoryBtns.forEach(b => b.classList.remove('selected'));
+                        this.classList.add('selected');
+                        const input = groupDiv.querySelector('.answer-input');
+                        input.value = this.dataset.category;
+                    });
+                });
+            });
+            
+            console.log('🎯 Grading interface populated with answer data');
+        }
+
+        function completeGrading() {
+            const answerGroups = document.querySelectorAll('.answer-group');
+            const gradedAnswers = [];
+            
+            answerGroups.forEach((group, index) => {
+                const answer = group.querySelector('h4').textContent.match(/"([^"]+)"/)[1];
+                const category = group.querySelector('.answer-input').value;
+                const selectedBtn = group.querySelector('.category-btn.selected');
+                
+                if (category) {
+                    gradedAnswers.push({
+                        answer: answer,
+                        category: category,
+                        points: selectedBtn && selectedBtn.dataset.category === 'correct' ? 1 : 0
+                    });
+                }
+            });
+            
+            if (gradedAnswers.length > 0) {
+                hostSocket.emit('completeGrading', {
+                    gameCode: currentGameCode,
+                    gradedAnswers: gradedAnswers
+                });
+                closeGradingModal();
+            }
+        }
+
+        function startGame() {
+            console.log('🎮 startGame() called, gameStarting flag:', gameStarting);
+            
+            if (gameStarting) {
+                console.log('🚫 Game already starting, ignoring duplicate request');
+                return;
+            }
+            
+            if (!currentGameCode) {
+                console.log('❌ No current game code, cannot start game');
+                return;
+            }
+            
+            console.log('🎮 Starting game:', currentGameCode);
+            gameStarting = true;
+            
+            const startBtn = document.getElementById('startGameBtn');
+            startBtn.disabled = true;
+            startBtn.textContent = 'Starting...';
+            console.log('🔒 Button disabled and text changed');
+            
+            console.log('📤 Emitted startGame event');
+            hostSocket.emit('startGame', { gameCode: currentGameCode });
+        }
+
+        function pauseGame() {
+            if (currentGameCode) {
+                hostSocket.emit('pauseGame', { gameCode: currentGameCode });
+            }
+        }
+
+        function endGame() {
+            if (currentGameCode) {
+                if (confirm('Are you sure you want to end the game?')) {
+                    hostSocket.emit('endGame', { gameCode: currentGameCode });
+                }
+            }
+        }
+
+        function openGameSettings() {
+            // TODO: Implement game settings modal
+            alert('Game settings coming soon!');
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function reconnectToGame() {
+            checkExistingHostSession();
+        }
+
+        function updatePlayerList() {
+            if (!hostGameState.players) return;
+            
+            const playerList = document.getElementById('playerList');
+            if (hostGameState.players.length === 0) {
+                playerList.innerHTML = '<p style="text-align: center; color: #b0b0b0; margin: 0;">No players joined yet</p>';
+                return;
+            }
+            
+            playerList.innerHTML = '';
+            hostGameState.players.forEach(player => {
+                const playerItem = document.createElement('div');
+                playerItem.className = 'player-item';
+                playerItem.innerHTML = `
+                    <span>${player.name}</span>
+                    <span>${player.score || 0} pts</span>
+                `;
+                playerList.appendChild(playerItem);
+            });
+        }
+
+        function updatePlayerCount() {
+            const count = hostGameState.players ? hostGameState.players.length : 0;
+            document.getElementById('playerCount').textContent = count;
+        }
+
+        function checkExistingHostSession() {
+            const savedGameCode = sessionStorage.getItem('hostGameCode');
+            const savedHostName = sessionStorage.getItem('hostName');
+            
+            if (savedGameCode && savedHostName) {
+                console.log('🔄 Found existing host session, attempting to reconnect...');
+                currentGameCode = savedGameCode;
+                currentHostName = savedHostName;
+                hostIsHost = true;
+                
+                hostSocket.emit('reconnectHost', {
+                    gameCode: savedGameCode,
+                    hostName: savedHostName
+                });
+            }
+        }
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeSocket();
+            setupEventListeners();
+        });
+    </script>
+</body>
+</html> 

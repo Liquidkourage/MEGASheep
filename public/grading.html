@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEGASheep - Multi-User Grading Interface</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000033 100%);
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        
+        /* Override any conflicting styles from main CSS */
+        body * {
+            color: inherit;
+        }
+        
+        .grading-access {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .access-header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #007bff;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 123, 255, 0.2);
+            padding: 40px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .access-header h1 {
+            color: #ffffff;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 123, 255, 0.5);
+        }
+        
+        .access-header p {
+            color: #cccccc;
+            font-size: 16px;
+        }
+        
+        .connection-status {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #007bff;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #ffffff;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-connected {
+            background: #27ae60;
+            box-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
+        }
+        
+        .status-disconnected {
+            background: #e74c3c;
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+        }
+        
+        .grading-container {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #007bff;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 123, 255, 0.2);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            max-height: calc(100vh - 200px);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .grading-header {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .grading-header h2 {
+            margin: 0;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .real-time-status {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .real-time-indicator {
+            color: #4CAF50;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+        }
+        
+        .grader-count {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .grading-content {
+            padding: 20px;
+            color: #ffffff;
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #007bff rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Webkit scrollbar styling for main content */
+        .grading-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .grading-content::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+        
+        .grading-content::-webkit-scrollbar-thumb {
+            background: #007bff;
+            border-radius: 4px;
+        }
+        
+        .grading-content::-webkit-scrollbar-thumb:hover {
+            background: #0056b3;
+        }
+        
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            min-width: 150px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
+            border: 1px solid #007bff;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(0, 123, 255, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(108, 117, 125, 0.3);
+            border: 1px solid #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(108, 117, 125, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
+            border: 1px solid #28a745;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(40, 167, 69, 0.4);
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%);
+            color: white;
+            box-shadow: 0 8px 20px rgba(23, 162, 184, 0.3);
+            border: 1px solid #17a2b8;
+        }
+        
+        .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(23, 162, 184, 0.4);
+        }
+        
+        .grading-input {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #007bff;
+            color: #ffffff;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        
+        .grading-input:focus {
+            outline: none;
+            border-color: #0056b3;
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
+        }
+        
+        .grading-input option {
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        
+        .question-selector {
+            margin-bottom: 30px;
+        }
+        
+        .question-selector label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        
+        .grading-question-display {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid #007bff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .grading-question-display h5 {
+            color: #007bff;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .grading-question-info {
+            color: #cccccc;
+            line-height: 1.6;
+        }
+        
+        .grading-no-question {
+            text-align: center;
+            padding: 40px;
+            color: #cccccc;
+            display: block;
+        }
+        
+        .grading-no-question p {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        
+        /* Grading interface styling */
+        .grading-categorization-interface {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid #007bff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .grading-categorization-interface h4 {
+            color: #007bff;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .answer-bucket {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #007bff;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        
+        .answer-bucket h4 {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 12px 15px;
+            margin: 0;
+            font-size: 16px;
+        }
+        
+        .answer-items {
+            padding: 15px;
+            min-height: 50px;
+            max-height: 300px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #007bff rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Webkit scrollbar styling */
+        .answer-items::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .answer-items::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+        
+        .answer-items::-webkit-scrollbar-thumb {
+            background: #007bff;
+            border-radius: 4px;
+        }
+        
+        .answer-items::-webkit-scrollbar-thumb:hover {
+            background: #0056b3;
+        }
+        
+        /* Special styling for uncategorized bucket (usually has most items) */
+        .uncategorized-bucket .answer-items {
+            max-height: 400px;
+        }
+        
+        /* Ensure answer items don't get cut off */
+        .answer-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* Smooth scrolling for better UX */
+        .answer-items {
+            scroll-behavior: smooth;
+        }
+        
+        .answer-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(0, 123, 255, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: grab;
+            transition: all 0.3s ease;
+            color: #ffffff;
+        }
+        
+        .answer-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #007bff;
+            transform: translateY(-1px);
+        }
+        
+        .answer-item.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+        
+        .answer-text {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .answer-count {
+            color: #cccccc;
+            font-size: 12px;
+        }
+        
+        .confidence-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .confidence-high { background: #28a745; }
+        .confidence-medium { background: #ffc107; }
+        .confidence-low { background: #dc3545; }
+        .confidence-none { background: #6c757d; }
+        
+        /* Instructions styling */
+        .grading-instructions {
+            background: rgba(0, 123, 255, 0.1);
+            border: 1px solid #007bff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #cccccc;
+        }
+        
+        .grading-instructions h4 {
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        
+        .grading-instructions ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .grading-instructions li {
+            margin-bottom: 5px;
+        }
+        
+        /* Game Code Styling */
+        .game-code-section {
+            background: rgba(0, 123, 255, 0.1);
+            border: 1px solid #007bff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .game-code-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .game-code-label {
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .game-code {
+            font-family: 'Courier New', monospace;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ffffff;
+            background: #007bff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            letter-spacing: 2px;
+        }
+        
+        .game-code-info {
+            color: #cccccc;
+            font-size: 0.9em;
+        }
+        
+        .game-code-input-section {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .game-code-options h3 {
+            color: #007bff;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .option-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .create-session-section,
+        .join-session-section {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .create-session-section h4,
+        .join-session-section h4 {
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+        
+        .game-code-input {
+            margin-bottom: 15px;
+        }
+        
+        .game-code-input input {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2em;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.9em;
+        }
+        
+        /* Responsive design for smaller screens */
+        @media (max-height: 800px) {
+            .grading-container {
+                max-height: calc(100vh - 100px);
+            }
+            
+            .grading-content {
+                max-height: calc(100vh - 250px);
+            }
+            
+            .uncategorized-bucket .answer-items {
+                max-height: 250px;
+            }
+            
+            .answer-items {
+                max-height: 200px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .grading-access {
+                padding: 10px;
+            }
+            
+            .access-header {
+                padding: 20px;
+            }
+            
+            .grading-content {
+                padding: 15px;
+            }
+            
+            .btn {
+                padding: 12px 20px;
+                font-size: 1rem;
+                min-width: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="grading-access">
+        <div class="access-header">
+            <h1>🎯 MEGASheep Multi-User Grading</h1>
+            <p>Real-Time Collaborative Answer Grading System</p>
+        </div>
+        
+        <div class="connection-status">
+            <span class="status-indicator status-disconnected" id="connectionStatus"></span>
+            <span id="connectionText">Connecting to server...</span>
+        </div>
+        
+        <div class="grading-container">
+            <div class="grading-header">
+                <h2>🎯 Answer Grading Interface</h2>
+                <div class="real-time-status">
+                    <span class="real-time-indicator">🟢 Real-time collaboration enabled</span>
+                    <span class="grader-count" id="graderCount">(1 grader)</span>
+                </div>
+                <div class="game-code-section" id="gameCodeSection" style="display: none;">
+                    <div class="game-code-display">
+                        <span class="game-code-label">Game Code:</span>
+                        <span class="game-code" id="gameCodeDisplay">----</span>
+                        <button class="btn btn-small" onclick="copyGameCode()">📋 Copy</button>
+                    </div>
+                    <div class="game-code-info">
+                        <span class="info-text">Share this code with other graders to collaborate</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grading-content">
+                <!-- Game Code Section -->
+                <div class="game-code-input-section">
+                    <div class="game-code-options">
+                        <h3>🎮 Join or Create Grading Session</h3>
+                        <div class="option-buttons">
+                            <button class="btn btn-primary" onclick="showCreateSession()">Create New Session</button>
+                            <button class="btn btn-secondary" onclick="showJoinSession()">Join Existing Session</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Create Session Section -->
+                    <div class="create-session-section" id="createSessionSection" style="display: none;">
+                        <h4>📝 Create New Grading Session</h4>
+                        <div class="question-selector">
+                            <label for="createQuestionSelector">Select Question:</label>
+                            <select id="createQuestionSelector" class="grading-input">
+                                <option value="">Choose a question...</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-success" onclick="createGradingSession()">🎮 Create Session</button>
+                    </div>
+                    
+                    <!-- Join Session Section -->
+                    <div class="join-session-section" id="joinSessionSection" style="display: none;">
+                        <h4>🔗 Join Existing Grading Session</h4>
+                        <div class="game-code-input">
+                            <label for="gameCodeInput">Enter 4-Digit Game Code:</label>
+                            <input type="text" id="gameCodeInput" class="grading-input" maxlength="4" placeholder="1234" pattern="[0-9]{4}">
+                        </div>
+                        <div class="question-selector">
+                            <label for="joinQuestionSelector">Select Question:</label>
+                            <select id="joinQuestionSelector" class="grading-input">
+                                <option value="">Choose a question...</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-success" onclick="joinGradingSession()">🔗 Join Session</button>
+                    </div>
+                </div>
+                
+                <!-- Question Display -->
+                <div id="gradingQuestionDisplay" class="grading-question-display" style="display: none;">
+                    <h5 id="gradingQuestionText"></h5>
+                    <p class="grading-question-info">
+                        <span id="gradingQuestionNumber"></span> • 
+                        <span id="gradingAnswerCount">0 answers</span>
+                    </p>
+                </div>
+                
+                <!-- Answer Categorization Interface -->
+                <div id="gradingAnswerCategorization" class="answer-categorization" style="display: none;">
+                    <div class="grading-instructions">
+                        <h4>🎯 Grading Instructions</h4>
+                        <ul>
+                            <li>Drag and drop answers between buckets to categorize them</li>
+                            <li>Right-click answers to quickly mark them as wrong</li>
+                            <li>Watch for green flashes when other graders make changes</li>
+                            <li>All changes sync in real-time with other graders</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="categorization-container">
+                        <!-- Correct Answer Buckets (dynamically created) -->
+                        <div class="correct-answer-buckets-section">
+                            <h4>✅ Correct Answer Buckets</h4>
+                            <div id="gradingCorrectAnswerBuckets" class="correct-answer-buckets">
+                                <!-- Correct answer buckets will be created here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Uncategorized Answers -->
+                        <div class="answer-bucket uncategorized-bucket">
+                            <h4>📝 Uncategorized Answers</h4>
+                            <div id="gradingUncategorizedAnswers" class="answer-items" data-bucket="uncategorized">
+                                <!-- Uncategorized answers will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Wrong Answers Bucket -->
+                        <div class="answer-bucket wrong-bucket">
+                            <h4>❌ Wrong Answers</h4>
+                            <div id="gradingWrongAnswers" class="answer-items" data-bucket="wrong">
+                                <!-- Wrong answers will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Custom Buckets Container -->
+                        <div class="custom-buckets-container">
+                            <h4>📦 Custom Groups</h4>
+                            <div class="bucket-controls">
+                                <button id="gradingAddBucketBtn" class="btn btn-small">➕ Add Group</button>
+                                <button id="gradingMergeBucketsBtn" class="btn btn-small">🔗 Merge Selected</button>
+                            </div>
+                            <div id="gradingCustomBuckets" class="custom-buckets">
+                                <!-- Custom buckets will be created here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="categorization-actions">
+                        <button id="gradingPreviewScoringBtn" class="btn btn-primary">Preview Scoring</button>
+                        <button id="gradingApplyCategorizationBtn" class="btn btn-success">Apply Changes</button>
+                        <button id="gradingAutoCategorizeBtn" class="btn btn-secondary">Auto-Categorize</button>
+                        <button onclick="expandAllBuckets()" class="btn btn-info">Expand All Buckets</button>
+                    </div>
+                </div>
+                
+                <!-- No Question Selected Message -->
+                <div id="gradingNoQuestionMessage" class="grading-no-question">
+                    <p>Please select a question to begin collaborative grading.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="quick-actions">
+            <a href="/" class="btn btn-secondary">← Back to Main App</a>
+            <a href="/test-grading" class="btn btn-info">🧪 Test Collaboration</a>
+            <a href="/display" class="btn btn-secondary">📺 Display Mode</a>
+            <button onclick="checkConnection()" class="btn btn-primary">Check Connection</button>
+        </div>
+        
+        <div class="grading-instructions" style="margin-top: 30px;">
+            <h4>🚀 Multi-User Grading Features:</h4>
+            <ul>
+                <li><strong>Real-time sync</strong> - All changes appear instantly for all graders</li>
+                <li><strong>Visual feedback</strong> - Green flashes show when other graders make changes</li>
+                <li><strong>Grader count</strong> - See how many people are working together</li>
+                <li><strong>Confidence scoring</strong> - Color-coded answers by confidence level</li>
+                <li><strong>Collapsible buckets</strong> - Organize your workspace efficiently</li>
+                <li><strong>Right-click grading</strong> - Quick wrong answer marking</li>
+            </ul>
+            
+            <h4>💡 Pro Tips:</h4>
+            <ul>
+                <li>Coordinate with other graders to avoid duplicate work</li>
+                <li>Focus on low-confidence answers first (red cards)</li>
+                <li>Use right-click to quickly mark answers as wrong</li>
+                <li>Watch for green flashes when other graders make changes</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Use the socket from script.js instead of declaring a new one
+        // let socket = null;
+        
+        function initializeSocket() {
+            try {
+                // Create a new socket connection for the grading page
+                if (!window.gradingSocket) {
+                    window.gradingSocket = io();
+                    
+                    window.gradingSocket.on('connect', () => {
+                        console.log('✅ Grading socket connected:', window.gradingSocket.id);
+                        updateConnectionStatus(true);
+                        loadGradingQuestions();
+                        setupGradingListeners();
+                    });
+                    
+                    window.gradingSocket.on('disconnect', () => {
+                        console.log('❌ Grading socket disconnected');
+                        updateConnectionStatus(false);
+                    });
+                    
+                    window.gradingSocket.on('connect_error', (error) => {
+                        console.error('❌ Grading socket connection error:', error);
+                        updateConnectionStatus(false);
+                    });
+                } else if (window.gradingSocket.connected) {
+                    updateConnectionStatus(true);
+                    loadGradingQuestions();
+                    setupGradingListeners();
+                }
+            } catch (error) {
+                console.error('Socket connection failed:', error);
+                updateConnectionStatus(false);
+            }
+        }
+        
+        function setupGradingListeners() {
+            if (!window.gradingSocket) return;
+            
+            // Real-time grading events
+            window.gradingSocket.on('gradingUpdate', handleRealTimeGradingUpdate);
+            window.gradingSocket.on('newAnswerSubmitted', handleNewAnswerForGrading);
+            window.gradingSocket.on('graderJoined', handleGraderJoined);
+            window.gradingSocket.on('graderLeft', handleGraderLeft);
+            window.gradingSocket.on('gradingSessionJoined', handleGradingSessionJoined);
+            window.gradingSocket.on('gradingError', handleGradingError);
+            
+            console.log('✅ Grading listeners set up for real-time collaboration');
+        }
+        
+        function handleGradingSessionJoined(data) {
+            console.log('✅ Successfully joined grading session:', data);
+            updateGraderCountDisplay(data.graderCount);
+        }
+        
+        function handleGradingError(data) {
+            console.error('❌ Grading error:', data.message);
+            alert(`Grading Error: ${data.message}`);
+        }
+        
+        function updateConnectionStatus(connected) {
+            const statusIndicator = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('connectionText');
+            
+            if (connected) {
+                statusIndicator.className = 'status-indicator status-connected';
+                statusText.textContent = 'Connected to server - Ready for collaborative grading!';
+            } else {
+                statusIndicator.className = 'status-indicator status-disconnected';
+                statusText.textContent = 'Disconnected - Please check server connection';
+            }
+        }
+        
+        function loadGradingQuestions() {
+            fetch('/api/load-questions')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        window.gradingQuestions = data.questions;
+                        populateGradingQuestionSelector();
+                    }
+                })
+                .catch(error => {
+                    console.error('Failed to load questions:', error);
+                });
+        }
+        
+        function populateGradingQuestionSelector() {
+            const selectors = [
+                document.getElementById('createQuestionSelector'),
+                document.getElementById('joinQuestionSelector')
+            ];
+            
+            const questions = window.gradingQuestions || [];
+            
+            selectors.forEach(selector => {
+                if (selector) {
+                    selector.innerHTML = '<option value="">Choose a question...</option>';
+                    
+                    questions.forEach((question, index) => {
+                        const option = document.createElement('option');
+                        option.value = index;
+                        option.textContent = `Question ${index + 1}: ${question.prompt.substring(0, 50)}...`;
+                        selector.appendChild(option);
+                    });
+                }
+            });
+        }
+        
+        function onGradingQuestionSelect(event) {
+            const questionIndex = parseInt(event.target.value);
+            if (isNaN(questionIndex)) return;
+            
+            console.log('🎯 Question selected for grading:', questionIndex);
+            
+            // Leave previous grading room if any
+            if (window.currentGradingRoom) {
+                leaveGradingRoom();
+            }
+            
+            const questions = window.gradingQuestions || [];
+            const question = questions[questionIndex];
+            if (!question) return;
+            
+            // Update question display
+            document.getElementById('gradingQuestionText').textContent = question.prompt;
+            document.getElementById('gradingQuestionNumber').textContent = `Question ${questionIndex + 1}`;
+            document.getElementById('gradingQuestionDisplay').style.display = 'block';
+            document.getElementById('gradingNoQuestionMessage').style.display = 'none';
+            
+            // Use real player data instead of test data
+            document.getElementById('gradingAnswerCount').textContent = '0 answers (waiting for player submissions)';
+            showSimpleGradingInterface(questionIndex, []);
+            
+            // Join grading room for real-time collaboration
+            joinGradingRoom();
+            
+            console.log('🎯 Grading room join initiated for question:', questionIndex);
+        }
+        
+        function showCreateSession() {
+            document.getElementById('createSessionSection').style.display = 'block';
+            document.getElementById('joinSessionSection').style.display = 'none';
+        }
+        
+        function showJoinSession() {
+            document.getElementById('joinSessionSection').style.display = 'block';
+            document.getElementById('createSessionSection').style.display = 'none';
+        }
+        
+        async function createGradingSession() {
+            const questionSelector = document.getElementById('createQuestionSelector');
+            const questionIndex = parseInt(questionSelector.value);
+            
+            if (isNaN(questionIndex)) {
+                alert('Please select a question first.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/create-grading-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ questionIndex })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    window.currentGameCode = result.gameCode;
+                    window.currentQuestionIndex = result.questionIndex;
+                    
+                    // Show the game code
+                    document.getElementById('gameCodeDisplay').textContent = result.gameCode;
+                    document.getElementById('gameCodeSection').style.display = 'block';
+                    
+                    // Hide the input sections
+                    document.getElementById('gameCodeInputSection').style.display = 'none';
+                    
+                    // Join the session via socket
+                    joinGradingSessionSocket(result.gameCode, result.questionIndex);
+                    
+                    // Load the grading interface
+                    loadGradingInterface(result.questionIndex);
+                    
+                    console.log(`🎮 Created grading session: ${result.gameCode}`);
+                } else {
+                    alert(`Error: ${result.message}`);
+                }
+            } catch (error) {
+                console.error('Failed to create grading session:', error);
+                alert('Failed to create grading session. Please try again.');
+            }
+        }
+        
+        async function joinGradingSession() {
+            const gameCode = document.getElementById('gameCodeInput').value.trim();
+            const questionSelector = document.getElementById('joinQuestionSelector');
+            const questionIndex = parseInt(questionSelector.value);
+            
+            if (!gameCode || gameCode.length !== 4) {
+                alert('Please enter a valid 4-digit game code.');
+                return;
+            }
+            
+            if (isNaN(questionIndex)) {
+                alert('Please select a question first.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/join-grading-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ gameCode, questionIndex })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    window.currentGameCode = result.gameCode;
+                    window.currentQuestionIndex = result.questionIndex;
+                    
+                    // Show the game code
+                    document.getElementById('gameCodeDisplay').textContent = result.gameCode;
+                    document.getElementById('gameCodeSection').style.display = 'block';
+                    
+                    // Hide the input sections
+                    document.getElementById('gameCodeInputSection').style.display = 'none';
+                    
+                    // Join the session via socket
+                    joinGradingSessionSocket(result.gameCode, result.questionIndex);
+                    
+                    // Load the grading interface
+                    loadGradingInterface(result.questionIndex);
+                    
+                    console.log(`🎮 Joined grading session: ${result.gameCode}`);
+                } else {
+                    alert(`Error: ${result.message}`);
+                }
+            } catch (error) {
+                console.error('Failed to join grading session:', error);
+                alert('Failed to join grading session. Please check the game code and try again.');
+            }
+        }
+        
+        function joinGradingSessionSocket(gameCode, questionIndex) {
+            if (!window.gradingSocket) return;
+            
+            window.gradingSocket.emit('joinGradingSession', {
+                gameCode: gameCode,
+                questionIndex: questionIndex,
+                graderId: generateGraderId()
+            });
+            
+            console.log(`🎯 Joining grading session: ${gameCode} for question ${questionIndex}`);
+        }
+        
+        function loadGradingInterface(questionIndex) {
+            const questions = window.gradingQuestions || [];
+            const question = questions[questionIndex];
+            if (!question) return;
+            
+            // Update question display
+            document.getElementById('gradingQuestionText').textContent = question.prompt;
+            document.getElementById('gradingQuestionNumber').textContent = `Question ${questionIndex + 1}`;
+            document.getElementById('gradingQuestionDisplay').style.display = 'block';
+            document.getElementById('gradingNoQuestionMessage').style.display = 'none';
+            
+            // Use real player data instead of test data
+            document.getElementById('gradingAnswerCount').textContent = '0 answers (waiting for player submissions)';
+            showSimpleGradingInterface(questionIndex, []);
+        }
+        
+        function copyGameCode() {
+            const gameCode = document.getElementById('gameCodeDisplay').textContent;
+            navigator.clipboard.writeText(gameCode).then(() => {
+                alert(`Game code ${gameCode} copied to clipboard!`);
+            }).catch(() => {
+                alert('Failed to copy game code. Please copy it manually.');
+            });
+        }
+        
+        function generateGraderId() {
+            if (!window.graderId) {
+                window.graderId = 'grader_' + Math.random().toString(36).substr(2, 9);
+            }
+            return window.graderId;
+        }
+        
+        function checkConnection() {
+            if (window.gradingSocket && window.gradingSocket.connected) {
+                alert('✅ Connected to server! Ready for multi-user grading.');
+            } else {
+                alert('❌ Not connected to server. Please ensure the server is running on port 3001.');
+            }
+        }
+        
+        // Initialize connection on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize socket immediately for grading page
+            initializeSocket();
+        });
+    </script>
+</body>
+</html> 

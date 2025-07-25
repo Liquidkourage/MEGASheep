@@ -1,0 +1,86 @@
+# MEGASheep Sample Questions
+# Format: Question prompt followed by correct answers (one per line)
+# Empty lines separate questions
+
+A 5-letter English word that ends in "ACK"
+Aback
+Alack
+Black
+Clack
+Crack
+Flack
+Knack
+Kyack
+Plack
+Quack
+Shack
+Slack
+Smack
+Snack
+Stack
+Track
+Whack
+Wrack
+
+A 5+ letter word in the final 2 sentences of the poem "The New Colossus" found at the Statue of Liberty (i.e. the famous part)
+Tired
+Huddled
+Masses
+Yearning
+Breathe
+Wretched
+Refuse
+Teeming
+Shore
+These
+Homeless
+Tempest-Tost
+Beside
+Golden
+
+A Gwyneth Paltrow film that grossed at least $100m worldwide
+Avengers: Endgame
+Avengers: Infinity War
+The Avengers
+Iron Man 3
+Spider-Man: Homecoming
+Iron Man 2
+Iron Man
+Se7en
+Hook
+Austin Powers In Goldmember
+Shakespeare In Love
+Contagion
+The Talented Mr. Ripley
+
+Name a food that starts with the letter 'P'
+Pizza
+Pasta
+Potato
+Pear
+Peach
+Pineapple
+Pancake
+Popcorn
+Pumpkin
+Peanut
+Pineapple
+Pomegranate
+Pistachio
+Pudding
+
+Name a movie that won an Oscar for Best Picture
+Titanic
+Forrest Gump
+The Godfather
+Schindler's List
+Casablanca
+Gone with the Wind
+The Silence of the Lambs
+Unforgiven
+Braveheart
+The English Patient
+Titanic
+Shakespeare in Love
+American Beauty
+Gladiator 

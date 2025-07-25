@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEGASheep - Game</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Game Status Bar -->
+        <div class="game-status">
+            <div class="status-item">
+                <span class="label">Game:</span>
+                <span id="gameCodeDisplay">-</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Player:</span>
+                <span id="playerNameDisplay">-</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Round:</span>
+                <span id="roundDisplay">-</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Question:</span>
+                <span id="questionDisplay">-</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Score:</span>
+                <span id="scoreDisplay">0</span>
+            </div>
+        </div>
+
+        <!-- Waiting Screen -->
+        <div class="screen active" id="waitingScreen">
+            <div class="screen-content">
+                <div class="waiting-content">
+                    <h1 class="title">🎮 MEGASheep</h1>
+                    <h2>Waiting for game to start...</h2>
+                    <div class="loading-spinner"></div>
+                    <p id="waitingMessage">Connected to game. The host will start shortly.</p>
+                    <div class="player-list">
+                        <h3>Players in Game:</h3>
+                        <div id="playersList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question Screen -->
+        <div class="screen" id="questionScreen">
+            <div class="screen-content">
+                <div class="timer-container">
+                    <div class="timer" id="timer">30</div>
+                    <div class="timer-label">seconds left</div>
+                </div>
+                
+                <div class="question-container">
+                    <h2 id="questionText">Question will appear here</h2>
+                    <div class="question-info">
+                        <span>Question <span id="currentQuestionNum">1</span> of <span id="totalQuestions">5</span></span>
+                    </div>
+                </div>
+                
+                <form id="answerForm" class="answer-form">
+                    <div class="form-group">
+                        <label for="answerInput">Your Answer:</label>
+                        <input type="text" id="answerInput" placeholder="Type your answer here..." maxlength="100" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Submit Answer</button>
+                </form>
+                
+                <div class="answer-status" id="answerStatus"></div>
+                <div class="players-answered">
+                    <span id="answeredCount">0</span> of <span id="totalPlayersCount">0</span> players answered
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div class="screen" id="resultsScreen">
+            <div class="screen-content">
+                <div class="results-content">
+                    <h2>Question Results</h2>
+                    <div id="answerGroups"></div>
+                    <div class="score-update">
+                        <h3>Your Score: <span id="currentScore">0</span></h3>
+                    </div>
+                    <div class="waiting-next">
+                        <p>Waiting for host to continue...</p>
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Final Results Screen -->
+        <div class="screen" id="finalScreen">
+            <div class="screen-content">
+                <div class="final-content">
+                    <h1>🎉 Game Complete!</h1>
+                    <div class="final-score">
+                        <h2>Your Final Score: <span id="finalScore">0</span></h2>
+                    </div>
+                    <div class="leaderboard">
+                        <h3>Final Leaderboard:</h3>
+                        <div id="finalLeaderboard"></div>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="location.href='/'">Play Again</button>
+                        <button class="btn btn-secondary" onclick="location.href='/host'">Host New Game</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Screen -->
+        <div class="screen" id="errorScreen">
+            <div class="screen-content">
+                <div class="error-content">
+                    <h1>⚠️ Connection Error</h1>
+                    <p id="errorMessage">Unable to connect to game session.</p>
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="location.href='/'">Join Different Game</button>
+                        <button class="btn btn-secondary" onclick="window.location.reload()">Try Again</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        let gameCode;
+        let playerName;
+        let gameState = null;
+        
+        // Check session data on load
+        window.addEventListener('load', function() {
+            gameCode = sessionStorage.getItem('gameCode');
+            playerName = sessionStorage.getItem('playerName');
+            
+            if (!gameCode || !playerName) {
+                showError('No game session found. Please join a game first.');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+                return;
+            }
+            
+            // Update display
+            document.getElementById('gameCodeDisplay').textContent = gameCode;
+            document.getElementById('playerNameDisplay').textContent = playerName;
+            
+            // Initialize socket connection
+            initializeSocket();
+        });
+        
+        function initializeSocket() {
+            socket = io();
+            
+            // Join game on connection
+            socket.on('connect', () => {
+                console.log('Connected to server');
+                socket.emit('joinGame', { gameCode, playerName });
+            });
+            
+            // Game events
+            socket.on('gameJoined', (data) => {
+                console.log('Joined game successfully');
+                updateGameState(data.gameState);
+                updatePlayersList(data.gameState.players);
+            });
+            
+            socket.on('gameStarted', (data) => {
+                console.log('Game started');
+                updateGameState(data);
+                showScreen('questionScreen');
+                startQuestion(data);
+            });
+            
+            socket.on('nextQuestion', (data) => {
+                console.log('Next question');
+                updateGameState(data);
+                startQuestion(data);
+                showScreen('questionScreen');
+            });
+            
+            socket.on('questionComplete', (data) => {
+                console.log('Question complete');
+                updateGameState(data);
+                if (data.gameState === 'grading') {
+                    showGradingWait(data);
+                } else {
+                    showResults(data);
+                }
+                showScreen('resultsScreen');
+            });
+            
+            socket.on('gradingComplete', (data) => {
+                console.log('Grading complete');
+                updateGameState(data);
+                showResults(data);
+                showScreen('resultsScreen');
+            });
+            
+            socket.on('gameFinished', (data) => {
+                console.log('Game finished');
+                updateGameState(data);
+                showFinalResults(data);
+                showScreen('finalScreen');
+            });
+            
+            socket.on('gameEnded', (data) => {
+                showError('Game has been ended by the host.');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 3000);
+            });
+            
+            socket.on('playerJoined', (newGameState) => {
+                if (newGameState) {
+                    gameState = newGameState;
+                        updatePlayersList(gameState.players);
+                    }
+            });
+            
+            socket.on('playerLeft', (newGameState) => {
+                if (newGameState) {
+                    gameState = newGameState;
+                    updatePlayersList(gameState.players);
+                }
+            });
+            
+            socket.on('timerUpdate', (data) => {
+                updateTimer(data.timeLeft);
+            });
+            
+            socket.on('answerUpdate', (data) => {
+                updateAnswerCount(data.answersReceived, data.totalPlayers);
+            });
+            
+            socket.on('answerSubmitted', () => {
+                document.getElementById('answerStatus').innerHTML = '✅ Answer submitted successfully!';
+                document.getElementById('answerStatus').className = 'answer-status success';
+                document.getElementById('submitBtn').disabled = true;
+                document.getElementById('answerInput').disabled = true;
+            });
+            
+            socket.on('gameError', (data) => {
+                showError(data.message);
+            });
+            
+            socket.on('disconnect', () => {
+                showError('Lost connection to game server.');
+            });
+        }
+        
+        function updateGameState(state) {
+            gameState = state;
+            
+            // Update displays
+            document.getElementById('roundDisplay').textContent = state.currentRound || 1;
+            document.getElementById('questionDisplay').textContent = `${(state.currentQuestion || 0) + 1}`;
+            
+            // Update player score
+            const currentPlayer = state.players.find(p => p.name === playerName);
+            if (currentPlayer) {
+                document.getElementById('scoreDisplay').textContent = currentPlayer.score || 0;
+                document.getElementById('currentScore').textContent = currentPlayer.score || 0;
+                document.getElementById('finalScore').textContent = currentPlayer.score || 0;
+            }
+        }
+        
+        // Utility function to trim long names with ellipsis
+        function trimPlayerName(name, maxLength = 15) {
+            if (!name) return '';
+            return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
+        }
+
+        function updatePlayersList(players) {
+            const playersListDiv = document.getElementById('playersList');
+            playersListDiv.innerHTML = '';
+            
+            players.forEach(player => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'player-item';
+                const trimmedName = trimPlayerName(player.name);
+                playerDiv.innerHTML = `
+                    <span class="player-name">${trimmedName}</span>
+                    <span class="player-score">${player.score || 0}</span>
+                `;
+                playersListDiv.appendChild(playerDiv);
+            });
+            
+            document.getElementById('totalPlayersCount').textContent = players.length;
+        }
+        
+        function startQuestion(gameState) {
+            if (!gameState.questions || gameState.currentQuestion >= gameState.questions.length) {
+                showError('No question available');
+                return;
+            }
+            
+            const question = gameState.questions[gameState.currentQuestion];
+            document.getElementById('questionText').textContent = question.prompt;
+            document.getElementById('currentQuestionNum').textContent = (gameState.currentQuestion || 0) + 1;
+            document.getElementById('totalQuestions').textContent = gameState.questions.length;
+            
+            // Reset form
+            document.getElementById('answerInput').value = '';
+            document.getElementById('answerInput').disabled = false;
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('answerStatus').innerHTML = '';
+            document.getElementById('answerStatus').className = 'answer-status';
+            
+            // Focus on input
+            document.getElementById('answerInput').focus();
+            
+            // Reset answer count
+            updateAnswerCount(0, gameState.players.length);
+        }
+        
+        function updateTimer(timeLeft) {
+            const timerElement = document.getElementById('timer');
+            timerElement.textContent = timeLeft;
+            
+            // Add visual urgency
+            if (timeLeft <= 10) {
+                timerElement.classList.add('urgent');
+            } else {
+                timerElement.classList.remove('urgent');
+            }
+        }
+        
+        function updateAnswerCount(answered, total) {
+            document.getElementById('answeredCount').textContent = answered;
+            document.getElementById('totalPlayersCount').textContent = total;
+        }
+        
+        function showGradingWait(gameState) {
+            const resultsContent = document.querySelector('#resultsScreen .results-content');
+            resultsContent.innerHTML = `
+                <h2>📝 Host Reviewing Answers</h2>
+                <div class="grading-wait">
+                    <div class="grading-spinner"></div>
+                    <p>The host is categorizing and grading answers...</p>
+                    <p>Results will appear shortly!</p>
+                </div>
+                <div class="score-update">
+                    <h3>Your Current Score: <span id="currentScore">0</span></h3>
+                </div>
+            `;
+        }
+
+        function showResults(gameState) {
+            const answerGroupsDiv = document.getElementById('answerGroups');
+            answerGroupsDiv.innerHTML = '';
+            
+            if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
+                gameState.currentAnswerGroups.forEach(group => {
+                    const groupDiv = document.createElement('div');
+                    groupDiv.className = 'answer-group';
+                    groupDiv.innerHTML = `
+                        <div class="answer-text">"${group.answer}"</div>
+                        <div class="answer-stats">
+                            <span class="answer-count">${group.count} ${group.count === 1 ? 'person' : 'people'}</span>
+                            <span class="answer-points">+${group.points} points each</span>
+                        </div>
+                        <div class="answer-players">${group.players.join(', ')}</div>
+                    `;
+                    answerGroupsDiv.appendChild(groupDiv);
+                });
+            } else {
+                answerGroupsDiv.innerHTML = '<p>No answers submitted for this question.</p>';
+            }
+        }
+        
+        function showFinalResults(gameState) {
+            const leaderboardDiv = document.getElementById('finalLeaderboard');
+            leaderboardDiv.innerHTML = '';
+            
+            // Sort players by score
+            const sortedPlayers = [...gameState.players].sort((a, b) => (b.score || 0) - (a.score || 0));
+            
+            sortedPlayers.forEach((player, index) => {
+                const playerDiv = document.createElement('div');
+                playerDiv.className = `leaderboard-item ${index === 0 ? 'winner' : ''}`;
+                playerDiv.innerHTML = `
+                    <span class="rank">${index + 1}</span>
+                    <span class="name">${player.name}</span>
+                    <span class="score">${player.score || 0}</span>
+                `;
+                leaderboardDiv.appendChild(playerDiv);
+            });
+        }
+        
+        function showScreen(screenId) {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            
+            // Show target screen
+            document.getElementById(screenId).classList.add('active');
+        }
+        
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            showScreen('errorScreen');
+        }
+        
+        // Answer form submission
+        document.getElementById('answerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const answer = document.getElementById('answerInput').value.trim();
+            if (!answer) {
+                return;
+            }
+            
+            socket.emit('submitAnswer', { gameCode, answer });
+            
+            // Disable form
+            document.getElementById('answerInput').disabled = true;
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('answerStatus').innerHTML = '⏳ Submitting answer...';
+            document.getElementById('answerStatus').className = 'answer-status pending';
+        });
+        
+        // Enter key focuses on answer input
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && document.getElementById('questionScreen').classList.contains('active')) {
+                const answerInput = document.getElementById('answerInput');
+                if (document.activeElement !== answerInput && !answerInput.disabled) {
+                    answerInput.focus();
+                }
+            }
+        });
+
+        // Dynamic Sheep Carousel System
+        async function initializeSheepCarousel() {
+            try {
+                console.log('🐑 Fetching sheep photos...');
+                const response = await fetch('/api/sheep-urls');
+                console.log('🐑 API Response status:', response.status);
+                const data = await response.json();
+                console.log('🐑 API Response data:', data);
+                
+                if (data.urls && data.urls.length > 0) {
+                    updateSheepCarousel(data.urls);
+                    console.log(`🐑 Loaded ${data.urls.length} sheep photos for background carousel`);
+                    
+                    // Test if first image loads
+                    const img = new Image();
+                    img.onload = () => console.log('✅ First sheep image loaded successfully:', data.urls[0]);
+                    img.onerror = () => console.error('❌ Failed to load first sheep image:', data.urls[0]);
+                    img.src = data.urls[0];
+                } else {
+                    console.log('🐑 No uploaded sheep photos found, using default background');
+                }
+            } catch (error) {
+                console.error('Failed to load sheep photos:', error);
+            }
+        }
+
+        function updateSheepCarousel(sheepUrls) {
+            console.log('🐑 Updating carousel with', sheepUrls.length, 'sheep photos');
+            
+            // Remove existing animation if it exists
+            const existingStyle = document.getElementById('dynamic-sheep-carousel');
+            if (existingStyle) {
+                existingStyle.remove();
+            }
+
+            if (sheepUrls.length === 0) {
+                console.log('🐑 No sheep URLs provided');
+                return;
+            }
+
+            // Calculate timing for smooth transitions
+            const totalDuration = Math.max(60, sheepUrls.length * 5); // At least 60s, 5s per photo
+            const stepPercentage = 100 / sheepUrls.length;
+
+            // Generate CSS keyframes
+            let keyframes = '@keyframes sheepCarousel {\n';
+            sheepUrls.forEach((url, index) => {
+                const percentage = (index * stepPercentage).toFixed(2);
+                keyframes += `    ${percentage}% { background-image: url('${url}'); }\n`;
+            });
+            // Loop back to first image
+            keyframes += `    100% { background-image: url('${sheepUrls[0]}'); }\n`;
+            keyframes += '}\n\n';
+
+            // Set initial background and animation
+            keyframes += `.playing-container::after {\n`;
+            keyframes += `    background-image: url('${sheepUrls[0]}');\n`;
+            keyframes += `    animation: sheepCarousel ${totalDuration}s linear infinite;\n`;
+            keyframes += `}\n`;
+
+            console.log('🐑 Generated CSS for carousel:', keyframes.slice(0, 200) + '...');
+
+            // Inject the CSS
+            const style = document.createElement('style');
+            style.id = 'dynamic-sheep-carousel';
+            style.textContent = keyframes;
+            document.head.appendChild(style);
+            
+            console.log('🐑 Carousel CSS injected, total duration:', totalDuration + 's');
+        }
+
+        // Initialize carousel when page loads
+        document.addEventListener('DOMContentLoaded', initializeSheepCarousel);
+
+        // Refresh carousel every 5 minutes to pick up new uploads
+        setInterval(initializeSheepCarousel, 5 * 60 * 1000);
+    </script>
+</body>
+</html> 

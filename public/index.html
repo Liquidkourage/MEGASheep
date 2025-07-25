@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEGASheep Trivia</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Welcome Screen -->
+        <div id="welcomeScreen" class="screen active">
+            <div class="welcome-content">
+                <h1 class="title">🐑 MEGASheep Trivia</h1>
+                <p class="subtitle">The ultimate multiplayer trivia experience</p>
+                
+                <div class="button-group">
+                    <button id="createGameBtn" class="btn btn-primary">🎮 Host Game</button>
+                    <button id="joinGameBtn" class="btn btn-secondary">📱 Join Game</button>
+                </div>
+                
+                <div class="welcome-instructions">
+                    <p><strong>🎮 Host Game:</strong> Create a new trivia game and get a 4-digit code to share</p>
+                    <p><strong>📱 Join Game:</strong> Enter a 4-digit code to join an existing game</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Game Screen -->
+        <div id="createGameScreen" class="screen">
+            <div class="screen-content">
+                <h2>Create New Game</h2>
+                <div class="form-group">
+                    <label for="hostName">Your Name:</label>
+                    <input type="text" id="hostName" placeholder="Enter your name" required>
+                </div>
+                <button id="createGameSubmitBtn" class="btn btn-primary">Create Game</button>
+                <button id="backToWelcomeBtn" class="btn btn-secondary">Back</button>
+            </div>
+        </div>
+
+        <!-- Join Game Screen -->
+        <div id="joinGameScreen" class="screen">
+            <div class="screen-content">
+                <h2>Join Game</h2>
+                <div class="form-group">
+                    <label for="gameCode">Game Code:</label>
+                    <input type="text" id="gameCode" placeholder="Enter 4-digit game code" maxlength="4" pattern="[0-9]{4}" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="playerName">Your Name:</label>
+                    <input type="text" id="playerName" placeholder="Enter your name" required>
+                </div>
+                <button id="joinGameSubmitBtn" class="btn btn-primary">Join Game</button>
+                <button id="backToWelcomeBtn2" class="btn btn-secondary">Back</button>
+            </div>
+        </div>
+
+        <!-- Lobby Screen -->
+        <div id="lobbyScreen" class="screen">
+            <div class="screen-content">
+                <div class="lobby-header">
+                    <h2>Game Lobby</h2>
+                    <p class="lobby-subtitle">Waiting for players to join...</p>
+                </div>
+                
+                <!-- Host Game Management Panel -->
+                <div id="hostGamePanel" class="host-game-panel" style="display: none;">
+                    <div class="host-dashboard">
+                        <div class="host-header">
+                            <h3>🎮 Host Dashboard</h3>
+                            <div class="game-status">
+                                <span class="status-indicator active">●</span>
+                                <span class="status-text">Game Active</span>
+                            </div>
+                            <div class="host-actions">
+                                <button onclick="openGradingModal()" class="btn btn-primary">📝 Grading Interface</button>
+                                <a href="/grading" class="btn btn-success">👥 Multi-User Grading</a>
+                            </div>
+                        </div>
+                        
+                        <!-- Game Statistics -->
+                        <div class="game-stats">
+                            <div class="stat-card">
+                                <div class="stat-number" id="totalPlayersStat">0</div>
+                                <div class="stat-label">Players</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="questionsLoaded">0</div>
+                                <div class="stat-label">Questions</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="gameDuration">00:00</div>
+                                <div class="stat-label">Duration</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Game Settings -->
+                        <div class="settings-section">
+                            <h4>⚙️ Game Settings</h4>
+                            <div class="game-settings">
+                                <div class="setting-group">
+                                    <label for="questionSet">Question Set:</label>
+                                    <select id="questionSet" class="setting-input">
+                                        <option value="demo">Demo Questions (5 questions)</option>
+                                        <option value="supabase">Supabase Database</option>
+                                        <option value="custom">Custom Questions</option>
+                                    </select>
+                                </div>
+                                <div class="setting-group">
+                                    <label for="timerDuration">Timer Duration (seconds):</label>
+                                    <input type="number" id="timerDuration" class="setting-input" value="30" min="10" max="120">
+                                </div>
+                                <div class="setting-group">
+                                    <label for="maxPlayers">Maximum Players:</label>
+                                    <input type="number" id="maxPlayers" class="setting-input" value="10" min="2" max="20">
+                                </div>
+                                <div class="setting-group">
+                                    <label for="roundsPerGame">Rounds per Game:</label>
+                                    <input type="number" id="roundsPerGame" class="setting-input" value="5" min="1" max="20">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Host Controls -->
+                        <div class="host-controls-section">
+                            <h4>🎯 Host Controls</h4>
+                            <div class="game-controls">
+                                <button id="refreshQuestionsBtn" class="btn btn-secondary">
+                                    <span class="btn-icon">🔄</span>
+                                    Refresh Questions
+                                </button>
+                                <button id="testGameBtn" class="btn btn-secondary">
+                                    <span class="btn-icon">🧪</span>
+                                    Test Game
+                                </button>
+                                <button id="testCategorizationBtn" class="btn btn-secondary">
+                                    <span class="btn-icon">📝</span>
+                                    Test Categorization
+                                </button>
+                                <button id="openGradingModalBtn" class="btn btn-primary">
+                                    <span class="btn-icon">🎯</span>
+                                    Grading Interface
+                                </button>
+                                <button id="uploadSampleQuestionsBtn" class="btn btn-secondary">
+                                    <span class="btn-icon">📚</span>
+                                    Upload Sample Questions
+                                </button>
+                                <button id="pauseGameBtn" class="btn btn-warning" style="display: none;">
+                                    <span class="btn-icon">⏸️</span>
+                                    Pause Game
+                                </button>
+                                <button id="resumeGameBtn" class="btn btn-success" style="display: none;">
+                                    <span class="btn-icon">▶️</span>
+                                    Resume Game
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Actions -->
+                        <div class="quick-actions">
+                            <h4>⚡ Quick Actions</h4>
+                            <div class="action-buttons">
+                                <button id="copyGameLinkBtn" class="btn btn-small">
+                                    <span class="btn-icon">🔗</span>
+                                    Copy Game Link
+                                </button>
+                                <button id="showQRCodeBtn" class="btn btn-small">
+                                    <span class="btn-icon">📱</span>
+                                    Show QR Code
+                                </button>
+                                <button id="exportResultsBtn" class="btn btn-small">
+                                    <span class="btn-icon">📊</span>
+                                    Export Results
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Question Management -->
+                        <div class="question-management">
+                            <h4>📝 Question Management</h4>
+                            <div class="question-actions">
+                                <div class="file-upload-section">
+                                    <label for="questionFile" class="file-upload-label">
+                                        <span class="btn-icon">📁</span>
+                                        Choose Question File
+                                    </label>
+                                    <input type="file" id="questionFile" accept=".txt" style="display: none;">
+                                    <button id="uploadQuestionsBtn" class="btn btn-small" disabled>
+                                        <span class="btn-icon">⬆️</span>
+                                        Upload Questions
+                                    </button>
+                                </div>
+                                <div class="upload-status" id="uploadStatus" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="players-list">
+                    <div class="players-header">
+                        <h3>👥 Players (<span id="playerCount">0</span>)</h3>
+                        <div class="players-actions" id="playersActions" style="display: none;">
+                            <button id="kickPlayerBtn" class="btn btn-danger btn-small">
+                                <span class="btn-icon">🚫</span>
+                                Kick Player
+                            </button>
+                        </div>
+                    </div>
+                    <div id="playersList" class="players-grid"></div>
+                    
+                    <!-- Player Details Modal -->
+                    <div id="playerModal" class="modal" style="display: none;">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h4>Player Details</h4>
+                                <span class="close">&times;</span>
+                            </div>
+                            <div class="modal-body">
+                                <div class="player-info">
+                                    <div class="player-avatar">👤</div>
+                                    <div class="player-details">
+                                        <h5 id="modalPlayerName">Player Name</h5>
+                                        <p id="modalPlayerScore">Score: 0</p>
+                                        <p id="modalPlayerStatus">Status: Active</p>
+                                    </div>
+                                </div>
+                                <div class="player-actions">
+                                    <button id="kickPlayerModalBtn" class="btn btn-danger">Kick Player</button>
+                                    <button id="mutePlayerBtn" class="btn btn-warning">Mute Player</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lobby-actions">
+                    <button id="startGameBtn" class="btn btn-primary" style="display: none;">Start Game</button>
+                    <button id="leaveGameBtn" class="btn btn-secondary">Leave Game</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="gameScreen" class="screen">
+            <div class="game-header">
+                <div class="game-info">
+                    <span class="question-counter">Question <span id="questionNumber">1</span> of <span id="totalQuestions">10</span></span>
+                </div>
+                <div class="timer" id="timer">30</div>
+            </div>
+
+            <div class="question-container">
+                <h2 id="questionText" class="question-text"></h2>
+                
+                <!-- Player Answer Form (hidden for host) -->
+                <div id="playerAnswerForm" class="answer-form" style="display: none;">
+                    <input type="text" id="answerInput" placeholder="Type your answer..." maxlength="100">
+                    <button id="submitAnswerBtn" class="btn btn-primary">Submit Answer</button>
+                </div>
+                
+                <!-- Host Controls (hidden for players) -->
+                <div id="hostControls" class="host-controls" style="display: none;">
+                    <div class="host-info">
+                        <p>Players are answering...</p>
+                        <div class="answer-status">
+                            <span id="answersReceived">0</span> / <span id="totalPlayers">0</span> answers received
+                        </div>
+                    </div>
+                    <div class="host-actions">
+                        <button id="showAnswersBtn" class="btn btn-secondary">Show All Answers</button>
+                        <button id="endQuestionBtn" class="btn btn-warning">End Question</button>
+                        <button id="forceNextBtn" class="btn btn-primary">Force Next Question</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="players-status">
+                <h3>Players</h3>
+                <div id="gamePlayersList" class="players-grid"></div>
+            </div>
+        </div>
+
+        <!-- Scoring Screen -->
+        <div id="scoringScreen" class="screen">
+            <div class="screen-content">
+                <h2 id="scoringTitle">Question Results</h2>
+                <div class="scoring-explanation">
+                    <p><strong>Scoring System:</strong> Points = Total Responses ÷ Responses with same answer (rounded up)</p>
+                    <p>Rarer answers earn more points!</p>
+                </div>
+                
+                <!-- Host Answer Categorization Interface -->
+                <div id="hostAnswerCategorization" class="answer-categorization" style="display: none;">
+                    <h3>🎯 Categorize Answers (Host Only)</h3>
+                    <p class="categorization-instructions">Drag answers to group similar responses together. Click to mark as correct/incorrect.</p>
+                    
+                    <div class="categorization-container">
+                        <!-- Correct Answer Buckets (dynamically created) -->
+                        <div class="correct-answer-buckets-section">
+                            <h4>✅ Correct Answer Buckets</h4>
+                            <div id="correctAnswerBuckets" class="correct-answer-buckets">
+                                <!-- Correct answer buckets will be created here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Uncategorized Answers -->
+                        <div class="answer-bucket uncategorized-bucket">
+                            <h4>📝 Uncategorized Answers</h4>
+                            <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized">
+                                <!-- Uncategorized answers will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Wrong Answers Bucket -->
+                        <div class="answer-bucket wrong-bucket">
+                            <h4>❌ Wrong Answers</h4>
+                            <div id="wrongAnswers" class="answer-items" data-bucket="wrong">
+                                <!-- Wrong answers will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Custom Buckets Container -->
+                        <div class="custom-buckets-container">
+                            <h4>📦 Custom Groups</h4>
+                            <div class="bucket-controls">
+                                <button id="addBucketBtn" class="btn btn-small">➕ Add Group</button>
+                                <button id="mergeBucketsBtn" class="btn btn-small">🔗 Merge Selected</button>
+                            </div>
+                            <div id="customBuckets" class="custom-buckets">
+                                <!-- Custom buckets will be created here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="categorization-actions">
+                        <button id="previewScoringBtn" class="btn btn-primary">Preview Scoring</button>
+                        <button id="applyCategorizationBtn" class="btn btn-success">Apply & Continue</button>
+                        <button id="autoCategorizeBtn" class="btn btn-secondary">Auto-Categorize</button>
+                    </div>
+                </div>
+                
+                <!-- Standard Answers Display (for players and after categorization) -->
+                <div id="standardAnswersDisplay" class="answers-display">
+                    <h3>Answers & Points:</h3>
+                    <div id="answersList" class="answers-grid"></div>
+                </div>
+                
+                <div class="scoring-actions">
+                    <button id="viewScoresBtn" class="btn btn-secondary">View Current Scores</button>
+                    <button id="nextQuestionBtn" class="btn btn-primary" style="display: none;">Next Question</button>
+                    <button id="endGameBtn" class="btn btn-secondary" style="display: none;">End Game</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Scores Modal -->
+        <div id="scoresModal" class="modal" style="display: none;">
+            <div class="modal-content scores-modal">
+                <div class="modal-header">
+                    <h4>📊 Current Scores</h4>
+                    <span class="close" id="closeScoresModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="scoresList" class="scores-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grading Interface Modal -->
+        <div id="gradingModal" class="modal" style="display: none;">
+            <div class="modal-content grading-modal">
+                <div class="modal-header">
+                    <h4>🎯 Answer Grading Interface</h4>
+                    <div class="modal-controls">
+                        <button id="toggleFullscreenBtn" class="btn btn-small" title="Toggle Full Screen">
+                            <span class="btn-icon">⛶</span>
+                        </button>
+                        <span class="close" id="closeGradingModal">&times;</span>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <!-- Question Selection -->
+                    <div class="question-selector">
+                        <label for="gradingQuestionSelect">Select Question:</label>
+                        <select id="gradingQuestionSelect" class="grading-input">
+                            <option value="">Choose a question...</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Question Display -->
+                    <div id="gradingQuestionDisplay" class="grading-question-display" style="display: none;">
+                        <h5 id="gradingQuestionText"></h5>
+                        <p class="grading-question-info">
+                            <span id="gradingQuestionNumber"></span> • 
+                            <span id="gradingAnswerCount">0 answers</span>
+                        </p>
+                    </div>
+                    
+                    <!-- Answer Categorization Interface -->
+                    <div id="gradingAnswerCategorization" class="answer-categorization" style="display: none;">
+                        <p class="categorization-instructions">Drag answers to group similar responses together. Click to mark as correct/incorrect.</p>
+                        
+                        <div class="categorization-container">
+                            <!-- Correct Answer Buckets (dynamically created) -->
+                            <div class="correct-answer-buckets-section">
+                                <h4>✅ Correct Answer Buckets</h4>
+                                <div id="gradingCorrectAnswerBuckets" class="correct-answer-buckets">
+                                    <!-- Correct answer buckets will be created here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Uncategorized Answers -->
+                            <div class="answer-bucket uncategorized-bucket">
+                                <h4>📝 Uncategorized Answers</h4>
+                                <div id="gradingUncategorizedAnswers" class="answer-items" data-bucket="uncategorized">
+                                    <!-- Uncategorized answers will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Wrong Answers Bucket -->
+                            <div class="answer-bucket wrong-bucket">
+                                <h4>❌ Wrong Answers</h4>
+                                <div id="gradingWrongAnswers" class="answer-items" data-bucket="wrong">
+                                    <!-- Wrong answers will be populated here -->
+                                </div>
+                            </div>
+                            
+                            <!-- Custom Buckets Container -->
+                            <div class="custom-buckets-container">
+                                <h4>📦 Custom Groups</h4>
+                                <div class="bucket-controls">
+                                    <button id="gradingAddBucketBtn" class="btn btn-small">➕ Add Group</button>
+                                    <button id="gradingMergeBucketsBtn" class="btn btn-small">🔗 Merge Selected</button>
+                                </div>
+                                <div id="gradingCustomBuckets" class="custom-buckets">
+                                    <!-- Custom buckets will be created here -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="categorization-actions">
+                            <button id="gradingPreviewScoringBtn" class="btn btn-primary">Preview Scoring</button>
+                            <button id="gradingApplyCategorizationBtn" class="btn btn-success">Apply Changes</button>
+                            <button id="gradingAutoCategorizeBtn" class="btn btn-secondary">Auto-Categorize</button>
+                        </div>
+                    </div>
+                    
+                    <!-- No Question Selected Message -->
+                    <div id="gradingNoQuestionMessage" class="grading-no-question">
+                        <p>Please select a question to begin grading.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="screen">
+            <div class="screen-content">
+                <h2>Game Over!</h2>
+                <div class="final-scores">
+                    <h3>Final Scores:</h3>
+                    <div id="finalScoresList" class="scores-grid"></div>
+                </div>
+                
+                <div class="winner-announcement">
+                    <h3 id="winnerText"></h3>
+                </div>
+
+                <div class="game-over-actions">
+                    <button id="playAgainBtn" class="btn btn-primary">Play Again</button>
+                    <button id="newGameBtn" class="btn btn-secondary">New Game</button>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 

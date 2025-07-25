@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐑 Sheep Photo Manager - MEGASheep</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #4a5568;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 1.1rem;
+        }
+
+        .upload-area {
+            border: 3px dashed #cbd5e0;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            background: #f7fafc;
+            cursor: pointer;
+        }
+
+        .upload-area.dragover {
+            border-color: #4299e1;
+            background: #ebf8ff;
+            transform: scale(1.02);
+        }
+
+        .upload-area .icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .upload-area h3 {
+            color: #4a5568;
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .upload-area p {
+            color: #718096;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(66, 153, 225, 0.3);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(66, 153, 225, 0.4);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4299e1, #3182ce);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 500;
+            display: none;
+        }
+
+        .message.success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+
+        .message.error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+
+        .photo-gallery {
+            margin-top: 40px;
+        }
+
+        .gallery-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .gallery-header h2 {
+            color: #4a5568;
+            font-size: 1.8rem;
+        }
+
+        .refresh-btn {
+            background: #e2e8f0;
+            color: #4a5568;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #cbd5e0;
+        }
+
+        .remove-duplicates-btn {
+            background: #fed7d7;
+            color: #742a2a;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .remove-duplicates-btn:hover {
+            background: #fc8181;
+            color: white;
+        }
+
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .photo-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .photo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .photo-preview {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .photo-info {
+            font-size: 0.9rem;
+            color: #718096;
+            margin-bottom: 10px;
+        }
+
+        .photo-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .delete-btn {
+            background: #feb2b2;
+            color: #742a2a;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .delete-btn:hover {
+            background: #fc8181;
+            color: white;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #4a5568;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .back-btn:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .photo-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="back-btn" onclick="window.location.href='/'">← Back to MEGASheep</button>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🐑 Sheep Photo Manager</h1>
+            <p>Upload and manage sheep photos for MEGASheep backgrounds</p>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <span class="icon">🐑</span>
+            <h3>Drag & Drop Your Sheep Photos</h3>
+            <p>Or click to select files (JPG, PNG, GIF, WebP)</p>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                Choose Files
+            </button>
+            <input type="file" id="fileInput" class="file-input" multiple accept="image/*">
+        </div>
+
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <div class="photo-gallery">
+                    <div class="gallery-header">
+            <h2>📸 Uploaded Sheep Photos</h2>
+            <div style="display: flex; gap: 10px;">
+                <button class="refresh-btn" onclick="loadPhotos()">Refresh</button>
+                <button class="remove-duplicates-btn" onclick="removeDuplicates()">🧹 Remove Duplicates</button>
+            </div>
+        </div>
+            <div class="photo-grid" id="photoGrid">
+                <!-- Photos will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const message = document.getElementById('message');
+        const photoGrid = document.getElementById('photoGrid');
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files);
+            uploadFiles(files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            uploadFiles(files);
+        });
+
+        function uploadFiles(files) {
+            if (files.length === 0) return;
+
+            // Validate files
+            const validFiles = files.filter(file => file.type.startsWith('image/'));
+            if (validFiles.length !== files.length) {
+                showMessage('Some files were skipped (only image files are allowed)', 'error');
+            }
+
+            if (validFiles.length === 0) {
+                showMessage('No valid image files selected', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            validFiles.forEach(file => {
+                formData.append('sheep-photos', file);
+            });
+
+            progressBar.style.display = 'block';
+            progressFill.style.width = '0%';
+
+            fetch('/api/upload-sheep', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                progressFill.style.width = '100%';
+                return response.json();
+            })
+            .then(data => {
+                setTimeout(() => {
+                    progressBar.style.display = 'none';
+                    progressFill.style.width = '0%';
+                    
+                    if (data.success) {
+                        showMessage(data.message, 'success');
+                        loadPhotos();
+                        fileInput.value = '';
+                    } else {
+                        showMessage(data.error || 'Upload failed', 'error');
+                    }
+                }, 500);
+            })
+            .catch(error => {
+                progressBar.style.display = 'none';
+                progressFill.style.width = '0%';
+                showMessage('Upload failed: ' + error.message, 'error');
+                console.error('Upload error:', error);
+            });
+        }
+
+        function showMessage(text, type) {
+            message.textContent = text;
+            message.className = `message ${type}`;
+            message.style.display = 'block';
+            
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 5000);
+        }
+
+        function loadPhotos() {
+            fetch('/api/sheep-photos')
+            .then(response => response.json())
+            .then(data => {
+                displayPhotos(data.photos || []);
+            })
+            .catch(error => {
+                console.error('Error loading photos:', error);
+                showMessage('Failed to load photos', 'error');
+            });
+        }
+
+        function displayPhotos(photos) {
+            if (photos.length === 0) {
+                photoGrid.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">🐑</div>
+                        <h3>No sheep photos yet</h3>
+                        <p>Upload some adorable sheep photos to get started!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            photoGrid.innerHTML = photos.map(photo => `
+                <div class="photo-card">
+                    <img src="${photo.path}" alt="Sheep photo" class="photo-preview" loading="lazy">
+                    <div class="photo-info">
+                        <div><strong>Size:</strong> ${formatFileSize(photo.size)}</div>
+                        <div><strong>Uploaded:</strong> ${formatDate(photo.uploaded)}</div>
+                    </div>
+                    <div class="photo-actions">
+                        <button class="delete-btn" onclick="deletePhoto('${photo.filename}')">
+                            🗑️ Delete
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deletePhoto(filename) {
+            if (!confirm('Are you sure you want to delete this sheep photo?')) {
+                return;
+            }
+
+            fetch(`/api/sheep-photos/${filename}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage('Photo deleted successfully', 'success');
+                    loadPhotos();
+                } else {
+                    showMessage(data.error || 'Failed to delete photo', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Delete error:', error);
+                showMessage('Failed to delete photo', 'error');
+            });
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        function removeDuplicates() {
+            if (!confirm('This will remove duplicate photos, keeping only the newest version of each. Continue?')) {
+                return;
+            }
+
+            fetch('/api/remove-duplicates', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (data.count > 0) {
+                        showMessage(data.message, 'success');
+                        loadPhotos();
+                    } else {
+                        showMessage('No duplicates found', 'success');
+                    }
+                } else {
+                    showMessage(data.error || 'Failed to remove duplicates', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Remove duplicates error:', error);
+                showMessage('Failed to remove duplicates', 'error');
+            });
+        }
+
+        // Load photos on page load
+        loadPhotos();
+    </script>
+</body>
+</html> 
