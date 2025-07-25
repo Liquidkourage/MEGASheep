@@ -422,6 +422,76 @@
             box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
         }
 
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #007bff;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 123, 255, 0.3);
+            margin: 2% auto;
+            padding: 0;
+            width: 90%;
+            max-width: 1200px;
+            height: 90%;
+            max-height: 800px;
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 25px;
+            border-bottom: 1px solid rgba(0, 123, 255, 0.3);
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            border-radius: 18px 18px 0 0;
+        }
+
+        .modal-header h2 {
+            color: white;
+            margin: 0;
+            font-size: 1.5em;
+        }
+
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .close:hover {
+            color: #ff6b6b;
+            transform: scale(1.1);
+        }
+
+        .modal-body {
+            padding: 0;
+            height: calc(100% - 80px);
+            overflow: hidden;
+        }
+
+        .modal-body iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 0 0 18px 18px;
+        }
+
         @media (max-width: 768px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
@@ -439,6 +509,12 @@
                 flex-direction: column;
                 align-items: center;
             }
+
+            .modal-content {
+                width: 95%;
+                height: 95%;
+                margin: 2.5% auto;
+            }
         }
     </style>
 </head>
@@ -455,10 +531,6 @@
             <h2>🐑 MEGASheep Host Console</h2>
             <p>Create a new game to get started</p>
             <div class="create-game-form">
-                <div class="form-group">
-                    <label for="hostName">Host Name:</label>
-                    <input type="text" id="hostName" placeholder="Enter your name" required>
-                </div>
                 <button id="createGameBtn" class="control-btn">Create New Game</button>
             </div>
         </div>
@@ -515,8 +587,8 @@
                     </div>
                     <div class="host-controls">
                         <button id="startGameBtn" class="control-btn success">START GAME</button>
-                        <a href="/grading" target="_blank" class="control-btn secondary">📝 GRADING INTERFACE</a>
-                        <a href="/grading" target="_blank" class="control-btn success">👥 MULTI-USER GRADING</a>
+                        <button id="gradingBtn" class="control-btn secondary">📝 GRADING INTERFACE</button>
+                        <button id="multiGradingBtn" class="control-btn success">👥 MULTI-USER GRADING</button>
                         <button id="testGameBtn" class="control-btn warning">▶️ TEST GAME</button>
                         <button id="refreshQuestionsBtn" class="control-btn secondary">🔄 REFRESH QUESTIONS</button>
                     </div>
@@ -558,6 +630,32 @@
         </div>
     </div>
 
+    <!-- Single User Grading Interface Modal -->
+    <div id="gradingSingleModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📝 Single User Grading Interface</h2>
+                <span class="close" onclick="closeGradingSingleModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <iframe id="gradingSingleFrame" src="/grading-single" width="100%" height="600px" frameborder="0"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Multi-User Grading Interface Modal -->
+    <div id="gradingMultiModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>👥 Multi-User Grading Interface</h2>
+                <span class="close" onclick="closeGradingMultiModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <iframe id="gradingMultiFrame" src="/grading" width="100%" height="600px" frameborder="0"></iframe>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Socket.IO connection
         let socket = null;
@@ -571,12 +669,24 @@
             socket.on('connect', () => {
                 updateConnectionStatus(true);
                 
-                // Check if we have a saved host session
-                const savedHostId = localStorage.getItem('hostId');
+                // Check if we have a saved game session
                 const savedGameCode = localStorage.getItem('gameCode');
                 
-                if (savedHostId && savedGameCode) {
-                    socket.emit('host-reconnect', { hostId: savedHostId, gameCode: savedGameCode });
+                if (savedGameCode) {
+                    // Add a timeout for reconnection
+                    const reconnectTimeout = setTimeout(() => {
+                        console.log('Reconnection timeout - clearing saved game code');
+                        localStorage.removeItem('gameCode');
+                        document.getElementById('noGameState').style.display = 'block';
+                        document.getElementById('activeGameState').style.display = 'none';
+                    }, 3000); // 3 second timeout
+                    
+                    socket.emit('host-reconnect', { gameCode: savedGameCode });
+                    
+                    // Clear timeout if reconnection succeeds
+                    socket.once('gameCreated', () => {
+                        clearTimeout(reconnectTimeout);
+                    });
                 }
             });
             
@@ -599,7 +709,16 @@
             
             socket.on('gameError', (error) => {
                 console.error('Game error:', error);
-                alert('Game error: ' + error.message);
+                
+                // If it's a reconnection error, clear the saved game code and show the create game form
+                if (error.message.includes('Game not found') || error.message.includes('No game found')) {
+                    localStorage.removeItem('gameCode');
+                    document.getElementById('noGameState').style.display = 'block';
+                    document.getElementById('activeGameState').style.display = 'none';
+                    console.log('Cleared saved game code due to reconnection error');
+                } else {
+                    alert('Game error: ' + error.message);
+                }
             });
             
             socket.on('gameStarted', (data) => {
@@ -700,12 +819,6 @@
 
         // Event listeners
         document.getElementById('createGameBtn').addEventListener('click', async () => {
-            const hostName = document.getElementById('hostName').value.trim();
-            if (!hostName) {
-                alert('Please enter your name');
-                return;
-            }
-            
             try {
                 // Create game via API
                 const response = await fetch('/api/create-game', {
@@ -713,18 +826,17 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ hostName })
+                    body: JSON.stringify({})
                 });
                 
                 const data = await response.json();
                 
                 if (data.status === 'success') {
                     // Store game info
-                    localStorage.setItem('hostId', hostName);
                     localStorage.setItem('gameCode', data.gameCode);
                     
                     // Join the game room via socket
-                    socket.emit('createGame', { hostName });
+                    socket.emit('createGame');
                     
                     console.log('Game created successfully:', data);
                 } else {
@@ -737,8 +849,8 @@
         });
 
         document.getElementById('startGameBtn').addEventListener('click', () => {
-            if (gameState === 'waiting') {
-                socket.emit('start-game');
+            if (gameState === 'waiting' && currentGame) {
+                socket.emit('startGame', { gameCode: currentGame.gameCode });
             }
         });
 
@@ -750,6 +862,49 @@
         document.getElementById('refreshQuestionsBtn').addEventListener('click', () => {
             // Refresh questions from server
             socket.emit('refresh-questions');
+        });
+
+        // Grading modal functions
+        function openGradingSingleModal() {
+            document.getElementById('gradingSingleModal').style.display = 'block';
+            // Refresh the iframe content
+            document.getElementById('gradingSingleFrame').src = '/grading-single';
+        }
+
+        function closeGradingSingleModal() {
+            document.getElementById('gradingSingleModal').style.display = 'none';
+        }
+
+        function openGradingMultiModal() {
+            document.getElementById('gradingMultiModal').style.display = 'block';
+            // Refresh the iframe content
+            document.getElementById('gradingMultiFrame').src = '/grading';
+        }
+
+        function closeGradingMultiModal() {
+            document.getElementById('gradingMultiModal').style.display = 'none';
+        }
+
+        // Close modals when clicking outside of them
+        window.onclick = function(event) {
+            const singleModal = document.getElementById('gradingSingleModal');
+            const multiModal = document.getElementById('gradingMultiModal');
+            
+            if (event.target === singleModal) {
+                closeGradingSingleModal();
+            }
+            if (event.target === multiModal) {
+                closeGradingMultiModal();
+            }
+        }
+
+        // Grading interface buttons
+        document.getElementById('gradingBtn').addEventListener('click', () => {
+            openGradingSingleModal();
+        });
+
+        document.getElementById('multiGradingBtn').addEventListener('click', () => {
+            openGradingMultiModal();
         });
 
         // Initialize when page loads

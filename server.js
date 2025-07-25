@@ -376,6 +376,10 @@ app.get('/grading', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'grading.html'));
 });
 
+app.get('/grading-single', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'grading-single.html'));
+});
+
 app.get('/game', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'game.html'));
 });
@@ -557,23 +561,19 @@ app.post('/api/remove-duplicates', (req, res) => {
 app.post('/api/create-game', (req, res) => {
     const { hostName } = req.body;
     
-    if (!hostName || hostName.trim() === '') {
-        return res.status(400).json({ 
-            status: 'error', 
-            message: 'Host name is required' 
-        });
-    }
+    // Use default host name if not provided
+    const finalHostName = hostName || 'Host';
     
     try {
-        const game = new Game(hostName);
+        const game = new Game(finalHostName);
         activeGames.set(game.gameCode, game);
         
-        console.log(`🎮 Created new game: ${game.gameCode} by ${hostName}`);
+        console.log(`🎮 Created new game: ${game.gameCode} by ${finalHostName}`);
         
         res.json({
             status: 'success',
             gameCode: game.gameCode,
-            hostName: hostName,
+            hostName: finalHostName,
             message: `Game created with code: ${game.gameCode}`
         });
     } catch (error) {
@@ -696,24 +696,24 @@ io.on('connection', (socket) => {
 
     // Create game (legacy socket event for host joining room)
     socket.on('createGame', (data) => {
-        const { hostName } = data;
-        
-        if (!hostName) {
-            socket.emit('gameError', { message: 'Host name is required' });
-            return;
-        }
-        
-        // Find the game created by this host
+        // Find the most recently created game (assuming this socket just created one)
         let hostGame = null;
+        let latestGame = null;
+        let latestTime = 0;
+        
         for (const [gameCode, game] of activeGames) {
-            if (game.hostId === hostName) {
-                hostGame = game;
-                break;
+            if (game.createdAt > latestTime) {
+                latestTime = game.createdAt;
+                latestGame = game;
             }
         }
         
+        if (latestGame) {
+            hostGame = latestGame;
+        }
+        
         if (!hostGame) {
-            socket.emit('gameError', { message: 'No game found for this host' });
+            socket.emit('gameError', { message: 'No game found. Please create a game first.' });
             return;
         }
         
@@ -721,7 +721,7 @@ io.on('connection', (socket) => {
         const playerInfo = connectedPlayers.get(socket.id);
         if (playerInfo) {
             playerInfo.gameCode = hostGame.gameCode;
-            playerInfo.playerName = hostName;
+            playerInfo.playerName = hostGame.hostId;
             playerInfo.isHost = true;
         }
         
@@ -733,7 +733,41 @@ io.on('connection', (socket) => {
             gameState: hostGame.getGameState()
         });
         
-        console.log(`🏠 Host ${hostName} joined room for game ${hostGame.gameCode}`);
+        console.log(`🏠 Host ${hostGame.hostId} joined room for game ${hostGame.gameCode}`);
+    });
+
+    // Host reconnect
+    socket.on('host-reconnect', (data) => {
+        const { gameCode } = data;
+        
+        if (!gameCode) {
+            socket.emit('gameError', { message: 'Game code is required for reconnection' });
+            return;
+        }
+        
+        const game = activeGames.get(gameCode);
+        if (!game) {
+            socket.emit('gameError', { message: 'Game not found. Please check the game code.' });
+            return;
+        }
+        
+        // Update connection info
+        const playerInfo = connectedPlayers.get(socket.id);
+        if (playerInfo) {
+            playerInfo.gameCode = gameCode;
+            playerInfo.playerName = game.hostId;
+            playerInfo.isHost = true;
+        }
+        
+        // Host joins the Socket.IO room
+        socket.join(gameCode);
+        
+        socket.emit('gameCreated', {
+            gameCode: gameCode,
+            gameState: game.getGameState()
+        });
+        
+        console.log(`🏠 Host ${game.hostId} reconnected to game ${gameCode}`);
     });
 
     // Join game
@@ -1333,9 +1367,8 @@ io.on('connection', (socket) => {
 app.post('/api/create-game', (req, res) => {
     const { hostName } = req.body;
     
-    if (!hostName) {
-        return res.json({ status: 'error', message: 'Host name is required' });
-    }
+    // Use default host name if not provided
+    const finalHostName = hostName || 'Host';
     
     // Generate unique 4-digit game code
     let gameCode;
@@ -1344,10 +1377,10 @@ app.post('/api/create-game', (req, res) => {
     } while (activeGames.has(gameCode));
     
     // Create new game
-    const game = new Game(hostName, gameCode);
+    const game = new Game(finalHostName, gameCode);
     activeGames.set(gameCode, game);
     
-    console.log(`🎮 New game created: ${gameCode} by ${hostName}`);
+    console.log(`🎮 New game created: ${gameCode} by ${finalHostName}`);
     
     res.json({ 
         status: 'success', 

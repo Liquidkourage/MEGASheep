@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEGASheep - Single User Grading Interface</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000033 100%);
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .grading-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .grading-header {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #007bff;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 123, 255, 0.2);
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .grading-header h1 {
+            color: #ffffff;
+            margin: 0 0 10px 0;
+            font-size: 2em;
+        }
+
+        .grading-header p {
+            color: #cccccc;
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .connection-status {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #007bff;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #ffffff;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-connected {
+            background: #27ae60;
+            box-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
+        }
+
+        .status-disconnected {
+            background: #e74c3c;
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+        }
+
+        .no-games-message {
+            text-align: center;
+            padding: 50px;
+            color: #cccccc;
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #007bff;
+            border-radius: 12px;
+        }
+
+        .game-selection {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #007bff;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 123, 255, 0.2);
+            padding: 25px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .game-selection h3 {
+            color: #ffffff;
+            margin: 0 0 20px 0;
+            font-size: 1.5em;
+        }
+
+        .game-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .game-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .game-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .game-item h4 {
+            color: #ffffff;
+            margin: 0 0 10px 0;
+            font-size: 1.2em;
+        }
+
+        .game-item p {
+            color: #cccccc;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .grading-interface {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #007bff;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 123, 255, 0.2);
+            padding: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .grading-interface h3 {
+            color: #ffffff;
+            margin: 0 0 20px 0;
+            font-size: 1.5em;
+        }
+
+        .answer-groups {
+            display: grid;
+            gap: 20px;
+        }
+
+        .answer-group {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .answer-group h4 {
+            color: #ffffff;
+            margin: 0 0 15px 0;
+            font-size: 1.1em;
+        }
+
+        .answer-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .answer-list li {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            color: #ffffff;
+        }
+
+        .grading-controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .control-btn {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 20px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 123, 255, 0.4);
+        }
+
+        .control-btn.success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .control-btn.warning {
+            background: linear-gradient(135deg, #ffc107, #e0a800);
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="grading-container">
+        <!-- Connection Status -->
+        <div class="connection-status">
+            <span class="status-indicator status-disconnected" id="connectionIndicator"></span>
+            <span id="connectionStatus">Connecting to server...</span>
+        </div>
+
+        <!-- Header -->
+        <div class="grading-header">
+            <h1>📝 Single User Grading Interface</h1>
+            <p>Grade answers for active games</p>
+        </div>
+
+        <!-- No Games Message -->
+        <div id="noGamesMessage" class="no-games-message">
+            <h3>No Active Games</h3>
+            <p>There are currently no games in grading phase.</p>
+        </div>
+
+        <!-- Game Selection -->
+        <div id="gameSelection" class="game-selection" style="display: none;">
+            <h3>🎮 Select Game to Grade</h3>
+            <div id="gameList" class="game-list">
+                <!-- Games will be populated here -->
+            </div>
+        </div>
+
+        <!-- Grading Interface -->
+        <div id="gradingInterface" class="grading-interface" style="display: none;">
+            <h3>📝 Grading Answers</h3>
+            <div id="answerGroups" class="answer-groups">
+                <!-- Answer groups will be populated here -->
+            </div>
+            <div class="grading-controls">
+                <button id="completeGradingBtn" class="control-btn success">Complete Grading</button>
+                <button id="backToGamesBtn" class="control-btn secondary">Back to Games</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let currentGame = null;
+        let activeGames = [];
+
+        function initializeConnection() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                updateConnectionStatus(true);
+                loadActiveGames();
+            });
+            
+            socket.on('disconnect', () => {
+                updateConnectionStatus(false);
+            });
+            
+            socket.on('activeGamesUpdate', (games) => {
+                activeGames = games;
+                updateGameList();
+            });
+            
+            socket.on('gameStateUpdate', (data) => {
+                if (currentGame && data.gameCode === currentGame.gameCode) {
+                    currentGame = data;
+                    updateGradingInterface();
+                }
+            });
+            
+            socket.on('error', (error) => {
+                console.error('Socket error:', error);
+                alert('Error: ' + error.message);
+            });
+        }
+
+        function updateConnectionStatus(connected) {
+            const indicator = document.getElementById('connectionIndicator');
+            const status = document.getElementById('connectionStatus');
+            
+            if (connected) {
+                indicator.className = 'status-indicator status-connected';
+                status.textContent = 'Connected to server';
+            } else {
+                indicator.className = 'status-indicator status-disconnected';
+                status.textContent = 'Disconnected from server';
+            }
+        }
+
+        function loadActiveGames() {
+            socket.emit('getActiveGames');
+        }
+
+        function updateGameList() {
+            const noGamesMessage = document.getElementById('noGamesMessage');
+            const gameSelection = document.getElementById('gameSelection');
+            const gameList = document.getElementById('gameList');
+            
+            const gradingGames = activeGames.filter(game => game.gameState === 'grading');
+            
+            if (gradingGames.length === 0) {
+                noGamesMessage.style.display = 'block';
+                gameSelection.style.display = 'none';
+                return;
+            }
+            
+            noGamesMessage.style.display = 'none';
+            gameSelection.style.display = 'block';
+            
+            gameList.innerHTML = '';
+            
+            gradingGames.forEach(game => {
+                const gameItem = document.createElement('div');
+                gameItem.className = 'game-item';
+                gameItem.onclick = () => selectGame(game);
+                gameItem.innerHTML = `
+                    <h4>Game ${game.gameCode}</h4>
+                    <p>Host: ${game.hostId}</p>
+                    <p>Players: ${game.players.size}</p>
+                    <p>Status: ${game.gameState}</p>
+                `;
+                gameList.appendChild(gameItem);
+            });
+        }
+
+        function selectGame(game) {
+            currentGame = game;
+            document.getElementById('gameSelection').style.display = 'none';
+            document.getElementById('gradingInterface').style.display = 'block';
+            updateGradingInterface();
+        }
+
+        function updateGradingInterface() {
+            if (!currentGame || !currentGame.currentAnswerGroups) return;
+            
+            const answerGroups = document.getElementById('answerGroups');
+            answerGroups.innerHTML = '';
+            
+            currentGame.currentAnswerGroups.forEach((group, index) => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'answer-group';
+                groupDiv.innerHTML = `
+                    <h4>Answer Group ${index + 1}: "${group.answer}"</h4>
+                    <ul class="answer-list">
+                        ${group.players.map(playerId => {
+                            const player = currentGame.players.get(playerId);
+                            return `<li>${player ? player.name : 'Unknown Player'}</li>`;
+                        }).join('')}
+                    </ul>
+                `;
+                answerGroups.appendChild(groupDiv);
+            });
+        }
+
+        function backToGames() {
+            currentGame = null;
+            document.getElementById('gradingInterface').style.display = 'none';
+            document.getElementById('gameSelection').style.display = 'block';
+            updateGameList();
+        }
+
+        function completeGrading() {
+            if (!currentGame) return;
+            
+            socket.emit('completeGrading', { gameCode: currentGame.gameCode });
+            backToGames();
+        }
+
+        // Event listeners
+        document.getElementById('completeGradingBtn').addEventListener('click', completeGrading);
+        document.getElementById('backToGamesBtn').addEventListener('click', backToGames);
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeConnection();
+        });
+    </script>
+</body>
+</html> 
