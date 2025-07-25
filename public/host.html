@@ -924,8 +924,15 @@
             document.getElementById('gradingSingleModal').style.display = 'block';
             // Apply fullscreen by default
             document.getElementById('gradingSingleModalContent').classList.add('fullscreen');
-            // Refresh the iframe content
-            document.getElementById('gradingSingleFrame').src = '/grading-single';
+            // Refresh the iframe content with game code parameter
+            const gameCode = currentGame ? currentGame.gameCode : null;
+            const url = gameCode ? `/grading-single?gameCode=${gameCode}` : '/grading-single';
+            document.getElementById('gradingSingleFrame').src = url;
+        }
+
+        // Function to get current game code for the grading interface
+        function getCurrentGameCode() {
+            return currentGame ? currentGame.gameCode : null;
         }
 
         function closeGradingSingleModal() {

@@ -221,9 +221,26 @@
             text-align: center;
         }
 
+        .wrong-uncategorized-section {
+            margin-bottom: 20px;
+        }
+
+        .wrong-uncategorized-section h4 {
+            color: #ffffff;
+            margin: 0 0 15px 0;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .wrong-uncategorized-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
         #correctAnswers {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
         }
 
@@ -231,21 +248,21 @@
             background: rgba(255, 255, 255, 0.1);
             border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 12px;
-            padding: 20px;
-            min-height: 200px;
+            padding: 12px;
+            min-height: 60px;
         }
 
         .answer-bucket h4 {
             color: #ffffff;
-            margin: 0 0 15px 0;
-            font-size: 1.1em;
+            margin: 0 0 12px 0;
+            font-size: 1em;
             text-align: center;
             cursor: pointer;
             user-select: none;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .bucket-toggle {
@@ -258,8 +275,8 @@
         }
 
         .answer-items {
-            min-height: 150px;
-            padding: 10px;
+            min-height: 80px;
+            padding: 6px;
             border: 2px dashed rgba(255, 255, 255, 0.3);
             border-radius: 8px;
             transition: all 0.3s ease;
@@ -308,9 +325,9 @@
         .answer-item {
             background: rgba(0, 0, 0, 0.5);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 8px;
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 6px;
             cursor: move;
             transition: all 0.3s ease;
         }
@@ -327,18 +344,19 @@
         .answer-text {
             font-weight: bold;
             color: #ffffff;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
+            font-size: 0.95em;
         }
 
         .answer-count {
             color: #cccccc;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         .answer-players {
             color: #cccccc;
-            font-size: 11px;
-            margin-top: 5px;
+            font-size: 10px;
+            margin-top: 3px;
         }
 
         .grading-controls {
@@ -381,6 +399,40 @@
         .drag-over {
             background: rgba(0, 123, 255, 0.2);
             border-color: #007bff;
+        }
+
+        .answer-bucket h4.drag-over {
+            background: rgba(0, 123, 255, 0.3);
+            border-radius: 8px;
+            padding: 5px;
+        }
+
+        .answer-count-badge {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: #ffffff;
+            margin-left: 8px;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .answer-bucket.correct-bucket .answer-count-badge {
+            background: rgba(39, 174, 96, 0.3);
+            border-color: rgba(39, 174, 96, 0.5);
+        }
+
+        .answer-bucket.wrong-bucket .answer-count-badge {
+            background: rgba(231, 76, 60, 0.3);
+            border-color: rgba(231, 76, 60, 0.5);
+        }
+
+        .answer-bucket.uncategorized-bucket .answer-count-badge {
+            background: rgba(243, 156, 18, 0.3);
+            border-color: rgba(243, 156, 18, 0.5);
         }
     </style>
 </head>
@@ -431,25 +483,33 @@
                 </div>
             </div>
 
-            <!-- Wrong Answers Bucket -->
-            <div class="answer-bucket wrong-bucket">
-                <h4 onclick="toggleBucket(this)">
-                    <span class="bucket-toggle">▼</span>
-                    ❌ Wrong Answers
-                </h4>
-                <div id="wrongAnswers" class="answer-items" data-bucket="wrong">
-                    <!-- Wrong answers will be dragged here -->
-                </div>
-            </div>
+            <!-- Wrong and Uncategorized Answers Section -->
+            <div class="wrong-uncategorized-section">
+                <h4>❌ Wrong & 📦 Uncategorized Answers</h4>
+                <div class="wrong-uncategorized-grid">
+                    <!-- Wrong Answers Bucket -->
+                    <div class="answer-bucket wrong-bucket">
+                        <h4 onclick="toggleBucket(this)">
+                            <span class="bucket-toggle">▼</span>
+                            ❌ Wrong Answers
+                            <span class="answer-count-badge" id="wrongAnswersCount">0</span>
+                        </h4>
+                        <div id="wrongAnswers" class="answer-items" data-bucket="wrong">
+                            <!-- Wrong answers will be dragged here -->
+                        </div>
+                    </div>
 
-            <!-- Uncategorized Answers Bucket -->
-            <div class="answer-bucket uncategorized-bucket">
-                <h4 onclick="toggleBucket(this)">
-                    <span class="bucket-toggle">▼</span>
-                    📦 Uncategorized Answers
-                </h4>
-                <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized">
-                    <!-- Uncategorized answers will be here initially -->
+                    <!-- Uncategorized Answers Bucket -->
+                    <div class="answer-bucket uncategorized-bucket">
+                        <h4 onclick="toggleBucket(this)">
+                            <span class="bucket-toggle">▼</span>
+                            📦 Uncategorized Answers
+                            <span class="answer-count-badge" id="uncategorizedAnswersCount">0</span>
+                        </h4>
+                        <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized">
+                            <!-- Uncategorized answers will be here initially -->
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -470,7 +530,20 @@
             
             socket.on('connect', () => {
                 updateConnectionStatus(true);
-                loadActiveGames();
+                // Get the game code from the parent window (host.html)
+                const gameCode = window.parent.getCurrentGameCode ? window.parent.getCurrentGameCode() : null;
+                if (gameCode) {
+                    connectToHostGame(gameCode);
+                } else {
+                    // Fallback: try to get from URL parameters
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const gameCodeFromUrl = urlParams.get('gameCode');
+                    if (gameCodeFromUrl) {
+                        connectToHostGame(gameCodeFromUrl);
+                    } else {
+                        loadActiveGames();
+                    }
+                }
             });
             
             socket.on('disconnect', () => {
@@ -489,10 +562,30 @@
                 }
             });
             
+            socket.on('gameStateResponse', (data) => {
+                if (data && data.gameCode) {
+                    currentGame = data;
+                    // Hide the game selection and show the grading interface
+                    document.getElementById('gameSelection').style.display = 'none';
+                    document.getElementById('noGamesMessage').style.display = 'none';
+                    document.getElementById('gradingInterface').style.display = 'block';
+                    updateGradingInterface();
+                } else {
+                    // If no game found, fall back to showing available games
+                    console.log('No specific game found, showing available games');
+                    loadActiveGames();
+                }
+            });
+            
             socket.on('error', (error) => {
                 console.error('Socket error:', error);
                 alert('Error: ' + error.message);
             });
+        }
+
+        function connectToHostGame(gameCode) {
+            // Request the specific game state
+            socket.emit('getGameState', { gameCode: gameCode });
         }
 
         function updateConnectionStatus(connected) {
@@ -559,6 +652,10 @@
             document.getElementById('wrongAnswers').innerHTML = '';
             document.getElementById('uncategorizedAnswers').innerHTML = '';
             
+            // Reset count badges
+            document.getElementById('wrongAnswersCount').textContent = '0';
+            document.getElementById('uncategorizedAnswersCount').textContent = '0';
+            
             // Get the current question to access correct answers
             const currentQuestion = currentGame.currentQuestionData;
             const correctAnswers = currentQuestion?.correct_answers || [];
@@ -600,10 +697,11 @@
                 bucketDiv.className = `answer-bucket correct-bucket${isEmpty ? ' empty' : ''}`;
                 bucketDiv.innerHTML = `
                     <h4 onclick="toggleBucket(this)">
-                        <span class="bucket-toggle">▼</span>
+                        <span class="bucket-toggle collapsed">▶</span>
                         ✅ ${bucket.name}
+                        <span class="answer-count-badge">${bucket.answers.length}</span>
                     </h4>
-                    <div class="answer-items" data-bucket="${bucket.id}">
+                    <div class="answer-items collapsed" data-bucket="${bucket.id}">
                         ${bucket.answers.map(group => createAnswerItemHTML(group)).join('')}
                     </div>
                 `;
@@ -619,6 +717,9 @@
                 const answerItem = createAnswerItem(group, index);
                 document.getElementById('uncategorizedAnswers').appendChild(answerItem);
             });
+            
+            // Update count badges
+            updateCountBadges();
             
             setupDragAndDrop();
         }
@@ -652,6 +753,7 @@
         function setupDragAndDrop() {
             const answerItems = document.querySelectorAll('.answer-item');
             const dropZones = document.querySelectorAll('.answer-items');
+            const bucketHeaders = document.querySelectorAll('.answer-bucket h4');
             
             answerItems.forEach(item => {
                 item.addEventListener('dragstart', handleDragStart);
@@ -663,6 +765,14 @@
                 zone.addEventListener('dragenter', handleDragEnter);
                 zone.addEventListener('dragleave', handleDragLeave);
                 zone.addEventListener('drop', handleDrop);
+            });
+            
+            // Make bucket headers droppable
+            bucketHeaders.forEach(header => {
+                header.addEventListener('dragover', handleDragOver);
+                header.addEventListener('dragenter', handleDragEnter);
+                header.addEventListener('dragleave', handleDragLeave);
+                header.addEventListener('drop', handleDropOnHeader);
             });
         }
 
@@ -685,11 +795,17 @@
 
         function handleDragEnter(e) {
             e.preventDefault();
-            e.target.closest('.answer-items').classList.add('drag-over');
+            const target = e.target.closest('.answer-items') || e.target.closest('h4');
+            if (target) {
+                target.classList.add('drag-over');
+            }
         }
 
         function handleDragLeave(e) {
-            e.target.closest('.answer-items').classList.remove('drag-over');
+            const target = e.target.closest('.answer-items') || e.target.closest('h4');
+            if (target) {
+                target.classList.remove('drag-over');
+            }
         }
 
         function handleDrop(e) {
@@ -699,6 +815,22 @@
             
             if (draggedElement && dropZone) {
                 dropZone.appendChild(draggedElement);
+                updateCountBadges();
+            }
+        }
+
+        function handleDropOnHeader(e) {
+            e.preventDefault();
+            const header = e.target.closest('h4');
+            const bucket = header.parentElement;
+            const dropZone = bucket.querySelector('.answer-items');
+            
+            // Remove drag-over class from any elements
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            
+            if (draggedElement && dropZone) {
+                dropZone.appendChild(draggedElement);
+                updateCountBadges();
             }
         }
 
@@ -757,6 +889,25 @@
             document.getElementById('gradingInterface').style.display = 'none';
             document.getElementById('gameSelection').style.display = 'block';
             updateGameList();
+        }
+
+        function updateCountBadges() {
+            // Update wrong answers count
+            const wrongAnswersCount = document.querySelectorAll('#wrongAnswers .answer-item').length;
+            document.getElementById('wrongAnswersCount').textContent = wrongAnswersCount;
+            
+            // Update uncategorized answers count
+            const uncategorizedAnswersCount = document.querySelectorAll('#uncategorizedAnswers .answer-item').length;
+            document.getElementById('uncategorizedAnswersCount').textContent = uncategorizedAnswersCount;
+            
+            // Update correct answer bucket counts
+            document.querySelectorAll('#correctAnswers .answer-bucket').forEach(bucket => {
+                const answerItems = bucket.querySelectorAll('.answer-item');
+                const countBadge = bucket.querySelector('.answer-count-badge');
+                if (countBadge) {
+                    countBadge.textContent = answerItems.length;
+                }
+            });
         }
 
         function toggleBucket(headerElement) {
