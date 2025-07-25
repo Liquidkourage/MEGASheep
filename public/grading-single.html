@@ -641,10 +641,12 @@
             currentGame = game;
             document.getElementById('gameSelection').style.display = 'none';
             document.getElementById('gradingInterface').style.display = 'block';
-            updateGradingInterface();
+            updateGradingInterface().catch(error => {
+                console.error('Error updating grading interface:', error);
+            });
         }
 
-        function updateGradingInterface() {
+        async function updateGradingInterface() {
             if (!currentGame || !currentGame.currentAnswerGroups) return;
             
             // Clear all buckets
@@ -657,38 +659,80 @@
             document.getElementById('uncategorizedAnswersCount').textContent = '0';
             
             // Get the current question to access correct answers
-            const currentQuestion = currentGame.currentQuestionData;
-            const correctAnswers = currentQuestion?.correct_answers || [];
+            const questionData = currentGame.currentQuestionData;
+            const correctAnswerList = questionData?.correct_answers || [];
             
-            console.log('🔍 Current question data:', currentQuestion);
-            console.log('✅ Correct answers from DB:', correctAnswers);
+            console.log('🔍 Current question data:', questionData);
+            console.log('✅ Correct answers from DB:', correctAnswerList);
             
-                         // Create correct answer buckets and sort alphabetically
-             const correctAnswerBuckets = correctAnswers.map((correctAnswer, index) => ({
-                 id: `correct_${index}`,
-                 name: correctAnswer,
-                 correctAnswer: correctAnswer,
-                 answers: []
-             })).sort((a, b) => a.name.localeCompare(b.name));
+            // Create correct answer buckets and sort alphabetically
+            const correctAnswerBuckets = correctAnswerList.map((correctAnswer, index) => ({
+                id: `correct_${index}`,
+                name: correctAnswer,
+                correctAnswer: correctAnswer,
+                answers: []
+            })).sort((a, b) => a.name.localeCompare(b.name));
             
-            // Auto-categorize matching answers
+            // Get responses for semantic matching
+            const responses = currentGame.currentAnswerGroups.map(group => group.answer);
             const answersToRemove = [];
             
-            currentGame.currentAnswerGroups.forEach(answerGroup => {
-                // Check if this answer matches any correct answer
-                const matchingBucket = correctAnswerBuckets.find(bucket => {
-                    const normalizedAnswer = normalizeAnswer(answerGroup.answer);
-                    const normalizedCorrect = normalizeAnswer(bucket.correctAnswer);
-                    return normalizedAnswer === normalizedCorrect;
+            try {
+                // Call semantic matcher service
+                const semanticMatches = await getSemanticMatches(
+                    questionData?.prompt || '', 
+                    correctAnswerList, 
+                    responses
+                );
+                
+                console.log('🧠 Semantic matches:', semanticMatches);
+                
+                // Process semantic matches
+                semanticMatches.forEach(match => {
+                    const answerGroup = currentGame.currentAnswerGroups.find(group => group.answer === match.response);
+                    if (!answerGroup) return;
+                    
+                    if (match.confidence >= 80 && match.best_match) {
+                        // Auto-categorize high confidence matches
+                        const matchingBucket = correctAnswerBuckets.find(bucket => 
+                            bucket.correctAnswer === match.best_match
+                        );
+                        
+                        if (matchingBucket) {
+                            // Add semantic confidence info to the answer group
+                            answerGroup.semanticConfidence = match.confidence;
+                            answerGroup.semanticMatch = match.best_match;
+                            
+                            matchingBucket.answers.push(answerGroup);
+                            answersToRemove.push(answerGroup.answer);
+                            console.log(`✅ Auto-categorized "${answerGroup.answer}" to "${matchingBucket.name}" (${match.confidence}% confidence)`);
+                        }
+                    } else if (match.confidence >= 50) {
+                        // Add confidence info for medium confidence matches
+                        answerGroup.semanticConfidence = match.confidence;
+                        answerGroup.semanticMatch = match.best_match;
+                        console.log(`⚠️ Medium confidence: "${answerGroup.answer}" -> "${match.best_match}" (${match.confidence}%)`);
+                    }
                 });
                 
-                if (matchingBucket) {
-                    // Move to the matching bucket
-                    matchingBucket.answers.push(answerGroup);
-                    answersToRemove.push(answerGroup.answer);
-                    console.log(`✅ Auto-categorized "${answerGroup.answer}" to "${matchingBucket.name}" bucket`);
-                }
-            });
+            } catch (error) {
+                console.error('❌ Semantic matching failed, falling back to exact matching:', error);
+                
+                // Fallback to exact matching
+                currentGame.currentAnswerGroups.forEach(answerGroup => {
+                    const matchingBucket = correctAnswerBuckets.find(bucket => {
+                        const normalizedAnswer = normalizeAnswer(answerGroup.answer);
+                        const normalizedCorrect = normalizeAnswer(bucket.correctAnswer);
+                        return normalizedAnswer === normalizedCorrect;
+                    });
+                    
+                    if (matchingBucket) {
+                        matchingBucket.answers.push(answerGroup);
+                        answersToRemove.push(answerGroup.answer);
+                        console.log(`✅ Exact match: "${answerGroup.answer}" to "${matchingBucket.name}"`);
+                    }
+                });
+            }
             
             // Render ALL correct answer buckets (even empty ones)
             correctAnswerBuckets.forEach(bucket => {
@@ -725,11 +769,23 @@
         }
 
         function createAnswerItemHTML(group) {
+            let confidenceDisplay = '';
+            if (group.semanticConfidence !== undefined) {
+                const confidenceColor = group.semanticConfidence >= 80 ? '#27ae60' : 
+                                      group.semanticConfidence >= 50 ? '#f39c12' : '#e74c3c';
+                confidenceDisplay = `
+                    <div class="answer-confidence" style="color: ${confidenceColor}; font-size: 11px; margin-top: 3px;">
+                        🧠 ${group.semanticConfidence}% confidence${group.semanticMatch ? ` → "${group.semanticMatch}"` : ''}
+                    </div>
+                `;
+            }
+            
             return `
                 <div class="answer-item" draggable="true" data-answer-index="${group.index || 0}" data-answer-text="${group.answer}">
                     <div class="answer-text">"${group.answer}"</div>
                     <div class="answer-count">${group.count} response${group.count !== 1 ? 's' : ''}</div>
                     <div class="answer-players">${group.players.join(', ')}</div>
+                    ${confidenceDisplay}
                 </div>
             `;
         }
@@ -741,10 +797,22 @@
             item.dataset.answerIndex = index;
             item.dataset.answerText = group.answer;
             
+            let confidenceDisplay = '';
+            if (group.semanticConfidence !== undefined) {
+                const confidenceColor = group.semanticConfidence >= 80 ? '#27ae60' : 
+                                      group.semanticConfidence >= 50 ? '#f39c12' : '#e74c3c';
+                confidenceDisplay = `
+                    <div class="answer-confidence" style="color: ${confidenceColor}; font-size: 11px; margin-top: 3px;">
+                        🧠 ${group.semanticConfidence}% confidence${group.semanticMatch ? ` → "${group.semanticMatch}"` : ''}
+                    </div>
+                `;
+            }
+            
             item.innerHTML = `
                 <div class="answer-text">"${group.answer}"</div>
                 <div class="answer-count">${group.count} response${group.count !== 1 ? 's' : ''}</div>
                 <div class="answer-players">${group.players.join(', ')}</div>
+                ${confidenceDisplay}
             `;
             
             return item;
@@ -898,6 +966,28 @@
                 .replace(/\s+/g, ' ')            // Replace multiple spaces with single space
                 .replace(/[^\w\s]/g, '')         // Remove all punctuation except spaces
                 .trim();                         // Trim again after punctuation removal
+        }
+
+        async function getSemanticMatches(question, correctAnswers, responses) {
+            try {
+                const response = await fetch('http://localhost:5005/semantic-match', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        question: question, 
+                        correct_answers: correctAnswers, 
+                        responses: responses 
+                    })
+                });
+                if (!response.ok) { 
+                    throw new Error(`HTTP error! status: ${response.status}`); 
+                }
+                const data = await response.json();
+                return data.results;
+            } catch (error) {
+                console.error('Error calling semantic matcher:', error);
+                throw error;
+            }
         }
 
         function updateCountBadges() {
