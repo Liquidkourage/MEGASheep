@@ -70,8 +70,8 @@ def semantic_match():
             result = {
                 'response': response,
                 'best_match': best_match if best_match else None,
-                'similarity': best_similarity,
-                'confidence': confidence
+                'similarity': round(best_similarity, 2),
+                'confidence': round(confidence, 2)
             }
             
             results.append(result)
