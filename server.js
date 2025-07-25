@@ -8,6 +8,7 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const multer = require('multer');
 const fs = require('fs');
+const fetch = require('node-fetch'); // Add at the top if not present
 
 const app = express();
 const server = http.createServer(app);
@@ -325,6 +326,52 @@ class Game {
         console.log(`🧹 Cleaned up game ${this.gameCode}`);
     }
 }
+
+// Utility function to call the semantic matcher service
+async function getSemanticMatches(question, correctAnswers, responses) {
+    try {
+        const res = await fetch('http://localhost:5005/semantic-match', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                question,
+                correct_answers: correctAnswers,
+                responses
+            })
+        });
+        if (!res.ok) throw new Error('Semantic matcher service error');
+        const data = await res.json();
+        return data.results;
+    } catch (err) {
+        console.error('Semantic matcher error:', err);
+        return null;
+    }
+}
+
+// Example integration in grading logic (replace with your actual grading handler):
+// Assume you have: question, correctAnswers, responses (array of answer strings)
+//
+// async function autoCategorizeAnswers(question, correctAnswers, responses) {
+//     const matches = await getSemanticMatches(question, correctAnswers, responses);
+//     const categorized = { correct: [], wrong: [], uncategorized: [] };
+//     matches.forEach((match, i) => {
+//         if (match.confidence >= 80 && match.best_match) {
+//             categorized.correct.push({
+//                 response: match.response,
+//                 matchedTo: match.best_match,
+//                 confidence: match.confidence
+//             });
+//         } else {
+//             categorized.uncategorized.push({
+//                 response: match.response,
+//                 confidence: match.confidence
+//             });
+//         }
+//     });
+//     return categorized;
+// }
+//
+// You should call this function during grading and use the result to populate the correct, wrong, and uncategorized buckets. Pass the confidence scores to the frontend as needed.
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -1008,7 +1055,7 @@ io.on('connection', (socket) => {
     });
 
     // Complete grading (mandatory before next question)
-    socket.on('completeGrading', (data) => {
+    socket.on('completeGrading', async (data) => {
         if (!data) {
             console.log('⚠️ completeGrading event received with no data');
             return;
