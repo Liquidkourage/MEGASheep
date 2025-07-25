@@ -460,6 +460,16 @@
             border-radius: 0;
         }
 
+        /* Default fullscreen for grading modal */
+        #gradingSingleModalContent {
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            max-height: none;
+            margin: 0;
+            border-radius: 0;
+        }
+
         .modal-header {
             display: flex;
             justify-content: space-between;
@@ -912,12 +922,16 @@
         // Grading modal functions
         function openGradingSingleModal() {
             document.getElementById('gradingSingleModal').style.display = 'block';
+            // Apply fullscreen by default
+            document.getElementById('gradingSingleModalContent').classList.add('fullscreen');
             // Refresh the iframe content
             document.getElementById('gradingSingleFrame').src = '/grading-single';
         }
 
         function closeGradingSingleModal() {
             document.getElementById('gradingSingleModal').style.display = 'none';
+            // Remove fullscreen class when closing
+            document.getElementById('gradingSingleModalContent').classList.remove('fullscreen');
         }
 
         function openGradingMultiModal() {

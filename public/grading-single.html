@@ -140,27 +140,23 @@
         .grading-interface {
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid #007bff;
-            border-radius: 20px;
+            border-radius: 0;
             box-shadow: 0 20px 40px rgba(0, 123, 255, 0.2);
             padding: 25px;
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
-        }
-
-        .grading-interface.fullscreen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            border-radius: 0;
             z-index: 1000;
             overflow-y: auto;
             margin: 0;
             max-width: none;
         }
 
-        .grading-container.fullscreen {
+        .grading-container {
             max-width: none;
             margin: 0;
             padding: 0;
@@ -244,6 +240,36 @@
             margin: 0 0 15px 0;
             font-size: 1.1em;
             text-align: center;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .bucket-toggle {
+            font-size: 0.8em;
+            transition: transform 0.3s ease;
+        }
+
+        .bucket-toggle.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .answer-items {
+            min-height: 150px;
+            padding: 10px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .answer-items.collapsed {
+            min-height: 0;
+            padding: 0;
+            max-height: 0;
         }
 
         .answer-bucket.correct-bucket {
@@ -391,18 +417,11 @@
             <div class="grading-header-controls">
                 <h3 class="grading-title">📝 Categorize Answers</h3>
                 <div class="grading-controls-top">
-                    <button id="fullscreenBtn" class="control-btn small" title="Toggle Fullscreen">⛶</button>
                     <button id="backToGamesBtn" class="control-btn secondary small">Back to Games</button>
                 </div>
             </div>
             
-            <div class="grading-instructions">
-                <p><strong>How to grade:</strong></p>
-                <p>• ✅ Correct answers are automatically categorized based on the database</p>
-                <p>• 📦 Uncategorized answers need manual sorting - drag them to correct or wrong buckets</p>
-                <p>• ❌ Drag answers to "Wrong Answers" if they should be considered incorrect</p>
-                <p>• Click "Apply Categorization" when done to recalculate scores</p>
-            </div>
+
 
             <!-- Correct Answers Section -->
             <div class="correct-answers-section">
@@ -414,7 +433,10 @@
 
             <!-- Wrong Answers Bucket -->
             <div class="answer-bucket wrong-bucket">
-                <h4>❌ Wrong Answers</h4>
+                <h4 onclick="toggleBucket(this)">
+                    <span class="bucket-toggle">▼</span>
+                    ❌ Wrong Answers
+                </h4>
                 <div id="wrongAnswers" class="answer-items" data-bucket="wrong">
                     <!-- Wrong answers will be dragged here -->
                 </div>
@@ -422,7 +444,10 @@
 
             <!-- Uncategorized Answers Bucket -->
             <div class="answer-bucket uncategorized-bucket">
-                <h4>📦 Uncategorized Answers</h4>
+                <h4 onclick="toggleBucket(this)">
+                    <span class="bucket-toggle">▼</span>
+                    📦 Uncategorized Answers
+                </h4>
                 <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized">
                     <!-- Uncategorized answers will be here initially -->
                 </div>
@@ -574,7 +599,10 @@
                 const isEmpty = bucket.answers.length === 0;
                 bucketDiv.className = `answer-bucket correct-bucket${isEmpty ? ' empty' : ''}`;
                 bucketDiv.innerHTML = `
-                    <h4>✅ ${bucket.name}</h4>
+                    <h4 onclick="toggleBucket(this)">
+                        <span class="bucket-toggle">▼</span>
+                        ✅ ${bucket.name}
+                    </h4>
                     <div class="answer-items" data-bucket="${bucket.id}">
                         ${bucket.answers.map(group => createAnswerItemHTML(group)).join('')}
                     </div>
@@ -731,54 +759,30 @@
             updateGameList();
         }
 
-        function toggleFullscreen() {
-            const gradingInterface = document.getElementById('gradingInterface');
-            const gradingContainer = document.querySelector('.grading-container');
-            const fullscreenBtn = document.getElementById('fullscreenBtn');
-            const body = document.body;
+        function toggleBucket(headerElement) {
+            const bucket = headerElement.parentElement;
+            const answerItems = bucket.querySelector('.answer-items');
+            const toggle = headerElement.querySelector('.bucket-toggle');
             
-            if (gradingInterface.classList.contains('fullscreen')) {
-                // Exit fullscreen
-                gradingInterface.classList.remove('fullscreen');
-                gradingContainer.classList.remove('fullscreen');
-                body.classList.remove('fullscreen');
-                fullscreenBtn.textContent = '⛶';
-                fullscreenBtn.title = 'Enter Fullscreen';
+            if (answerItems.classList.contains('collapsed')) {
+                answerItems.classList.remove('collapsed');
+                toggle.classList.remove('collapsed');
             } else {
-                // Enter fullscreen
-                gradingInterface.classList.add('fullscreen');
-                gradingContainer.classList.add('fullscreen');
-                body.classList.add('fullscreen');
-                fullscreenBtn.textContent = '⛶';
-                fullscreenBtn.title = 'Exit Fullscreen';
+                answerItems.classList.add('collapsed');
+                toggle.classList.add('collapsed');
             }
         }
 
         // Event listeners
         document.getElementById('applyCategorizationBtn').addEventListener('click', applyCategorization);
         document.getElementById('backToGamesBtn').addEventListener('click', backToGames);
-        document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
             initializeConnection();
         });
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            const gradingInterface = document.getElementById('gradingInterface');
-            
-            // Escape key to exit fullscreen
-            if (e.key === 'Escape' && gradingInterface.classList.contains('fullscreen')) {
-                toggleFullscreen();
-            }
-            
-            // F11 key to toggle fullscreen
-            if (e.key === 'F11') {
-                e.preventDefault();
-                toggleFullscreen();
-            }
-        });
+
     </script>
 </body>
 </html> 
