@@ -851,7 +851,6 @@ io.on('connection', (socket) => {
             // Only add to player list if not the host
             if (playerName !== game.hostId) {
                 game.addPlayer(socket.id, playerName);
-                console.log('👤 Player', playerName, 'added to game', gameCode);
                 
                 // Notify everyone in the game room about the new player
                 io.to(gameCode).emit('playerJoined', game.getGameState());

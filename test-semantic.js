@@ -1,12 +1,12 @@
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 async function testSemanticMatch() {
     console.log('🧪 Testing Semantic Matcher Service...\n');
     
     const testData = {
-        question: "Name an animal that lives in the ocean",
-        correct_answers: ["whale", "dolphin", "shark", "fish"],
-        responses: ["orca", "sea creature", "mammal", "car", "whale", "dolphin", "shark"]
+        question: "What is your Chinese zodiac sign?",
+        correct_answers: ["rat", "ox", "tiger", "rabbit", "dragon", "snake", "horse", "goat", "monkey", "rooster", "dog", "pig"],
+        responses: ["mouse", "bull", "feline", "cat", "horse", "sheep", "chicken", "canine"]
     };
 
     console.log('📝 Question:', testData.question);
