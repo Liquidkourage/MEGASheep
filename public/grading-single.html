@@ -256,6 +256,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
+            grid-auto-flow: row;
         }
 
         .answer-bucket {
@@ -1397,6 +1398,8 @@
                 correctAnswer: correctAnswer,
                 answers: []
             })).sort((a, b) => a.name.localeCompare(b.name));
+            
+            console.log('📝 Sorted bucket order:', correctAnswerBuckets.map(b => b.name));
             
             // Get responses for semantic matching
             const responses = (currentGame.currentAnswerGroups || []).map(group => group.answer);
