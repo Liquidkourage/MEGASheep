@@ -1591,11 +1591,13 @@
             // Restore saved grading state if available
             setTimeout(() => {
                 restoreGradingState();
-                // Save initial state after restore
+                // Save initial state after restore (with longer delay to ensure DOM is ready)
                 setTimeout(() => {
                     console.log('💾 Saving initial state after restore');
+                    console.log('💾 DOM check - uncategorized items:', document.querySelectorAll('#uncategorizedAnswers .answer-item').length);
+                    console.log('💾 DOM check - uncategorized container children:', document.getElementById('uncategorizedAnswers')?.children.length);
                     saveGradingState();
-                }, 200);
+                }, 500);
             }, 100);
         }
 
@@ -2165,11 +2167,14 @@
                         return;
                     }
                     
-                    // Clear existing items
-                    dropZone.innerHTML = '';
-                    
-                    // Add saved items
-                    state.buckets[bucketId].forEach(item => {
+                    // Only clear and restore if there are items to restore
+                    if (state.buckets[bucketId].length > 0) {
+                        console.log(`📂 Clearing and restoring ${state.buckets[bucketId].length} items for bucket: ${bucketId}`);
+                        // Clear existing items
+                        dropZone.innerHTML = '';
+                        
+                        // Add saved items
+                        state.buckets[bucketId].forEach(item => {
                         console.log(`📂 Restoring item: "${item.answerText}" to bucket "${bucketId}"`);
                         
                         // Extract confidence percentage from the saved confidence text
@@ -2189,6 +2194,9 @@
                         );
                         dropZone.appendChild(answerItem);
                     });
+                    } else {
+                        console.log(`📂 No items to restore for bucket: ${bucketId}, keeping existing content`);
+                    }
                 });
                 
                 // Re-setup drag and drop
