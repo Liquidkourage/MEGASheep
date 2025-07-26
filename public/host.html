@@ -1048,7 +1048,7 @@
                 const wrongAnswers = [];
                 const uncategorizedAnswers = [];
                 
-                data.currentAnswerGroups.forEach(group => {
+                (data.currentAnswerGroups || []).forEach(group => {
                     if (group.category === 'correct') {
                         correctAnswers.push(group);
                     } else if (group.category === 'wrong') {
