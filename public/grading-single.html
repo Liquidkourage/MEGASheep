@@ -2319,17 +2319,33 @@
             
             // Auto-save on page unload
             window.addEventListener('beforeunload', () => {
+                console.log('🔄 Window beforeunload - saving state');
                 saveGradingState();
             });
             
-            // Auto-save every 30 seconds as backup (start after 30 seconds to avoid immediate save)
+            // Auto-save on page hide (for mobile browsers and some popup scenarios)
+            window.addEventListener('pagehide', () => {
+                console.log('🔄 Window pagehide - saving state');
+                saveGradingState();
+            });
+            
+            // Auto-save on visibility change (when tab becomes hidden)
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    console.log('🔄 Page visibility hidden - saving state');
+                    saveGradingState();
+                }
+            });
+            
+            // Auto-save every 10 seconds as backup (more frequent to catch changes)
             setTimeout(() => {
                 setInterval(() => {
                     if (currentGame && currentGame.currentQuestionData) {
+                        console.log('🔄 Periodic auto-save (10s)');
                         saveGradingState();
                     }
-                }, 30000);
-            }, 30000);
+                }, 10000);
+            }, 10000);
         });
 
 
