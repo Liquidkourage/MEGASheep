@@ -2035,14 +2035,20 @@
             };
             
             // Save state for each bucket
-            document.querySelectorAll('.answer-bucket').forEach(bucket => {
+            const allBuckets = document.querySelectorAll('.answer-bucket');
+            console.log(`🔍 Debug: Found ${allBuckets.length} total buckets:`, Array.from(allBuckets).map(b => b.dataset.bucketId));
+            
+            allBuckets.forEach(bucket => {
                 const bucketId = bucket.dataset.bucketId;
                 if (!bucketId) {
                     console.log('⚠️ Bucket without bucketId found:', bucket);
                     return;
                 }
                 
+                console.log(`🔍 Debug: Checking bucket "${bucketId}"`);
                 const answerItems = bucket.querySelectorAll('.answer-item');
+                console.log(`🔍 Debug: Found ${answerItems.length} answer items in bucket "${bucketId}"`);
+                
                 const items = [];
                 
                 answerItems.forEach(item => {
