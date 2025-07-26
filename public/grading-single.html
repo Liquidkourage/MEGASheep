@@ -1763,6 +1763,8 @@
             const bucket = e.target.closest('.answer-bucket');
             const dropZone = bucket.querySelector('.answer-items');
             console.log('🎯 Bucket drop zone found:', dropZone);
+            console.log('🎯 Dragged element:', draggedElement);
+            console.log('🎯 Dragged element data-answer-text:', draggedElement?.dataset.answerText);
             
             // Remove drag-over class from any elements
             document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
@@ -1777,6 +1779,7 @@
                 updateCountBadges();
                 
                 // Auto-save after drop
+                console.log('🎯 Triggering auto-save after drop');
                 autoSave();
             } else {
                 console.log('🎯 Bucket drop failed:', { draggedElement: !!draggedElement, dropZone: !!dropZone });
@@ -2104,9 +2107,11 @@
             }
             
             const stateKey = `grading_state_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`;
+            console.log('💾 Saving to localStorage with key:', stateKey);
             localStorage.setItem(stateKey, JSON.stringify(state));
             
             console.log('💾 Saved grading state:', state);
+            console.log('💾 localStorage now contains:', Object.keys(localStorage).filter(key => key.startsWith('grading_state_')));
             
             // Show save indicator
             showSaveIndicator();
@@ -2117,6 +2122,9 @@
             if (!currentGame || !currentGame.currentQuestionData) return;
             
             const stateKey = `grading_state_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`;
+            console.log('📂 Looking for saved state with key:', stateKey);
+            console.log('📂 Available localStorage keys:', Object.keys(localStorage).filter(key => key.startsWith('grading_state_')));
+            
             const savedState = localStorage.getItem(stateKey);
             
             if (!savedState) {
@@ -2272,7 +2280,11 @@
         
         // Auto-save on drag and drop
         function autoSave() {
-            setTimeout(saveGradingState, 100); // Small delay to ensure DOM is updated
+            console.log('🔄 Auto-save triggered');
+            setTimeout(() => {
+                console.log('🔄 Executing auto-save...');
+                saveGradingState();
+            }, 100); // Small delay to ensure DOM is updated
         }
         
         // Initialize when page loads
