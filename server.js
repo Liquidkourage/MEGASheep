@@ -111,6 +111,7 @@ class Game {
     this.timerInterval = null;
     this.isTestMode = false;
         this.currentAnswerGroups = [];
+        this.categorizationData = null;
     }
 
     addPlayer(socketId, playerName) {
@@ -244,6 +245,7 @@ class Game {
       scores: Object.fromEntries(this.scores),
       questions: this.questions,
             currentAnswerGroups: this.currentAnswerGroups,
+            categorizationData: this.categorizationData || null,
       timeLeft: this.timeLeft,
       roundHistory: this.roundHistory,
             questionsPerRound: this.settings.questionsPerRound,
@@ -1080,7 +1082,7 @@ io.on('connection', (socket) => {
         
         // Store categorized answers if provided
         if (categorizedAnswers) {
-            game.currentAnswerGroups = categorizedAnswers;
+            game.categorizationData = categorizedAnswers;
         }
         
         // Move to scoring phase to show results

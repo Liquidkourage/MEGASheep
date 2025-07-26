@@ -913,6 +913,16 @@
                 updatePlayerListWithResponses();
             });
             
+            socket.on('questionComplete', (data) => {
+                console.log('Question completed, updating game state:', data);
+                currentGame = data;
+                gameState = 'grading';
+                updateGameDisplay();
+                updatePlayerList();
+                updateGameControls();
+                updateLobbyDisplay();
+            });
+            
             socket.on('gameStateUpdate', (data) => {
                 if (data.gameState) {
                     currentGame = data.gameState;
@@ -923,6 +933,8 @@
             socket.on('gradingComplete', (data) => {
                 gameState = 'scoring';
                 showScoringPanel(data);
+                updateGameControls();
+                updateLobbyDisplay();
             });
             
             socket.on('error', (error) => {
@@ -957,7 +969,31 @@
             document.getElementById('gameCodeDisplay').textContent = currentGame.gameCode;
             document.getElementById('playerCount').textContent = currentGame.players.size || 0;
             
+            updateLobbyDisplay();
             updatePlayerList();
+        }
+        
+        // Update lobby display
+        function updateLobbyDisplay() {
+            const lobbyContent = document.querySelector('.lobby-content');
+            if (!lobbyContent) return;
+            
+            const lobbyTitle = lobbyContent.querySelector('h3');
+            const lobbyText = lobbyContent.querySelector('p');
+            
+            if (gameState === 'waiting') {
+                lobbyTitle.textContent = 'Game Lobby';
+                lobbyText.textContent = 'Waiting for players to join...';
+            } else if (gameState === 'playing') {
+                lobbyTitle.textContent = 'Game in Progress';
+                lobbyText.textContent = 'Players are answering questions...';
+            } else if (gameState === 'grading') {
+                lobbyTitle.textContent = 'Grading Phase';
+                lobbyText.textContent = 'Grading player responses...';
+            } else if (gameState === 'scoring') {
+                lobbyTitle.textContent = 'Scoring Phase';
+                lobbyText.textContent = 'Question completed - view results below';
+            }
         }
 
         // Update player list
@@ -978,7 +1014,7 @@
                 
                 // Check if player has a response for the current question
                 let responseDisplay = '';
-                if (gameState === 'playing' && currentGame.currentAnswerGroups) {
+                if ((gameState === 'playing' || gameState === 'grading') && currentGame.currentAnswerGroups) {
                     const playerResponse = currentGame.currentAnswerGroups.find(group => 
                         group.players && group.players.includes(player.name)
                     );
@@ -989,7 +1025,7 @@
                                 <span class="response-text">"${playerResponse.answer}"</span>
                             </div>
                         `;
-                    } else {
+                    } else if (gameState === 'playing') {
                         responseDisplay = `
                             <div class="player-response">
                                 <span class="response-label">Status:</span>
@@ -1021,10 +1057,19 @@
             if (gameState === 'waiting') {
                 startBtn.textContent = 'START GAME';
                 startBtn.className = 'control-btn success';
+                startBtn.disabled = false;
             } else if (gameState === 'playing') {
                 startBtn.textContent = 'GAME IN PROGRESS';
                 startBtn.className = 'control-btn secondary';
                 startBtn.disabled = true;
+            } else if (gameState === 'grading') {
+                startBtn.textContent = 'GRADING IN PROGRESS';
+                startBtn.className = 'control-btn warning';
+                startBtn.disabled = true;
+            } else if (gameState === 'scoring') {
+                startBtn.textContent = 'NEXT QUESTION';
+                startBtn.className = 'control-btn success';
+                startBtn.disabled = false;
             }
         }
 

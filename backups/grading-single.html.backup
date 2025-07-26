@@ -514,7 +514,7 @@
             </div>
 
             <div class="grading-controls">
-                <button id="applyCategorizationBtn" class="control-btn success">Apply Categorization</button>
+                <button id="applyCategorizationBtn" class="control-btn success">Complete Grading</button>
             </div>
         </div>
     </div>
@@ -581,10 +581,19 @@
                 console.error('Socket error:', error);
                 alert('Error: ' + error.message);
             });
+            
+            socket.on('gradingComplete', (data) => {
+                console.log('✅ Grading completed successfully!', data);
+                alert('✅ Grading completed successfully! The game has moved to the scoring phase.');
+                backToGames();
+            });
         }
 
         function connectToHostGame(gameCode) {
-            // Request the specific game state
+            // First, identify as the host for this game
+            socket.emit('host-reconnect', { gameCode: gameCode });
+            
+            // Then request the specific game state
             socket.emit('getGameState', { gameCode: gameCode });
         }
 
@@ -674,7 +683,7 @@
             })).sort((a, b) => a.name.localeCompare(b.name));
             
             // Get responses for semantic matching
-            const responses = currentGame.currentAnswerGroups.map(group => group.answer);
+            const responses = (currentGame.currentAnswerGroups || []).map(group => group.answer);
             const answersToRemove = [];
             
             try {
@@ -689,7 +698,7 @@
                 
                 // Process semantic matches
                 semanticMatches.forEach(match => {
-                    const answerGroup = currentGame.currentAnswerGroups.find(group => group.answer === match.response);
+                    const answerGroup = (currentGame.currentAnswerGroups || []).find(group => group.answer === match.response);
                     if (!answerGroup) return;
                     
                     if (match.confidence >= 80 && match.best_match) {
@@ -719,7 +728,7 @@
                 console.error('❌ Semantic matching failed, falling back to exact matching:', error);
                 
                 // Fallback to exact matching
-                currentGame.currentAnswerGroups.forEach(answerGroup => {
+                (currentGame.currentAnswerGroups || []).forEach(answerGroup => {
                     const matchingBucket = correctAnswerBuckets.find(bucket => {
                         const normalizedAnswer = normalizeAnswer(answerGroup.answer);
                         const normalizedCorrect = normalizeAnswer(bucket.correctAnswer);
@@ -753,7 +762,7 @@
             });
             
             // Populate uncategorized answers (non-matching)
-            const uncategorizedAnswers = currentGame.currentAnswerGroups.filter(group => 
+            const uncategorizedAnswers = (currentGame.currentAnswerGroups || []).filter(group => 
                 !answersToRemove.includes(group.answer)
             );
             
