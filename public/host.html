@@ -275,6 +275,13 @@
             color: #ffffff;
             font-style: italic;
         }
+        
+        .response-points {
+            color: #28a745;
+            font-weight: bold;
+            font-size: 12px;
+            margin-left: 8px;
+        }
 
         .response-status {
             color: #ffc107;
@@ -752,6 +759,7 @@
                     </div>
                     <div class="host-controls">
                         <button id="startGameBtn" class="control-btn success">START GAME</button>
+                        <button id="endGameBtn" class="control-btn" style="background: linear-gradient(135deg, #dc3545, #c82333);">🛑 END GAME</button>
                         <button id="gradingBtn" class="control-btn secondary">📝 GRADING INTERFACE</button>
                         <button id="multiGradingBtn" class="control-btn success">👥 MULTI-USER GRADING</button>
                         <button id="testGameBtn" class="control-btn warning">▶️ TEST GAME</button>
@@ -900,17 +908,84 @@
             });
             
             socket.on('gameStarted', (data) => {
+                console.log('🎮 Game started, updating state to playing');
+                console.log('📊 Game started data:', data);
                 gameState = 'playing';
+                console.log('✅ gameState set to:', gameState);
+                // Initialize currentAnswerGroups array for tracking responses
+                if (currentGame) {
+                    currentGame.currentAnswerGroups = [];
+                }
                 updateGameControls();
                 updatePlayerList();
+                updateLobbyDisplay();
+                
+                // Auto-open grading interface when game starts (same as grading button)
+                console.log('🎯 Auto-opening grading interface when game starts');
+                openGradingSingleModal();
             });
             
+
+            
             socket.on('gameEnded', (data) => {
-                gameState = 'finished';
+                console.log('Game completely ended by host:', data);
+                gameState = 'waiting';
+                // Reset current game state
+                if (currentGame) {
+                    currentGame.gameState = 'waiting';
+                    currentGame.currentAnswerGroups = [];
+                    currentGame.categorizationData = null;
+                }
+                updateGameDisplay();
+                updatePlayerList();
+                updateGameControls();
+                updateLobbyDisplay();
+                
+                // Hide scoring panel if it's visible
+                document.getElementById('scoringPanel').style.display = 'none';
+                
+                alert('Game has been ended. The game is now reset and ready for a new round.');
             });
             
             socket.on('answerSubmitted', (data) => {
-                updatePlayerListWithResponses();
+                console.log('🎯 Answer submitted event received:', data);
+                console.log('📊 Current game state:', gameState);
+                console.log('📊 Current game:', currentGame);
+                
+                // Update the current game with the new answer
+                if (currentGame && currentGame.currentAnswerGroups) {
+                    console.log('📝 Updating currentAnswerGroups with new answer');
+                    // Find if this player already has an answer
+                    const existingIndex = currentGame.currentAnswerGroups.findIndex(group =>
+                        group.players && group.players.includes(data.playerName)
+                    );
+
+                    if (existingIndex >= 0) {
+                        // Update existing answer
+                        console.log('🔄 Updating existing answer for player:', data.playerName);
+                        currentGame.currentAnswerGroups[existingIndex].answer = data.answer;
+                    } else {
+                        // Add new answer group
+                        console.log('➕ Adding new answer group for player:', data.playerName);
+                        currentGame.currentAnswerGroups.push({
+                            answer: data.answer,
+                            players: [data.playerName],
+                            count: 1,
+                            points: 0
+                        });
+                    }
+                    console.log('📊 Updated currentAnswerGroups:', currentGame.currentAnswerGroups);
+                } else {
+                    console.log('❌ Cannot update - currentGame or currentAnswerGroups is null');
+                }
+                updatePlayerList();
+            });
+            
+            socket.on('gameStateUpdate', (data) => {
+                if (data.gameState) {
+                    currentGame = data.gameState;
+                    updatePlayerList();
+                }
             });
             
             socket.on('questionComplete', (data) => {
@@ -921,20 +996,47 @@
                 updatePlayerList();
                 updateGameControls();
                 updateLobbyDisplay();
-            });
-            
-            socket.on('gameStateUpdate', (data) => {
-                if (data.gameState) {
-                    currentGame = data.gameState;
-                    updatePlayerList();
+                
+                // Auto-open grading interface when question completes (only if not already open)
+                const gradingModal = document.getElementById('gradingSingleModal');
+                if (gradingModal.style.display !== 'block' && (!window.gradingWindow || window.gradingWindow.closed)) {
+                    console.log('🎯 Auto-opening grading interface for completed question');
+                    openGradingWindow();
+                } else {
+                    console.log('🔄 Grading interface already open, skipping auto-open');
                 }
             });
-            
+
             socket.on('gradingComplete', (data) => {
+                console.log('📊 Grading complete received:', data);
                 gameState = 'scoring';
+                // Update currentGame with the new data that includes recalculated scores
+                if (data) {
+                    currentGame = data;
+                    console.log('📊 Updated currentGame with new scoring data:', currentGame);
+                }
                 showScoringPanel(data);
                 updateGameControls();
                 updateLobbyDisplay();
+                updatePlayerList(); // Update player list to show new scores
+            });
+            
+            socket.on('nextQuestion', (data) => {
+                console.log('🔄 Next question received:', data);
+                currentGame = data;
+                gameState = 'playing';
+                updateGameDisplay();
+                updatePlayerList();
+                updateGameControls();
+                updateLobbyDisplay();
+                // Hide scoring panel when moving to next question
+                document.getElementById('scoringPanel').style.display = 'none';
+                
+                // Auto-open grading interface when first question starts (for preparation)
+                if (data.currentQuestion === 0) {
+                    console.log('🎯 Auto-opening grading interface for first question');
+                    openGradingWindow();
+                }
             });
             
             socket.on('error', (error) => {
@@ -972,33 +1074,14 @@
             updateLobbyDisplay();
             updatePlayerList();
         }
-        
-        // Update lobby display
-        function updateLobbyDisplay() {
-            const lobbyContent = document.querySelector('.lobby-content');
-            if (!lobbyContent) return;
-            
-            const lobbyTitle = lobbyContent.querySelector('h3');
-            const lobbyText = lobbyContent.querySelector('p');
-            
-            if (gameState === 'waiting') {
-                lobbyTitle.textContent = 'Game Lobby';
-                lobbyText.textContent = 'Waiting for players to join...';
-            } else if (gameState === 'playing') {
-                lobbyTitle.textContent = 'Game in Progress';
-                lobbyText.textContent = 'Players are answering questions...';
-            } else if (gameState === 'grading') {
-                lobbyTitle.textContent = 'Grading Phase';
-                lobbyText.textContent = 'Grading player responses...';
-            } else if (gameState === 'scoring') {
-                lobbyTitle.textContent = 'Scoring Phase';
-                lobbyText.textContent = 'Question completed - view results below';
-            }
-        }
 
         // Update player list
         function updatePlayerList() {
             if (!currentGame) return;
+            
+            console.log('🔄 updatePlayerList called');
+            console.log('📊 gameState:', gameState);
+            console.log('📊 currentAnswerGroups:', currentGame.currentAnswerGroups);
             
             const playerList = document.getElementById('playerList');
             const playerCount = document.getElementById('playerCount');
@@ -1014,18 +1097,24 @@
                 
                 // Check if player has a response for the current question
                 let responseDisplay = '';
-                if ((gameState === 'playing' || gameState === 'grading') && currentGame.currentAnswerGroups) {
-                    const playerResponse = currentGame.currentAnswerGroups.find(group => 
+                let questionPoints = 0;
+                
+                if ((gameState === 'playing' || gameState === 'grading' || gameState === 'scoring') && currentGame.currentAnswerGroups) {
+                    const playerResponse = currentGame.currentAnswerGroups.find(group =>
                         group.players && group.players.includes(player.name)
                     );
                     if (playerResponse) {
+                        console.log('✅ Found response for player:', player.name, 'Answer:', playerResponse.answer, 'Points:', playerResponse.points);
+                        questionPoints = playerResponse.points || 0;
                         responseDisplay = `
                             <div class="player-response">
                                 <span class="response-label">Answer:</span>
                                 <span class="response-text">"${playerResponse.answer}"</span>
+                                ${gameState === 'scoring' ? `<span class="response-points">(+${questionPoints} pts)</span>` : ''}
                             </div>
                         `;
                     } else if (gameState === 'playing') {
+                        console.log('⏳ Player waiting for answer:', player.name);
                         responseDisplay = `
                             <div class="player-response">
                                 <span class="response-label">Status:</span>
@@ -1057,25 +1146,76 @@
             if (gameState === 'waiting') {
                 startBtn.textContent = 'START GAME';
                 startBtn.className = 'control-btn success';
-                startBtn.disabled = false;
             } else if (gameState === 'playing') {
                 startBtn.textContent = 'GAME IN PROGRESS';
                 startBtn.className = 'control-btn secondary';
                 startBtn.disabled = true;
-            } else if (gameState === 'grading') {
-                startBtn.textContent = 'GRADING IN PROGRESS';
-                startBtn.className = 'control-btn warning';
-                startBtn.disabled = true;
-            } else if (gameState === 'scoring') {
-                startBtn.textContent = 'NEXT QUESTION';
-                startBtn.className = 'control-btn success';
-                startBtn.disabled = false;
             }
         }
 
         // Update player list when answers are submitted
         function updatePlayerListWithResponses() {
             updatePlayerList();
+        }
+
+        // Update game controls based on current state
+        function updateGameControls() {
+            const startBtn = document.getElementById('startGameBtn');
+            const endGameBtn = document.getElementById('endGameBtn');
+            
+            console.log('🔄 updateGameControls called with gameState:', gameState);
+            console.log('🔍 endGameBtn element:', endGameBtn);
+            
+            if (gameState === 'waiting') {
+                startBtn.textContent = 'START GAME';
+                startBtn.className = 'control-btn success';
+                startBtn.disabled = false;
+                endGameBtn.style.display = 'none'; // Hide end game button when waiting
+                console.log('⏳ Game state: waiting - End Game button hidden');
+            } else if (gameState === 'playing') {
+                startBtn.textContent = 'GAME IN PROGRESS';
+                startBtn.className = 'control-btn secondary';
+                startBtn.disabled = true;
+                endGameBtn.style.display = 'inline-flex'; // Show end game button when playing
+                console.log('🎮 Game state: playing - End Game button shown');
+            } else if (gameState === 'grading') {
+                startBtn.textContent = 'GRADING IN PROGRESS';
+                startBtn.className = 'control-btn warning';
+                startBtn.disabled = true;
+                endGameBtn.style.display = 'inline-flex';
+                console.log('📝 Game state: grading - End Game button shown');
+            } else if (gameState === 'scoring') {
+                startBtn.textContent = 'NEXT QUESTION';
+                startBtn.className = 'control-btn success';
+                startBtn.disabled = false;
+                endGameBtn.style.display = 'inline-flex';
+                console.log('🏆 Game state: scoring - End Game button shown');
+            } else {
+                console.log('❓ Unknown game state:', gameState);
+            }
+        }
+
+        // Update lobby display
+        function updateLobbyDisplay() {
+            const lobbyContent = document.querySelector('.lobby-content');
+            if (!lobbyContent) return;
+
+            const lobbyTitle = lobbyContent.querySelector('h3');
+            const lobbyText = lobbyContent.querySelector('p');
+
+            if (gameState === 'waiting') {
+                lobbyTitle.textContent = 'Game Lobby';
+                lobbyText.textContent = 'Waiting for players to join...';
+            } else if (gameState === 'playing') {
+                lobbyTitle.textContent = 'Game in Progress';
+                lobbyText.textContent = 'Players are answering questions...';
+            } else if (gameState === 'grading') {
+                lobbyTitle.textContent = 'Grading Phase';
+                lobbyText.textContent = 'Grading player responses...';
+            } else if (gameState === 'scoring') {
+                lobbyTitle.textContent = 'Scoring Phase';
+                lobbyText.textContent = 'Question completed - view results below';
+            }
         }
 
         // Show scoring panel
@@ -1204,6 +1344,8 @@
         document.getElementById('startGameBtn').addEventListener('click', () => {
             if (gameState === 'waiting' && currentGame) {
                 socket.emit('startGame', { gameCode: currentGame.gameCode });
+            } else if (gameState === 'scoring' && currentGame) {
+                socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
             }
         });
 
@@ -1217,6 +1359,12 @@
             socket.emit('refresh-questions');
         });
 
+        document.getElementById('endGameBtn').addEventListener('click', () => {
+            if (currentGame && confirm('Are you sure you want to end the current game? This will reset the game state and remove all players.')) {
+                socket.emit('endGame', { gameCode: currentGame.gameCode });
+            }
+        });
+
         // Grading modal functions
         function openGradingSingleModal() {
             document.getElementById('gradingSingleModal').style.display = 'block';
@@ -1226,6 +1374,29 @@
             const gameCode = currentGame ? currentGame.gameCode : null;
             const url = gameCode ? `/grading-single?gameCode=${gameCode}` : '/grading-single';
             document.getElementById('gradingSingleFrame').src = url;
+        }
+        
+        // Function to open grading interface in new window (for automatic opening)
+        function openGradingWindow() {
+            // Check if grading window is already open
+            if (window.gradingWindow && !window.gradingWindow.closed) {
+                console.log('🔄 Grading window already open, focusing existing window');
+                window.gradingWindow.focus();
+                return;
+            }
+            
+            const gameCode = currentGame ? currentGame.gameCode : null;
+            const url = gameCode ? `/grading-single?gameCode=${gameCode}` : '/grading-single';
+            window.gradingWindow = window.open(url, 'grading', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+            
+            // Focus the window if it was successfully opened
+            if (window.gradingWindow) {
+                window.gradingWindow.focus();
+                console.log('✅ Grading window opened successfully');
+            } else {
+                console.log('⚠️ Popup blocked - falling back to modal');
+                openGradingSingleModal();
+            }
         }
 
         // Function to get current game code for the grading interface

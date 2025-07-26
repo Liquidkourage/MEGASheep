@@ -1725,8 +1725,15 @@ function displayQuestionResults() {
         gameState.currentAnswerGroups.forEach(group => {
             const answerItem = document.createElement('div');
             answerItem.className = 'answer-item';
+            
+            // Determine if this is a wrong/uncategorized answer (0 points)
+            const isWrongOrUncategorized = group.points === 0;
+            const statusIcon = isWrongOrUncategorized ? '❌' : '✅';
+            const statusClass = isWrongOrUncategorized ? 'wrong-answer' : 'correct-answer';
+            
             answerItem.innerHTML = `
-                <div class="answer-info">
+                <div class="answer-info ${statusClass}">
+                    <span class="answer-status">${statusIcon}</span>
                     <span class="answer-text">"${group.answer}"</span>
                     <span class="answer-formula">${group.totalResponses} ÷ ${group.count} = ${group.points} pts</span>
                 </div>
@@ -1805,8 +1812,15 @@ function displayRoundResults() {
         gameState.currentAnswerGroups.forEach(group => {
             const answerItem = document.createElement('div');
             answerItem.className = 'answer-item';
+            
+            // Determine if this is a wrong/uncategorized answer (0 points)
+            const isWrongOrUncategorized = group.points === 0;
+            const statusIcon = isWrongOrUncategorized ? '❌' : '✅';
+            const statusClass = isWrongOrUncategorized ? 'wrong-answer' : 'correct-answer';
+            
             answerItem.innerHTML = `
-                <div class="answer-info">
+                <div class="answer-info ${statusClass}">
+                    <span class="answer-status">${statusIcon}</span>
                     <span class="answer-text">"${group.answer}"</span>
                     <span class="answer-formula">${group.totalResponses} ÷ ${group.count} = ${group.points} pts</span>
                 </div>

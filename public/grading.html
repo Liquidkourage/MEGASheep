@@ -471,6 +471,48 @@
             margin-bottom: 20px;
         }
         
+        /* Animation for notifications */
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        /* Persistence indicator */
+        .persistence-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 123, 255, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 9999;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+        
+        .persistence-indicator:hover {
+            opacity: 1;
+        }
+        
         .game-code-options h3 {
             color: #007bff;
             margin-bottom: 15px;
@@ -872,6 +914,9 @@
             // Join grading room for real-time collaboration
             joinGradingRoom();
             
+            // Save state after question selection
+            saveInterfaceState();
+            
             console.log('🎯 Grading room join initiated for question:', questionIndex);
         }
         
@@ -920,7 +965,7 @@
                     joinGradingSessionSocket(result.gameCode, result.questionIndex);
                     
                     // Load the grading interface
-                    loadGradingInterface(result.questionIndex);
+                    enhancedLoadGradingInterface(result.questionIndex);
                     
                     console.log(`🎮 Created grading session: ${result.gameCode}`);
                 } else {
@@ -1011,6 +1056,9 @@
             // Use real player data instead of test data
             document.getElementById('gradingAnswerCount').textContent = '0 answers (waiting for player submissions)';
             showSimpleGradingInterface(questionIndex, []);
+            
+            // Save state after loading interface
+            saveInterfaceState();
         }
         
         function copyGameCode() {
@@ -1041,7 +1089,349 @@
         document.addEventListener('DOMContentLoaded', () => {
             // Initialize socket immediately for grading page
             initializeSocket();
+            
+            // Show persistence status
+            const hasSavedState = localStorage.getItem('gradingInterfaceState') !== null;
+            console.log('📝 Persistence status:', hasSavedState ? 'Saved state found' : 'No saved state');
+            
+            // Restore any saved interface state
+            restoreInterfaceState();
+            
+            // Add persistence controls to the page for debugging
+            addPersistenceControls();
         });
+        
+        // Interface state persistence functions
+        function saveInterfaceState() {
+            try {
+                const state = {
+                    timestamp: Date.now(),
+                    currentQuestionIndex: window.currentQuestionIndex || null,
+                    currentGameCode: window.currentGameCode || null,
+                    graderId: window.graderId || null,
+                    gradingQuestions: window.gradingQuestions || [],
+                    currentGradingRoom: window.currentGradingRoom || null,
+                    // Save any UI state that should persist
+                    lastActiveSection: getCurrentActiveSection(),
+                    interfacePreferences: {
+                        theme: 'dark', // Always dark theme for grading
+                        autoOpen: true,
+                        notifications: true
+                    }
+                };
+                
+                localStorage.setItem('gradingInterfaceState', JSON.stringify(state));
+                console.log('💾 Interface state saved:', state);
+            } catch (error) {
+                console.error('❌ Failed to save interface state:', error);
+            }
+        }
+        
+        function restoreInterfaceState() {
+            try {
+                const savedState = localStorage.getItem('gradingInterfaceState');
+                if (!savedState) {
+                    console.log('📝 No saved interface state found');
+                    return;
+                }
+                
+                const state = JSON.parse(savedState);
+                const now = Date.now();
+                const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+                
+                // Check if state is too old
+                if (now - state.timestamp > maxAge) {
+                    console.log('📝 Saved state is too old, clearing');
+                    localStorage.removeItem('gradingInterfaceState');
+                    return;
+                }
+                
+                console.log('🔄 Restoring interface state:', state);
+                
+                // Show restoration indicator
+                showPersistenceIndicator('Restoring previous session...');
+                
+                // Restore global variables
+                if (state.currentQuestionIndex !== null) {
+                    window.currentQuestionIndex = state.currentQuestionIndex;
+                }
+                if (state.currentGameCode !== null) {
+                    window.currentGameCode = state.currentGameCode;
+                }
+                if (state.graderId !== null) {
+                    window.graderId = state.graderId;
+                }
+                if (state.gradingQuestions && state.gradingQuestions.length > 0) {
+                    window.gradingQuestions = state.gradingQuestions;
+                }
+                if (state.currentGradingRoom !== null) {
+                    window.currentGradingRoom = state.currentGradingRoom;
+                }
+                
+                // Restore UI state
+                restoreUIState(state);
+                
+                // Debug: Log the restored state for verification
+                console.log('🔍 Restored state verification:', {
+                    currentQuestionIndex: window.currentQuestionIndex,
+                    currentGameCode: window.currentGameCode,
+                    gradingQuestions: window.gradingQuestions ? window.gradingQuestions.length : 0,
+                    currentGradingRoom: window.currentGradingRoom
+                });
+                
+                // Attempt to reconnect to previous session if valid
+                if (state.currentGameCode && state.currentQuestionIndex !== null) {
+                    console.log('🔄 Attempting to reconnect to previous session');
+                    setTimeout(() => {
+                        attemptReconnectToSession(state.currentGameCode, state.currentQuestionIndex);
+                    }, 1000);
+                }
+                
+            } catch (error) {
+                console.error('❌ Failed to restore interface state:', error);
+                localStorage.removeItem('gradingInterfaceState');
+            }
+        }
+        
+        function getCurrentActiveSection() {
+            // Determine which section is currently active
+            if (document.getElementById('createSessionSection').style.display === 'block') {
+                return 'create';
+            } else if (document.getElementById('joinSessionSection').style.display === 'block') {
+                return 'join';
+            } else if (document.getElementById('gradingQuestionDisplay').style.display === 'block') {
+                return 'grading';
+            } else {
+                return 'initial';
+            }
+        }
+        
+        function restoreUIState(state) {
+            // Restore the active section
+            if (state.lastActiveSection) {
+                switch (state.lastActiveSection) {
+                    case 'create':
+                        showCreateSession();
+                        break;
+                    case 'join':
+                        showJoinSession();
+                        break;
+                    case 'grading':
+                        // Show grading interface if we have question data
+                        if (state.currentQuestionIndex !== null) {
+                            loadGradingInterface(state.currentQuestionIndex);
+                        }
+                        break;
+                }
+            }
+            
+            // Restore game code display if available
+            if (state.currentGameCode) {
+                const gameCodeDisplay = document.getElementById('gameCodeDisplay');
+                const gameCodeSection = document.getElementById('gameCodeSection');
+                const gameCodeInputSection = document.getElementById('gameCodeInputSection');
+                
+                if (gameCodeDisplay && gameCodeSection && gameCodeInputSection) {
+                    gameCodeDisplay.textContent = state.currentGameCode;
+                    gameCodeSection.style.display = 'block';
+                    gameCodeInputSection.style.display = 'none';
+                }
+            }
+            
+            // Restore question selector if available
+            if (state.gradingQuestions && state.gradingQuestions.length > 0) {
+                populateGradingQuestionSelector();
+                
+                // Restore selected question if available
+                if (state.currentQuestionIndex !== null) {
+                    const selectors = [
+                        document.getElementById('createQuestionSelector'),
+                        document.getElementById('joinQuestionSelector')
+                    ];
+                    
+                    selectors.forEach(selector => {
+                        if (selector) {
+                            selector.value = state.currentQuestionIndex;
+                        }
+                    });
+                }
+            }
+        }
+        
+        function attemptReconnectToSession(gameCode, questionIndex) {
+            console.log(`🔄 Attempting to reconnect to session: ${gameCode}, question ${questionIndex}`);
+            
+            // Try to join the grading session
+            if (window.gradingSocket && window.gradingSocket.connected) {
+                joinGradingSessionSocket(gameCode, questionIndex);
+                
+                // Show a notification about the reconnection
+                showReconnectionNotification(gameCode, questionIndex);
+            } else {
+                console.log('⚠️ Socket not connected, cannot reconnect to session');
+            }
+        }
+        
+        function showReconnectionNotification(gameCode, questionIndex) {
+            const notification = document.createElement('div');
+            notification.id = 'reconnectionNotification';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                animation: slideIn 0.3s ease-out;
+                max-width: 300px;
+            `;
+            notification.innerHTML = `
+                <strong>🔄 Reconnected!</strong><br>
+                Game: ${gameCode}<br>
+                Question: ${questionIndex + 1}
+            `;
+            document.body.appendChild(notification);
+            
+            // Remove notification after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 5000);
+        }
+        
+        // Save state before page unload
+        window.addEventListener('beforeunload', () => {
+            saveInterfaceState();
+        });
+        
+        // Save state periodically (every 30 seconds)
+        setInterval(() => {
+            saveInterfaceState();
+            showPersistenceIndicator('State saved');
+        }, 30000);
+        
+        // Visual indicator for persistence
+        function showPersistenceIndicator(message) {
+            let indicator = document.getElementById('persistenceIndicator');
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'persistenceIndicator';
+                indicator.className = 'persistence-indicator';
+                document.body.appendChild(indicator);
+            }
+            
+            indicator.textContent = message;
+            indicator.style.opacity = '1';
+            
+            setTimeout(() => {
+                indicator.style.opacity = '0.8';
+            }, 2000);
+        }
+        
+        // Enhanced functions that save state after important actions
+        function enhancedCreateGradingSession() {
+            return createGradingSession().then(() => {
+                saveInterfaceState();
+            });
+        }
+        
+        function enhancedJoinGradingSession() {
+            return joinGradingSession().then(() => {
+                saveInterfaceState();
+            });
+        }
+        
+        function enhancedOnGradingQuestionSelect(event) {
+            onGradingQuestionSelect(event);
+            saveInterfaceState();
+        }
+        
+        function enhancedLoadGradingInterface(questionIndex) {
+            loadGradingInterface(questionIndex);
+            
+            // Ensure player counts are properly calculated after restoration
+            setTimeout(() => {
+                recalculatePlayerCounts();
+            }, 500);
+            
+            saveInterfaceState();
+        }
+        
+        // Function to recalculate player counts from game state
+        function recalculatePlayerCounts() {
+            console.log('🔢 Recalculating player counts...');
+            
+            // Get the current game state from the server
+            if (window.currentGameCode && window.gradingSocket && window.gradingSocket.connected) {
+                window.gradingSocket.emit('getGameState', { gameCode: window.currentGameCode }, (gameState) => {
+                    if (gameState && gameState.currentAnswerGroups) {
+                        console.log('📊 Received game state with answer groups:', gameState.currentAnswerGroups);
+                        
+                        // Update the current answer groups with proper player counts
+                        window.currentAnswerGroups = gameState.currentAnswerGroups;
+                        
+                        // Force refresh of the grading interface
+                        if (window.currentQuestionIndex !== null) {
+                            loadGradingInterface(window.currentQuestionIndex);
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Function to clear saved state (useful for testing or resetting)
+        function clearSavedState() {
+            localStorage.removeItem('gradingInterfaceState');
+            showPersistenceIndicator('State cleared');
+            console.log('🗑️ Saved interface state cleared');
+        }
+        
+        // Function to manually save state
+        function manualSaveState() {
+            saveInterfaceState();
+            showPersistenceIndicator('State saved manually');
+        }
+        
+        // Add persistence controls for debugging
+        function addPersistenceControls() {
+            // Create a small debug panel
+            const debugPanel = document.createElement('div');
+            debugPanel.style.cssText = `
+                position: fixed;
+                top: 10px;
+                left: 10px;
+                background: rgba(0, 0, 0, 0.8);
+                border: 1px solid #007bff;
+                border-radius: 8px;
+                padding: 10px;
+                font-size: 12px;
+                color: white;
+                z-index: 9998;
+                opacity: 0.7;
+                transition: opacity 0.3s ease;
+            `;
+            debugPanel.innerHTML = `
+                <div style="margin-bottom: 5px;"><strong>Persistence Debug</strong></div>
+                <button onclick="manualSaveState()" style="margin: 2px; padding: 2px 6px; font-size: 10px;">Save</button>
+                <button onclick="clearSavedState()" style="margin: 2px; padding: 2px 6px; font-size: 10px;">Clear</button>
+                <button onclick="restoreInterfaceState()" style="margin: 2px; padding: 2px 6px; font-size: 10px;">Restore</button>
+                <button onclick="recalculatePlayerCounts()" style="margin: 2px; padding: 2px 6px; font-size: 10px;">Recalc</button>
+            `;
+            
+            debugPanel.addEventListener('mouseenter', () => {
+                debugPanel.style.opacity = '1';
+            });
+            
+            debugPanel.addEventListener('mouseleave', () => {
+                debugPanel.style.opacity = '0.7';
+            });
+            
+            document.body.appendChild(debugPanel);
+        }
     </script>
 </body>
 </html> 

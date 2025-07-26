@@ -112,6 +112,8 @@ class Game {
     this.isTestMode = false;
         this.currentAnswerGroups = [];
         this.categorizationData = null;
+        this.pointsForCurrentQuestion = new Map(); // socketId -> points for current question only
+        this.currentQuestionScored = false; // Track if current question has been scored
     }
 
     addPlayer(socketId, playerName) {
@@ -178,6 +180,16 @@ class Game {
       return;
     }
     
+    // If we have categorization data from grading, use that for scoring
+    if (this.categorizationData && (this.categorizationData.correctAnswerBuckets || this.categorizationData.wrong || this.categorizationData.uncategorized)) {
+      console.log(`📊 Using categorization data for scoring`);
+      this.calculateScoresFromCategorization();
+      return;
+    }
+    
+    // Otherwise, use simple text normalization (fallback)
+    console.log(`📊 Using simple text normalization for scoring (no categorization data)`);
+    
     // Group answers by normalized text
     const answerGroups = new Map();
     
@@ -189,48 +201,217 @@ class Game {
       }
       answerGroups.get(normalizedAnswer).push(socketId);
     }
-        
-        // Calculate points using Google Sheets formula: Z = Y/X rounded up
-        for (const [answer, socketIds] of answerGroups) {
-            const X = socketIds.length; // Number of responses matching this answer
-      const Y = totalResponses;   // Total number of responses
-      const Z = Math.ceil(Y / X); // Points earned (rounded up)
-      
-      // Award points to all players with this answer
-            for (const socketId of socketIds) {
-                const currentScore = this.scores.get(socketId) || 0;
-                this.scores.set(socketId, currentScore + Z);
-                
-                const player = this.players.get(socketId);
-        if (player) {
-                    player.score = this.scores.get(socketId);
+    
+    this.calculateScoresFromGroups(answerGroups, totalResponses);
+  }
+
+  calculateScoresFromCategorization() {
+    const totalResponses = this.answers.size;
+    const categorizationData = this.categorizationData;
+    
+    console.log(`📊 Calculating scores from categorization data`);
+    console.log(`📊 Categorization data:`, categorizationData);
+    
+    // Create a map of answer groups based on categorization
+    const answerGroups = new Map();
+    
+    // Process correct answer buckets
+    if (categorizationData.correctAnswerBuckets && Array.isArray(categorizationData.correctAnswerBuckets)) {
+      for (const bucket of categorizationData.correctAnswerBuckets) {
+        if (bucket.answers && Array.isArray(bucket.answers)) {
+          // Group all answers in this bucket together
+          const socketIds = [];
+          for (const answerData of bucket.answers) {
+            // Find the original answer group to get player names
+            const originalGroup = this.currentAnswerGroups.find(group => 
+              group.answer === answerData.answer
+            );
+            if (originalGroup && originalGroup.players) {
+              // Find socket IDs for these players
+              for (const playerName of originalGroup.players) {
+                for (const [socketId, player] of this.players) {
+                  if (player.name === playerName) {
+                    socketIds.push(socketId);
+                    break;
+                  }
                 }
+              }
             }
+          }
+          
+          if (socketIds.length > 0) {
+            // Use the bucket ID as the group key for scoring purposes
+            answerGroups.set(bucket.id, socketIds);
+            console.log(`📊 Grouped bucket "${bucket.id}" with ${socketIds.length} players from answers: ${bucket.answers.map(a => a.answer).join(', ')}`);
+          }
         }
-        
-        // Store answer groups for display
-        this.currentAnswerGroups = Array.from(answerGroups.entries()).map(([answer, socketIds]) => {
-            const X = socketIds.length;
+      }
+    }
+    
+    // Process wrong answers (each gets their own group)
+    if (categorizationData.wrong && Array.isArray(categorizationData.wrong)) {
+      for (const answerData of categorizationData.wrong) {
+        const originalGroup = this.currentAnswerGroups.find(group => 
+          group.answer === answerData.answer
+        );
+        if (originalGroup && originalGroup.players) {
+          const socketIds = [];
+          for (const playerName of originalGroup.players) {
+            for (const [socketId, player] of this.players) {
+              if (player.name === playerName) {
+                socketIds.push(socketId);
+                break;
+              }
+            }
+          }
+          if (socketIds.length > 0) {
+            answerGroups.set(answerData.answer, socketIds);
+            console.log(`📊 Wrong answer "${answerData.answer}" with ${socketIds.length} players`);
+          }
+        }
+      }
+    }
+    
+    // Process uncategorized answers (each gets their own group)
+    if (categorizationData.uncategorized && Array.isArray(categorizationData.uncategorized)) {
+      for (const answerData of categorizationData.uncategorized) {
+        const originalGroup = this.currentAnswerGroups.find(group => 
+          group.answer === answerData.answer
+        );
+        if (originalGroup && originalGroup.players) {
+          const socketIds = [];
+          for (const playerName of originalGroup.players) {
+            for (const [socketId, player] of this.players) {
+              if (player.name === playerName) {
+                socketIds.push(socketId);
+                break;
+              }
+            }
+          }
+          if (socketIds.length > 0) {
+            answerGroups.set(answerData.answer, socketIds);
+            console.log(`📊 Uncategorized answer "${answerData.answer}" with ${socketIds.length} players`);
+          }
+        }
+      }
+    }
+    
+    this.calculateScoresFromGroups(answerGroups, totalResponses);
+  }
+
+  calculateScoresFromGroups(answerGroups, totalResponses) {
+    // Clear previous question points
+    this.pointsForCurrentQuestion.clear();
+    
+    // Calculate points using Google Sheets formula: Z = Y/X rounded up
+    for (const [answer, socketIds] of answerGroups) {
+      const X = socketIds.length; // Number of responses matching this answer
+      const Y = totalResponses;   // Total number of responses
+      
+      // Determine if this is a correct answer (bucket ID) or wrong/uncategorized
+      const isCorrectAnswer = answer.startsWith('correct_');
+      const Z = isCorrectAnswer ? Math.ceil(Y / X) : 0; // 0 points for wrong/uncategorized answers
+      
+      console.log(`📊 Answer "${answer}": ${X} players, ${Y} total responses, ${Z} points each (${isCorrectAnswer ? 'correct' : 'wrong/uncategorized'})`);
+      
+      // Store points for this question (but don't add to cumulative score yet)
+      for (const socketId of socketIds) {
+        this.pointsForCurrentQuestion.set(socketId, Z);
+      }
+    }
+    
+    // Store answer groups for display with original answer text
+    this.currentAnswerGroups = [];
+    
+    // For each group, create entries with the original answer text for each player
+    for (const [groupKey, socketIds] of answerGroups.entries()) {
+      const X = socketIds.length;
       const Y = totalResponses;
       const Z = Math.ceil(Y / X);
       
-      return {
-        answer,
-        count: X,
-        points: Z,
-        totalResponses: Y,
-                players: socketIds.map(id => {
-                    const player = this.players.get(id);
-                    return player ? player.name : 'Unknown';
+      // If this is a bucket ID (starts with 'correct_'), find the original answers
+      if (groupKey.startsWith('correct_') && this.categorizationData) {
+        const bucket = this.categorizationData.correctAnswerBuckets.find(b => b.id === groupKey);
+        if (bucket && bucket.answers) {
+          // Create a separate entry for each original answer in this bucket
+          for (const answerData of bucket.answers) {
+            // Find which players had this specific answer
+            const playersWithThisAnswer = socketIds.filter(socketId => {
+              const player = this.players.get(socketId);
+              if (!player) return false;
+              
+              // Check if this player's original answer matches
+              const originalAnswer = this.answers.get(socketId);
+              return originalAnswer && originalAnswer.toLowerCase().trim() === answerData.answer.toLowerCase().trim();
+            });
+            
+            if (playersWithThisAnswer.length > 0) {
+              this.currentAnswerGroups.push({
+                answer: answerData.answer, // Use the original answer text
+                count: playersWithThisAnswer.length,
+                points: Z,
+                totalResponses: Y,
+                players: playersWithThisAnswer.map(id => {
+                  const player = this.players.get(id);
+                  return player ? player.name : 'Unknown';
                 })
-      };
-    });
+              });
+            }
+          }
+        }
+      } else {
+        // For wrong/uncategorized answers, use the group key as the answer
+        // Wrong and uncategorized answers always get 0 points
+        this.currentAnswerGroups.push({
+          answer: groupKey,
+          count: X,
+          points: 0, // Always 0 points for wrong/uncategorized answers
+          totalResponses: Y,
+          players: socketIds.map(id => {
+            const player = this.players.get(id);
+            return player ? player.name : 'Unknown';
+          })
+        });
+      }
+    }
     
-        // Sort by points (highest first)
+    // Sort by points (highest first)
     this.currentAnswerGroups.sort((a, b) => b.points - a.points);
-        
-        console.log(`📊 Calculated scores for ${totalResponses} answers in ${answerGroups.size} groups`);
-        console.log(`📊 Final answer groups:`, this.currentAnswerGroups.map(g => ({ answer: g.answer, count: g.count, points: g.points })));
+    
+    console.log(`📊 Calculated scores for ${totalResponses} answers in ${answerGroups.size} groups`);
+  }
+
+  applyCurrentQuestionPoints() {
+    if (this.currentQuestionScored) {
+      console.log(`⚠️ Current question already scored, skipping duplicate scoring`);
+      return;
+    }
+    
+    console.log(`📊 Applying current question points to cumulative scores`);
+    
+    // Add current question points to cumulative scores
+    for (const [socketId, points] of this.pointsForCurrentQuestion) {
+      const currentScore = this.scores.get(socketId) || 0;
+      const newScore = currentScore + points;
+      this.scores.set(socketId, newScore);
+      
+      const player = this.players.get(socketId);
+      if (player) {
+        player.score = newScore;
+        console.log(`📊 Player ${player.name}: ${currentScore} + ${points} = ${newScore}`);
+      }
+    }
+    
+    this.currentQuestionScored = true;
+    console.log(`✅ Current question points applied to cumulative scores`);
+  }
+
+  resetQuestionScoring() {
+    this.pointsForCurrentQuestion.clear();
+    this.currentQuestionScored = false;
+    this.currentAnswerGroups = [];
+    this.categorizationData = null;
+    console.log(`🔄 Reset question scoring state`);
   }
 
   getGameState() {
@@ -311,6 +492,9 @@ class Game {
     nextQuestion() {
         this.currentQuestion++;
         this.answers.clear();
+        
+        // Reset question scoring state for the new question
+        this.resetQuestionScoring();
         
         if (this.currentQuestion >= this.questions.length) {
             this.gameState = 'finished';
@@ -995,6 +1179,7 @@ io.on('connection', (socket) => {
             game.gameState = 'playing';
             game.currentRound = 1;
             game.currentQuestion = 0;
+            game.resetQuestionScoring(); // Reset scoring state for new game
             game.startTimer();
             
             const gameStateToSend = game.getGameState();
@@ -1005,6 +1190,8 @@ io.on('connection', (socket) => {
             socket.emit('gameError', { message: error.message || 'Failed to start game' });
         }
     });
+
+
 
     // Submit answer
     socket.on('submitAnswer', async (data) => {
@@ -1028,6 +1215,37 @@ io.on('connection', (socket) => {
         
         if (game.submitAnswer(socket.id, answer)) {
             socket.emit('answerSubmitted');
+            
+            // Get player name for the answer
+            const playerName = playerInfo.playerName;
+            
+            console.log(`🎯 Player ${playerName} submitted answer: "${answer}"`);
+            
+            // Notify host of the specific answer
+            const hostSocket = Array.from(connectedPlayers.entries())
+                .find(([id, info]) => info.gameCode === gameCode && info.isHost);
+            
+            if (hostSocket) {
+                console.log(`📤 Emitting answerSubmitted to host socket ${hostSocket[0]} for player ${playerName}`);
+                io.to(hostSocket[0]).emit('answerSubmitted', {
+                    playerName: playerName,
+                    answer: answer
+                });
+            } else {
+                console.log(`❌ No host socket found for game ${gameCode}`);
+            }
+            
+            // Notify grading interface of new answer (real-time updates)
+            console.log(`📤 Emitting newAnswerSubmitted to room ${gameCode} for player ${playerName}`);
+            console.log(`📤 Room ${gameCode} sockets:`, Array.from(io.sockets.adapter.rooms.get(gameCode) || []));
+            
+            io.to(gameCode).emit('newAnswerSubmitted', {
+                playerName: playerName,
+                answer: answer,
+                gameCode: gameCode
+            });
+            
+            console.log(`✅ newAnswerSubmitted event emitted to room ${gameCode}`);
             
             // Notify others of answer count
             io.to(gameCode).emit('answerUpdate', {
@@ -1083,7 +1301,14 @@ io.on('connection', (socket) => {
         // Store categorized answers if provided
         if (categorizedAnswers) {
             game.categorizationData = categorizedAnswers;
+            
+            // Recalculate scores based on the categorization data
+            console.log(`📊 Recalculating scores based on categorization data`);
+            game.calculateScores();
         }
+        
+        // Apply the current question points to cumulative scores (only once)
+        game.applyCurrentQuestionPoints();
         
         // Move to scoring phase to show results
         game.gameState = 'scoring';
@@ -1226,6 +1451,40 @@ io.on('connection', (socket) => {
         socket.emit('displayGameState', game.getGameState());
         
         console.log(`📺 Display connected to game ${gameCode}`);
+    });
+
+    // Join game room for grading interface
+    socket.on('joinGameRoom', (data) => {
+        const { gameCode } = data;
+        
+        if (!gameCode) {
+            console.log('⚠️ joinGameRoom event received with no gameCode');
+            return;
+        }
+        
+        const game = activeGames.get(gameCode);
+        if (!game) {
+            console.log(`❌ Game ${gameCode} not found for joinGameRoom`);
+            return;
+        }
+        
+        // Update connection info for grading interface
+        const playerInfo = connectedPlayers.get(socket.id);
+        if (playerInfo) {
+            playerInfo.gameCode = gameCode;
+            playerInfo.isGradingInterface = true;
+        }
+        
+        // Join the game room to receive real-time updates
+        socket.join(gameCode);
+        
+        console.log(`📝 Grading interface joined game room ${gameCode}`);
+        console.log(`📝 Room ${gameCode} now has sockets:`, Array.from(io.sockets.adapter.rooms.get(gameCode) || []));
+        console.log(`📝 Socket ${socket.id} connection info:`, {
+            gameCode: playerInfo?.gameCode,
+            isGradingInterface: playerInfo?.isGradingInterface,
+            isHost: playerInfo?.isHost
+        });
     });
 
     // Get active game state for host interface
@@ -1617,7 +1876,7 @@ app.get('/display', (req, res) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🚀 MEGASheep server running on port ${PORT}`);
     console.log(`🌐 Visit http://localhost:${PORT} to play!`);
