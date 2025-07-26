@@ -160,9 +160,7 @@
             margin-bottom: 30px;
         }
 
-        .dashboard-grid.with-responses {
-            grid-template-columns: 1fr 1fr 1fr;
-        }
+
 
         .dashboard-panel {
             background: rgba(0, 0, 0, 0.8);
@@ -257,46 +255,35 @@
             font-size: 16px;
         }
 
-        /* Responses Panel */
-        .responses-list {
-            max-height: 400px;
-            overflow-y: auto;
+        /* Player Response Display */
+        .player-response {
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(0, 123, 255, 0.1);
+            border-radius: 6px;
+            border-left: 3px solid #007bff;
         }
 
-        .response-item {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 10px;
-            transition: all 0.3s ease;
-        }
-
-        .response-item:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .response-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .response-player {
-            font-weight: bold;
-            color: #ffffff;
-            font-size: 14px;
-        }
-
-        .response-time {
+        .response-label {
             color: #cccccc;
             font-size: 12px;
+            font-weight: bold;
+            margin-right: 8px;
         }
 
         .response-text {
             color: #ffffff;
+            font-style: italic;
+        }
+
+        .response-status {
+            color: #ffc107;
+            font-size: 12px;
+        }
+
+        .response-status.waiting {
+            color: #6c757d;
+        }
             font-size: 16px;
             font-style: italic;
             background: rgba(0, 123, 255, 0.2);
@@ -756,15 +743,7 @@
                     </div>
                 </div>
 
-                <!-- Player Responses Panel (shown during game) -->
-                <div class="dashboard-panel" id="responsesPanel" style="display: none;">
-                    <div class="panel-header">
-                        <h3>📝 Player Responses</h3>
-                    </div>
-                    <div class="responses-list" id="responsesList">
-                        <!-- Player responses will be populated here -->
-                    </div>
-                </div>
+
 
                 <!-- Host Controls Panel -->
                 <div class="dashboard-panel">
@@ -923,8 +902,7 @@
             socket.on('gameStarted', (data) => {
                 gameState = 'playing';
                 updateGameControls();
-                showResponsesPanel();
-                clearResponsesList();
+                updatePlayerList();
             });
             
             socket.on('gameEnded', (data) => {
@@ -932,13 +910,19 @@
             });
             
             socket.on('answerSubmitted', (data) => {
-                updateResponsesList(data);
+                updatePlayerListWithResponses();
+            });
+            
+            socket.on('gameStateUpdate', (data) => {
+                if (data.gameState) {
+                    currentGame = data.gameState;
+                    updatePlayerList();
+                }
             });
             
             socket.on('gradingComplete', (data) => {
                 gameState = 'scoring';
                 showScoringPanel(data);
-                hideResponsesPanel();
             });
             
             socket.on('error', (error) => {
@@ -981,17 +965,47 @@
             if (!currentGame) return;
             
             const playerList = document.getElementById('playerList');
+            const playerCount = document.getElementById('playerCount');
             playerList.innerHTML = '';
+            
+            // Update player count
+            const playerCountValue = Object.keys(currentGame.players).length;
+            playerCount.textContent = playerCountValue;
             
             currentGame.players.forEach((player, socketId) => {
                 const playerItem = document.createElement('div');
                 playerItem.className = 'player-item';
+                
+                // Check if player has a response for the current question
+                let responseDisplay = '';
+                if (gameState === 'playing' && currentGame.currentAnswerGroups) {
+                    const playerResponse = currentGame.currentAnswerGroups.find(group => 
+                        group.players && group.players.includes(player.name)
+                    );
+                    if (playerResponse) {
+                        responseDisplay = `
+                            <div class="player-response">
+                                <span class="response-label">Answer:</span>
+                                <span class="response-text">"${playerResponse.answer}"</span>
+                            </div>
+                        `;
+                    } else {
+                        responseDisplay = `
+                            <div class="player-response">
+                                <span class="response-label">Status:</span>
+                                <span class="response-status waiting">Waiting for answer...</span>
+                            </div>
+                        `;
+                    }
+                }
+                
                 playerItem.innerHTML = `
                     <div class="player-info">
                         <div class="player-avatar">${player.name.charAt(0).toUpperCase()}</div>
                         <div class="player-details">
                             <div class="player-name">${player.name}</div>
                             <div class="player-type">👤 Player</div>
+                            ${responseDisplay}
                         </div>
                     </div>
                     <div class="player-score">Score: ${player.score || 0}</div>
@@ -1014,44 +1028,9 @@
             }
         }
 
-        // Show responses panel
-        function showResponsesPanel() {
-            document.getElementById('responsesPanel').style.display = 'block';
-            document.getElementById('scoringPanel').style.display = 'none';
-            document.querySelector('.dashboard-grid').classList.add('with-responses');
-        }
-
-        // Hide responses panel
-        function hideResponsesPanel() {
-            document.getElementById('responsesPanel').style.display = 'none';
-            document.querySelector('.dashboard-grid').classList.remove('with-responses');
-        }
-
-        // Update responses list
-        function updateResponsesList(data) {
-            const responsesList = document.getElementById('responsesList');
-            
-            const responseItem = document.createElement('div');
-            responseItem.className = 'response-item';
-            
-            const timestamp = new Date().toLocaleTimeString();
-            
-            responseItem.innerHTML = `
-                <div class="response-header">
-                    <div class="response-player">${data.playerName}</div>
-                    <div class="response-time">${timestamp}</div>
-                </div>
-                <div class="response-text">"${data.answer}"</div>
-            `;
-            
-            responsesList.appendChild(responseItem);
-            responsesList.scrollTop = responsesList.scrollHeight;
-        }
-
-        // Clear responses list
-        function clearResponsesList() {
-            const responsesList = document.getElementById('responsesList');
-            responsesList.innerHTML = '';
+        // Update player list when answers are submitted
+        function updatePlayerListWithResponses() {
+            updatePlayerList();
         }
 
         // Show scoring panel
