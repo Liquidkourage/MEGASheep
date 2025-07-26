@@ -681,7 +681,7 @@
                         <h4>❌ Wrong & 📦 Uncategorized Answers</h4>
                         <div class="wrong-uncategorized-grid">
                             <!-- Uncategorized Answers Bucket -->
-                            <div class="answer-bucket uncategorized-bucket">
+                            <div class="answer-bucket uncategorized-bucket" data-bucket-id="uncategorized">
                                 <h4 onclick="toggleBucket(this)">
                                     <span class="bucket-toggle">▼</span>
                                     📦 Uncategorized Answers
@@ -693,7 +693,7 @@
                             </div>
 
                             <!-- Wrong Answers Bucket -->
-                            <div class="answer-bucket wrong-bucket">
+                            <div class="answer-bucket wrong-bucket" data-bucket-id="wrong">
                                 <h4 onclick="toggleBucket(this)">
                                     <span class="bucket-toggle">▼</span>
                                     ❌ Wrong Answers
@@ -2271,11 +2271,13 @@
                 saveGradingState();
             });
             
-            // Auto-save every 30 seconds as backup
-            setInterval(() => {
-                if (currentGame && currentGame.currentQuestionData) {
-                    saveGradingState();
-                }
+            // Auto-save every 30 seconds as backup (start after 30 seconds to avoid immediate save)
+            setTimeout(() => {
+                setInterval(() => {
+                    if (currentGame && currentGame.currentQuestionData) {
+                        saveGradingState();
+                    }
+                }, 30000);
             }, 30000);
         });
 
