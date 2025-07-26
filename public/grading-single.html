@@ -12,9 +12,17 @@
             color: #ffffff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 5px;
             min-height: 100vh;
             overflow-x: hidden;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Override external CSS max-width constraints */
+        .screen {
+            max-width: none !important;
+            width: 100% !important;
         }
 
         body.fullscreen {
@@ -23,9 +31,11 @@
         }
 
         .grading-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
+            max-width: none;
+            margin: 0;
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .grading-header {
@@ -140,26 +150,15 @@
         .grading-interface {
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid #007bff;
-            border-radius: 0;
+            border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0, 123, 255, 0.2);
-            padding: 25px;
+            padding: 15px;
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 1000;
-            overflow-y: auto;
-            margin: 0;
+            margin-bottom: 30px;
+            width: 100%;
             max-width: none;
-        }
-
-        .grading-container {
-            max-width: none;
-            margin: 0;
-            padding: 0;
+            box-sizing: border-box;
         }
 
         .grading-header-controls {
@@ -173,15 +172,7 @@
             margin: 0;
         }
 
-        .grading-controls-top {
-            display: flex;
-            gap: 10px;
-        }
 
-        .control-btn.small {
-            padding: 8px 12px;
-            font-size: 12px;
-        }
 
         .grading-interface h3 {
             color: #ffffff;
@@ -210,6 +201,28 @@
             margin-bottom: 20px;
         }
 
+        .grading-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            width: 100%;
+            max-width: none;
+            box-sizing: border-box;
+        }
+
+        .question-section {
+            width: 100%;
+            max-width: none;
+        }
+
+        .answer-buckets-section {
+            width: 100%;
+        }
+
+        .categorization-section {
+            width: 100%;
+        }
+
         .correct-answers-section {
             margin-bottom: 20px;
         }
@@ -236,11 +249,12 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
+            margin-bottom: 20px;
         }
 
         #correctAnswers {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
         }
 
@@ -249,12 +263,26 @@
             border: 2px solid rgba(255, 255, 255, 0.2);
             border-radius: 12px;
             padding: 12px;
-            min-height: 60px;
+            min-height: 120px; /* Changed from fixed height to min-height */
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: visible; /* Allow content to expand */
+            transition: all 0.3s ease;
+        }
+        
+        .answer-bucket.drag-over {
+            border-color: #28a745;
+            background: rgba(40, 167, 69, 0.2);
+            box-shadow: 0 0 20px rgba(40, 167, 69, 0.4);
+            transform: scale(1.02);
         }
 
         .answer-bucket h4 {
             color: #ffffff;
-            margin: 0 0 12px 0;
+            margin: 0 0 8px 0;
             font-size: 1em;
             text-align: center;
             cursor: pointer;
@@ -263,6 +291,8 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
+            height: 32px;
+            flex-shrink: 0;
         }
 
         .bucket-toggle {
@@ -275,18 +305,34 @@
         }
 
         .answer-items {
-            min-height: 80px;
+            flex: 1;
             padding: 6px;
             border: 2px dashed rgba(255, 255, 255, 0.3);
             border-radius: 8px;
             transition: all 0.3s ease;
-            overflow: hidden;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-height: 80px; /* Minimum height for content area */
+        }
+        
+        /* Larger content area for wrong/uncategorized buckets */
+        .uncategorized-bucket .answer-items,
+        .wrong-bucket .answer-items {
+            min-height: 550px; /* Much larger content area */
+        }
+        
+        /* Larger content area for correct answer buckets when expanded */
+        .correct-bucket .answer-items:not(.collapsed) {
+            min-height: 300px; /* Larger when expanded */
         }
 
         .answer-items.collapsed {
             min-height: 0;
             padding: 0;
             max-height: 0;
+            overflow: hidden;
         }
 
         .answer-bucket.correct-bucket {
@@ -313,6 +359,13 @@
         .answer-bucket.uncategorized-bucket {
             border-color: #f39c12;
             background: rgba(243, 156, 18, 0.1);
+            min-height: 600px; /* Even taller for uncategorized buckets */
+        }
+        
+        .answer-bucket.wrong-bucket {
+            border-color: #e74c3c;
+            background: rgba(231, 76, 60, 0.1);
+            min-height: 600px; /* Even taller for wrong buckets */
         }
 
         .answer-items {
@@ -320,6 +373,7 @@
             padding: 10px;
             border: 2px dashed rgba(255, 255, 255, 0.3);
             border-radius: 8px;
+            transition: all 0.3s ease;
         }
 
         .answer-item {
@@ -434,9 +488,134 @@
             background: rgba(243, 156, 18, 0.3);
             border-color: rgba(243, 156, 18, 0.5);
         }
+
+        /* Question Display Styles */
+        /* Question Display Container */
+        .question-display {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #007bff;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 123, 255, 0.2);
+            padding: 8px;
+            margin-bottom: 10px;
+            backdrop-filter: blur(10px);
+            width: 100%;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        /* Question Card - Main Content Area */
+        .question-card {
+            background: rgba(0, 123, 255, 0.1) !important;
+            border: 1px solid rgba(0, 123, 255, 0.3) !important;
+            border-radius: 12px !important;
+            padding: 6px !important;
+            width: 100% !important;
+            max-width: none !important;
+            box-sizing: border-box !important;
+            transition: all 0.3s ease !important;
+            position: static !important;
+            overflow: visible !important;
+            animation: none !important;
+            display: block !important;
+            align-items: unset !important;
+            justify-content: unset !important;
+            aspect-ratio: unset !important;
+        }
+
+        .question-card:hover {
+            background: rgba(0, 123, 255, 0.15) !important;
+            border-color: rgba(0, 123, 255, 0.4) !important;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.1) !important;
+        }
+
+        /* Remove conflicting pseudo-elements */
+        .question-card::before,
+        .question-card::after {
+            display: none !important;
+        }
+
+        /* Question Header */
+        .question-card h4 {
+            color: #007bff;
+            margin: 0 0 4px 0;
+            font-size: 0.9em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Question Text Content */
+        .question-text {
+            color: #ffffff;
+            font-size: 0.9em;
+            line-height: 1.2;
+            margin: 0 0 4px 0;
+            font-weight: 500;
+            word-wrap: break-word;
+            hyphens: auto;
+        }
+
+        /* Question Metadata */
+        .question-meta {
+            display: flex;
+            gap: 15px;
+            color: #cccccc;
+            font-size: 0.8em;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Question Number Badge */
+        .question-number {
+            background: rgba(0, 123, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 123, 255, 0.3);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+
+        .question-number:hover {
+            background: rgba(0, 123, 255, 0.3);
+            border-color: rgba(0, 123, 255, 0.5);
+        }
+
+        /* Answer Count Badge */
+        .answer-count {
+            background: rgba(39, 174, 96, 0.2);
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(39, 174, 96, 0.3);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+        }
+
+        .answer-count:hover {
+            background: rgba(39, 174, 96, 0.3);
+            border-color: rgba(39, 174, 96, 0.5);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Manual Open Button - Always visible outside the modal -->
+    <button id="manualOpenBtn" class="control-btn secondary" onclick="manualOpenGrading()">Manual Open Grading</button>
+    
     <div class="grading-container">
         <!-- Connection Status -->
         <div class="connection-status">
@@ -468,49 +647,64 @@
         <div id="gradingInterface" class="grading-interface" style="display: none;">
             <div class="grading-header-controls">
                 <h3 class="grading-title">📝 Categorize Answers</h3>
-                <div class="grading-controls-top">
-                    <button id="backToGamesBtn" class="control-btn secondary small">Back to Games</button>
-                </div>
             </div>
             
-
-
-            <!-- Correct Answers Section -->
-            <div class="correct-answers-section">
-                <h4>✅ Correct Answers (from database)</h4>
-                <div id="correctAnswers">
-                    <!-- Correct answer buckets will be created here dynamically -->
+            <div class="grading-layout">
+                <!-- Question Section (Full Width) -->
+                <div class="question-section">
+                    <div id="questionDisplay" class="question-display" style="display: none;">
+                        <div class="question-card">
+                            <h4>📋 Current Question</h4>
+                            <p id="questionText" class="question-text"></p>
+                            <div class="question-meta">
+                                <span id="questionNumber" class="question-number"></span>
+                                <span id="answerCount" class="answer-count"></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Wrong and Uncategorized Answers Section -->
-            <div class="wrong-uncategorized-section">
-                <h4>❌ Wrong & 📦 Uncategorized Answers</h4>
-                                 <div class="wrong-uncategorized-grid">
-                     <!-- Uncategorized Answers Bucket -->
-                     <div class="answer-bucket uncategorized-bucket">
-                         <h4 onclick="toggleBucket(this)">
-                             <span class="bucket-toggle">▼</span>
-                             📦 Uncategorized Answers
-                             <span class="answer-count-badge" id="uncategorizedAnswersCount">0</span>
-                         </h4>
-                         <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized">
-                             <!-- Uncategorized answers will be here initially -->
-                         </div>
-                     </div>
+                <!-- Answer Buckets Section (Full Width Grid) -->
+                <div class="answer-buckets-section">
+                    <div class="correct-answers-section">
+                        <h4>✅ Correct Answers (from database)</h4>
+                        <div id="correctAnswers">
+                            <!-- Correct answer buckets will be created here dynamically -->
+                        </div>
+                    </div>
+                </div>
 
-                     <!-- Wrong Answers Bucket -->
-                     <div class="answer-bucket wrong-bucket">
-                         <h4 onclick="toggleBucket(this)">
-                             <span class="bucket-toggle">▼</span>
-                             ❌ Wrong Answers
-                             <span class="answer-count-badge" id="wrongAnswersCount">0</span>
-                         </h4>
-                         <div id="wrongAnswers" class="answer-items" data-bucket="wrong">
-                             <!-- Wrong answers will be dragged here -->
-                         </div>
-                     </div>
-                 </div>
+                <!-- Categorization Section (Full Width) -->
+                <div class="categorization-section">
+                    <div class="wrong-uncategorized-section">
+                        <h4>❌ Wrong & 📦 Uncategorized Answers</h4>
+                        <div class="wrong-uncategorized-grid">
+                            <!-- Uncategorized Answers Bucket -->
+                            <div class="answer-bucket uncategorized-bucket">
+                                <h4 onclick="toggleBucket(this)">
+                                    <span class="bucket-toggle">▼</span>
+                                    📦 Uncategorized Answers
+                                    <span class="answer-count-badge" id="uncategorizedAnswersCount">0</span>
+                                </h4>
+                                <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized" data-bucket-id="uncategorized">
+                                    <!-- Uncategorized answers will be here initially -->
+                                </div>
+                            </div>
+
+                            <!-- Wrong Answers Bucket -->
+                            <div class="answer-bucket wrong-bucket">
+                                <h4 onclick="toggleBucket(this)">
+                                    <span class="bucket-toggle">▼</span>
+                                    ❌ Wrong Answers
+                                    <span class="answer-count-badge" id="wrongAnswersCount">0</span>
+                                </h4>
+                                <div id="wrongAnswers" class="answer-items" data-bucket="wrong" data-bucket-id="wrong">
+                                    <!-- Wrong answers will be dragged here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="grading-controls">
@@ -530,20 +724,38 @@
             
             socket.on('connect', () => {
                 updateConnectionStatus(true);
+                console.log('🔌 Socket connected, attempting to connect to game');
+                
                 // Get the game code from the parent window (host.html)
                 const gameCode = window.parent.getCurrentGameCode ? window.parent.getCurrentGameCode() : null;
                 if (gameCode) {
+                    console.log('🎮 Game code from parent window:', gameCode);
                     connectToHostGame(gameCode);
                 } else {
                     // Fallback: try to get from URL parameters
                     const urlParams = new URLSearchParams(window.location.search);
                     const gameCodeFromUrl = urlParams.get('gameCode');
                     if (gameCodeFromUrl) {
+                        console.log('🎮 Game code from URL:', gameCodeFromUrl);
                         connectToHostGame(gameCodeFromUrl);
                     } else {
+                        console.log('⚠️ No game code found, loading active games');
                         loadActiveGames();
                     }
                 }
+                
+                // Set up periodic check to ensure grading interface opens
+                setTimeout(() => {
+                    const gradingInterface = document.getElementById('gradingInterface');
+                    if (gradingInterface && gradingInterface.style.display === 'none') {
+                        console.log('🔄 Periodic check: Grading interface not visible, attempting to open');
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const gameCode = urlParams.get('gameCode');
+                        if (gameCode) {
+                            autoOpenGradingInterface(gameCode);
+                        }
+                    }
+                }, 3000);
             });
             
             socket.on('disconnect', () => {
@@ -556,9 +768,32 @@
             });
             
             socket.on('gameStateUpdate', (data) => {
+                console.log('🔄 Game state update received:', data);
+                
+                // Auto-open grading interface when game state changes to playing (question starts)
+                if (data.gameState === 'playing' && data.gameCode) {
+                    console.log('📝 Game entered playing state (question started), auto-opening interface');
+                    autoOpenGradingInterface(data.gameCode);
+                }
+                
+                // Also auto-open for grading state as a fallback
+                if (data.gameState === 'grading' && data.gameCode) {
+                    console.log('📝 Game entered grading state, auto-opening interface');
+                    autoOpenGradingInterface(data.gameCode);
+                }
+                
+                // Update current game if it matches
                 if (currentGame && data.gameCode === currentGame.gameCode) {
                     currentGame = data;
                     updateGradingInterface();
+                }
+                
+                // Force grading interface to be visible if we have game data
+                if (data.gameCode) {
+                    const gradingInterface = document.getElementById('gradingInterface');
+                    if (gradingInterface) {
+                        gradingInterface.style.display = 'block';
+                    }
                 }
             });
             
@@ -587,14 +822,98 @@
                 alert('✅ Grading completed successfully! The game has moved to the scoring phase.');
                 backToGames();
             });
+
+            // Real-time answer updates
+            socket.on('newAnswerSubmitted', (data) => {
+                console.log('📝 New answer submitted in real-time:', data);
+                console.log('📝 Socket ID receiving event:', socket.id);
+                console.log('📝 Current game state:', currentGame ? currentGame.gameCode : 'none');
+                console.log('📝 Current answer groups:', currentGame ? currentGame.currentAnswerGroups : 'none');
+                console.log('📝 Event data gameCode:', data.gameCode);
+                console.log('📝 Event data playerName:', data.playerName);
+                console.log('📝 Event data answer:', data.answer);
+                
+                // Update the current game with the new answer
+                if (currentGame && currentGame.currentAnswerGroups) {
+                    // Find if this player already has an answer
+                    const existingIndex = currentGame.currentAnswerGroups.findIndex(group =>
+                        group.players && group.players.includes(data.playerName)
+                    );
+
+                    if (existingIndex >= 0) {
+                        // Update existing answer
+                        console.log('🔄 Updating existing answer for player:', data.playerName);
+                        currentGame.currentAnswerGroups[existingIndex].answer = data.answer;
+                    } else {
+                        // Add new answer group
+                        console.log('➕ Adding new answer group for player:', data.playerName);
+                        currentGame.currentAnswerGroups.push({
+                            answer: data.answer,
+                            players: [data.playerName],
+                            count: 1,
+                            points: 0,
+                            index: currentGame.currentAnswerGroups.length
+                        });
+                    }
+                    
+                    // Smoothly update the grading interface without full reload
+                    console.log('🔄 Calling updateGradingInterfaceSmoothly');
+                    console.log('🔄 Current answer groups before update:', JSON.stringify(currentGame.currentAnswerGroups));
+                    updateGradingInterfaceSmoothly();
+                    console.log('🔄 updateGradingInterfaceSmoothly called successfully');
+                } else {
+                    console.log('⚠️ Cannot update: no current game or answer groups');
+                }
+            });
+
+            // Auto-open grading interface when question starts
+            socket.on('nextQuestion', (data) => {
+                console.log('🎯 Question started, auto-opening grading interface:', data);
+                console.log('🎯 nextQuestion event received with gameCode:', data?.gameCode);
+                if (data && data.gameCode) {
+                    console.log('🎯 Calling autoOpenGradingInterface for gameCode:', data.gameCode);
+                    autoOpenGradingInterface(data.gameCode);
+                } else {
+                    console.log('⚠️ nextQuestion event missing gameCode:', data);
+                }
+            });
+
+            // Auto-open grading interface when game starts (first question)
+            socket.on('gameStarted', (data) => {
+                console.log('🎮 Game started, auto-opening grading interface for first question:', data);
+                console.log('🎮 gameStarted event received with gameCode:', data?.gameCode);
+                if (data && data.gameCode) {
+                    console.log('🎮 Calling autoOpenGradingInterface for gameCode:', data.gameCode);
+                    autoOpenGradingInterface(data.gameCode);
+                } else {
+                    console.log('⚠️ gameStarted event missing gameCode:', data);
+                }
+            });
+
+
         }
 
         function connectToHostGame(gameCode) {
+            console.log('🔗 Connecting to host game:', gameCode);
+            console.log('🔗 Socket ID:', socket.id);
+            
             // First, identify as the host for this game
+            console.log('🔗 Emitting host-reconnect for game:', gameCode);
             socket.emit('host-reconnect', { gameCode: gameCode });
             
+            // Join the game room to receive real-time updates
+            console.log('🔗 Emitting joinGameRoom for game:', gameCode);
+            socket.emit('joinGameRoom', { gameCode: gameCode });
+            
             // Then request the specific game state
+            console.log('🔗 Emitting getGameState for game:', gameCode);
             socket.emit('getGameState', { gameCode: gameCode });
+            
+            // Also try to get active games as a fallback
+            setTimeout(() => {
+                console.log('🔗 Emitting getActiveGames as fallback');
+                socket.emit('getActiveGames');
+            }, 1000);
         }
 
         function updateConnectionStatus(connected) {
@@ -646,6 +965,104 @@
             });
         }
 
+        function updateQuestionDisplay() {
+            const questionDisplay = document.getElementById('questionDisplay');
+            const questionText = document.getElementById('questionText');
+            const questionNumber = document.getElementById('questionNumber');
+            const answerCount = document.getElementById('answerCount');
+            
+            if (currentGame && currentGame.currentQuestionData) {
+                const questionData = currentGame.currentQuestionData;
+                
+                // Show question display
+                questionDisplay.style.display = 'block';
+                
+                // Update question text
+                questionText.textContent = questionData.prompt || 'No question text available';
+                
+                // Update question number
+                questionNumber.textContent = `Question ${currentGame.currentQuestion + 1}`;
+                
+                // Update answer count
+                const totalAnswers = currentGame.currentAnswerGroups ? currentGame.currentAnswerGroups.length : 0;
+                answerCount.textContent = `${totalAnswers} answer${totalAnswers !== 1 ? 's' : ''}`;
+            } else {
+                // Hide question display if no question data
+                questionDisplay.style.display = 'none';
+            }
+        }
+
+        function manualOpenGrading() {
+            console.log('🔧 Manual grading interface open requested');
+            const urlParams = new URLSearchParams(window.location.search);
+            const gameCode = urlParams.get('gameCode');
+            if (gameCode) {
+                autoOpenGradingInterface(gameCode);
+            } else {
+                alert('No game code found in URL. Please ensure you accessed this page with a game code.');
+            }
+        }
+
+        function autoOpenGradingInterface(gameCode) {
+            console.log('🔄 Auto-opening grading interface for game:', gameCode);
+            
+            // Connect to the game and open grading interface automatically
+            connectToHostGame(gameCode);
+            
+            // Force the grading interface to be visible
+            const gradingInterface = document.getElementById('gradingInterface');
+            const gameSelection = document.getElementById('gameSelection');
+            const noGamesMessage = document.getElementById('noGamesMessage');
+            
+            if (gradingInterface) {
+                gradingInterface.style.display = 'block';
+                console.log('✅ Grading interface made visible');
+            }
+            
+            if (gameSelection) {
+                gameSelection.style.display = 'none';
+            }
+            
+            if (noGamesMessage) {
+                noGamesMessage.style.display = 'none';
+            }
+            
+            // Focus the window to bring attention to the grading interface
+            if (window.focus) {
+                window.focus();
+            }
+            
+            // Show a notification if the window is not focused
+            if (!document.hasFocus()) {
+                // Create a notification sound or visual indicator
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #007bff;
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 8px;
+                    z-index: 10000;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    animation: slideIn 0.3s ease-out;
+                `;
+                notification.innerHTML = `
+                    <strong>📝 Grading Required!</strong><br>
+                    Question started for Game ${gameCode}
+                `;
+                document.body.appendChild(notification);
+                
+                // Remove notification after 5 seconds
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 5000);
+            }
+        }
+
         function selectGame(game) {
             currentGame = game;
             document.getElementById('gameSelection').style.display = 'none';
@@ -658,6 +1075,9 @@
         async function updateGradingInterface() {
             if (!currentGame || !currentGame.currentAnswerGroups) return;
             
+            // Update question display
+            updateQuestionDisplay();
+            
             // Clear all buckets
             document.getElementById('correctAnswers').innerHTML = '';
             document.getElementById('wrongAnswers').innerHTML = '';
@@ -666,6 +1086,302 @@
             // Reset count badges
             document.getElementById('wrongAnswersCount').textContent = '0';
             document.getElementById('uncategorizedAnswersCount').textContent = '0';
+            
+            await populateGradingInterface();
+        }
+
+        async function updateGradingInterfaceSmoothly() {
+            console.log('🔄 updateGradingInterfaceSmoothly called');
+            console.log('🔄 currentGame exists:', !!currentGame);
+            console.log('🔄 currentAnswerGroups exists:', !!(currentGame && currentGame.currentAnswerGroups));
+            
+            if (!currentGame || !currentGame.currentAnswerGroups) {
+                console.log('⚠️ updateGradingInterfaceSmoothly: No current game or answer groups, returning');
+                return;
+            }
+            
+            console.log('🔄 Smoothly updating grading interface with new answers');
+            console.log('🔄 Current answer groups:', JSON.stringify(currentGame.currentAnswerGroups));
+            
+            // Update question display
+            console.log('🔄 Updating question display');
+            updateQuestionDisplay();
+            
+            // Smoothly update only the buckets that need changes
+            console.log('🔄 Smoothly updating answer buckets');
+            await updateAnswerBucketsSmoothly();
+            
+            // Update count badges
+            console.log('🔄 Updating count badges');
+            updateCountBadges();
+            
+            console.log('✅ Smooth update completed');
+        }
+        
+        async function updateAnswerBucketsSmoothly() {
+            if (!currentGame || !currentGame.currentQuestionData) return;
+            
+            const correctAnswers = currentGame.currentQuestionData.correct_answers || [];
+            const correctAnswersContainer = document.getElementById('correctAnswers');
+            const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
+            
+            if (!correctAnswersContainer || !uncategorizedContainer) return;
+            
+            // Check if this is the first real-time update (clear initial buckets)
+            if (!window.smoothUpdateInitialized) {
+                console.log('🔄 First real-time update - clearing initial buckets');
+                correctAnswersContainer.innerHTML = '';
+                window.smoothUpdateInitialized = true;
+            }
+            
+            // Get current answer groups
+            const answerGroups = currentGame.currentAnswerGroups || [];
+            
+            // Create a map of answers that should be in correct buckets
+            const correctAnswerMap = new Map();
+            console.log('🔍 Creating correct answer map:', {
+                answerGroups: answerGroups,
+                correctAnswers: correctAnswers
+            });
+            
+            // Group answers by their normalized correct answer
+            const groupedAnswers = new Map();
+            answerGroups.forEach(group => {
+                const normalizedAnswer = group.answer.toLowerCase().trim();
+                const matchingCorrectAnswer = correctAnswers.find(correct => 
+                    correct.toLowerCase().trim() === normalizedAnswer
+                );
+                console.log(`🔍 Checking answer "${group.answer}":`, {
+                    normalizedAnswer: normalizedAnswer,
+                    matchingCorrectAnswer: matchingCorrectAnswer,
+                    players: group.players,
+                    totalResponses: group.totalResponses
+                });
+                if (matchingCorrectAnswer) {
+                    if (!groupedAnswers.has(matchingCorrectAnswer)) {
+                        groupedAnswers.set(matchingCorrectAnswer, {
+                            answer: matchingCorrectAnswer,
+                            players: [],
+                            count: 0,
+                            totalResponses: 0
+                        });
+                    }
+                    const combinedGroup = groupedAnswers.get(matchingCorrectAnswer);
+                    combinedGroup.players.push(...(group.players || []));
+                    combinedGroup.count = combinedGroup.players.length;
+                    combinedGroup.totalResponses = (group.totalResponses || 0) + combinedGroup.totalResponses;
+                    
+                    // Add semantic confidence calculation for real-time updates
+                    if (!group.semanticConfidence) {
+                        // Calculate confidence if not already calculated
+                        const confidence = calculateSemanticConfidence(group.answer, matchingCorrectAnswer);
+                        group.semanticConfidence = confidence;
+                        group.semanticMatch = matchingCorrectAnswer;
+                        console.log(`🧠 Calculated confidence for "${group.answer}": ${confidence}%`);
+                    }
+                    
+                    console.log(`✅ Combined "${group.answer}" into "${matchingCorrectAnswer}"`);
+                }
+            });
+            
+            // Convert grouped answers to the map
+            groupedAnswers.forEach((combinedGroup, correctAnswer) => {
+                correctAnswerMap.set(correctAnswer, combinedGroup);
+            });
+            console.log('🔍 Final correct answer map:', Array.from(correctAnswerMap.entries()).map(([key, value]) => ({
+                correctAnswer: key,
+                answerGroup: JSON.stringify(value)
+            })));
+            
+            // Update each correct answer bucket smoothly
+            correctAnswers.forEach(correctAnswer => {
+                const bucketId = `bucket-${correctAnswer.toLowerCase().replace(/\s+/g, '-')}`;
+                let bucket = document.getElementById(bucketId);
+                const answerGroup = correctAnswerMap.get(correctAnswer);
+                
+                if (answerGroup) {
+                    // Answer exists - update or create bucket
+                    if (!bucket) {
+                        // Create new bucket with smooth animation
+                        bucket = createAnswerBucket(correctAnswer, answerGroup);
+                        bucket.id = bucketId;
+                        bucket.style.opacity = '0';
+                        bucket.style.transform = 'scale(0.8)';
+                        correctAnswersContainer.appendChild(bucket);
+                        
+                        // Animate in
+                        setTimeout(() => {
+                            bucket.style.transition = 'all 0.3s ease';
+                            bucket.style.opacity = '1';
+                            bucket.style.transform = 'scale(1)';
+                        }, 10);
+                    } else {
+                        // Update existing bucket count smoothly
+                        const countElement = bucket.querySelector('.answer-count-badge');
+                        if (countElement) {
+                            const oldCount = parseInt(countElement.textContent) || 0;
+                            const newCount = answerGroup.totalResponses || (answerGroup.players ? answerGroup.players.length : 0);
+                            
+                            console.log(`🔢 Updating count for bucket:`, {
+                                oldCount,
+                                newCount,
+                                answerGroup: JSON.stringify(answerGroup)
+                            });
+                            
+                            if (oldCount !== newCount) {
+                                // Animate count change
+                                countElement.style.transform = 'scale(1.2)';
+                                countElement.style.color = '#4CAF50';
+                                setTimeout(() => {
+                                    countElement.textContent = newCount;
+                                    countElement.style.transform = 'scale(1)';
+                                    countElement.style.color = '';
+                                }, 150);
+                            }
+                        }
+                        
+                        // Update answer list
+                        updateBucketAnswerList(bucket, answerGroup);
+                    }
+                } else {
+                    // No answers for this bucket - ensure it exists with count 0
+                    if (!bucket) {
+                        bucket = createAnswerBucket(correctAnswer, { count: 0, players: [] });
+                        bucket.id = bucketId;
+                        bucket.style.opacity = '0';
+                        bucket.style.transform = 'scale(0.8)';
+                        correctAnswersContainer.appendChild(bucket);
+                        
+                        setTimeout(() => {
+                            bucket.style.transition = 'all 0.3s ease';
+                            bucket.style.opacity = '1';
+                            bucket.style.transform = 'scale(1)';
+                        }, 10);
+                    }
+                }
+            });
+            
+            // Update uncategorized answers
+            const uncategorizedAnswers = answerGroups.filter(group => {
+                const normalizedAnswer = group.answer.toLowerCase().trim();
+                return !correctAnswers.some(correct => 
+                    correct.toLowerCase().trim() === normalizedAnswer
+                );
+            });
+            
+            // Calculate confidence scores for uncategorized answers in real-time updates
+            uncategorizedAnswers.forEach(answerGroup => {
+                if (!answerGroup.semanticConfidence) {
+                    // Find the best matching correct answer for confidence calculation
+                    let bestConfidence = 0;
+                    let bestMatch = null;
+                    
+                    correctAnswers.forEach(correctAnswer => {
+                        const confidence = calculateSemanticConfidence(answerGroup.answer, correctAnswer);
+                        if (confidence > bestConfidence) {
+                            bestConfidence = confidence;
+                            bestMatch = correctAnswer;
+                        }
+                    });
+                    
+                    // Set confidence data for uncategorized answers
+                    answerGroup.semanticConfidence = bestConfidence;
+                    answerGroup.semanticMatch = bestMatch;
+                    
+                    console.log(`🧠 Real-time confidence for uncategorized "${answerGroup.answer}": ${bestConfidence}% → "${bestMatch}"`);
+                }
+            });
+            
+            // Clear and repopulate uncategorized (this section is smaller, so less jarring)
+            uncategorizedContainer.innerHTML = '';
+            await populateUncategorizedAnswers();
+            
+            // Re-setup drag and drop for all new elements
+            setupDragAndDrop();
+        }
+        
+        function createAnswerBucket(correctAnswer, answerGroup) {
+            const bucket = document.createElement('div');
+            
+            // Calculate the correct player count
+            let playerCount = 0;
+            let playerNames = [];
+            
+            if (answerGroup.players && Array.isArray(answerGroup.players)) {
+                playerCount = answerGroup.players.length;
+                playerNames = answerGroup.players;
+            } else if (answerGroup.count && typeof answerGroup.count === 'number') {
+                // Fallback to count field if players array is not available
+                playerCount = answerGroup.count;
+                playerNames = answerGroup.players || [];
+            } else if (answerGroup.totalResponses && typeof answerGroup.totalResponses === 'number') {
+                // Fallback to totalResponses if count is not available
+                playerCount = answerGroup.totalResponses;
+                playerNames = answerGroup.players || [];
+            }
+            
+            const isEmpty = playerCount === 0;
+            
+            console.log(`🔢 Creating bucket for ${correctAnswer}:`, {
+                players: answerGroup.players,
+                playersLength: answerGroup.players ? answerGroup.players.length : 0,
+                count: answerGroup.count,
+                totalResponses: answerGroup.totalResponses,
+                finalPlayerCount: playerCount,
+                playerNames: playerNames,
+                answerGroup: JSON.stringify(answerGroup)
+            });
+            
+            bucket.className = `answer-bucket correct-bucket${isEmpty ? ' empty' : ''}`;
+            bucket.innerHTML = `
+                <h4 onclick="toggleBucket(this)">
+                    <span class="bucket-toggle collapsed">▶</span>
+                    ✅ ${correctAnswer} <span class="answer-count-badge">${playerCount}</span>
+                </h4>
+                <div class="answer-items collapsed" data-bucket="${correctAnswer.toLowerCase().replace(/\s+/g, '-')}">
+                    ${playerCount > 0 ? 
+                        createAnswerItemHTML(correctAnswer, playerCount, 100, playerNames.join(', ')) : ''
+                    }
+                </div>
+            `;
+            return bucket;
+        }
+        
+        function updateBucketAnswerList(bucket, answerGroup) {
+            const answersContainer = bucket.querySelector('.answer-items');
+            if (!answersContainer) return;
+            
+            // Calculate the correct player count (same logic as createAnswerBucket)
+            let playerCount = 0;
+            let playerNames = [];
+            
+            if (answerGroup.players && Array.isArray(answerGroup.players)) {
+                playerCount = answerGroup.players.length;
+                playerNames = answerGroup.players;
+            } else if (answerGroup.count && typeof answerGroup.count === 'number') {
+                playerCount = answerGroup.count;
+                playerNames = answerGroup.players || [];
+            } else if (answerGroup.totalResponses && typeof answerGroup.totalResponses === 'number') {
+                playerCount = answerGroup.totalResponses;
+                playerNames = answerGroup.players || [];
+            }
+            
+            const currentAnswers = Array.from(answersContainer.children).map(item => 
+                item.querySelector('.answer-players')?.textContent.trim()
+            ).filter(Boolean);
+            const newAnswers = playerNames;
+            
+            // Only update if answers changed
+            if (JSON.stringify(currentAnswers) !== JSON.stringify(newAnswers)) {
+                answersContainer.innerHTML = playerCount > 0 ? 
+                    createAnswerItemHTML(answerGroup.answer, playerCount, answerGroup.semanticConfidence || 100, playerNames.join(', ')) : '';
+                
+                // Re-setup drag and drop for the updated bucket
+                setupDragAndDrop();
+            }
+        }
+
+        async function populateGradingInterface() {
             
             // Get the current question to access correct answers
             const questionData = currentGame.currentQuestionData;
@@ -746,54 +1462,151 @@
             // Render ALL correct answer buckets (even empty ones)
             correctAnswerBuckets.forEach(bucket => {
                 const bucketDiv = document.createElement('div');
-                const isEmpty = bucket.answers.length === 0;
+                
+                // Calculate total player count for this bucket
+                let totalPlayerCount = 0;
+                bucket.answers.forEach(answerGroup => {
+                    if (answerGroup.players && Array.isArray(answerGroup.players)) {
+                        totalPlayerCount += answerGroup.players.length;
+                    } else if (answerGroup.count && typeof answerGroup.count === 'number') {
+                        totalPlayerCount += answerGroup.count;
+                    } else if (answerGroup.totalResponses && typeof answerGroup.totalResponses === 'number') {
+                        totalPlayerCount += answerGroup.totalResponses;
+                    }
+                });
+                
+                const isEmpty = totalPlayerCount === 0;
                 bucketDiv.className = `answer-bucket correct-bucket${isEmpty ? ' empty' : ''}`;
+                bucketDiv.dataset.bucketId = bucket.id;
                 bucketDiv.innerHTML = `
                     <h4 onclick="toggleBucket(this)">
                         <span class="bucket-toggle collapsed">▶</span>
                         ✅ ${bucket.name}
-                        <span class="answer-count-badge">${bucket.answers.length}</span>
+                        <span class="answer-count-badge">${totalPlayerCount}</span>
                     </h4>
                     <div class="answer-items collapsed" data-bucket="${bucket.id}">
-                        ${bucket.answers.map(group => createAnswerItemHTML(group)).join('')}
+                        ${bucket.answers.map(group => {
+                            const playerCount = group.players ? group.players.length : group.count || 1;
+                            const playerNames = group.players ? group.players.join(', ') : '';
+                            return createAnswerItemHTML(group.answer, playerCount, group.semanticConfidence, playerNames);
+                        }).join('')}
                     </div>
                 `;
                 document.getElementById('correctAnswers').appendChild(bucketDiv);
             });
             
             // Populate uncategorized answers (non-matching)
-            const uncategorizedAnswers = (currentGame.currentAnswerGroups || []).filter(group => 
-                !answersToRemove.includes(group.answer)
-            );
-            
-            uncategorizedAnswers.forEach((group, index) => {
-                const answerItem = createAnswerItem(group, index);
-                document.getElementById('uncategorizedAnswers').appendChild(answerItem);
-            });
+            await populateUncategorizedAnswers(answersToRemove);
             
             // Update count badges
             updateCountBadges();
             
+            // Setup drag and drop for all elements
             setupDragAndDrop();
         }
 
-        function createAnswerItemHTML(group) {
+        async function populateUncategorizedAnswers(answersToRemove = []) {
+            console.log('📦 populateUncategorizedAnswers called');
+            console.log('📦 answersToRemove:', answersToRemove);
+            console.log('📦 currentGame.currentAnswerGroups:', currentGame?.currentAnswerGroups);
+            
+            // If no answersToRemove provided, calculate them from current state
+            if (answersToRemove.length === 0) {
+                const questionData = currentGame.currentQuestionData;
+                const correctAnswerList = questionData?.correct_answers || [];
+                console.log('📦 Calculating answersToRemove from correct answers:', correctAnswerList);
+                
+                // Simple matching for uncategorized answers
+                (currentGame.currentAnswerGroups || []).forEach(answerGroup => {
+                    const matchingBucket = correctAnswerList.find(correctAnswer => {
+                        const normalizedAnswer = normalizeAnswer(answerGroup.answer);
+                        const normalizedCorrect = normalizeAnswer(correctAnswer);
+                        return normalizedAnswer === normalizedCorrect;
+                    });
+                    
+                    if (matchingBucket) {
+                        answersToRemove.push(answerGroup.answer);
+                        console.log('📦 Adding to answersToRemove:', answerGroup.answer);
+                    }
+                });
+            }
+            
+            // Populate uncategorized answers (non-matching)
+            const uncategorizedAnswers = (currentGame.currentAnswerGroups || []).filter(group => 
+                !answersToRemove.includes(group.answer)
+            );
+            
+            // Calculate confidence scores for uncategorized answers
+            const questionData = currentGame.currentQuestionData;
+            const correctAnswerList = questionData?.correct_answers || [];
+            
+            uncategorizedAnswers.forEach(answerGroup => {
+                if (!answerGroup.semanticConfidence) {
+                    // Find the best matching correct answer for confidence calculation
+                    let bestConfidence = 0;
+                    let bestMatch = null;
+                    
+                    correctAnswerList.forEach(correctAnswer => {
+                        const confidence = calculateSemanticConfidence(answerGroup.answer, correctAnswer);
+                        if (confidence > bestConfidence) {
+                            bestConfidence = confidence;
+                            bestMatch = correctAnswer;
+                        }
+                    });
+                    
+                    // Set confidence data for uncategorized answers
+                    answerGroup.semanticConfidence = bestConfidence;
+                    answerGroup.semanticMatch = bestMatch;
+                    
+                    console.log(`🧠 Calculated confidence for uncategorized "${answerGroup.answer}": ${bestConfidence}% → "${bestMatch}"`);
+                }
+            });
+            
+            console.log('📦 Uncategorized answers to display:', uncategorizedAnswers);
+            
+            const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
+            console.log('📦 Uncategorized container found:', !!uncategorizedContainer);
+            
+            if (uncategorizedContainer) {
+                uncategorizedContainer.innerHTML = '';
+                console.log('📦 Cleared uncategorized container');
+                
+                uncategorizedAnswers.forEach((group, index) => {
+                    console.log('📦 Creating answer item for:', group.answer);
+                    const answerItem = createAnswerItem(group, index);
+                    uncategorizedContainer.appendChild(answerItem);
+                    console.log('📦 Added answer item to container');
+                });
+                
+                console.log('📦 Final uncategorized container children count:', uncategorizedContainer.children.length);
+            }
+            
+            // Setup drag and drop after populating
+            setupDragAndDrop();
+            updateCountBadges();
+            
+            // Restore saved grading state if available
+            setTimeout(() => {
+                restoreGradingState();
+            }, 100);
+        }
+
+        function createAnswerItemHTML(answerText, playerCount, semanticConfidence, playerNames) {
             let confidenceDisplay = '';
-            if (group.semanticConfidence !== undefined) {
-                const confidenceColor = group.semanticConfidence >= 80 ? '#27ae60' : 
-                                      group.semanticConfidence >= 50 ? '#f39c12' : '#e74c3c';
+            if (semanticConfidence !== undefined) {
+                const confidenceColor = semanticConfidence >= 80 ? '#27ae60' : 
+                                      semanticConfidence >= 50 ? '#f39c12' : '#e74c3c';
                 confidenceDisplay = `
                     <div class="answer-confidence" style="color: ${confidenceColor}; font-size: 11px; margin-top: 3px;">
-                        🧠 ${group.semanticConfidence}% confidence${group.semanticMatch ? ` → "${group.semanticMatch}"` : ''}
+                        🧠 ${semanticConfidence}%
                     </div>
                 `;
             }
             
             return `
-                <div class="answer-item" draggable="true" data-answer-index="${group.index || 0}" data-answer-text="${group.answer}">
-                    <div class="answer-text">"${group.answer}"</div>
-                    <div class="answer-count">${group.count} response${group.count !== 1 ? 's' : ''}</div>
-                    <div class="answer-players">${group.players.join(', ')}</div>
+                <div class="answer-item" draggable="true" data-answer-text="${answerText}" data-player-names="${playerNames || ''}">
+                    <div class="answer-text">"${answerText}" <span class="answer-count-badge">${playerCount}</span></div>
+                    <div class="answer-players">${playerNames || ''}</div>
                     ${confidenceDisplay}
                 </div>
             `;
@@ -812,15 +1625,14 @@
                                       group.semanticConfidence >= 50 ? '#f39c12' : '#e74c3c';
                 confidenceDisplay = `
                     <div class="answer-confidence" style="color: ${confidenceColor}; font-size: 11px; margin-top: 3px;">
-                        🧠 ${group.semanticConfidence}% confidence${group.semanticMatch ? ` → "${group.semanticMatch}"` : ''}
+                        🧠 ${group.semanticConfidence}%${group.semanticMatch ? ` → "${group.semanticMatch}"` : ''}
                     </div>
                 `;
             }
             
             item.innerHTML = `
-                <div class="answer-text">"${group.answer}"</div>
-                <div class="answer-count">${group.count} response${group.count !== 1 ? 's' : ''}</div>
-                <div class="answer-players">${group.players.join(', ')}</div>
+                <div class="answer-text">"${group.answer}" <span class="answer-count-badge">${group.players ? group.players.length : group.count}</span></div>
+                <div class="answer-players">${group.players ? group.players.join(', ') : ''}</div>
                 ${confidenceDisplay}
             `;
             
@@ -828,9 +1640,27 @@
         }
 
         function setupDragAndDrop() {
+            // Remove existing event listeners to prevent duplicates
+            const existingAnswerItems = document.querySelectorAll('.answer-item');
+            const existingDropZones = document.querySelectorAll('.answer-items');
+            const existingBuckets = document.querySelectorAll('.answer-bucket');
+            
+            // Remove old listeners (clone and replace to remove all listeners)
+            existingAnswerItems.forEach(item => {
+                const newItem = item.cloneNode(true);
+                item.parentNode.replaceChild(newItem, item);
+            });
+            
+            // Get fresh references after cloning
             const answerItems = document.querySelectorAll('.answer-item');
             const dropZones = document.querySelectorAll('.answer-items');
-            const bucketHeaders = document.querySelectorAll('.answer-bucket h4');
+            const buckets = document.querySelectorAll('.answer-bucket');
+            
+            console.log('🔧 Setting up drag and drop for:', {
+                answerItems: answerItems.length,
+                dropZones: dropZones.length,
+                buckets: buckets.length
+            });
             
             answerItems.forEach(item => {
                 item.addEventListener('dragstart', handleDragStart);
@@ -844,16 +1674,17 @@
                 zone.addEventListener('drop', handleDrop);
             });
             
-            // Make bucket headers droppable
-            bucketHeaders.forEach(header => {
-                header.addEventListener('dragover', handleDragOver);
-                header.addEventListener('dragenter', handleDragEnter);
-                header.addEventListener('dragleave', handleDragLeave);
-                header.addEventListener('drop', handleDropOnHeader);
+            // Make entire buckets droppable
+            buckets.forEach(bucket => {
+                bucket.addEventListener('dragover', handleDragOver);
+                bucket.addEventListener('dragenter', handleDragEnter);
+                bucket.addEventListener('dragleave', handleDragLeave);
+                bucket.addEventListener('drop', handleDropOnBucket);
             });
         }
 
         function handleDragStart(e) {
+            console.log('🎯 Drag start:', e.target);
             draggedElement = e.target;
             e.target.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
@@ -872,14 +1703,14 @@
 
         function handleDragEnter(e) {
             e.preventDefault();
-            const target = e.target.closest('.answer-items') || e.target.closest('h4');
+            const target = e.target.closest('.answer-items') || e.target.closest('.answer-bucket');
             if (target) {
                 target.classList.add('drag-over');
             }
         }
 
         function handleDragLeave(e) {
-            const target = e.target.closest('.answer-items') || e.target.closest('h4');
+            const target = e.target.closest('.answer-items') || e.target.closest('.answer-bucket');
             if (target) {
                 target.classList.remove('drag-over');
             }
@@ -887,27 +1718,50 @@
 
         function handleDrop(e) {
             e.preventDefault();
+            console.log('🎯 Drop event:', e.target);
             const dropZone = e.target.closest('.answer-items');
+            console.log('🎯 Drop zone found:', dropZone);
             dropZone.classList.remove('drag-over');
             
             if (draggedElement && dropZone) {
+                console.log('🎯 Moving element to drop zone');
                 dropZone.appendChild(draggedElement);
+                
+                // Update confidence display for moved element
+                updateConfidenceForMovedElement(draggedElement, dropZone);
+                
                 updateCountBadges();
+                
+                // Auto-save after drop
+                autoSave();
+            } else {
+                console.log('🎯 Drop failed:', { draggedElement: !!draggedElement, dropZone: !!dropZone });
             }
         }
 
-        function handleDropOnHeader(e) {
+        function handleDropOnBucket(e) {
             e.preventDefault();
-            const header = e.target.closest('h4');
-            const bucket = header.parentElement;
+            console.log('🎯 Drop on bucket event:', e.target);
+            const bucket = e.target.closest('.answer-bucket');
             const dropZone = bucket.querySelector('.answer-items');
+            console.log('🎯 Bucket drop zone found:', dropZone);
             
             // Remove drag-over class from any elements
             document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
             
             if (draggedElement && dropZone) {
+                console.log('🎯 Moving element to bucket drop zone');
                 dropZone.appendChild(draggedElement);
+                
+                // Update confidence display for moved element
+                updateConfidenceForMovedElement(draggedElement, dropZone);
+                
                 updateCountBadges();
+                
+                // Auto-save after drop
+                autoSave();
+            } else {
+                console.log('🎯 Bucket drop failed:', { draggedElement: !!draggedElement, dropZone: !!dropZone });
             }
         }
 
@@ -976,6 +1830,43 @@
                 .replace(/[^\w\s]/g, '')         // Remove all punctuation except spaces
                 .trim();                         // Trim again after punctuation removal
         }
+        
+        // Calculate semantic confidence between two answers
+        function calculateSemanticConfidence(answerText, correctAnswer) {
+            const normalizedAnswer = normalizeAnswer(answerText);
+            const normalizedCorrect = normalizeAnswer(correctAnswer);
+            
+            // Exact match gets 100% confidence
+            if (normalizedAnswer === normalizedCorrect) {
+                return 100;
+            }
+            
+            // Calculate similarity using simple string comparison
+            let similarity = 0;
+            const maxLength = Math.max(normalizedAnswer.length, normalizedCorrect.length);
+            
+            if (maxLength === 0) return 0;
+            
+            // Check for substring matches
+            if (normalizedAnswer.includes(normalizedCorrect) || normalizedCorrect.includes(normalizedAnswer)) {
+                similarity = Math.min(normalizedAnswer.length, normalizedCorrect.length) / maxLength;
+            } else {
+                // Calculate character-by-character similarity
+                let matches = 0;
+                const minLength = Math.min(normalizedAnswer.length, normalizedCorrect.length);
+                
+                for (let i = 0; i < minLength; i++) {
+                    if (normalizedAnswer[i] === normalizedCorrect[i]) {
+                        matches++;
+                    }
+                }
+                
+                similarity = matches / maxLength;
+            }
+            
+            // Convert to percentage and round
+            return Math.round(similarity * 100);
+        }
 
         async function getSemanticMatches(question, correctAnswers, responses) {
             try {
@@ -1010,10 +1901,21 @@
             
             // Update correct answer bucket counts
             document.querySelectorAll('#correctAnswers .answer-bucket').forEach(bucket => {
-                const answerItems = bucket.querySelectorAll('.answer-item');
                 const countBadge = bucket.querySelector('.answer-count-badge');
                 if (countBadge) {
-                    countBadge.textContent = answerItems.length;
+                    // Calculate total player count for this bucket
+                    let totalPlayerCount = 0;
+                    const answerItems = bucket.querySelectorAll('.answer-item');
+                    
+                    answerItems.forEach(item => {
+                        const itemCountBadge = item.querySelector('.answer-count-badge');
+                        if (itemCountBadge) {
+                            const itemCount = parseInt(itemCountBadge.textContent) || 0;
+                            totalPlayerCount += itemCount;
+                        }
+                    });
+                    
+                    countBadge.textContent = totalPlayerCount;
                 }
             });
         }
@@ -1034,11 +1936,260 @@
 
         // Event listeners
         document.getElementById('applyCategorizationBtn').addEventListener('click', applyCategorization);
-        document.getElementById('backToGamesBtn').addEventListener('click', backToGames);
 
+        // Update confidence display for moved elements
+        function updateConfidenceForMovedElement(draggedElement, dropZone) {
+            const answerText = draggedElement.dataset.answerText;
+            if (!answerText) return;
+            
+            // Determine if this is a correct answer bucket or uncategorized
+            const bucketId = dropZone.dataset.bucket;
+            const isCorrectBucket = bucketId && bucketId.startsWith('correct_');
+            
+            if (isCorrectBucket) {
+                // If moved to a correct answer bucket, set confidence to 100%
+                const confidenceDisplay = draggedElement.querySelector('.answer-confidence');
+                if (confidenceDisplay) {
+                    confidenceDisplay.innerHTML = `🧠 100% → "${answerText}"`;
+                    confidenceDisplay.style.color = '#27ae60';
+                } else {
+                    // Create confidence display if it doesn't exist
+                    const newConfidenceDisplay = document.createElement('div');
+                    newConfidenceDisplay.className = 'answer-confidence';
+                    newConfidenceDisplay.style.cssText = 'color: #27ae60; font-size: 11px; margin-top: 3px;';
+                    newConfidenceDisplay.innerHTML = `🧠 100% → "${answerText}"`;
+                    draggedElement.appendChild(newConfidenceDisplay);
+                }
+            } else {
+                // If moved to uncategorized, calculate confidence against all correct answers
+                const questionData = currentGame.currentQuestionData;
+                const correctAnswerList = questionData?.correct_answers || [];
+                
+                let bestConfidence = 0;
+                let bestMatch = null;
+                
+                correctAnswerList.forEach(correctAnswer => {
+                    const confidence = calculateSemanticConfidence(answerText, correctAnswer);
+                    if (confidence > bestConfidence) {
+                        bestConfidence = confidence;
+                        bestMatch = correctAnswer;
+                    }
+                });
+                
+                // Update or create confidence display
+                let confidenceDisplay = draggedElement.querySelector('.answer-confidence');
+                if (!confidenceDisplay) {
+                    confidenceDisplay = document.createElement('div');
+                    confidenceDisplay.className = 'answer-confidence';
+                    confidenceDisplay.style.cssText = 'font-size: 11px; margin-top: 3px;';
+                    draggedElement.appendChild(confidenceDisplay);
+                }
+                
+                const confidenceColor = bestConfidence >= 80 ? '#27ae60' : 
+                                      bestConfidence >= 50 ? '#f39c12' : '#e74c3c';
+                confidenceDisplay.style.color = confidenceColor;
+                confidenceDisplay.innerHTML = `🧠 ${bestConfidence}%${bestMatch ? ` → "${bestMatch}"` : ''}`;
+                
+                console.log(`🧠 Updated confidence for moved "${answerText}": ${bestConfidence}% → "${bestMatch}"`);
+            }
+        }
+
+        // ===== GRADING STATE PERSISTENCE =====
+        
+        // Save current grading state to localStorage
+        function saveGradingState() {
+            if (!currentGame || !currentGame.currentQuestionData) return;
+            
+            const state = {
+                gameCode: currentGame.gameCode,
+                questionIndex: currentGame.currentQuestionIndex,
+                timestamp: Date.now(),
+                buckets: {}
+            };
+            
+            // Save state for each bucket
+            document.querySelectorAll('.answer-bucket').forEach(bucket => {
+                const bucketId = bucket.dataset.bucketId;
+                if (!bucketId) return;
+                
+                const answerItems = bucket.querySelectorAll('.answer-item');
+                const items = [];
+                
+                answerItems.forEach(item => {
+                    items.push({
+                        answerText: item.dataset.answerText,
+                        playerCount: parseInt(item.querySelector('.answer-count-badge')?.textContent || '1'),
+                        confidence: item.querySelector('.answer-confidence')?.textContent || '',
+                        playerNames: item.dataset.playerNames || ''
+                    });
+                });
+                
+                state.buckets[bucketId] = items;
+            });
+            
+            const stateKey = `grading_state_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`;
+            localStorage.setItem(stateKey, JSON.stringify(state));
+            
+            console.log('💾 Saved grading state:', state);
+            
+            // Show save indicator
+            showSaveIndicator();
+        }
+        
+        // Restore grading state from localStorage
+        function restoreGradingState() {
+            if (!currentGame || !currentGame.currentQuestionData) return;
+            
+            const stateKey = `grading_state_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`;
+            const savedState = localStorage.getItem(stateKey);
+            
+            if (!savedState) {
+                console.log('📂 No saved grading state found');
+                return;
+            }
+            
+            try {
+                const state = JSON.parse(savedState);
+                console.log('📂 Restoring grading state:', state);
+                
+                // Check if state is still valid (same game and question)
+                if (state.gameCode !== currentGame.gameCode || 
+                    state.questionIndex !== currentGame.currentQuestionIndex) {
+                    console.log('📂 Saved state is outdated, clearing');
+                    localStorage.removeItem(stateKey);
+                    return;
+                }
+                
+                // Apply saved state
+                Object.keys(state.buckets).forEach(bucketId => {
+                    const bucket = document.querySelector(`[data-bucket-id="${bucketId}"]`);
+                    if (!bucket) return;
+                    
+                    const dropZone = bucket.querySelector('.answer-items');
+                    if (!dropZone) return;
+                    
+                    // Clear existing items
+                    dropZone.innerHTML = '';
+                    
+                    // Add saved items
+                    state.buckets[bucketId].forEach(item => {
+                        const answerItem = createAnswerItemHTML(
+                            item.answerText,
+                            item.playerCount,
+                            item.confidence.includes('100%') ? 100 : 0,
+                            item.playerNames
+                        );
+                        dropZone.appendChild(answerItem);
+                    });
+                });
+                
+                // Re-setup drag and drop
+                setupDragAndDrop();
+                updateCountBadges();
+                
+                console.log('✅ Grading state restored successfully');
+                showRestoreIndicator();
+                
+            } catch (error) {
+                console.error('❌ Error restoring grading state:', error);
+                localStorage.removeItem(stateKey);
+            }
+        }
+        
+        // Show save indicator
+        function showSaveIndicator() {
+            const indicator = document.createElement('div');
+            indicator.id = 'save-indicator';
+            indicator.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #27ae60;
+                color: white;
+                padding: 10px 15px;
+                border-radius: 8px;
+                font-size: 14px;
+                z-index: 1000;
+                animation: slideInRight 0.3s ease;
+            `;
+            indicator.textContent = '💾 State Saved';
+            
+            document.body.appendChild(indicator);
+            
+            setTimeout(() => {
+                indicator.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => {
+                    if (indicator.parentNode) {
+                        indicator.parentNode.removeChild(indicator);
+                    }
+                }, 300);
+            }, 2000);
+        }
+        
+        // Show restore indicator
+        function showRestoreIndicator() {
+            const indicator = document.createElement('div');
+            indicator.id = 'restore-indicator';
+            indicator.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #007bff;
+                color: white;
+                padding: 10px 15px;
+                border-radius: 8px;
+                font-size: 14px;
+                z-index: 1000;
+                animation: slideInRight 0.3s ease;
+            `;
+            indicator.textContent = '📂 State Restored';
+            
+            document.body.appendChild(indicator);
+            
+            setTimeout(() => {
+                indicator.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => {
+                    if (indicator.parentNode) {
+                        indicator.parentNode.removeChild(indicator);
+                    }
+                }, 300);
+            }, 2000);
+        }
+        
+        // Add CSS animations for indicators
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOutRight {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Auto-save on drag and drop
+        function autoSave() {
+            setTimeout(saveGradingState, 100); // Small delay to ensure DOM is updated
+        }
+        
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
             initializeConnection();
+            
+            // Auto-save on page unload
+            window.addEventListener('beforeunload', () => {
+                saveGradingState();
+            });
+            
+            // Auto-save every 30 seconds as backup
+            setInterval(() => {
+                if (currentGame && currentGame.currentQuestionData) {
+                    saveGradingState();
+                }
+            }, 30000);
         });
 
 
