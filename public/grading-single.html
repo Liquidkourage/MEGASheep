@@ -1873,7 +1873,8 @@
 
         async function getSemanticMatches(question, correctAnswers, responses) {
             try {
-                const response = await fetch('http://localhost:5005/semantic-match', {
+                // Use the server's integrated semantic matcher
+                const response = await fetch('/api/semantic-match', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 

@@ -514,22 +514,149 @@ class Game {
 }
 
 // Utility function to call the semantic matcher service
+// Integrated JavaScript semantic matcher (no external Python service needed)
+function normalizeText(text) {
+    return text.toLowerCase().trim();
+}
+
+function computeFuzzySimilarity(text1, text2) {
+    const normalized1 = normalizeText(text1);
+    const normalized2 = normalizeText(text2);
+    
+    if (normalized1 === normalized2) return 1.0;
+    
+    // Simple Levenshtein-like similarity
+    const longer = normalized1.length > normalized2.length ? normalized1 : normalized2;
+    const shorter = normalized1.length > normalized2.length ? normalized2 : normalized1;
+    
+    if (longer.length === 0) return 1.0;
+    
+    // Check for substring matches
+    if (longer.includes(shorter)) {
+        return shorter.length / longer.length;
+    }
+    
+    // Simple character-by-character similarity
+    let matches = 0;
+    const minLength = Math.min(normalized1.length, normalized2.length);
+    
+    for (let i = 0; i < minLength; i++) {
+        if (normalized1[i] === normalized2[i]) {
+            matches++;
+        }
+    }
+    
+    return matches / Math.max(normalized1.length, normalized2.length);
+}
+
+// Synonym dictionary for common cases
+const SYNONYM_DICT = {
+    'cock': ['rooster', 'chicken', 'hen'],
+    'rooster': ['cock', 'chicken', 'hen'],
+    'chicken': ['cock', 'rooster', 'hen'],
+    'hen': ['cock', 'rooster', 'chicken'],
+    'dragon': ['draggon', 'dragun', 'dragonn', 'drgon'],
+    'draggon': ['dragon'],
+    'dragun': ['dragon'],
+    'dragonn': ['dragon'],
+    'drgon': ['dragon'],
+    'pig': ['piggy', 'hog', 'swine'],
+    'piggy': ['pig', 'hog', 'swine'],
+    'hog': ['pig', 'piggy', 'swine'],
+    'swine': ['pig', 'piggy', 'hog'],
+    'rat': ['mouse', 'rodent'],
+    'mouse': ['rat', 'rodent'],
+    'rodent': ['rat', 'mouse'],
+    'ox': ['bull', 'cow', 'cattle'],
+    'bull': ['ox', 'cow', 'cattle'],
+    'cow': ['ox', 'bull', 'cattle'],
+    'cattle': ['ox', 'bull', 'cow'],
+    'tiger': ['cat', 'feline'],
+    'cat': ['tiger', 'feline'],
+    'feline': ['tiger', 'cat'],
+    'rabbit': ['bunny', 'hare'],
+    'bunny': ['rabbit', 'hare'],
+    'hare': ['rabbit', 'bunny'],
+    'snake': ['serpent', 'reptile'],
+    'serpent': ['snake', 'reptile'],
+    'reptile': ['snake', 'serpent'],
+    'horse': ['steed', 'mare', 'stallion'],
+    'steed': ['horse', 'mare', 'stallion'],
+    'mare': ['horse', 'steed', 'stallion'],
+    'stallion': ['horse', 'steed', 'mare'],
+    'goat': ['billy', 'nanny'],
+    'billy': ['goat', 'nanny'],
+    'nanny': ['goat', 'billy'],
+    'monkey': ['ape', 'primate'],
+    'ape': ['monkey', 'primate'],
+    'primate': ['monkey', 'ape'],
+    'dog': ['canine', 'hound', 'puppy'],
+    'canine': ['dog', 'hound', 'puppy'],
+    'hound': ['dog', 'canine', 'puppy'],
+    'puppy': ['dog', 'canine', 'hound']
+};
+
+function computeHybridSimilarity(text1, text2) {
+    const normalized1 = normalizeText(text1);
+    const normalized2 = normalizeText(text2);
+    
+    // Check synonym dictionary first
+    if (normalized1 in SYNONYM_DICT && SYNONYM_DICT[normalized1].includes(normalized2)) {
+        return 0.95; // 95% confidence for known synonyms
+    }
+    if (normalized2 in SYNONYM_DICT && SYNONYM_DICT[normalized2].includes(normalized1)) {
+        return 0.95; // 95% confidence for known synonyms
+    }
+    
+    // Use fuzzy similarity
+    return computeFuzzySimilarity(text1, text2);
+}
+
+function computeConfidence(similarity) {
+    // Map similarity (0-1) to confidence (0-100)
+    return Math.min(100.0, Math.max(0.0, similarity * 100));
+}
+
 async function getSemanticMatches(question, correctAnswers, responses) {
     try {
-        const res = await fetch('http://localhost:5005/semantic-match', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                question,
-                correct_answers: correctAnswers,
-                responses
-            })
-        });
-        if (!res.ok) throw new Error('Semantic matcher service error');
-        const data = await res.json();
-        return data.results;
-    } catch (err) {
-        console.error('Semantic matcher error:', err);
+        console.log('🧠 Processing semantic matches...');
+        console.log(`Question: ${question}`);
+        console.log(`Correct answers: ${correctAnswers.join(', ')}`);
+        console.log(`Responses: ${responses.join(', ')}`);
+        
+        const results = [];
+        
+        for (const response of responses) {
+            let bestMatch = null;
+            let bestSimilarity = 0.0;
+            
+            // Find the best matching correct answer
+            for (const correctAnswer of correctAnswers) {
+                const similarity = computeHybridSimilarity(response, correctAnswer);
+                if (similarity > bestSimilarity) {
+                    bestSimilarity = similarity;
+                    bestMatch = correctAnswer;
+                }
+            }
+            
+            const confidence = computeConfidence(bestSimilarity);
+            
+            const result = {
+                response: response,
+                best_match: bestMatch,
+                similarity: Math.round(bestSimilarity * 100) / 100,
+                confidence: Math.round(confidence * 100) / 100
+            };
+            
+            results.push(result);
+            console.log(`'${response}' -> '${bestMatch}' (confidence: ${confidence.toFixed(1)}%)`);
+        }
+        
+        console.log('✅ Semantic matching completed');
+        return results;
+        
+    } catch (error) {
+        console.error('❌ Error in semantic matching:', error);
         return null;
     }
 }
@@ -620,6 +747,41 @@ app.get('/game', (req, res) => {
 
 app.get('/upload', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'upload.html'));
+});
+
+// API endpoint for semantic matching
+app.post('/api/semantic-match', async (req, res) => {
+    try {
+        const { question, correct_answers, responses } = req.body;
+        
+        if (!question || !correct_answers || !responses) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required parameters: question, correct_answers, responses'
+            });
+        }
+        
+        const results = await getSemanticMatches(question, correct_answers, responses);
+        
+        if (results === null) {
+            return res.status(500).json({
+                success: false,
+                error: 'Semantic matching failed'
+            });
+        }
+        
+        res.json({
+            success: true,
+            results: results
+        });
+        
+    } catch (error) {
+        console.error('API semantic match error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
 });
 
 // Serve uploaded images
