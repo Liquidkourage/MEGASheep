@@ -2192,12 +2192,16 @@
                             }
                         }
                         
-                        const answerItem = createAnswerItemHTML(
+                        const answerItemHTML = createAnswerItemHTML(
                             item.answerText,
                             item.playerCount,
                             confidence,
                             item.playerNames
                         );
+                        // Convert HTML string to DOM element
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = answerItemHTML;
+                        const answerItem = tempDiv.firstElementChild;
                         dropZone.appendChild(answerItem);
                     });
                     } else {
