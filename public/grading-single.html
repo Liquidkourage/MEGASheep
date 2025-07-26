@@ -1591,6 +1591,11 @@
             // Restore saved grading state if available
             setTimeout(() => {
                 restoreGradingState();
+                // Save initial state after restore
+                setTimeout(() => {
+                    console.log('💾 Saving initial state after restore');
+                    saveGradingState();
+                }, 200);
             }, 100);
         }
 
