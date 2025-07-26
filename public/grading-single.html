@@ -1590,13 +1590,17 @@
             
             // Restore saved grading state if available
             setTimeout(() => {
-                restoreGradingState();
-                // Save initial state after restore (with longer delay to ensure DOM is ready)
+                const restored = restoreGradingState();
+                // Only save initial state if we didn't restore anything
                 setTimeout(() => {
-                    console.log('💾 Saving initial state after restore');
-                    console.log('💾 DOM check - uncategorized items:', document.querySelectorAll('#uncategorizedAnswers .answer-item').length);
-                    console.log('💾 DOM check - uncategorized container children:', document.getElementById('uncategorizedAnswers')?.children.length);
-                    saveGradingState();
+                    if (!restored) {
+                        console.log('💾 Saving initial state (no restore occurred)');
+                        console.log('💾 DOM check - uncategorized items:', document.querySelectorAll('#uncategorizedAnswers .answer-item').length);
+                        console.log('💾 DOM check - uncategorized container children:', document.getElementById('uncategorizedAnswers')?.children.length);
+                        saveGradingState();
+                    } else {
+                        console.log('💾 Skipping initial save (restore occurred)');
+                    }
                 }, 500);
             }, 100);
         }
@@ -2127,7 +2131,7 @@
         
         // Restore grading state from localStorage
         function restoreGradingState() {
-            if (!currentGame || !currentGame.currentQuestionData) return;
+            if (!currentGame || !currentGame.currentQuestionData) return false;
             
             const stateKey = `grading_state_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`;
             console.log('📂 Looking for saved state with key:', stateKey);
@@ -2137,7 +2141,7 @@
             
             if (!savedState) {
                 console.log('📂 No saved grading state found');
-                return;
+                return false;
             }
             
             try {
@@ -2149,10 +2153,11 @@
                     state.questionIndex !== currentGame.currentQuestionIndex) {
                     console.log('📂 Saved state is outdated, clearing');
                     localStorage.removeItem(stateKey);
-                    return;
+                    return false;
                 }
                 
                 // Apply saved state
+                let restoredAny = false;
                 Object.keys(state.buckets).forEach(bucketId => {
                     let bucket, dropZone;
                     
@@ -2176,6 +2181,7 @@
                     // Only clear and restore if there are items to restore
                     if (state.buckets[bucketId].length > 0) {
                         console.log(`📂 Clearing and restoring ${state.buckets[bucketId].length} items for bucket: ${bucketId}`);
+                        restoredAny = true;
                         // Clear existing items
                         dropZone.innerHTML = '';
                         
@@ -2215,10 +2221,12 @@
                 
                 console.log('✅ Grading state restored successfully');
                 showRestoreIndicator();
+                return restoredAny;
                 
             } catch (error) {
                 console.error('❌ Error restoring grading state:', error);
                 localStorage.removeItem(stateKey);
+                return false;
             }
         }
         
