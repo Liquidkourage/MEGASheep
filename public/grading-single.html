@@ -1572,6 +1572,15 @@
             console.log('📦 Uncategorized container found:', !!uncategorizedContainer);
             
             if (uncategorizedContainer) {
+                // Check if there are already items in the container (indicating a restore happened)
+                const existingItems = uncategorizedContainer.children.length;
+                console.log('📦 Existing items in uncategorized container:', existingItems);
+                
+                if (existingItems > 0) {
+                    console.log('📦 Skipping repopulation - items already exist (likely from restore)');
+                    return;
+                }
+                
                 uncategorizedContainer.innerHTML = '';
                 console.log('📦 Cleared uncategorized container');
                 
@@ -1601,6 +1610,9 @@
                         saveGradingState();
                     } else {
                         console.log('💾 Skipping initial save (restore occurred)');
+                        console.log('💾 Skipping populateUncategorizedAnswers (restore occurred)');
+                        // Don't repopulate uncategorized if we restored state
+                        return;
                     }
                 }, 500);
             }, 100);
