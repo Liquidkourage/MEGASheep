@@ -1393,7 +1393,7 @@
             
             // Create correct answer buckets and sort alphabetically
             const correctAnswerBuckets = correctAnswerList.map((correctAnswer, index) => ({
-                id: `correct_${index}`,
+                id: `correct_${correctAnswer.toLowerCase().replace(/\s+/g, '_')}`,
                 name: correctAnswer,
                 correctAnswer: correctAnswer,
                 answers: []
@@ -2017,21 +2017,32 @@
             // Save state for each bucket
             document.querySelectorAll('.answer-bucket').forEach(bucket => {
                 const bucketId = bucket.dataset.bucketId;
-                if (!bucketId) return;
+                if (!bucketId) {
+                    console.log('⚠️ Bucket without bucketId found:', bucket);
+                    return;
+                }
                 
                 const answerItems = bucket.querySelectorAll('.answer-item');
                 const items = [];
                 
                 answerItems.forEach(item => {
+                    const answerText = item.dataset.answerText;
+                    const playerCount = parseInt(item.querySelector('.answer-count-badge')?.textContent || '1');
+                    const confidence = item.querySelector('.answer-confidence')?.textContent || '';
+                    const playerNames = item.dataset.playerNames || '';
+                    
                     items.push({
-                        answerText: item.dataset.answerText,
-                        playerCount: parseInt(item.querySelector('.answer-count-badge')?.textContent || '1'),
-                        confidence: item.querySelector('.answer-confidence')?.textContent || '',
-                        playerNames: item.dataset.playerNames || ''
+                        answerText: answerText,
+                        playerCount: playerCount,
+                        confidence: confidence,
+                        playerNames: playerNames
                     });
+                    
+                    console.log(`💾 Saving item: "${answerText}" in bucket "${bucketId}"`);
                 });
                 
                 state.buckets[bucketId] = items;
+                console.log(`💾 Saved ${items.length} items for bucket "${bucketId}"`);
             });
             
             // Save state for uncategorized and wrong answer containers
@@ -2106,6 +2117,8 @@
                 Object.keys(state.buckets).forEach(bucketId => {
                     let bucket, dropZone;
                     
+                    console.log(`📂 Restoring bucket: ${bucketId} with ${state.buckets[bucketId].length} items`);
+                    
                     // Handle different bucket types
                     if (bucketId === 'uncategorized') {
                         dropZone = document.getElementById('uncategorizedAnswers');
@@ -2126,6 +2139,8 @@
                     
                     // Add saved items
                     state.buckets[bucketId].forEach(item => {
+                        console.log(`📂 Restoring item: "${item.answerText}" to bucket "${bucketId}"`);
+                        
                         // Extract confidence percentage from the saved confidence text
                         let confidence = 0;
                         if (item.confidence) {
