@@ -1334,6 +1334,7 @@
             });
             
             bucket.className = `answer-bucket correct-bucket${isEmpty ? ' empty' : ''}`;
+            bucket.setAttribute('data-bucket-id', `correct_${correctAnswer.toLowerCase().replace(/\s+/g, '_')}`);
             bucket.innerHTML = `
                 <h4 onclick="toggleBucket(this)">
                     <span class="bucket-toggle collapsed">▶</span>
