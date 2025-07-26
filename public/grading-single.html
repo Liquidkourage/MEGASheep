@@ -1820,6 +1820,9 @@
             document.getElementById('gradingInterface').style.display = 'none';
             document.getElementById('gameSelection').style.display = 'block';
             updateGameList();
+            
+            // Navigate to host creation screen
+            window.location.href = '/host';
         }
 
         function normalizeAnswer(answer) {
@@ -2027,6 +2030,41 @@
                 state.buckets[bucketId] = items;
             });
             
+            // Save state for uncategorized and wrong answer containers
+            const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
+            if (uncategorizedContainer) {
+                const uncategorizedItems = uncategorizedContainer.querySelectorAll('.answer-item');
+                const items = [];
+                
+                uncategorizedItems.forEach(item => {
+                    items.push({
+                        answerText: item.dataset.answerText,
+                        playerCount: parseInt(item.querySelector('.answer-count-badge')?.textContent || '1'),
+                        confidence: item.querySelector('.answer-confidence')?.textContent || '',
+                        playerNames: item.dataset.playerNames || ''
+                    });
+                });
+                
+                state.buckets['uncategorized'] = items;
+            }
+            
+            const wrongContainer = document.getElementById('wrongAnswers');
+            if (wrongContainer) {
+                const wrongItems = wrongContainer.querySelectorAll('.answer-item');
+                const items = [];
+                
+                wrongItems.forEach(item => {
+                    items.push({
+                        answerText: item.dataset.answerText,
+                        playerCount: parseInt(item.querySelector('.answer-count-badge')?.textContent || '1'),
+                        confidence: item.querySelector('.answer-confidence')?.textContent || '',
+                        playerNames: item.dataset.playerNames || ''
+                    });
+                });
+                
+                state.buckets['wrong'] = items;
+            }
+            
             const stateKey = `grading_state_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`;
             localStorage.setItem(stateKey, JSON.stringify(state));
             
@@ -2062,21 +2100,41 @@
                 
                 // Apply saved state
                 Object.keys(state.buckets).forEach(bucketId => {
-                    const bucket = document.querySelector(`[data-bucket-id="${bucketId}"]`);
-                    if (!bucket) return;
+                    let bucket, dropZone;
                     
-                    const dropZone = bucket.querySelector('.answer-items');
-                    if (!dropZone) return;
+                    // Handle different bucket types
+                    if (bucketId === 'uncategorized') {
+                        dropZone = document.getElementById('uncategorizedAnswers');
+                    } else if (bucketId === 'wrong') {
+                        dropZone = document.getElementById('wrongAnswers');
+                    } else {
+                        bucket = document.querySelector(`[data-bucket-id="${bucketId}"]`);
+                        dropZone = bucket?.querySelector('.answer-items');
+                    }
+                    
+                    if (!dropZone) {
+                        console.log(`❌ Drop zone not found for bucket: ${bucketId}`);
+                        return;
+                    }
                     
                     // Clear existing items
                     dropZone.innerHTML = '';
                     
                     // Add saved items
                     state.buckets[bucketId].forEach(item => {
+                        // Extract confidence percentage from the saved confidence text
+                        let confidence = 0;
+                        if (item.confidence) {
+                            const match = item.confidence.match(/🧠 (\d+)%/);
+                            if (match) {
+                                confidence = parseInt(match[1]);
+                            }
+                        }
+                        
                         const answerItem = createAnswerItemHTML(
                             item.answerText,
                             item.playerCount,
-                            item.confidence.includes('100%') ? 100 : 0,
+                            confidence,
                             item.playerNames
                         );
                         dropZone.appendChild(answerItem);
