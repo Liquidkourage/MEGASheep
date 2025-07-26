@@ -1651,6 +1651,16 @@
             // Remove old listeners (clone and replace to remove all listeners)
             existingAnswerItems.forEach(item => {
                 const newItem = item.cloneNode(true);
+                // Preserve data attributes that might be lost during cloning
+                if (item.dataset.answerText) {
+                    newItem.dataset.answerText = item.dataset.answerText;
+                }
+                if (item.dataset.playerNames) {
+                    newItem.dataset.playerNames = item.dataset.playerNames;
+                }
+                if (item.dataset.answerIndex) {
+                    newItem.dataset.answerIndex = item.dataset.answerIndex;
+                }
                 item.parentNode.replaceChild(newItem, item);
             });
             
