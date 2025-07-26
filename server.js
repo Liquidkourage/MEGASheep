@@ -3,6 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
+const { spawn } = require('child_process');
 require('dotenv').config();
 
 const { createClient } = require('@supabase/supabase-js');
@@ -21,6 +22,93 @@ const io = socketIo(server, {
   allowEIO3: true,
   pingTimeout: 60000,
   pingInterval: 25000
+});
+
+// Python semantic matcher service management
+let pythonSemanticService = null;
+let semanticServiceReady = false;
+
+function startPythonSemanticService() {
+    console.log('🚀 Starting Python semantic matcher service...');
+    
+    // Check if semantic_matcher.py exists
+    const semanticMatcherPath = path.join(__dirname, 'semantic_matcher.py');
+    if (!fs.existsSync(semanticMatcherPath)) {
+        console.log('⚠️  semantic_matcher.py not found - semantic matching will use fallback');
+        return;
+    }
+    
+    try {
+        // Start the Python service
+        pythonSemanticService = spawn('python', [semanticMatcherPath], {
+            stdio: ['pipe', 'pipe', 'pipe'],
+            detached: false
+        });
+        
+        // Handle stdout
+        pythonSemanticService.stdout.on('data', (data) => {
+            const output = data.toString();
+            console.log(`🐍 Python Service: ${output.trim()}`);
+            
+            // Check if service is ready
+            if (output.includes('Running on http://127.0.0.1:5005')) {
+                console.log('✅ Python semantic matcher service is ready!');
+                semanticServiceReady = true;
+            }
+        });
+        
+        // Handle stderr
+        pythonSemanticService.stderr.on('data', (data) => {
+            const error = data.toString();
+            console.log(`🐍 Python Service Error: ${error.trim()}`);
+        });
+        
+        // Handle process exit
+        pythonSemanticService.on('close', (code) => {
+            console.log(`🐍 Python semantic service exited with code ${code}`);
+            semanticServiceReady = false;
+            
+            // Restart after a delay if it wasn't intentionally stopped
+            if (code !== 0) {
+                console.log('🔄 Restarting Python semantic service in 5 seconds...');
+                setTimeout(startPythonSemanticService, 5000);
+            }
+        });
+        
+        // Handle process errors
+        pythonSemanticService.on('error', (error) => {
+            console.error('❌ Failed to start Python semantic service:', error);
+            semanticServiceReady = false;
+        });
+        
+    } catch (error) {
+        console.error('❌ Error starting Python semantic service:', error);
+        semanticServiceReady = false;
+    }
+}
+
+function stopPythonSemanticService() {
+    if (pythonSemanticService) {
+        console.log('🛑 Stopping Python semantic matcher service...');
+        pythonSemanticService.kill('SIGTERM');
+        semanticServiceReady = false;
+    }
+}
+
+// Start Python service when server starts
+startPythonSemanticService();
+
+// Cleanup on server shutdown
+process.on('SIGINT', () => {
+    console.log('\n🛑 Shutting down server...');
+    stopPythonSemanticService();
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    console.log('\n🛑 Shutting down server...');
+    stopPythonSemanticService();
+    process.exit(0);
 });
 
 // Middleware
@@ -624,6 +712,36 @@ async function getSemanticMatches(question, correctAnswers, responses) {
         console.log(`Correct answers: ${correctAnswers.join(', ')}`);
         console.log(`Responses: ${responses.join(', ')}`);
         
+        // Try Python service first if available
+        if (semanticServiceReady) {
+            try {
+                console.log('🐍 Using Python Sentence Transformers service...');
+                const res = await fetch('http://localhost:5005/semantic-match', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question,
+                        correct_answers: correctAnswers,
+                        responses
+                    })
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    console.log('✅ Python semantic matching completed');
+                    return data.results;
+                } else {
+                    console.log('⚠️ Python service returned error, falling back to JavaScript');
+                }
+            } catch (error) {
+                console.log('⚠️ Python service unavailable, falling back to JavaScript:', error.message);
+            }
+        } else {
+            console.log('⚠️ Python service not ready, using JavaScript fallback');
+        }
+        
+        // Fallback to JavaScript implementation
+        console.log('🔄 Using JavaScript fuzzy matching fallback...');
         const results = [];
         
         for (const response of responses) {
@@ -652,7 +770,7 @@ async function getSemanticMatches(question, correctAnswers, responses) {
             console.log(`'${response}' -> '${bestMatch}' (confidence: ${confidence.toFixed(1)}%)`);
         }
         
-        console.log('✅ Semantic matching completed');
+        console.log('✅ JavaScript semantic matching completed');
         return results;
         
     } catch (error) {
@@ -782,6 +900,17 @@ app.post('/api/semantic-match', async (req, res) => {
             error: 'Internal server error'
         });
     }
+});
+
+// Health check endpoint for semantic service
+app.get('/api/semantic-status', (req, res) => {
+    res.json({
+        pythonServiceReady: semanticServiceReady,
+        pythonServiceRunning: pythonSemanticService !== null && !pythonSemanticService.killed,
+        message: semanticServiceReady ? 
+            'Python Sentence Transformers service is ready' : 
+            'Using JavaScript fallback semantic matching'
+    });
 });
 
 // Serve uploaded images
