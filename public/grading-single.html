@@ -2137,6 +2137,10 @@
             console.log('📂 Looking for saved state with key:', stateKey);
             console.log('📂 Available localStorage keys:', Object.keys(localStorage).filter(key => key.startsWith('grading_state_')));
             
+            // Debug: Check what buckets exist when restore runs
+            const existingBuckets = document.querySelectorAll('.answer-bucket');
+            console.log('📂 Existing buckets when restore runs:', Array.from(existingBuckets).map(b => b.dataset.bucketId));
+            
             const savedState = localStorage.getItem(stateKey);
             
             if (!savedState) {
