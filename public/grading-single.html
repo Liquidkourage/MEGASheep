@@ -2058,10 +2058,17 @@
             // Save state for uncategorized and wrong answer containers
             const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
             if (uncategorizedContainer) {
+                console.log('🔍 Debug: uncategorizedContainer found:', uncategorizedContainer);
+                console.log('🔍 Debug: uncategorizedContainer innerHTML:', uncategorizedContainer.innerHTML);
+                console.log('🔍 Debug: uncategorizedContainer children count:', uncategorizedContainer.children.length);
+                
                 const uncategorizedItems = uncategorizedContainer.querySelectorAll('.answer-item');
+                console.log('🔍 Debug: uncategorizedItems found:', uncategorizedItems.length);
+                
                 const items = [];
                 
                 uncategorizedItems.forEach(item => {
+                    console.log('🔍 Debug: Processing uncategorized item:', item.dataset.answerText);
                     items.push({
                         answerText: item.dataset.answerText,
                         playerCount: parseInt(item.querySelector('.answer-count-badge')?.textContent || '1'),
@@ -2071,6 +2078,7 @@
                 });
                 
                 state.buckets['uncategorized'] = items;
+                console.log('🔍 Debug: Final uncategorized items to save:', items);
             }
             
             const wrongContainer = document.getElementById('wrongAnswers');
