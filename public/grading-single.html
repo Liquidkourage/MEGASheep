@@ -1508,28 +1508,39 @@
             // Setup drag and drop for all elements
             setupDragAndDrop();
             
-            // Restore saved grading state if available
+                    // Restore saved grading state if available
+        setTimeout(() => {
+            const restored = restoreGradingState();
+            // Only save initial state if we didn't restore anything
             setTimeout(() => {
-                const restored = restoreGradingState();
-                // Only save initial state if we didn't restore anything
-                setTimeout(() => {
-                    if (!restored) {
-                        console.log('💾 Saving initial state (no restore occurred)');
-                        console.log('💾 DOM check - uncategorized items:', document.querySelectorAll('#uncategorizedAnswers .answer-item').length);
-                        console.log('💾 DOM check - uncategorized container children:', document.getElementById('uncategorizedAnswers')?.children.length);
-                        saveGradingState();
-                    } else {
-                        console.log('💾 Skipping initial save (restore occurred)');
-                        console.log('💾 Skipping populateUncategorizedAnswers (restore occurred)');
-                        // Don't repopulate uncategorized if we restored state
-                        return;
-                    }
-                }, 500);
-            }, 100);
+                if (!restored) {
+                    console.log('💾 Saving initial state (no restore occurred)');
+                    console.log('💾 DOM check - uncategorized items:', document.querySelectorAll('#uncategorizedAnswers .answer-item').length);
+                    console.log('💾 DOM check - uncategorized container children:', document.getElementById('uncategorizedAnswers')?.children.length);
+                    saveGradingState();
+                } else {
+                    console.log('💾 Skipping initial save (restore occurred)');
+                    console.log('💾 Skipping populateUncategorizedAnswers (restore occurred)');
+                    // Set global flag to prevent populateUncategorizedAnswers from running
+                    window.skipPopulateUncategorized = true;
+                    // Clear the flag after a short delay
+                    setTimeout(() => {
+                        window.skipPopulateUncategorized = false;
+                    }, 1000);
+                }
+            }, 500);
+        }, 100);
         }
 
         async function populateUncategorizedAnswers(answersToRemove = []) {
             console.log('📦 populateUncategorizedAnswers called');
+            
+            // Check if we should skip this call due to a recent restore
+            if (window.skipPopulateUncategorized) {
+                console.log('📦 SKIPPING populateUncategorizedAnswers due to recent restore');
+                return;
+            }
+            
             console.log('📦 answersToRemove:', answersToRemove);
             console.log('📦 currentGame.currentAnswerGroups:', currentGame?.currentAnswerGroups);
             
