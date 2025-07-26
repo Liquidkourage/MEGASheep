@@ -160,6 +160,10 @@
             margin-bottom: 30px;
         }
 
+        .dashboard-grid.with-responses {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
         .dashboard-panel {
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid #007bff;
@@ -251,6 +255,126 @@
             color: #27ae60;
             font-weight: bold;
             font-size: 16px;
+        }
+
+        /* Responses Panel */
+        .responses-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .response-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .response-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .response-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .response-player {
+            font-weight: bold;
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .response-time {
+            color: #cccccc;
+            font-size: 12px;
+        }
+
+        .response-text {
+            color: #ffffff;
+            font-size: 16px;
+            font-style: italic;
+            background: rgba(0, 123, 255, 0.2);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border-left: 3px solid #007bff;
+        }
+
+        /* Scoring Panel */
+        .scoring-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #28a745;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(40, 167, 69, 0.2);
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+        }
+
+        .scoring-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(40, 167, 69, 0.3);
+        }
+
+        .scoring-header h3 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .scoring-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .scoring-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .scoring-section h4 {
+            color: #ffffff;
+            margin: 0 0 15px 0;
+            font-size: 1.2em;
+        }
+
+        .answer-group {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .answer-text {
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 5px;
+        }
+
+        .answer-players {
+            color: #cccccc;
+            font-size: 12px;
+        }
+
+        .answer-points {
+            color: #28a745;
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 5px;
         }
 
         /* Host Controls Panel */
@@ -632,6 +756,16 @@
                     </div>
                 </div>
 
+                <!-- Player Responses Panel (shown during game) -->
+                <div class="dashboard-panel" id="responsesPanel" style="display: none;">
+                    <div class="panel-header">
+                        <h3>📝 Player Responses</h3>
+                    </div>
+                    <div class="responses-list" id="responsesList">
+                        <!-- Player responses will be populated here -->
+                    </div>
+                </div>
+
                 <!-- Host Controls Panel -->
                 <div class="dashboard-panel">
                     <div class="panel-header">
@@ -644,6 +778,16 @@
                         <button id="testGameBtn" class="control-btn warning">▶️ TEST GAME</button>
                         <button id="refreshQuestionsBtn" class="control-btn secondary">🔄 REFRESH QUESTIONS</button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Scoring Panel (shown after grading) -->
+            <div class="scoring-panel" id="scoringPanel" style="display: none;">
+                <div class="scoring-header">
+                    <h3>🏆 Question Results</h3>
+                </div>
+                <div class="scoring-content" id="scoringContent">
+                    <!-- Scoring results will be populated here -->
                 </div>
             </div>
 
@@ -779,10 +923,22 @@
             socket.on('gameStarted', (data) => {
                 gameState = 'playing';
                 updateGameControls();
+                showResponsesPanel();
+                clearResponsesList();
             });
             
             socket.on('gameEnded', (data) => {
                 gameState = 'finished';
+            });
+            
+            socket.on('answerSubmitted', (data) => {
+                updateResponsesList(data);
+            });
+            
+            socket.on('gradingComplete', (data) => {
+                gameState = 'scoring';
+                showScoringPanel(data);
+                hideResponsesPanel();
             });
             
             socket.on('error', (error) => {
@@ -856,6 +1012,124 @@
                 startBtn.className = 'control-btn secondary';
                 startBtn.disabled = true;
             }
+        }
+
+        // Show responses panel
+        function showResponsesPanel() {
+            document.getElementById('responsesPanel').style.display = 'block';
+            document.getElementById('scoringPanel').style.display = 'none';
+            document.querySelector('.dashboard-grid').classList.add('with-responses');
+        }
+
+        // Hide responses panel
+        function hideResponsesPanel() {
+            document.getElementById('responsesPanel').style.display = 'none';
+            document.querySelector('.dashboard-grid').classList.remove('with-responses');
+        }
+
+        // Update responses list
+        function updateResponsesList(data) {
+            const responsesList = document.getElementById('responsesList');
+            
+            const responseItem = document.createElement('div');
+            responseItem.className = 'response-item';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            
+            responseItem.innerHTML = `
+                <div class="response-header">
+                    <div class="response-player">${data.playerName}</div>
+                    <div class="response-time">${timestamp}</div>
+                </div>
+                <div class="response-text">"${data.answer}"</div>
+            `;
+            
+            responsesList.appendChild(responseItem);
+            responsesList.scrollTop = responsesList.scrollHeight;
+        }
+
+        // Clear responses list
+        function clearResponsesList() {
+            const responsesList = document.getElementById('responsesList');
+            responsesList.innerHTML = '';
+        }
+
+        // Show scoring panel
+        function showScoringPanel(data) {
+            const scoringPanel = document.getElementById('scoringPanel');
+            const scoringContent = document.getElementById('scoringContent');
+            
+            scoringPanel.style.display = 'block';
+            
+            if (data && data.currentAnswerGroups) {
+                scoringContent.innerHTML = '';
+                
+                // Group answers by category
+                const correctAnswers = [];
+                const wrongAnswers = [];
+                const uncategorizedAnswers = [];
+                
+                data.currentAnswerGroups.forEach(group => {
+                    if (group.category === 'correct') {
+                        correctAnswers.push(group);
+                    } else if (group.category === 'wrong') {
+                        wrongAnswers.push(group);
+                    } else {
+                        uncategorizedAnswers.push(group);
+                    }
+                });
+                
+                // Create sections for each category
+                if (correctAnswers.length > 0) {
+                    const correctSection = createScoringSection('✅ Correct Answers', correctAnswers, '#28a745');
+                    scoringContent.appendChild(correctSection);
+                }
+                
+                if (wrongAnswers.length > 0) {
+                    const wrongSection = createScoringSection('❌ Wrong Answers', wrongAnswers, '#e74c3c');
+                    scoringContent.appendChild(wrongSection);
+                }
+                
+                if (uncategorizedAnswers.length > 0) {
+                    const uncategorizedSection = createScoringSection('📦 Uncategorized Answers', uncategorizedAnswers, '#f39c12');
+                    scoringContent.appendChild(uncategorizedSection);
+                }
+            }
+        }
+
+        // Create scoring section
+        function createScoringSection(title, answers, color) {
+            const section = document.createElement('div');
+            section.className = 'scoring-section';
+            
+            const header = document.createElement('h4');
+            header.textContent = title;
+            header.style.color = color;
+            section.appendChild(header);
+            
+            answers.forEach(answer => {
+                const answerGroup = document.createElement('div');
+                answerGroup.className = 'answer-group';
+                
+                const answerText = document.createElement('div');
+                answerText.className = 'answer-text';
+                answerText.textContent = `"${answer.answer}"`;
+                
+                const answerPlayers = document.createElement('div');
+                answerPlayers.className = 'answer-players';
+                answerPlayers.textContent = `Players: ${answer.players.join(', ')}`;
+                
+                const answerPoints = document.createElement('div');
+                answerPoints.className = 'answer-points';
+                answerPoints.textContent = `Points: ${answer.points || 0}`;
+                
+                answerGroup.appendChild(answerText);
+                answerGroup.appendChild(answerPlayers);
+                answerGroup.appendChild(answerPoints);
+                section.appendChild(answerGroup);
+            });
+            
+            return section;
         }
 
         // Copy game code
