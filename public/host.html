@@ -198,9 +198,9 @@
         .player-item {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 10px;
+            border-radius: 6px;
+            padding: 0px;
+            margin-bottom: 5px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -215,12 +215,12 @@
         .player-info {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 5px;
         }
 
         .player-avatar {
-            width: 40px;
-            height: 40px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             background: linear-gradient(135deg, #007bff, #0056b3);
             display: flex;
@@ -228,6 +228,7 @@
             justify-content: center;
             font-weight: bold;
             color: white;
+            font-size: 14px;
         }
 
         .player-details {
@@ -238,21 +239,21 @@
         .player-name {
             font-weight: bold;
             color: #ffffff;
-            font-size: 16px;
+            font-size: 12px;
         }
 
         .player-type {
             color: #cccccc;
-            font-size: 12px;
+            font-size: 10px;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 2px;
         }
 
         .player-score {
             color: #27ae60;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 12px;
         }
 
         /* Player Response Display */
@@ -761,6 +762,7 @@
                         <button id="startGameBtn" class="control-btn success">START GAME</button>
                         <button id="endGameBtn" class="control-btn" style="background: linear-gradient(135deg, #dc3545, #c82333);">🛑 END GAME</button>
                         <button id="gradingBtn" class="control-btn secondary">📝 GRADING INTERFACE</button>
+                        <button id="virtualTestBtn" class="control-btn warning">🎭 VIRTUAL TEST</button>
                         <button id="multiGradingBtn" class="control-btn success">👥 MULTI-USER GRADING</button>
                         <button id="testGameBtn" class="control-btn warning">▶️ TEST GAME</button>
                         <button id="refreshQuestionsBtn" class="control-btn secondary">🔄 REFRESH QUESTIONS</button>
@@ -891,6 +893,32 @@
                 currentGame = data;
                 updatePlayerList();
                 updateGameDisplay();
+            });
+            
+            socket.on('virtualPlayerJoined', (data) => {
+                console.log('🎭 Virtual player joined event received:', data);
+                // Update the current game state with the new virtual player
+                if (currentGame && currentGame.players) {
+                    // Check if player already exists
+                    const existingPlayer = currentGame.players.find(p => p.id === data.playerId);
+                    if (!existingPlayer) {
+                        currentGame.players.push({
+                            id: data.playerId,
+                            name: data.playerName,
+                            score: 0,
+                            isVirtual: true
+                        });
+                        console.log(`🎭 Added virtual player ${data.playerName} to host interface`);
+                        updatePlayerList();
+                        updateGameDisplay();
+                    }
+                }
+                
+                // Also update the game state if provided
+                if (data.gameState) {
+                    currentGame = data.gameState;
+                    updateGameDisplay();
+                }
             });
             
             socket.on('gameError', (error) => {
@@ -1129,7 +1157,7 @@
                         <div class="player-avatar">${player.name.charAt(0).toUpperCase()}</div>
                         <div class="player-details">
                             <div class="player-name">${player.name}</div>
-                            <div class="player-type">👤 Player</div>
+
                             ${responseDisplay}
                         </div>
                     </div>
@@ -1458,6 +1486,242 @@
         document.getElementById('multiGradingBtn').addEventListener('click', () => {
             openGradingMultiModal();
         });
+
+        // Virtual test button
+        document.getElementById('virtualTestBtn').addEventListener('click', () => {
+            console.log('🎭 Virtual test button clicked');
+            startFullGameSimulation();
+        });
+
+        // Virtual player testing system
+        const virtualPlayerNames = [
+            'Alice Johnson', 'Bob Smith', 'Carol Davis', 'David Wilson', 'Emma Brown',
+            'Frank Miller', 'Grace Lee', 'Henry Taylor', 'Ivy Chen', 'Jack Anderson',
+            'Kate Martinez', 'Liam O\'Connor', 'Maya Patel', 'Noah Garcia', 'Olivia Kim',
+            'Paul Rodriguez', 'Quinn Thompson', 'Ruby Singh', 'Sam Johnson', 'Tara Williams',
+            'Uma Davis', 'Victor Chen', 'Wendy Brown', 'Xander Lee', 'Yara Martinez',
+            'Zoe Anderson', 'Alex Turner', 'Blake Johnson', 'Casey Smith', 'Drew Wilson',
+            'Eden Davis', 'Finley Brown', 'Gray Miller', 'Harper Lee', 'Indigo Chen',
+            'Jordan Taylor', 'Kai Martinez', 'Luna Patel', 'Mason Garcia', 'Nova Kim',
+            'Ocean Rodriguez', 'Phoenix Thompson', 'Quill Singh', 'River Williams', 'Sage Davis',
+            'Terra Chen', 'Umber Brown', 'Vale Lee', 'Wren Martinez', 'Xylo Anderson',
+            'Yarrow Turner', 'Zephyr Johnson', 'Aster Smith', 'Birch Wilson', 'Cedar Davis',
+            'Dawn Brown', 'Echo Miller', 'Flora Lee', 'Grove Chen', 'Haven Taylor'
+        ];
+        
+        let virtualPlayers = [];
+        let virtualPlayerInterval = null;
+        let virtualResponseInterval = null;
+        let questionCount = 0;
+        let isVirtualTestingMode = false;
+        
+        function startVirtualPlayerSimulation() {
+            console.log('🎭 Starting virtual player simulation...');
+            console.log('🎭 Current game:', currentGame);
+            console.log('🎭 Socket connected:', !!socket);
+            isVirtualTestingMode = true;
+            virtualPlayers = [];
+            
+            // Add 60 virtual players over 30 seconds
+            const addPlayerInterval = setInterval(() => {
+                if (virtualPlayers.length >= 60) {
+                    clearInterval(addPlayerInterval);
+                    console.log('✅ All 60 virtual players added');
+                    return;
+                }
+                
+                const playerName = virtualPlayerNames[virtualPlayers.length];
+                // Generate truly unique ID using timestamp + random number
+                const uniqueId = `virtual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${virtualPlayers.length}`;
+                const virtualPlayer = {
+                    id: uniqueId,
+                    name: playerName,
+                    score: 0,
+                    isVirtual: true
+                };
+                
+                virtualPlayers.push(virtualPlayer);
+                
+                console.log(`🎭 Attempting to add virtual player ${playerName} (${virtualPlayers.length}/60) with ID: ${uniqueId}`);
+                
+                // Emit a custom event to update the server
+                if (socket && currentGame) {
+                    console.log(`🎭 Emitting virtualPlayerJoined for ${playerName} to game ${currentGame.gameCode}`);
+                    socket.emit('virtualPlayerJoined', {
+                        gameCode: currentGame.gameCode,
+                        playerId: uniqueId,
+                        playerName: playerName
+                    });
+                } else {
+                    console.error('❌ Cannot emit virtualPlayerJoined - socket or currentGame is null');
+                }
+                
+            }, 500); // Add a player every 500ms (30 seconds total for 60 players)
+            
+            virtualPlayerInterval = addPlayerInterval;
+        }
+        
+        function generateVirtualResponses(question) {
+            console.log('🎭 Generating virtual responses for question:', question.text);
+            
+            virtualPlayers.forEach((player, index) => {
+                // Simulate response time (0.5 to 3 seconds)
+                const responseDelay = 500 + Math.random() * 2500;
+                
+                setTimeout(() => {
+                    let response;
+                    let isCorrect;
+                    
+                    // 75% correct answers, 25% incorrect
+                    if (Math.random() < 0.75) {
+                        response = question.correctAnswer;
+                        isCorrect = true;
+                    } else {
+                        // Generate incorrect answers
+                        const incorrectAnswers = [
+                            'I don\'t know',
+                            'Maybe',
+                            'Not sure',
+                            'Could be',
+                            'Possibly',
+                            'I think so',
+                            'Probably not',
+                            'Definitely not'
+                        ];
+                        response = incorrectAnswers[Math.floor(Math.random() * incorrectAnswers.length)];
+                        isCorrect = false;
+                    }
+                    
+                    // 20% of correct answers should be modified for manual grading
+                    if (isCorrect && Math.random() < 0.2) {
+                        response = modifyAnswerForGrading(response);
+                    }
+                    
+                    // Emit the response via virtual answer submission
+                    if (socket) {
+                        socket.emit('virtualAnswerSubmitted', {
+                            gameCode: currentGame.gameCode,
+                            playerId: player.id,
+                            playerName: player.name,
+                            answer: response,
+                            isCorrect: isCorrect
+                        });
+                    }
+                    
+                    console.log(`🎭 Virtual player ${player.name} answered: "${response}" (${isCorrect ? 'correct' : 'incorrect'})`);
+                    
+                }, responseDelay);
+            });
+        }
+        
+        function modifyAnswerForGrading(answer) {
+            const modifications = [
+                answer + ' (I think)',
+                answer + ' maybe',
+                answer + ' probably',
+                answer + ' I believe',
+                answer + ' seems right',
+                answer + ' sounds correct',
+                answer + ' I guess',
+                answer + ' most likely'
+            ];
+            return modifications[Math.floor(Math.random() * modifications.length)];
+        }
+        
+        function simulateQuestionCycle() {
+            questionCount++;
+            console.log(`🎭 Simulating question cycle ${questionCount}`);
+            
+            // Generate responses for current question
+            if (currentGame && currentGame.currentQuestion) {
+                generateVirtualResponses(currentGame.currentQuestion);
+            }
+            
+            // Move to grading phase after 5 seconds
+            setTimeout(() => {
+                console.log('🎭 Moving to grading phase');
+                // Trigger grading phase
+                if (socket) {
+                    socket.emit('startGrading', { gameCode: currentGame.gameCode });
+                }
+            }, 5000);
+        }
+        
+        function startFullGameSimulation() {
+            console.log('🎮 Starting full game simulation from host interface...');
+            
+            // Initialize game state if not already set
+            if (!currentGame) {
+                console.error('❌ No active game found');
+                return;
+            }
+            
+            // Start virtual player simulation
+            startVirtualPlayerSimulation();
+            
+            console.log('✅ Full game simulation started. Virtual players will join over 30 seconds.');
+            console.log('The display will stay on the QR code screen while players join.');
+            console.log('Use these commands for manual control:');
+            console.log('  startGame() - Start the game when ready');
+            console.log('  nextQuestion() - Move to next question');
+            console.log('  finishGrading() - Complete grading phase');
+        }
+        
+        function startGame() {
+            if (socket && currentGame) {
+                socket.emit('startGame', { gameCode: currentGame.gameCode });
+                console.log('🎮 Game started');
+            }
+        }
+        
+        function nextQuestion() {
+            if (socket && currentGame) {
+                socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
+                console.log('🎮 Next question requested');
+            }
+        }
+        
+        function finishGrading() {
+            if (socket && currentGame) {
+                socket.emit('finishGrading', { gameCode: currentGame.gameCode });
+                console.log('🎮 Grading completed');
+            }
+        }
+        
+        // Make functions globally available
+        window.startFullGameSimulation = startFullGameSimulation;
+        window.startGame = startGame;
+        window.nextQuestion = nextQuestion;
+        window.finishGrading = finishGrading;
+        
+        function updatePlayerCount() {
+            const playerCountElement = document.querySelector('.player-count');
+            if (playerCountElement) {
+                const totalPlayers = virtualPlayers.length + (currentGame ? currentGame.players ? currentGame.players.length : 0 : 0);
+                playerCountElement.textContent = totalPlayers;
+            }
+        }
+        
+        // Socket event listeners for virtual testing
+        if (socket) {
+            socket.on('gameStarted', (data) => {
+                console.log('🎮 Game started, virtual players will respond to questions');
+            });
+            
+            socket.on('questionDisplayed', (data) => {
+                console.log('🎭 Question displayed, generating virtual responses...');
+                if (isVirtualTestingMode && data.question) {
+                    // Wait 2 seconds then generate responses
+                    setTimeout(() => {
+                        generateVirtualResponses(data.question);
+                    }, 2000);
+                }
+            });
+            
+            socket.on('gradingStarted', (data) => {
+                console.log('🎭 Grading started, virtual players have submitted responses');
+            });
+        }
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {

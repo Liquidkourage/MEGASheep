@@ -159,19 +159,61 @@
         });
         
         function initializeSocket() {
-            socket = io();
+            alert('DEBUG: New game.html code loaded!'); // Temporary debug alert
+            console.log('Player: Initializing socket connection...');
+            console.log('Player: Socket.IO version check - io object:', typeof io);
+            console.log('Player: Socket.IO version check - io function:', io);
             
-            // Join game on connection
-            socket.on('connect', () => {
-                console.log('Connected to server');
-                socket.emit('joinGame', { gameCode, playerName });
+            socket = io();
+            console.log('Player: Socket object created:', socket);
+            console.log('Player: Socket connected state:', socket.connected);
+            console.log('Player: Socket ID before connection:', socket.id);
+            
+            // Register ALL event handlers BEFORE connecting
+            console.log('Player: Registering event handlers...');
+            
+            socket.on('disconnect', () => {
+                console.log('Player: Disconnected from server');
+                showError('Lost connection to game server.');
+            });
+            
+            socket.on('connect_error', (error) => {
+                console.error('Player: Connection error:', error);
+                showError('Failed to connect to game server.');
+            });
+            
+            socket.on('error', (error) => {
+                console.error('Player: Socket error:', error);
             });
             
             // Game events
             socket.on('gameJoined', (data) => {
-                console.log('Joined game successfully');
+                console.log('Player: Joined game successfully', data);
+                console.log('Player: Received game state with', data.gameState?.players?.length || 0, 'players');
+                console.log('Player: Socket ID:', socket.id, 'Game Code:', gameCode);
                 updateGameState(data.gameState);
                 updatePlayersList(data.gameState.players);
+                
+                // Ensure we show ourselves in the player list
+                if (data.gameState && data.gameState.players) {
+                    const currentPlayer = data.gameState.players.find(p => p.name === playerName);
+                    if (!currentPlayer) {
+                        console.log('Player: Adding self to player list');
+                        data.gameState.players.push({
+                            id: socket.id,
+                            name: playerName,
+                            score: 0,
+                            isVirtual: false
+                        });
+                        updatePlayersList(data.gameState.players);
+                    } else {
+                        console.log('Player: Self already in player list');
+                    }
+                }
+                
+                // Test room membership by emitting a test event
+                console.log('Player: Testing room membership...');
+                socket.emit('testRoomMembership', { gameCode: gameCode });
             });
             
             socket.on('gameStarted', (data) => {
@@ -221,15 +263,49 @@
             });
             
             socket.on('playerJoined', (newGameState) => {
+                console.log('Player: Another player joined', newGameState);
                 if (newGameState) {
                     gameState = newGameState;
-                        updatePlayersList(gameState.players);
-                    }
+                    updatePlayersList(gameState.players);
+                }
             });
             
             socket.on('playerLeft', (newGameState) => {
                 if (newGameState) {
                     gameState = newGameState;
+                    updatePlayersList(gameState.players);
+                }
+            });
+            
+            socket.on('virtualPlayerJoined', (data) => {
+                console.log('Player: Virtual player joined event received:', data);
+                
+                // Initialize gameState if it doesn't exist
+                if (!gameState) {
+                    console.log('Player: Initializing gameState for virtual player');
+                    gameState = { players: [] };
+                }
+                
+                if (gameState.players) {
+                    const existingPlayer = gameState.players.find(p => p.id === data.playerId);
+                    if (!existingPlayer) {
+                        gameState.players.push({
+                            id: data.playerId,
+                            name: data.playerName,
+                            score: 0,
+                            isVirtual: true
+                        });
+                        console.log(`🎭 Added virtual player ${data.playerName} to player interface`);
+                        updatePlayersList(gameState.players);
+                    } else {
+                        console.log(`🎭 Virtual player ${data.playerName} already exists in player interface`);
+                    }
+                }
+                
+                // Update full game state if provided
+                if (data.gameState) {
+                    console.log('Player: Updating full game state from virtual player event');
+                    gameState = data.gameState;
                     updatePlayersList(gameState.players);
                 }
             });
@@ -250,12 +326,35 @@
             });
             
             socket.on('gameError', (data) => {
+                console.log('Player: Game error received:', data);
                 showError(data.message);
             });
             
-            socket.on('disconnect', () => {
-                showError('Lost connection to game server.');
+            socket.on('testEvent', (data) => {
+                console.log('Player: Received test event from server:', data);
             });
+            
+            socket.on('pong', (data) => {
+                console.log('Player: Received pong from server:', data);
+            });
+            
+            console.log('Player: All event handlers registered');
+            
+            // Now handle the connection event
+            socket.on('connect', () => {
+                console.log('Player: Connected to server with socket ID:', socket.id);
+                console.log('Player: Socket connected state after connect:', socket.connected);
+                console.log('Player: Joining game with code:', gameCode, 'and name:', playerName);
+                
+                // Test the connection with a ping
+                console.log('Player: Sending ping to server...');
+                socket.emit('ping', { message: 'Player interface ping' });
+                
+                console.log('Player: Sending joinGame event...');
+                socket.emit('joinGame', { gameCode, playerName });
+            });
+            
+            console.log('Player: Socket initialization complete');
         }
         
         function updateGameState(state) {
@@ -281,6 +380,7 @@
         }
 
         function updatePlayersList(players) {
+            console.log('Player: Updating players list with', players.length, 'players:', players);
             const playersListDiv = document.getElementById('playersList');
             playersListDiv.innerHTML = '';
             
@@ -296,6 +396,7 @@
             });
             
             document.getElementById('totalPlayersCount').textContent = players.length;
+            console.log('Player: Updated player list, total count:', players.length);
         }
         
         function startQuestion(gameState) {
@@ -439,6 +540,15 @@
                 }
             }
         });
+
+        // Periodic check to test if we're receiving events
+        setInterval(() => {
+            if (gameState && gameState.players) {
+                console.log('Player: Current player count:', gameState.players.length);
+                console.log('Player: Virtual players:', gameState.players.filter(p => p.isVirtual).length);
+                console.log('Player: Live players:', gameState.players.filter(p => !p.isVirtual).length);
+            }
+        }, 5000); // Check every 5 seconds
 
         // Dynamic Sheep Carousel System
         async function initializeSheepCarousel() {

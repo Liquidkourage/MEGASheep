@@ -12,9 +12,9 @@ CORS(app)
 # Load Sentence Transformer model
 try:
     model = SentenceTransformer('all-MiniLM-L6-v2')  # Fast and effective model
-    print("✅ Sentence Transformer model loaded successfully")
+    print("[SUCCESS] Sentence Transformer model loaded successfully")
 except Exception as e:
-    print(f"❌ Error loading Sentence Transformer model: {e}")
+    print(f"[ERROR] Error loading Sentence Transformer model: {e}")
     exit(1)
 
 # Synonym dictionary for common cases that semantic models might miss
@@ -172,6 +172,6 @@ def semantic_match():
         }), 500
 
 if __name__ == '__main__':
-    print("🚀 Starting hybrid fuzzy + semantic matcher...")
-    print("📡 Server will be available at http://127.0.0.1:5005")
+    print("[STARTING] Hybrid fuzzy + semantic matcher...")
+    print("[SERVER] Available at http://127.0.0.1:5005")
     app.run(port=5005, debug=True) 

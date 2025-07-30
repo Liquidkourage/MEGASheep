@@ -139,6 +139,10 @@
                                     <span class="btn-icon">📝</span>
                                     Test Categorization
                                 </button>
+                                <button id="virtualTestBtn" class="btn btn-warning">
+                                    <span class="btn-icon">🎭</span>
+                                    Virtual Test
+                                </button>
                                 <button id="openGradingModalBtn" class="btn btn-primary">
                                     <span class="btn-icon">🎯</span>
                                     Grading Interface
@@ -198,16 +202,16 @@
                     </div>
                 </div>
                 
-                <div class="players-list">
-                    <div class="players-header">
-                        <h3>👥 Players (<span id="playerCount">0</span>)</h3>
-                        <div class="players-actions" id="playersActions" style="display: none;">
-                            <button id="kickPlayerBtn" class="btn btn-danger btn-small">
-                                <span class="btn-icon">🚫</span>
-                                Kick Player
-                            </button>
-                        </div>
+                <div class="players-header">
+                    <h3>👥 Players (<span id="playerCount">0</span>)</h3>
+                    <div class="players-actions" id="playersActions" style="display: none;">
+                        <button id="kickPlayerBtn" class="btn btn-danger btn-small">
+                            <span class="btn-icon">🚫</span>
+                            Kick Player
+                        </button>
                     </div>
+                </div>
+                <div class="players-list">
                     <div id="playersList" class="players-grid"></div>
                     
                     <!-- Player Details Modal -->

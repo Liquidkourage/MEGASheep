@@ -475,7 +475,35 @@
             
             socket.on('playerJoined', (gameStateData) => {
                 console.log('Display: Player joined');
+                console.log('Display: Received gameStateData:', gameStateData);
+                console.log('Display: Players count:', gameStateData.players?.length || 0);
+                console.log('Display: Latest players:', gameStateData.players?.slice(-3)?.map(p => p.name) || []);
                 updatePlayersOnly(gameStateData);
+            });
+            
+            socket.on('virtualPlayerJoined', (data) => {
+                console.log('Display: Virtual player joined', data);
+                // Update the game state with the new virtual player
+                if (gameState && gameState.players) {
+                    // Check if player already exists
+                    const existingPlayer = gameState.players.find(p => p.id === data.playerId);
+                    if (!existingPlayer) {
+                        gameState.players.push({
+                            id: data.playerId,
+                            name: data.playerName,
+                            score: 0,
+                            isVirtual: true
+                        });
+                        console.log(`🎭 Added virtual player ${data.playerName} to display`);
+                        updatePlayersOnly(gameState);
+                    }
+                }
+                
+                // Also update the game state if provided
+                if (data.gameState) {
+                    console.log('Display: Using provided gameState from virtualPlayerJoined');
+                    updatePlayersOnly(data.gameState);
+                }
             });
             
             socket.on('gameSettingsUpdated', (settings) => {
@@ -538,18 +566,12 @@
 
         // Efficient update function - only updates player grid and count
         function updatePlayersOnly(newGameState) {
-            if (!newGameState || newGameState.gameState !== 'waiting') {
-                // If not in waiting state, do full update
-                updateDisplayFromGameState(newGameState);
-                return;
-            }
-            
-            // Update global game state
+            // Always update the global game state
             gameState = newGameState;
             
-            // Update player count in header
+            // Update player count in header (if we're in waiting state)
             const playerCountElement = document.querySelector('.display-status');
-            if (playerCountElement) {
+            if (playerCountElement && gameState.gameState === 'waiting') {
                 playerCountElement.textContent = `👥 Players: ${gameState.players.length}`;
             }
             
@@ -560,6 +582,13 @@
             }
             
             console.log(`📺 Updated players only: ${gameState.players.length} players`);
+            
+            // Only do full display update if we're transitioning to a different game state
+            // (like from waiting to playing, but not just adding players)
+            if (gameState.gameState !== 'waiting') {
+                console.log(`📺 Game state changed to ${gameState.gameState}, doing full update`);
+                updateDisplayFromGameState(gameState);
+            }
         }
 
         function showIntroScreen() {
@@ -1127,7 +1156,6 @@
                         `}
                     ">
                         <span class="modern-player-name">${player.name}</span>
-                        <span class="modern-player-score">${player.score || 0} pts</span>
                     </div>
                 `;
             });
@@ -1521,15 +1549,25 @@
                 return;
             }
 
-            // Calculate timing for smooth transitions
-            const totalDuration = Math.max(60, sheepUrls.length * 5); // At least 60s, 5s per photo
+            // Calculate timing for smooth transitions with 10 seconds static time per image
+            const staticTimePerImage = 10; // 10 seconds static time per image
+            const transitionTime = 2; // 2 seconds for transition
+            const totalTimePerImage = staticTimePerImage + transitionTime;
+            const totalDuration = Math.max(60, sheepUrls.length * totalTimePerImage);
             const stepPercentage = 100 / sheepUrls.length;
 
-            // Generate CSS keyframes
+            // Generate CSS keyframes with static periods
             let keyframes = '@keyframes sheepCarousel {\n';
             sheepUrls.forEach((url, index) => {
-                const percentage = (index * stepPercentage).toFixed(2);
-                keyframes += `    ${percentage}% { background-image: url('${url}'); }\n`;
+                const startPercentage = (index * stepPercentage).toFixed(2);
+                const endPercentage = ((index + 1) * stepPercentage).toFixed(2);
+                
+                // Add static period for this image (most of the time)
+                const staticStart = parseFloat(startPercentage);
+                const staticEnd = parseFloat(endPercentage) - (transitionTime / totalTimePerImage * stepPercentage);
+                
+                keyframes += `    ${staticStart}% { background-image: url('${url}'); }\n`;
+                keyframes += `    ${staticEnd.toFixed(2)}% { background-image: url('${url}'); }\n`;
             });
             // Loop back to first image
             keyframes += `    100% { background-image: url('${sheepUrls[0]}'); }\n`;
@@ -1542,6 +1580,7 @@
             keyframes += `}\n`;
 
             console.log('🐑 Generated CSS for carousel:', keyframes.slice(0, 200) + '...');
+            console.log('🐑 Total duration:', totalDuration + 's, Static time per image:', staticTimePerImage + 's');
 
             // Inject the CSS
             const style = document.createElement('style');

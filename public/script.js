@@ -82,7 +82,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Socket.IO initialization
 function initializeSocket() {
+    console.log('🎮 Script.js: Initializing socket connection...');
+    
     socket = io();
+    
+    // Add error handling
+    socket.on('connect_error', (error) => {
+        console.error('🎮 Script.js: Socket connection error:', error);
+    });
+    
+    socket.on('error', (error) => {
+        console.error('🎮 Script.js: Socket error:', error);
+    });
+    
+    socket.on('disconnect', (reason) => {
+        console.log('🎮 Script.js: Socket disconnected:', reason);
+    });
+    
+    socket.on('connect', () => {
+        console.log('✅ Connected to server with ID:', socket.id);
+        console.log('🎮 Script.js: Socket connection established successfully');
+    });
     
     // Connection debugging
     socket.on('connect', () => {
@@ -102,6 +122,7 @@ function initializeSocket() {
     socket.on('gameCreated', handleGameCreated);
     socket.on('gameJoined', handleGameJoined);
     socket.on('playerJoined', handlePlayerJoined);
+    socket.on('virtualPlayerJoined', handlePlayerJoined); // Add virtual player support
     socket.on('playerLeft', handlePlayerJoined);
     socket.on('gameStarted', handleGameStarted);
     socket.on('testGameStarted', handleTestGameStarted);
@@ -329,6 +350,15 @@ function setupEventListeners() {
     
     const newGameBtn = document.getElementById('newGameBtn');
     if (newGameBtn) newGameBtn.addEventListener('click', () => showScreen('joinGame'));
+    
+    // Virtual test button
+    const virtualTestBtn = document.getElementById('virtualTestBtn');
+    if (virtualTestBtn) {
+        virtualTestBtn.addEventListener('click', () => {
+            console.log('🎭 Virtual test button clicked');
+            startFullGameSimulation();
+        });
+    }
 }
 
 // Screen management
@@ -396,16 +426,15 @@ async function createGame() {
 
 // Join an existing game
 async function joinGame() {
+    const gameCode = document.getElementById('gameCode').value.trim();
     const playerName = document.getElementById('playerName').value.trim();
-    const gameCode = document.getElementById('gameCode')?.value?.trim();
     
-    if (!playerName) {
-        showError('Please enter your name');
-        return;
-    }
+    console.log('🎮 Script.js: joinGame called with gameCode:', gameCode, 'playerName:', playerName);
+    console.log('🎮 Script.js: Socket connected state:', socket.connected);
+    console.log('🎮 Script.js: Socket ID:', socket.id);
     
-    if (!gameCode || gameCode.length !== 4) {
-        showError('Please enter a valid 4-digit game code');
+    if (!gameCode || !playerName) {
+        showError('Please enter both game code and player name');
         return;
     }
     
@@ -413,7 +442,7 @@ async function joinGame() {
         const response = await fetch('/api/join-game', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
             },
             body: JSON.stringify({ gameCode, playerName })
         });
@@ -421,24 +450,64 @@ async function joinGame() {
         const result = await response.json();
         
         if (result.status === 'success') {
+            console.log('🎮 Script.js: API call successful, result:', result);
             currentPlayerName = playerName;
             isHost = false;
             gameState.gameCode = result.gameCode;
             gameState.playerName = playerName;
             
-            // Join the game via socket
-            socket.emit('joinGame', { 
-                gameCode: result.gameCode, 
-                playerName: playerName 
-            });
+            console.log('🎮 Script.js: API call successful, emitting joinGame socket event');
+            console.log('🎮 Script.js: Socket connected before emit:', socket.connected);
+            console.log('🎮 Script.js: Socket object:', socket);
             
-            console.log(`🎮 Joining game with code: ${result.gameCode}`);
+            try {
+                // Wait a moment to ensure socket is ready
+                if (!socket.connected) {
+                    console.log('🎮 Script.js: Socket not connected, waiting...');
+                    await new Promise(resolve => {
+                        socket.on('connect', () => {
+                            console.log('🎮 Script.js: Socket connected, now emitting joinGame');
+                            resolve();
+                        });
+                        // If already connected, resolve immediately
+                        if (socket.connected) {
+                            resolve();
+                        }
+                    });
+                }
+                
+                // Join the game via socket
+                console.log('🎮 Script.js: About to emit joinGame event with data:', { 
+                    gameCode: result.gameCode, 
+                    playerName: playerName 
+                });
+                
+                socket.emit('joinGame', { 
+                    gameCode: result.gameCode, 
+                    playerName: playerName 
+                });
+                
+                console.log(`🎮 Script.js: joinGame event emitted for game: ${result.gameCode}`);
+                
+                // Add a timeout to check if we receive a response
+                setTimeout(() => {
+                    console.log('🎮 Script.js: 5 seconds after joinGame emit - checking if we received gameJoined response');
+                    if (!gameState.gameCode) {
+                        console.log('🎮 Script.js: WARNING - No gameJoined response received after 5 seconds');
+                    }
+                }, 5000);
+                
+                console.log(`🎮 Script.js: Joining game with code: ${result.gameCode}`);
+            } catch (socketError) {
+                console.error('🎮 Script.js: Error during socket emit:', socketError);
+                throw socketError;
+            }
         } else {
             showError(result.message);
         }
     } catch (error) {
-        console.error('Failed to join game:', error);
-        showError('Failed to join game. Please check the game code and try again.');
+        console.error('❌ Error joining game:', error);
+        showError('Failed to join game. Please try again.');
     }
 }
 
@@ -1417,19 +1486,68 @@ function playAgain() {
 
 // Socket event handlers
 function handleGameCreated(data) {
+    console.log('🎮 Game created:', data);
+    gameState = data;
+    isHost = true;
     showScreen('lobby');
+    
+    // Show host panel
+    const hostPanel = document.getElementById('hostGamePanel');
+    if (hostPanel) {
+        hostPanel.style.display = 'block';
+    }
+    
+    // Start game duration timer
     gameStartTime = Date.now();
     startGameDurationTimer();
     updateLobbyDisplay();
 }
 
 function handleGameJoined(data) {
+    console.log('🎮 Script.js: handleGameJoined called with data:', data);
+    console.log('🎮 Script.js: Received game state with', data.gameState?.players?.length || 0, 'players');
+    console.log('🎮 Script.js: Full received data:', JSON.stringify(data, null, 2));
+    console.log('🎮 Script.js: gameState.players type:', typeof data.gameState?.players);
+    console.log('🎮 Script.js: gameState.players value:', data.gameState?.players);
+    
+    // Test JSON serialization on client side
+    const testSerialization = JSON.stringify(data);
+    const testDeserialization = JSON.parse(testSerialization);
+    console.log('🎮 Script.js: Client-side serialization test - players after JSON roundtrip:', testDeserialization.gameState?.players?.length || 0);
+    
+    gameState = data.gameState;
     showScreen('lobby');
     updateLobbyDisplay();
 }
 
 function handlePlayerJoined(gameStateData) {
-    gameState = gameStateData;
+    console.log('🎮 Script.js: handlePlayerJoined called with gameStateData:', gameStateData);
+    console.log('🎮 Script.js: Players count:', gameStateData.players?.length || 0);
+    console.log('🎮 Script.js: Event type: virtualPlayerJoined or playerJoined');
+    console.log('🎮 Script.js: Latest players:', gameStateData.players?.slice(-3)?.map(p => p.name) || []);
+    console.log('🎮 Script.js: Full gameStateData structure:', Object.keys(gameStateData));
+    console.log('🎮 Script.js: gameStateData.gameState:', gameStateData.gameState);
+    console.log('🎮 Script.js: gameStateData.gameCode:', gameStateData.gameCode);
+    
+    // Check if this is a virtualPlayerJoined event (different structure)
+    if (gameStateData.playerId && gameStateData.playerName) {
+        console.log('🎮 Script.js: This appears to be a virtualPlayerJoined event with playerId:', gameStateData.playerId);
+        console.log('🎮 Script.js: Virtual player name:', gameStateData.playerName);
+        // For virtualPlayerJoined, we need to use the gameState property
+        if (gameStateData.gameState) {
+            console.log('🎮 Script.js: Using gameState from virtualPlayerJoined event');
+            gameState = gameStateData.gameState;
+        } else {
+            console.log('🎮 Script.js: No gameState in virtualPlayerJoined event, keeping current gameState');
+            // Don't update gameState if no gameState provided
+            return;
+        }
+    } else {
+        console.log('🎮 Script.js: This appears to be a regular playerJoined event');
+        gameState = gameStateData;
+    }
+    
+    console.log('🎮 Script.js: Updated gameState.players count:', gameState.players?.length || 0);
     updateLobbyDisplay();
 }
 
@@ -1588,65 +1706,178 @@ function handleError(data) {
 
 // Display functions
 function updateLobbyDisplay() {
-    document.getElementById('playerCount').textContent = gameState.players?.length || 0;
+    console.log('🎮 Script.js: updateLobbyDisplay called');
+    console.log('🎮 Script.js: gameState.players:', gameState.players);
+    console.log('🎮 Script.js: gameState.players.length:', gameState.players?.length || 0);
+    
+    const playerCountElement = document.getElementById('playerCount');
+    if (playerCountElement) {
+        playerCountElement.textContent = gameState.players?.length || 0;
+        console.log('🎮 Script.js: Updated playerCount element to:', gameState.players?.length || 0);
+    } else {
+        console.log('🎮 Script.js: playerCount element not found');
+    }
+    
+    // Update game code display
+    const gameCodeElement = document.getElementById('gameCode');
+    if (gameCodeElement && gameState.gameCode) {
+        gameCodeElement.textContent = gameState.gameCode;
+        console.log('🎮 Script.js: Updated gameCode element to:', gameState.gameCode);
+        
+        // Add copy button if it doesn't exist
+        if (!document.getElementById('copyGameCodeBtn')) {
+            const copyBtn = document.createElement('button');
+            copyBtn.id = 'copyGameCodeBtn';
+            copyBtn.className = 'btn btn-small btn-secondary';
+            copyBtn.innerHTML = '📋 Copy Code';
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(gameState.gameCode);
+                copyBtn.innerHTML = '✅ Copied!';
+                setTimeout(() => {
+                    copyBtn.innerHTML = '📋 Copy Code';
+                }, 2000);
+            };
+            gameCodeElement.parentNode.appendChild(copyBtn);
+        }
+    }
     
     // Update host dashboard statistics
     if (isHost) {
-        document.getElementById('totalPlayersStat').textContent = gameState.players?.length || 0;
-        document.getElementById('questionsLoaded').textContent = questions.length;
+        console.log('🎮 Script.js: Updating host dashboard');
+        const totalPlayersStatElement = document.getElementById('totalPlayersStat');
+        if (totalPlayersStatElement) {
+            totalPlayersStatElement.textContent = gameState.players?.length || 0;
+            console.log('🎮 Script.js: Updated totalPlayersStat to:', gameState.players?.length || 0);
+        } else {
+            console.log('🎮 Script.js: totalPlayersStat element not found');
+        }
+        
+        const questionsLoadedElement = document.getElementById('questionsLoaded');
+        if (questionsLoadedElement) {
+            questionsLoadedElement.textContent = questions.length;
+            console.log('🎮 Script.js: Updated questionsLoaded to:', questions.length);
+        } else {
+            console.log('🎮 Script.js: questionsLoaded element not found');
+        }
         
         // Show/hide host game management panel
         const hostGamePanel = document.getElementById('hostGamePanel');
-        hostGamePanel.style.display = 'block';
+        if (hostGamePanel) {
+            hostGamePanel.style.display = 'block';
+            console.log('🎮 Script.js: Showed hostGamePanel');
+        } else {
+            console.log('🎮 Script.js: hostGamePanel element not found');
+        }
         
         // Show/hide player actions for host
         const playersActions = document.getElementById('playersActions');
-        playersActions.style.display = 'block';
+        if (playersActions) {
+            playersActions.style.display = 'block';
+            console.log('🎮 Script.js: Showed playersActions');
+        } else {
+            console.log('🎮 Script.js: playersActions element not found');
+        }
     } else {
+        console.log('🎮 Script.js: Not host, hiding host elements');
         const hostGamePanel = document.getElementById('hostGamePanel');
-        hostGamePanel.style.display = 'none';
+        if (hostGamePanel) {
+            hostGamePanel.style.display = 'none';
+        }
         
         const playersActions = document.getElementById('playersActions');
-        playersActions.style.display = 'none';
+        if (playersActions) {
+            playersActions.style.display = 'none';
+        }
     }
     
     const playersList = document.getElementById('playersList');
-    playersList.innerHTML = '';
-    
-    if (gameState.players) {
-        gameState.players.forEach(player => {
-            const playerCard = document.createElement('div');
-            playerCard.className = `player-card ${player.id === socket.id ? 'host' : ''}`;
+    if (playersList) {
+        console.log('🎮 Script.js: Found playersList element, updating with', gameState.players?.length || 0, 'players');
+        
+        // Only clear and rebuild if we have no players or if this is the initial load
+        if (!gameState.players || gameState.players.length === 0) {
+            playersList.innerHTML = '';
             
-            // Add click handler for host to select players
-            if (isHost && player.id !== socket.id) {
-                playerCard.style.cursor = 'pointer';
-                playerCard.addEventListener('click', () => {
-                    // Remove selection from other cards
-                    document.querySelectorAll('.player-card').forEach(card => {
-                        card.classList.remove('selected');
-                    });
-                    playerCard.classList.add('selected');
-                    selectedPlayerId = player.id;
-                });
-            }
-            
-            playerCard.innerHTML = `
-                <div class="player-name">${player.name}</div>
-                <div class="player-score">Score: ${gameState.scores?.[player.id] || 0}</div>
-                ${isHost && player.id !== socket.id ? '<div class="player-actions-hint">Click to manage</div>' : ''}
+            // Show waiting message when no players
+            const waitingMessage = document.createElement('div');
+            waitingMessage.className = 'waiting-message';
+            waitingMessage.innerHTML = `
+                <div class="waiting-icon">👥</div>
+                <div class="waiting-text">Waiting for players to join...</div>
             `;
-            playersList.appendChild(playerCard);
-        });
+            playersList.appendChild(waitingMessage);
+        } else {
+            // Efficient update: only add new players that aren't already displayed
+            const existingPlayerIds = Array.from(playersList.querySelectorAll('.player-card')).map(card => card.dataset.playerId);
+            
+            gameState.players.forEach(player => {
+                // Only add if this player isn't already displayed
+                if (!existingPlayerIds.includes(player.id)) {
+                    const playerCard = document.createElement('div');
+                    playerCard.className = `player-card ${player.id === socket.id ? 'host' : ''}`;
+                    playerCard.dataset.playerId = player.id;
+                    
+                    // Add click handler for host to select players
+                    if (isHost && player.id !== socket.id) {
+                        playerCard.style.cursor = 'pointer';
+                        playerCard.addEventListener('click', () => {
+                            // Remove selection from other cards
+                            document.querySelectorAll('.player-card').forEach(card => {
+                                card.classList.remove('selected');
+                            });
+                            playerCard.classList.add('selected');
+                            selectedPlayerId = player.id;
+                        });
+                    }
+                    
+                    playerCard.innerHTML = `
+                        <div class="player-name">${player.name}</div>
+                        ${isHost && player.id !== socket.id ? '<div class="player-actions-hint">Click to manage</div>' : ''}
+                    `;
+                    playersList.appendChild(playerCard);
+                    console.log('🎮 Script.js: Added player card for:', player.name);
+                }
+            });
+        }
+    } else {
+        console.log('🎮 Script.js: playersList element not found');
     }
     
     // Show/hide start button for host
     const startGameBtn = document.getElementById('startGameBtn');
-    if (isHost && gameState.players && gameState.players.length > 1) {
-        startGameBtn.style.display = 'inline-block';
+    if (startGameBtn) {
+        if (isHost && gameState.players && gameState.players.length > 0) {
+            startGameBtn.style.display = 'inline-block';
+            console.log('🎮 Script.js: Showed startGameBtn');
+        } else {
+            startGameBtn.style.display = 'none';
+            console.log('🎮 Script.js: Hid startGameBtn');
+        }
     } else {
-        startGameBtn.style.display = 'none';
+        console.log('🎮 Script.js: startGameBtn element not found');
     }
+    
+    // Add quick actions for host
+    if (isHost) {
+        const quickActionsContainer = document.getElementById('quickActions');
+        if (quickActionsContainer && !quickActionsContainer.children.length) {
+            quickActionsContainer.innerHTML = `
+                <div class="quick-actions-section">
+                    <h4>Quick Actions</h4>
+                    <div class="quick-actions-grid">
+                        <button class="btn btn-small btn-secondary" onclick="startVirtualPlayerSimulation()">
+                            🎭 Start Virtual Test
+                        </button>
+                        <button class="btn btn-small btn-secondary" onclick="window.open('/display', '_blank')">
+                            📺 Open Display
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    console.log('🎮 Script.js: updateLobbyDisplay completed');
 }
 
 
@@ -2278,8 +2509,8 @@ function createAnswerItem(answerGroup) {
     `;
     
     // Add event listeners
-    answerItem.addEventListener('dragstart', handleDragStart);
-    answerItem.addEventListener('dragend', handleDragEnd);
+    answerItem.addEventListener('dragstart', handleGradingDragStart);
+    answerItem.addEventListener('dragend', handleGradingDragEnd);
     
     const correctBtn = answerItem.querySelector('.answer-action-btn.correct');
     const incorrectBtn = answerItem.querySelector('.answer-action-btn.incorrect');
@@ -3452,4 +3683,326 @@ function copyGameCode() {
     }).catch(() => {
         showError('Failed to copy game code. Please copy it manually.');
     });
-} 
+}
+
+// Virtual player testing system
+const virtualPlayerNames = [
+    "Emma Thompson", "James Wilson", "Sophia Rodriguez", "Michael Chen", "Olivia Davis",
+    "David Martinez", "Ava Johnson", "Christopher Lee", "Isabella Brown", "Daniel Garcia",
+    "Mia Anderson", "Matthew Taylor", "Charlotte White", "Andrew Clark", "Amelia Hall",
+    "Joshua Lewis", "Harper Walker", "Ryan Allen", "Evelyn Young", "Nathan King",
+    "Abigail Wright", "Tyler Green", "Emily Baker", "Kevin Adams", "Sofia Nelson",
+    "Justin Carter", "Avery Mitchell", "Brandon Perez", "Ella Roberts", "Steven Turner",
+    "Madison Phillips", "Jonathan Campbell", "Scarlett Parker", "Robert Evans", "Grace Edwards",
+    "Thomas Collins", "Chloe Stewart", "Samuel Morris", "Lily Rogers", "Benjamin Cook",
+    "Hannah Morgan", "Christian Reed", "Layla Bell", "Isaac Murphy", "Riley Bailey",
+    "Jack Cooper", "Zoe Richardson", "Owen Cox", "Nora Howard", "Gavin Ward",
+    "Luna Torres", "Caleb Peterson", "Violet Gray", "Isaac Ramirez", "Penelope James",
+    "Mason Watson", "Hazel Brooks", "Ethan Kelly", "Aurora Sanders", "Logan Price"
+];
+
+let virtualPlayers = [];
+let virtualPlayerInterval = null;
+let virtualResponseInterval = null;
+let questionCount = 0;
+let isVirtualTestingMode = false;
+
+function startVirtualPlayerSimulation() {
+    console.log('🎭 Starting virtual player simulation...');
+    virtualPlayers = [];
+    questionCount = 0;
+    isVirtualTestingMode = true;
+    
+    // Clear any existing intervals
+    if (virtualPlayerInterval) clearInterval(virtualPlayerInterval);
+    if (virtualResponseInterval) clearInterval(virtualResponseInterval);
+    
+    // Start adding virtual players over 30 seconds
+    const joinInterval = 500; // Add a player every 500ms (60 players / 30 seconds)
+    let playerIndex = 0;
+    
+    virtualPlayerInterval = setInterval(() => {
+        if (playerIndex < 60) {
+            const playerName = virtualPlayerNames[playerIndex];
+            const virtualPlayer = {
+                id: `virtual_${playerIndex}`,
+                name: playerName,
+                score: 0,
+                isVirtual: true,
+                responses: []
+            };
+            
+            virtualPlayers.push(virtualPlayer);
+            
+            // Add to gameState if it exists
+            if (gameState && gameState.players) {
+                gameState.players.push(virtualPlayer);
+            }
+            
+            console.log(`👤 Virtual player joined: ${playerName}`);
+            playerIndex++;
+            
+            // Update display if we're in a lobby
+            if (gameState && gameState.gameState === 'lobby') {
+                updateLobbyDisplay();
+            }
+        } else {
+            clearInterval(virtualPlayerInterval);
+            console.log('✅ All virtual players have joined');
+        }
+    }, joinInterval);
+}
+
+function generateVirtualResponses(question) {
+    console.log('🤖 Generating virtual responses...');
+    
+    if (!gameState || !gameState.players) return;
+    
+    const virtualPlayers = gameState.players.filter(p => p.isVirtual);
+    const responses = [];
+    
+    // Define response patterns for this question
+    const correctAnswers = question.correctAnswers || ['correct answer'];
+    const incorrectAnswers = question.incorrectAnswers || ['wrong answer', 'incorrect response'];
+    
+    virtualPlayers.forEach((player, index) => {
+        // Determine response type based on player index
+        let response;
+        let isCorrect = false;
+        
+        if (index < 45) { // 75% give correct answers
+            response = correctAnswers[Math.floor(Math.random() * correctAnswers.length)];
+            isCorrect = true;
+            
+            // 20% of correct answers get slight modifications for manual grading practice
+            if (index < 9 && Math.random() < 0.8) {
+                response = modifyAnswerForGrading(response);
+            }
+        } else { // 25% give incorrect answers
+            response = incorrectAnswers[Math.floor(Math.random() * incorrectAnswers.length)];
+            isCorrect = false;
+        }
+        
+        responses.push({
+            playerId: player.id,
+            playerName: player.name,
+            answer: response,
+            isCorrect: isCorrect,
+            timestamp: Date.now() + Math.random() * 5000 // Spread over 5 seconds
+        });
+    });
+    
+    // Simulate responses coming in over time
+    responses.forEach((response, index) => {
+        setTimeout(() => {
+            if (gameState && gameState.currentQuestion) {
+                // Add to gameState responses
+                if (!gameState.responses) gameState.responses = [];
+                gameState.responses.push(response);
+                
+                // Emit to server if socket is available
+                if (socket) {
+                    socket.emit('submitAnswer', {
+                        answer: response.answer,
+                        playerId: response.playerId,
+                        playerName: response.playerName,
+                        isVirtual: true
+                    });
+                }
+            }
+        }, response.timestamp - Date.now());
+    });
+    
+    console.log(`📝 Generated ${responses.length} virtual responses`);
+    return responses;
+}
+
+function modifyAnswerForGrading(answer) {
+    const modifications = [
+        answer + ' (slight variation)',
+        answer.toLowerCase(),
+        answer.toUpperCase(),
+        answer + '!',
+        answer + '?',
+        answer.replace(/[aeiou]/g, 'x'), // Replace vowels with x
+        answer.split('').reverse().join(''), // Reverse the answer
+        answer + ' with extra text',
+        answer.replace(/\s+/g, ' ').trim(), // Normalize spacing
+        answer + ' - modified'
+    ];
+    
+    return modifications[Math.floor(Math.random() * modifications.length)];
+}
+
+function simulateQuestionCycle() {
+    if (!gameState) return;
+    
+    questionCount++;
+    console.log(`🎯 Starting question ${questionCount}`);
+    
+    // Generate virtual responses
+    const responses = generateVirtualResponses(gameState.currentQuestion);
+    
+    // After 5 seconds, move to grading phase
+    setTimeout(() => {
+        if (gameState && gameState.gameState === 'waiting') {
+            gameState.gameState = 'grading';
+            showGradingScreen();
+        }
+    }, 5000);
+}
+
+// Enhanced question cycle with 5-question rounds
+// REMOVED: Duplicate handleQuestionComplete function that was overriding the main event handler
+
+// Enhanced grading completion
+function finishGrading() {
+    if (gameState && gameState.gameState === 'grading') {
+        gameState.gameState = 'waiting';
+        showWaitingScreen();
+        console.log('✅ Grading completed');
+        
+        // Automatically move to next question or round
+        setTimeout(() => {
+            // Use the main handleQuestionComplete function instead of the duplicate
+            if (questionCount >= 5) {
+                // Show round leaderboard after 5 questions
+                showRoundLeaderboard();
+            } else {
+                // Continue to next question
+                setTimeout(() => {
+                    if (gameState && gameState.gameState === 'waiting') {
+                        simulateQuestionCycle();
+                    }
+                }, 3000); // 3 second delay between questions
+            }
+        }, 2000); // 2 second delay before next question
+    }
+}
+
+// Test function to start the full simulation from host interface
+function startFullGameSimulation() {
+    console.log('🎮 Starting full game simulation from host interface...');
+    
+    // Only work if we're the host
+    if (!isHost) {
+        console.error('❌ Only the host can start virtual testing');
+        return;
+    }
+    
+    // Initialize game state if not already set
+    if (!gameState) {
+        gameState = {
+            gameState: 'lobby',
+            players: [],
+            currentQuestion: {
+                text: "What is the capital of France?",
+                correctAnswers: ['Paris', 'paris', 'PARIS'],
+                incorrectAnswers: ['London', 'Berlin', 'Madrid', 'Rome']
+            },
+            responses: []
+        };
+    }
+    
+    // Start virtual player simulation
+    startVirtualPlayerSimulation();
+    
+    // Update the lobby display
+    updateLobbyDisplay();
+    
+    console.log('✅ Full game simulation started. Use these commands:');
+    console.log('  startGame() - Start the game');
+    console.log('  nextQuestion() - Move to next question');
+    console.log('  finishGrading() - Complete grading phase');
+}
+
+// Enhanced virtual response generation that works with socket
+function generateVirtualResponses(question) {
+    console.log('🤖 Generating virtual responses...');
+    
+    if (!gameState || !gameState.players) return;
+    
+    const virtualPlayers = gameState.players.filter(p => p.isVirtual);
+    const responses = [];
+    
+    // Define response patterns for this question
+    const correctAnswers = question.correctAnswers || ['correct answer'];
+    const incorrectAnswers = question.incorrectAnswers || ['wrong answer', 'incorrect response'];
+    
+    virtualPlayers.forEach((player, index) => {
+        // Determine response type based on player index
+        let response;
+        let isCorrect = false;
+        
+        if (index < 45) { // 75% give correct answers
+            response = correctAnswers[Math.floor(Math.random() * correctAnswers.length)];
+            isCorrect = true;
+            
+            // 20% of correct answers get slight modifications for manual grading practice
+            if (index < 9 && Math.random() < 0.8) {
+                response = modifyAnswerForGrading(response);
+            }
+        } else { // 25% give incorrect answers
+            response = incorrectAnswers[Math.floor(Math.random() * incorrectAnswers.length)];
+            isCorrect = false;
+        }
+        
+        responses.push({
+            playerId: player.id,
+            playerName: player.name,
+            answer: response,
+            isCorrect: isCorrect,
+            timestamp: Date.now() + Math.random() * 5000 // Spread over 5 seconds
+        });
+    });
+    
+    // Simulate responses coming in over time
+    responses.forEach((response, index) => {
+        setTimeout(() => {
+            if (gameState && gameState.currentQuestion) {
+                // Add to gameState responses
+                if (!gameState.responses) gameState.responses = [];
+                gameState.responses.push(response);
+                
+                // Emit to server if socket is available
+                if (socket) {
+                    socket.emit('submitAnswer', {
+                        answer: response.answer,
+                        playerId: response.playerId,
+                        playerName: response.playerName,
+                        isVirtual: true
+                    });
+                }
+                
+                // Update display if we're showing responses
+                if (gameState.gameState === 'waiting') {
+                    updateLobbyDisplay();
+                }
+            }
+        }, response.timestamp - Date.now());
+    });
+    
+    console.log(`📝 Generated ${responses.length} virtual responses`);
+    return responses;
+}
+
+// REMOVED: Duplicate helper functions that conflict with main game logic
+
+// REMOVED: Duplicate finishGrading function that conflicts with main game logic
+
+// Add virtual testing button to host interface
+function addVirtualTestingButton() {
+    const hostActions = document.querySelector('.host-actions');
+    if (hostActions && !document.getElementById('virtualTestBtn')) {
+        const virtualTestBtn = document.createElement('button');
+        virtualTestBtn.id = 'virtualTestBtn';
+        virtualTestBtn.className = 'btn btn-warning';
+        virtualTestBtn.textContent = '🎭 Virtual Test';
+        virtualTestBtn.onclick = startFullGameSimulation;
+        hostActions.appendChild(virtualTestBtn);
+    }
+}
+
+// Make functions globally available
+window.startFullGameSimulation = startFullGameSimulation;
+    

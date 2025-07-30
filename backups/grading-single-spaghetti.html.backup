@@ -820,7 +820,7 @@
             
             socket.on('gradingComplete', (data) => {
                 console.log('✅ Grading completed successfully!', data);
-                // Confirmation already shown in applyCategorization, just redirect
+                alert('✅ Grading completed successfully! The game has moved to the scoring phase.');
                 backToGames();
             });
 
@@ -1092,18 +1092,31 @@
         }
 
         async function updateGradingInterfaceSmoothly() {
-            if (!currentGame || !currentGame.currentAnswerGroups) return;
+            console.log('🔄 updateGradingInterfaceSmoothly called');
+            console.log('🔄 currentGame exists:', !!currentGame);
+            console.log('🔄 currentAnswerGroups exists:', !!(currentGame && currentGame.currentAnswerGroups));
             
-            console.log('🔄 Smooth update: updating grading interface');
+            if (!currentGame || !currentGame.currentAnswerGroups) {
+                console.log('⚠️ updateGradingInterfaceSmoothly: No current game or answer groups, returning');
+                return;
+            }
+            
+            console.log('🔄 Smoothly updating grading interface with new answers');
+            console.log('🔄 Current answer groups:', JSON.stringify(currentGame.currentAnswerGroups));
             
             // Update question display
+            console.log('🔄 Updating question display');
             updateQuestionDisplay();
             
             // Smoothly update only the buckets that need changes
+            console.log('🔄 Smoothly updating answer buckets');
             await updateAnswerBucketsSmoothly();
             
             // Update count badges
+            console.log('🔄 Updating count badges');
             updateCountBadges();
+            
+            console.log('✅ Smooth update completed');
         }
         
         async function updateAnswerBucketsSmoothly() {
@@ -1408,7 +1421,7 @@
                     const answerGroup = (currentGame.currentAnswerGroups || []).find(group => group.answer === match.response);
                     if (!answerGroup) return;
                     
-                    if (match.confidence >= 90 && match.best_match) {
+                    if (match.confidence >= 80 && match.best_match) {
                         // Auto-categorize high confidence matches
                         const matchingBucket = correctAnswerBuckets.find(bucket => 
                             bucket.correctAnswer === match.best_match
@@ -1434,27 +1447,18 @@
             } catch (error) {
                 console.error('❌ Semantic matching failed, falling back to exact matching:', error);
                 
-                // Fallback to local semantic matching
+                // Fallback to exact matching
                 (currentGame.currentAnswerGroups || []).forEach(answerGroup => {
-                    let bestMatch = null;
-                    let bestConfidence = 0;
-                    
-                    // Try each correct answer
-                    correctAnswerBuckets.forEach(bucket => {
-                        const confidence = calculateSemanticConfidence(answerGroup.answer, bucket.correctAnswer);
-                        if (confidence > bestConfidence) {
-                            bestConfidence = confidence;
-                            bestMatch = bucket;
-                        }
+                    const matchingBucket = correctAnswerBuckets.find(bucket => {
+                        const normalizedAnswer = normalizeAnswer(answerGroup.answer);
+                        const normalizedCorrect = normalizeAnswer(bucket.correctAnswer);
+                        return normalizedAnswer === normalizedCorrect;
                     });
                     
-                    // Auto-categorize if confidence is high enough
-                    if (bestMatch && bestConfidence >= 90) {
-                        answerGroup.semanticConfidence = bestConfidence;
-                        answerGroup.semanticMatch = bestMatch.correctAnswer;
-                        bestMatch.answers.push(answerGroup);
+                    if (matchingBucket) {
+                        matchingBucket.answers.push(answerGroup);
                         answersToRemove.push(answerGroup.answer);
-                        console.log(`✅ Local match: "${answerGroup.answer}" to "${bestMatch.correctAnswer}" (${bestConfidence}% confidence)`);
+                        console.log(`✅ Exact match: "${answerGroup.answer}" to "${matchingBucket.name}"`);
                     }
                 });
             }
@@ -1507,33 +1511,44 @@
                     // Restore saved grading state if available
         setTimeout(() => {
             const restored = restoreGradingState();
-            if (restored) {
-                // State was restored - clear any duplicates and skip repopulation
-                console.log('💾 State restored - cleaning up duplicates');
-                removeDuplicateAnswers();
-                window.skipPopulateUncategorized = true;
-                setTimeout(() => {
-                    window.skipPopulateUncategorized = false;
-                }, 1000);
-            } else {
-                // No saved state - save the initial auto-categorized state
-                setTimeout(() => {
+            // Only save initial state if we didn't restore anything
+            setTimeout(() => {
+                if (!restored) {
+                    console.log('💾 Saving initial state (no restore occurred)');
+                    console.log('💾 DOM check - uncategorized items:', document.querySelectorAll('#uncategorizedAnswers .answer-item').length);
+                    console.log('💾 DOM check - uncategorized container children:', document.getElementById('uncategorizedAnswers')?.children.length);
                     saveGradingState();
-                }, 500);
-            }
+                } else {
+                    console.log('💾 Skipping initial save (restore occurred)');
+                    console.log('💾 Skipping populateUncategorizedAnswers (restore occurred)');
+                    // Set global flag to prevent populateUncategorizedAnswers from running
+                    window.skipPopulateUncategorized = true;
+                    // Clear the flag after a short delay
+                    setTimeout(() => {
+                        window.skipPopulateUncategorized = false;
+                    }, 1000);
+                }
+            }, 500);
         }, 100);
         }
 
         async function populateUncategorizedAnswers(answersToRemove = []) {
+            console.log('📦 populateUncategorizedAnswers called');
+            
             // Check if we should skip this call due to a recent restore
             if (window.skipPopulateUncategorized) {
+                console.log('📦 SKIPPING populateUncategorizedAnswers due to recent restore');
                 return;
             }
+            
+            console.log('📦 answersToRemove:', answersToRemove);
+            console.log('📦 currentGame.currentAnswerGroups:', currentGame?.currentAnswerGroups);
             
             // If no answersToRemove provided, calculate them from current state
             if (answersToRemove.length === 0) {
                 const questionData = currentGame.currentQuestionData;
                 const correctAnswerList = questionData?.correct_answers || [];
+                console.log('📦 Calculating answersToRemove from correct answers:', correctAnswerList);
                 
                 // Simple matching for uncategorized answers
                 (currentGame.currentAnswerGroups || []).forEach(answerGroup => {
@@ -1545,6 +1560,7 @@
                     
                     if (matchingBucket) {
                         answersToRemove.push(answerGroup.answer);
+                        console.log('📦 Adding to answersToRemove:', answerGroup.answer);
                     }
                 });
             }
@@ -1580,22 +1596,32 @@
                 }
             });
             
+            console.log('📦 Uncategorized answers to display:', uncategorizedAnswers);
+            
             const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
+            console.log('📦 Uncategorized container found:', !!uncategorizedContainer);
             
             if (uncategorizedContainer) {
                 // Check if there are already items in the container (indicating a restore happened)
                 const existingItems = uncategorizedContainer.children.length;
+                console.log('📦 Existing items in uncategorized container:', existingItems);
                 
                 if (existingItems > 0) {
-                    return; // Skip repopulation - items already exist
+                    console.log('📦 Skipping repopulation - items already exist (likely from restore)');
+                    return;
                 }
                 
                 uncategorizedContainer.innerHTML = '';
+                console.log('📦 Cleared uncategorized container');
                 
                 uncategorizedAnswers.forEach((group, index) => {
+                    console.log('📦 Creating answer item for:', group.answer);
                     const answerItem = createAnswerItem(group, index);
                     uncategorizedContainer.appendChild(answerItem);
+                    console.log('📦 Added answer item to container');
                 });
+                
+                console.log('📦 Final uncategorized container children count:', uncategorizedContainer.children.length);
             }
             
             // Setup drag and drop after populating
@@ -1652,50 +1678,57 @@
         }
 
         function setupDragAndDrop() {
-            // Use event delegation instead of individual listeners to prevent memory leaks
-            document.removeEventListener('dragstart', globalDragHandler);
-            document.removeEventListener('dragend', globalDragHandler);
-            document.removeEventListener('dragover', globalDragHandler);
-            document.removeEventListener('dragenter', globalDragHandler);
-            document.removeEventListener('dragleave', globalDragHandler);
-            document.removeEventListener('drop', globalDragHandler);
+            // Remove existing event listeners to prevent duplicates
+            const existingAnswerItems = document.querySelectorAll('.answer-item');
+            const existingDropZones = document.querySelectorAll('.answer-items');
+            const existingBuckets = document.querySelectorAll('.answer-bucket');
             
-            // Set up global event delegation
-            document.addEventListener('dragstart', globalDragHandler);
-            document.addEventListener('dragend', globalDragHandler);
-            document.addEventListener('dragover', globalDragHandler);
-            document.addEventListener('dragenter', globalDragHandler);
-            document.addEventListener('dragleave', globalDragHandler);
-            document.addEventListener('drop', globalDragHandler);
-        }
-
-        // Global drag handler using event delegation (prevents memory leaks)
-        function globalDragHandler(e) {
-            const answerItem = e.target.closest('.answer-item');
-            const dropZone = e.target.closest('.answer-items');
-            const bucket = e.target.closest('.answer-bucket');
+            // Remove old listeners (clone and replace to remove all listeners)
+            existingAnswerItems.forEach(item => {
+                const newItem = item.cloneNode(true);
+                // Preserve data attributes that might be lost during cloning
+                if (item.dataset.answerText) {
+                    newItem.dataset.answerText = item.dataset.answerText;
+                }
+                if (item.dataset.playerNames) {
+                    newItem.dataset.playerNames = item.dataset.playerNames;
+                }
+                if (item.dataset.answerIndex) {
+                    newItem.dataset.answerIndex = item.dataset.answerIndex;
+                }
+                item.parentNode.replaceChild(newItem, item);
+            });
             
-            switch(e.type) {
-                case 'dragstart':
-                    if (answerItem) handleDragStart(e);
-                    break;
-                case 'dragend':
-                    if (answerItem) handleDragEnd(e);
-                    break;
-                case 'dragover':
-                    if (dropZone || bucket) handleDragOver(e);
-                    break;
-                case 'dragenter':
-                    if (dropZone || bucket) handleDragEnter(e);
-                    break;
-                case 'dragleave':
-                    if (dropZone || bucket) handleDragLeave(e);
-                    break;
-                case 'drop':
-                    if (bucket) handleDropOnBucket(e);
-                    else if (dropZone) handleDrop(e);
-                    break;
-            }
+            // Get fresh references after cloning
+            const answerItems = document.querySelectorAll('.answer-item');
+            const dropZones = document.querySelectorAll('.answer-items');
+            const buckets = document.querySelectorAll('.answer-bucket');
+            
+            console.log('🔧 Setting up drag and drop for:', {
+                answerItems: answerItems.length,
+                dropZones: dropZones.length,
+                buckets: buckets.length
+            });
+            
+            answerItems.forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragend', handleDragEnd);
+            });
+            
+            dropZones.forEach(zone => {
+                zone.addEventListener('dragover', handleDragOver);
+                zone.addEventListener('dragenter', handleDragEnter);
+                zone.addEventListener('dragleave', handleDragLeave);
+                zone.addEventListener('drop', handleDrop);
+            });
+            
+            // Make entire buckets droppable
+            buckets.forEach(bucket => {
+                bucket.addEventListener('dragover', handleDragOver);
+                bucket.addEventListener('dragenter', handleDragEnter);
+                bucket.addEventListener('dragleave', handleDragLeave);
+                bucket.addEventListener('drop', handleDropOnBucket);
+            });
         }
 
         function handleDragStart(e) {
@@ -1783,52 +1816,6 @@
             }
         }
 
-        function showGradingConfirmation(categorization) {
-            const totalCorrect = categorization.correctAnswerBuckets.reduce((sum, bucket) => sum + bucket.answers.length, 0);
-            const totalWrong = categorization.wrong.length;
-            const totalUncategorized = categorization.uncategorized.length;
-            const totalAnswers = totalCorrect + totalWrong + totalUncategorized;
-            
-            // Create summary text
-            let summaryText = `Grading Complete!\n\n`;
-            summaryText += `📊 Summary:\n`;
-            summaryText += `✅ Correct: ${totalCorrect}\n`;
-            summaryText += `❌ Wrong: ${totalWrong}\n`;
-            summaryText += `📦 Uncategorized: ${totalUncategorized}\n`;
-            summaryText += `📋 Total: ${totalAnswers}\n\n`;
-            
-            // Add details for correct answers
-            if (totalCorrect > 0) {
-                summaryText += `✅ Correct Answers:\n`;
-                categorization.correctAnswerBuckets.forEach(bucket => {
-                    if (bucket.answers.length > 0) {
-                        // Get bucket name from DOM
-                        const bucketElement = document.querySelector(`[data-bucket="${bucket.id}"]`)?.closest('.answer-bucket');
-                        const bucketName = bucketElement?.querySelector('h4')?.textContent?.replace(/[▼▶]\s*/, '').trim() || bucket.id;
-                        summaryText += `  ${bucketName}: ${bucket.answers.map(a => `"${a.answer}"`).join(', ')}\n`;
-                    }
-                });
-                summaryText += `\n`;
-            }
-            
-            // Add details for wrong answers
-            if (totalWrong > 0) {
-                summaryText += `❌ Wrong Answers:\n`;
-                summaryText += `  ${categorization.wrong.map(a => `"${a.answer}"`).join(', ')}\n\n`;
-            }
-            
-            // Add details for uncategorized answers
-            if (totalUncategorized > 0) {
-                summaryText += `📦 Uncategorized Answers:\n`;
-                summaryText += `  ${categorization.uncategorized.map(a => `"${a.answer}"`).join(', ')}\n\n`;
-            }
-            
-            summaryText += `Click OK to continue to scoring phase.`;
-            
-            // Show the confirmation
-            alert(summaryText);
-        }
-
         function applyCategorization() {
             if (!currentGame) return;
             
@@ -1870,14 +1857,13 @@
             
             console.log('Submitting categorization:', categorization);
             
-            // Show confirmation dialog with results
-            showGradingConfirmation(categorization);
-            
             // Send categorization to server
             socket.emit('completeGrading', {
                 gameCode: currentGame.gameCode,
                 categorizedAnswers: categorization
             });
+            
+            backToGames();
         }
 
         function backToGames() {
@@ -1909,34 +1895,28 @@
                 return 100;
             }
             
-            // Check for high-confidence substring matches (e.g., "billy goat" contains "goat")
-            if (normalizedAnswer.includes(normalizedCorrect)) {
-                // If the correct answer is contained in the response, high confidence
-                return 95; // Very high confidence for containing the exact animal name
-            }
-            
-            if (normalizedCorrect.includes(normalizedAnswer)) {
-                // If the response is contained in the correct answer
-                return 90;
-            }
-            
             // Calculate similarity using simple string comparison
             let similarity = 0;
             const maxLength = Math.max(normalizedAnswer.length, normalizedCorrect.length);
             
             if (maxLength === 0) return 0;
             
-            // Calculate character-by-character similarity for fuzzy matches
-            let matches = 0;
-            const minLength = Math.min(normalizedAnswer.length, normalizedCorrect.length);
-            
-            for (let i = 0; i < minLength; i++) {
-                if (normalizedAnswer[i] === normalizedCorrect[i]) {
-                    matches++;
+            // Check for substring matches
+            if (normalizedAnswer.includes(normalizedCorrect) || normalizedCorrect.includes(normalizedAnswer)) {
+                similarity = Math.min(normalizedAnswer.length, normalizedCorrect.length) / maxLength;
+            } else {
+                // Calculate character-by-character similarity
+                let matches = 0;
+                const minLength = Math.min(normalizedAnswer.length, normalizedCorrect.length);
+                
+                for (let i = 0; i < minLength; i++) {
+                    if (normalizedAnswer[i] === normalizedCorrect[i]) {
+                        matches++;
+                    }
                 }
+                
+                similarity = matches / maxLength;
             }
-            
-            similarity = matches / maxLength;
             
             // Convert to percentage and round
             return Math.round(similarity * 100);
@@ -2084,12 +2064,19 @@
             
             // Save state for each bucket
             const allBuckets = document.querySelectorAll('.answer-bucket');
+            console.log(`🔍 Debug: Found ${allBuckets.length} total buckets:`, Array.from(allBuckets).map(b => b.dataset.bucketId));
             
             allBuckets.forEach(bucket => {
                 const bucketId = bucket.dataset.bucketId;
-                if (!bucketId) return;
+                if (!bucketId) {
+                    console.log('⚠️ Bucket without bucketId found:', bucket);
+                    return;
+                }
                 
+                console.log(`🔍 Debug: Checking bucket "${bucketId}"`);
                 const answerItems = bucket.querySelectorAll('.answer-item');
+                console.log(`🔍 Debug: Found ${answerItems.length} answer items in bucket "${bucketId}"`);
+                
                 const items = [];
                 
                 answerItems.forEach(item => {
@@ -2104,18 +2091,28 @@
                         confidence: confidence,
                         playerNames: playerNames
                     });
+                    
+                    console.log(`💾 Saving item: "${answerText}" in bucket "${bucketId}"`);
                 });
                 
                 state.buckets[bucketId] = items;
+                console.log(`💾 Saved ${items.length} items for bucket "${bucketId}"`);
             });
             
             // Save state for uncategorized and wrong answer containers
             const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
             if (uncategorizedContainer) {
+                console.log('🔍 Debug: uncategorizedContainer found:', uncategorizedContainer);
+                console.log('🔍 Debug: uncategorizedContainer innerHTML:', uncategorizedContainer.innerHTML);
+                console.log('🔍 Debug: uncategorizedContainer children count:', uncategorizedContainer.children.length);
+                
                 const uncategorizedItems = uncategorizedContainer.querySelectorAll('.answer-item');
+                console.log('🔍 Debug: uncategorizedItems found:', uncategorizedItems.length);
+                
                 const items = [];
                 
                 uncategorizedItems.forEach(item => {
+                    console.log('🔍 Debug: Processing uncategorized item:', item.dataset.answerText);
                     items.push({
                         answerText: item.dataset.answerText,
                         playerCount: parseInt(item.querySelector('.answer-count-badge')?.textContent || '1'),
@@ -2125,6 +2122,7 @@
                 });
                 
                 state.buckets['uncategorized'] = items;
+                console.log('🔍 Debug: Final uncategorized items to save:', items);
             }
             
             const wrongContainer = document.getElementById('wrongAnswers');
@@ -2145,7 +2143,11 @@
             }
             
             const stateKey = `grading_state_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`;
+            console.log('💾 Saving to localStorage with key:', stateKey);
             localStorage.setItem(stateKey, JSON.stringify(state));
+            
+            console.log('💾 Saved grading state:', state);
+            console.log('💾 localStorage now contains:', Object.keys(localStorage).filter(key => key.startsWith('grading_state_')));
             
             // Show save indicator
             showSaveIndicator();
@@ -2156,31 +2158,38 @@
             if (!currentGame || !currentGame.currentQuestionData) return false;
             
             const stateKey = `grading_state_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`;
+            console.log('📂 Looking for saved state with key:', stateKey);
+            console.log('📂 Available localStorage keys:', Object.keys(localStorage).filter(key => key.startsWith('grading_state_')));
+            
+            // Debug: Check what buckets exist when restore runs
+            const existingBuckets = document.querySelectorAll('.answer-bucket');
+            console.log('📂 Existing buckets when restore runs:', Array.from(existingBuckets).map(b => b.dataset.bucketId));
+            
             const savedState = localStorage.getItem(stateKey);
             
             if (!savedState) {
+                console.log('📂 No saved grading state found');
                 return false;
             }
             
             try {
                 const state = JSON.parse(savedState);
+                console.log('📂 Restoring grading state:', state);
                 
                 // Check if state is still valid (same game and question)
                 if (state.gameCode !== currentGame.gameCode || 
                     state.questionIndex !== currentGame.currentQuestionIndex) {
+                    console.log('📂 Saved state is outdated, clearing');
                     localStorage.removeItem(stateKey);
                     return false;
                 }
-                
-                // Clear ALL buckets first to prevent duplicates
-                document.querySelectorAll('.answer-items').forEach(container => {
-                    container.innerHTML = '';
-                });
                 
                 // Apply saved state
                 let restoredAny = false;
                 Object.keys(state.buckets).forEach(bucketId => {
                     let bucket, dropZone;
+                    
+                    console.log(`📂 Restoring bucket: ${bucketId} with ${state.buckets[bucketId].length} items`);
                     
                     // Handle different bucket types
                     if (bucketId === 'uncategorized') {
@@ -2192,14 +2201,22 @@
                         dropZone = bucket?.querySelector('.answer-items');
                     }
                     
-                    if (!dropZone) return;
+                    if (!dropZone) {
+                        console.log(`❌ Drop zone not found for bucket: ${bucketId}`);
+                        return;
+                    }
                     
-                    // Restore items if there are any
+                    // Only clear and restore if there are items to restore
                     if (state.buckets[bucketId].length > 0) {
+                        console.log(`📂 Clearing and restoring ${state.buckets[bucketId].length} items for bucket: ${bucketId}`);
                         restoredAny = true;
+                        // Clear existing items
+                        dropZone.innerHTML = '';
                         
                         // Add saved items
                         state.buckets[bucketId].forEach(item => {
+                        console.log(`📂 Restoring item: "${item.answerText}" to bucket "${bucketId}"`);
+                        
                         // Extract confidence percentage from the saved confidence text
                         let confidence = 0;
                         if (item.confidence) {
@@ -2221,6 +2238,8 @@
                         const answerItem = tempDiv.firstElementChild;
                         dropZone.appendChild(answerItem);
                     });
+                    } else {
+                        console.log(`📂 No items to restore for bucket: ${bucketId}, keeping existing content`);
                     }
                 });
                 
@@ -2313,34 +2332,12 @@
         `;
         document.head.appendChild(style);
         
-        // Remove duplicate answers that might exist after state restoration
-        function removeDuplicateAnswers() {
-            const seenAnswers = new Set();
-            const allAnswerItems = document.querySelectorAll('.answer-item');
-            
-            allAnswerItems.forEach(item => {
-                const answerText = item.dataset.answerText;
-                if (seenAnswers.has(answerText)) {
-                    // This is a duplicate - remove it
-                    console.log(`🧹 Removing duplicate answer: "${answerText}"`);
-                    item.remove();
-                } else {
-                    seenAnswers.add(answerText);
-                }
-            });
-            
-            // Update counts after cleanup
-            updateCountBadges();
-        }
-
         // Auto-save on drag and drop
         function autoSave() {
+            console.log('🔄 Auto-save triggered');
             setTimeout(() => {
-                try {
-                    saveGradingState();
-                } catch (error) {
-                    console.error('Auto-save failed:', error);
-                }
+                console.log('🔄 Executing auto-save...');
+                saveGradingState();
             }, 100); // Small delay to ensure DOM is updated
         }
         
@@ -2350,17 +2347,20 @@
             
             // Auto-save on page unload
             window.addEventListener('beforeunload', () => {
+                console.log('🔄 Window beforeunload - saving state');
                 saveGradingState();
             });
             
             // Auto-save on page hide (for mobile browsers and some popup scenarios)
             window.addEventListener('pagehide', () => {
+                console.log('🔄 Window pagehide - saving state');
                 saveGradingState();
             });
             
             // Auto-save on visibility change (when tab becomes hidden)
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden') {
+                    console.log('🔄 Page visibility hidden - saving state');
                     saveGradingState();
                 }
             });
@@ -2369,11 +2369,8 @@
             setTimeout(() => {
                 setInterval(() => {
                     if (currentGame && currentGame.currentQuestionData) {
-                        try {
-                            saveGradingState();
-                        } catch (error) {
-                            console.error('Periodic auto-save failed:', error);
-                        }
+                        console.log('🔄 Periodic auto-save (10s)');
+                        saveGradingState();
                     }
                 }, 10000);
             }, 10000);

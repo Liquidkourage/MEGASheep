@@ -249,6 +249,42 @@ class Game {
         }
     }
 
+    addVirtualPlayer(playerId, playerName) {
+        if (this.settings.maxPlayers > 0 && this.players.size >= this.settings.maxPlayers) {
+            throw new Error('Game is full');
+        }
+        
+        // Check for duplicate names (but allow same player to reconnect)
+        const existingPlayer = Array.from(this.players.values()).find(p => p.name === playerName);
+        if (existingPlayer && existingPlayer.id !== playerId) {
+            // Check if the existing player is still connected
+            const existingPlayerInfo = connectedPlayers.get(existingPlayer.id);
+            if (existingPlayerInfo && existingPlayerInfo.playerName === playerName) {
+                throw new Error('Player name already taken');
+            } else {
+                // Remove the disconnected player with same name
+                this.removePlayer(existingPlayer.id);
+            }
+        }
+        
+        // If player already exists with same ID, just update
+        if (this.players.has(playerId)) {
+            console.log(`🎭 Virtual player ${playerName} already in game ${this.gameCode}, updating connection`);
+            return;
+        }
+        
+        this.players.set(playerId, {
+            id: playerId,
+            name: playerName,
+            score: 0,
+            answers: [],
+            isVirtual: true
+        });
+        this.scores.set(playerId, 0);
+        
+        console.log(`🎭 Virtual player ${playerName} added to game ${this.gameCode}`);
+    }
+
     submitAnswer(socketId, answer) {
         if (this.gameState !== 'playing') return false;
         
@@ -310,9 +346,9 @@ class Game {
           // Group all answers in this bucket together
           const socketIds = [];
           for (const answerData of bucket.answers) {
-            // Find the original answer group to get player names
+            // Find the original answer group to get player names (case-insensitive)
             const originalGroup = this.currentAnswerGroups.find(group => 
-              group.answer === answerData.answer
+              group.answer.toLowerCase().trim() === answerData.answer.toLowerCase().trim()
             );
             if (originalGroup && originalGroup.players) {
               // Find socket IDs for these players
@@ -340,7 +376,7 @@ class Game {
     if (categorizationData.wrong && Array.isArray(categorizationData.wrong)) {
       for (const answerData of categorizationData.wrong) {
         const originalGroup = this.currentAnswerGroups.find(group => 
-          group.answer === answerData.answer
+          group.answer.toLowerCase().trim() === answerData.answer.toLowerCase().trim()
         );
         if (originalGroup && originalGroup.players) {
           const socketIds = [];
@@ -364,7 +400,7 @@ class Game {
     if (categorizationData.uncategorized && Array.isArray(categorizationData.uncategorized)) {
       for (const answerData of categorizationData.uncategorized) {
         const originalGroup = this.currentAnswerGroups.find(group => 
-          group.answer === answerData.answer
+          group.answer.toLowerCase().trim() === answerData.answer.toLowerCase().trim()
         );
         if (originalGroup && originalGroup.players) {
           const socketIds = [];
@@ -584,10 +620,55 @@ class Game {
         // Reset question scoring state for the new question
         this.resetQuestionScoring();
         
+        // Check if we've completed a round (5 questions per round)
+        const currentRound = Math.ceil(this.currentQuestion / this.settings.questionsPerRound);
+        const questionInRound = ((this.currentQuestion - 1) % this.settings.questionsPerRound) + 1;
+        
+        // DEVELOPMENT: For testing, trigger round complete after 2 questions instead of 5
+        const questionsForRoundComplete = process.env.NODE_ENV === 'development' ? 2 : this.settings.questionsPerRound;
+        
+        // If we just finished the last question of a round, show round results
+        if (questionInRound === questionsForRoundComplete) {
+            this.completeRound();
+        } else if (this.currentQuestion >= this.questions.length) {
+            this.gameState = 'finished';
+            io.to(this.gameCode).emit('gameFinished', this.getGameState());
+        } else {
+            this.gameState = 'playing';
+            this.startTimer();
+            io.to(this.gameCode).emit('nextQuestion', this.getGameState());
+        }
+    }
+
+    completeRound() {
+        const currentRound = Math.ceil(this.currentQuestion / this.settings.questionsPerRound);
+        const roundStartQuestion = (currentRound - 1) * this.settings.questionsPerRound + 1;
+        const roundEndQuestion = Math.min(currentRound * this.settings.questionsPerRound, this.questions.length);
+        
+        // Create round summary data
+        const roundData = {
+            roundNumber: currentRound,
+            questionStart: roundStartQuestion,
+            questionEnd: roundEndQuestion,
+            players: Array.from(this.players.values()).map(player => ({
+                name: player.name,
+                score: this.scores.get(player.id) || 0
+            })),
+            answerGroups: this.currentAnswerGroups || []
+        };
+        
+        this.roundHistory.push(roundData);
+        this.gameState = 'roundComplete';
+        
+        console.log(`🎯 Round ${currentRound} completed for game ${this.gameCode}`);
+        io.to(this.gameCode).emit('roundComplete', this.getGameState());
+    }
+
+    continueToNextRound() {
         if (this.currentQuestion >= this.questions.length) {
             this.gameState = 'finished';
             io.to(this.gameCode).emit('gameFinished', this.getGameState());
-    } else {
+        } else {
             this.gameState = 'playing';
             this.startTimer();
             io.to(this.gameCode).emit('nextQuestion', this.getGameState());
@@ -598,6 +679,17 @@ class Game {
         this.stopTimer();
         activeGameCodes.delete(this.gameCode);
         console.log(`🧹 Cleaned up game ${this.gameCode}`);
+    }
+
+    submitVirtualAnswer(playerId, answer) {
+        if (this.gameState !== 'playing') return false;
+        
+        this.answers.set(playerId, answer.trim());
+        const player = this.players.get(playerId);
+        if (player) {
+            console.log(`📝 Virtual player ${player.name} submitted answer: "${answer}"`);
+        }
+        return true;
     }
 }
 
@@ -1297,25 +1389,37 @@ io.on('connection', (socket) => {
 
     // Join game
     socket.on('joinGame', (data) => {
+        console.log('🔍 joinGame event received:', data);
+        console.log('🔍 joinGame: socket.id:', socket.id);
         const { gameCode, playerName } = data;
         
         if (!gameCode || !playerName) {
+            console.log('❌ joinGame: Missing gameCode or playerName');
             socket.emit('gameError', { message: 'Game code and player name are required' });
             return;
         }
         
+        console.log(`🔍 joinGame: Looking for game ${gameCode}`);
         const game = activeGames.get(gameCode);
         if (!game) {
+            console.log(`❌ joinGame: Game ${gameCode} not found`);
             socket.emit('gameError', { message: 'Game not found. Please check the game code.' });
             return;
         }
         
+        console.log(`🔍 joinGame: Game ${gameCode} found, state: ${game.gameState}`);
+        console.log(`🔍 joinGame: Game has ${game.players.size} players`);
+        console.log(`🔍 joinGame: Game players:`, Array.from(game.players.values()));
+        
         if (game.gameState !== 'waiting') {
+            console.log(`❌ joinGame: Game ${gameCode} has already started`);
             socket.emit('gameError', { message: 'Game has already started. Cannot join.' });
             return;
-  }
-  
-          try {
+        }
+        
+        try {
+            console.log(`🔍 joinGame: Processing join for ${playerName} to game ${gameCode}`);
+            
             // Update connection info first
             const playerInfo = connectedPlayers.get(socket.id);
             if (playerInfo) {
@@ -1327,6 +1431,7 @@ io.on('connection', (socket) => {
             
             // Only add to player list if not the host
             if (playerName !== game.hostId) {
+                console.log(`🔍 joinGame: Adding ${playerName} to game ${gameCode}`);
                 game.addPlayer(socket.id, playerName);
                 
                 // Notify everyone in the game room about the new player
@@ -1335,18 +1440,110 @@ io.on('connection', (socket) => {
                 console.log('🏠 Host', playerName, 'joined room for game', gameCode);
             }
             
+            console.log(`🔍 joinGame: Adding socket ${socket.id} to room ${gameCode}`);
             socket.join(gameCode);
             
             // Confirm to player
-            socket.emit('gameJoined', {
+            console.log(`🔍 joinGame: Sending gameJoined response to ${playerName}`);
+            const gameStateToSend = game.getGameState();
+            console.log(`🔍 joinGame: gameState.players:`, gameStateToSend.players);
+            console.log(`🔍 joinGame: gameState.players.length:`, gameStateToSend.players?.length || 0);
+            console.log(`🔍 joinGame: Full gameState keys:`, Object.keys(gameStateToSend));
+            console.log(`🔍 joinGame: Full gameState:`, JSON.stringify(gameStateToSend, null, 2));
+            
+            // Test JSON serialization
+            const testSerialization = JSON.stringify(gameStateToSend);
+            const testDeserialization = JSON.parse(testSerialization);
+            console.log(`🔍 joinGame: Serialization test - players after JSON roundtrip:`, testDeserialization.players?.length || 0);
+            
+            const responseData = {
                 gameCode: gameCode,
-                gameState: game.getGameState(),
+                gameState: gameStateToSend,
                 playerCount: game.players.size
-            });
+            };
+            
+            console.log(`🔍 joinGame: Final response data:`, JSON.stringify(responseData, null, 2));
+            
+            socket.emit('gameJoined', responseData);
+            
+            // Send a test event to the room to verify event delivery
+            setTimeout(() => {
+                console.log(`🧪 Sending test event to room ${gameCode} to verify event delivery`);
+                io.to(gameCode).emit('testEvent', { 
+                    message: 'Test event from server',
+                    timestamp: Date.now(),
+                    gameCode: gameCode
+                });
+            }, 2000); // Send test event 2 seconds after player joins
     
-  } catch (error) {
+        } catch (error) {
+            console.error('❌ joinGame error:', error);
             socket.emit('gameError', { message: error.message });
         }
+    });
+
+    // Virtual player join (for testing)
+    socket.on('virtualPlayerJoined', (data) => {
+        console.log('🎭 virtualPlayerJoined event received:', data);
+        const { gameCode, playerId, playerName } = data;
+        
+        if (!gameCode || !playerId || !playerName) {
+            console.log('⚠️ virtualPlayerJoined event received with incomplete data');
+            return;
+        }
+        
+        const game = activeGames.get(gameCode);
+        if (!game) {
+            console.log(`❌ Game ${gameCode} not found for virtualPlayerJoined`);
+            return;
+        }
+        
+        if (game.gameState !== 'waiting') {
+            console.log('⚠️ Cannot add virtual player to game that has already started');
+            return;
+        }
+        
+        try {
+            // Add virtual player directly to game without socket ID
+            game.addVirtualPlayer(playerId, playerName);
+            
+            // Notify everyone in the game room about the new virtual player
+            console.log(`🎭 Emitting virtualPlayerJoined to room ${gameCode} for player ${playerName}`);
+            io.to(gameCode).emit('virtualPlayerJoined', {
+                playerId: playerId,
+                playerName: playerName,
+                gameState: game.getGameState()
+            });
+            
+            console.log(`🎭 Virtual player ${playerName} (${playerId}) added to game ${gameCode}`);
+            
+        } catch (error) {
+            console.error('❌ Error adding virtual player:', error.message);
+        }
+    });
+
+    // Test room membership
+    socket.on('testRoomMembership', (data) => {
+        const { gameCode } = data;
+        console.log(`🔍 Player ${socket.id} testing room membership for game ${gameCode}`);
+        
+        // Check if player is in the room
+        const rooms = socket.rooms;
+        console.log(`🔍 Player ${socket.id} is in rooms:`, Array.from(rooms));
+        
+        if (rooms.has(gameCode)) {
+            console.log(`✅ Player ${socket.id} is correctly in room ${gameCode}`);
+        } else {
+            console.log(`❌ Player ${socket.id} is NOT in room ${gameCode}`);
+        }
+    });
+
+    // Ping test
+    socket.on('ping', (data) => {
+        console.log(`🏓 Ping received from ${socket.id}:`, data);
+        console.log(`🏓 Socket connected state:`, socket.connected);
+        console.log(`🏓 Socket rooms:`, Array.from(socket.rooms));
+        socket.emit('pong', { message: 'Server pong', timestamp: Date.now() });
     });
 
     // Start game
@@ -1564,6 +1761,77 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Virtual answer submission (for testing)
+    socket.on('virtualAnswerSubmitted', async (data) => {
+        if (!data) {
+            console.log('⚠️ virtualAnswerSubmitted event received with no data');
+            return;
+        }
+        
+        const { gameCode, playerId, playerName, answer, isCorrect } = data;
+        
+        if (!gameCode || !playerId || !playerName || !answer) {
+            console.log('⚠️ virtualAnswerSubmitted event received with incomplete data');
+            return;
+        }
+        
+        const game = activeGames.get(gameCode);
+        if (!game) {
+            console.log(`❌ Game ${gameCode} not found for virtualAnswerSubmitted`);
+            return;
+        }
+        
+        if (game.gameState !== 'playing') {
+            console.log('⚠️ Cannot submit virtual answer when game is not playing');
+            return;
+        }
+        
+        try {
+            // Submit answer for virtual player
+            game.submitVirtualAnswer(playerId, answer);
+            
+            console.log(`🎭 Virtual player ${playerName} submitted answer: "${answer}" (${isCorrect ? 'correct' : 'incorrect'})`);
+            
+            // Notify host of the specific answer
+            const hostSocket = Array.from(connectedPlayers.entries())
+                .find(([id, info]) => info.gameCode === gameCode && info.isHost);
+            
+            if (hostSocket) {
+                io.to(hostSocket[0]).emit('answerSubmitted', {
+                    playerName: playerName,
+                    answer: answer
+                });
+            }
+            
+            // Notify grading interface of new answer
+            io.to(gameCode).emit('newAnswerSubmitted', {
+                playerName: playerName,
+                answer: answer,
+                gameCode: gameCode
+            });
+            
+            // Notify others of answer count
+            io.to(gameCode).emit('answerUpdate', {
+                answersReceived: game.answers.size,
+                totalPlayers: game.players.size
+            });
+            
+            // Check if all answered
+            if (game.answers.size === game.players.size) {
+                console.log(`🎯 All players (${game.players.size}) have submitted answers, ending question automatically`);
+                game.calculateScores();
+                game.gameState = 'grading';
+                game.stopTimer();
+                
+                const gameStateToSend = game.getGameState();
+                io.to(gameCode).emit('questionComplete', gameStateToSend);
+            }
+            
+        } catch (error) {
+            console.error('❌ Error submitting virtual answer:', error.message);
+        }
+    });
+
     // Complete grading (mandatory before next question)
     socket.on('completeGrading', async (data) => {
         if (!data) {
@@ -1634,6 +1902,35 @@ io.on('connection', (socket) => {
         }
         
         game.nextQuestion();
+    });
+
+    // Continue to next round (from round complete screen)
+    socket.on('continueToNextRound', (data) => {
+        if (!data) {
+            console.log('⚠️ continueToNextRound event received with no data');
+            return;
+        }
+        
+        const { gameCode } = data;
+        
+        if (!gameCode) {
+            console.log('⚠️ continueToNextRound event received with no gameCode');
+            return;
+        }
+        
+        const playerInfo = connectedPlayers.get(socket.id);
+        if (!playerInfo || !playerInfo.isHost) return;
+        
+        const game = activeGames.get(gameCode);
+        if (!game) return;
+        
+        if (game.gameState !== 'roundComplete') {
+            socket.emit('gameError', { message: 'Game is not in round complete state' });
+            return;
+        }
+        
+        console.log(`🎯 Host continuing to next round for game ${gameCode}`);
+        game.continueToNextRound();
     });
 
     // End question (host can end current question early)
