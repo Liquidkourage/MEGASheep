@@ -808,7 +808,7 @@ async function getSemanticMatches(question, correctAnswers, responses) {
         if (semanticServiceReady) {
             try {
                 console.log('🐍 Using Python Sentence Transformers service...');
-                const res = await fetch('http://localhost:5005/semantic-match', {
+                const res = await fetch('http://127.0.0.1:5005/semantic-match', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -816,7 +816,7 @@ async function getSemanticMatches(question, correctAnswers, responses) {
                         correct_answers: correctAnswers,
                         responses
                     }),
-                    timeout: 5000 // 5 second timeout
+                    timeout: 10000 // 10 second timeout for public WiFi
                 });
                 
                 if (res.ok) {
@@ -828,6 +828,9 @@ async function getSemanticMatches(question, correctAnswers, responses) {
                 }
             } catch (error) {
                 console.log('⚠️ Python service unavailable, falling back to JavaScript:', error.message);
+                if (error.message.includes('fetch failed') || error.message.includes('network')) {
+                    console.log('🌐 Network issue detected - this is common on public WiFi');
+                }
                 // Don't re-throw the error, just continue with JavaScript fallback
             }
         } else {

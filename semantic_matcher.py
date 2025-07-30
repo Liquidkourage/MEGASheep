@@ -174,4 +174,4 @@ def semantic_match():
 if __name__ == '__main__':
     print("[STARTING] Hybrid fuzzy + semantic matcher...")
     print("[SERVER] Available at http://127.0.0.1:5005")
-    app.run(port=5005, debug=True) 
+    app.run(host='127.0.0.1', port=5005, debug=True) 
