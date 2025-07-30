@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Game</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=1.0.1">
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
@@ -452,6 +452,7 @@
         }
         
         function showGradingWait(gameState) {
+            console.log('🎯 showGradingWait called - updating player interface');
             const resultsContent = document.querySelector('#resultsScreen .results-content');
             resultsContent.innerHTML = `
                 <h2>⏳ Waiting for Host Grading</h2>
@@ -481,6 +482,7 @@
                 <!-- View Current Scores Button -->
                 <button class="btn btn-secondary" onclick="showCurrentScores()">VIEW CURRENT SCORES</button>
             `;
+            console.log('✅ showGradingWait completed - new interface should be visible');
         }
 
         function showResults(gameState) {
