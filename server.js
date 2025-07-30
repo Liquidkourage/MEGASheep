@@ -972,6 +972,7 @@ app.get('/grading-single', (req, res) => {
 });
 
 app.get('/game', (req, res) => {
+    console.log('🎯 /game route hit - serving game.html');
     res.sendFile(path.join(__dirname, 'public', 'game.html'));
 });
 
@@ -2481,26 +2482,7 @@ app.get('/api/load-questions', async (req, res) => {
     }
 });
 
-// Route handlers
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.get('/host', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'host.html'));
-});
-
-app.get('/game', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'game.html'));
-});
-
-app.get('/grading', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'grading.html'));
-});
-
-app.get('/display', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'display.html'));
-});
+// Route handlers (duplicate routes removed - they're defined above)
 
 // Start server
 const PORT = process.env.PORT || 3000;
