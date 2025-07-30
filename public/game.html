@@ -72,6 +72,13 @@
                     <button type="submit" class="btn btn-primary" id="submitBtn">Submit Answer</button>
                 </form>
                 
+                <!-- My Answer Display -->
+                <div id="myAnswerDisplay" class="my-answer-display" style="display: none;">
+                    <h3>My Answer:</h3>
+                    <div class="my-answer-text" id="myAnswerText"></div>
+                    <div class="my-answer-status" id="myAnswerStatus">Submitted ✓</div>
+                </div>
+                
                 <div class="answer-status" id="answerStatus"></div>
                 <div class="players-answered">
                     <span id="answeredCount">0</span> of <span id="totalPlayersCount">0</span> players answered
@@ -417,6 +424,9 @@
             document.getElementById('answerStatus').innerHTML = '';
             document.getElementById('answerStatus').className = 'answer-status';
             
+            // Hide "My answer" display
+            document.getElementById('myAnswerDisplay').style.display = 'none';
+            
             // Focus on input
             document.getElementById('answerInput').focus();
             
@@ -523,6 +533,10 @@
             }
             
             socket.emit('submitAnswer', { gameCode, answer });
+            
+            // Show "My answer" display
+            document.getElementById('myAnswerText').textContent = answer;
+            document.getElementById('myAnswerDisplay').style.display = 'block';
             
             // Disable form
             document.getElementById('answerInput').disabled = true;
