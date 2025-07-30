@@ -525,6 +525,12 @@
                     updateResponseIndicator(data.answersReceived, data.totalPlayers);
                 }
             });
+            
+            socket.on('questionComplete', (gameStateData) => {
+                console.log('Display: Question complete - all responses received');
+                console.log('Display: Switching to grading mode automatically');
+                updateDisplayFromGameState(gameStateData);
+            });
         }
 
         function updateDisplayFromGameState(newGameState) {
