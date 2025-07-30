@@ -125,7 +125,17 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY &&
     process.env.SUPABASE_ANON_KEY !== 'your_supabase_anon_key_here') {
     
     try {
-        supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+        supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
+            auth: {
+                autoRefreshToken: true,
+                persistSession: false
+            },
+            global: {
+                headers: {
+                    'X-Client-Info': 'megasheep-game'
+                }
+            }
+        });
         
         supabase.from('questions').select('count').limit(1)
             .then(({ data, error }) => {
@@ -144,7 +154,12 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY &&
             })
             .catch(err => {
                 console.log('⚠️  Supabase connection failed:', err.message);
-                console.log('🔄 Falling back to demo mode');
+                if (err.message.includes('fetch failed') || err.message.includes('network') || err.message.includes('ENOTFOUND')) {
+                    console.log('🌐 Network issue detected - this is common on public WiFi');
+                    console.log('🔄 Falling back to demo mode due to network restrictions');
+                } else {
+                    console.log('🔄 Falling back to demo mode');
+                }
                 supabase = null;
                 supabaseConfigured = false;
             });
@@ -1602,15 +1617,25 @@ io.on('connection', (socket) => {
             let questions = [];
             
             if (supabase && supabaseConfigured) {
-                const { data: dbQuestions, error } = await supabase
-      .from('questions')
-      .select('*')
-      .order('round', { ascending: true })
-                    .order('question_order', { ascending: true });
+                try {
+                    const { data: dbQuestions, error } = await supabase
+                        .from('questions')
+                        .select('*')
+                        .order('round', { ascending: true })
+                        .order('question_order', { ascending: true });
 
-                if (error) throw error;
-                if (!dbQuestions || dbQuestions.length === 0) {
-                    throw new Error('No questions found in database. Please upload sample questions first.');
+                    if (error) throw error;
+                    if (!dbQuestions || dbQuestions.length === 0) {
+                        throw new Error('No questions found in database. Please upload sample questions first.');
+                    }
+                } catch (dbError) {
+                    console.log('⚠️ Database query failed:', dbError.message);
+                    if (dbError.message.includes('fetch failed') || dbError.message.includes('network') || dbError.message.includes('ENOTFOUND')) {
+                        console.log('🌐 Network issue detected with database - falling back to demo questions');
+                    }
+                    // Fall back to demo questions
+                    supabaseConfigured = false;
+                    throw new Error('Database unavailable - using demo questions');
                 }
                 
                 console.log('🔍 Debug: Raw database question structure:', dbQuestions[0]);
