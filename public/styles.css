@@ -6308,6 +6308,11 @@ body {
 }
 
 /* Player interface waiting for grading styles */
+.results-content {
+    text-align: center;
+    width: 100%;
+}
+
 .scoring-system-box {
     background: rgba(0, 123, 255, 0.2);
     border: 1px solid rgba(0, 123, 255, 0.4);

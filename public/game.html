@@ -457,6 +457,8 @@
             
             // Get the player's submitted answer if available
             const submittedAnswer = window.lastSubmittedAnswer || 'Your answer';
+            console.log('🔍 Debug: submittedAnswer =', submittedAnswer);
+            console.log('🔍 Debug: window.lastSubmittedAnswer =', window.lastSubmittedAnswer);
             
             resultsContent.innerHTML = `
                 <h2>⏳ Waiting for Host Grading</h2>
@@ -479,7 +481,7 @@
                 <h3>Answers & Points:</h3>
                 
                 <!-- Centered Waiting Message -->
-                <div class="waiting-message">
+                <div class="waiting-message" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: 20px auto; max-width: 600px; background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 10px; padding: 20px; min-height: 200px;">
                     <div class="loading-spinner"></div>
                     <p>Host is reviewing and</p>
                     <p>grading answers...</p>
@@ -587,6 +589,7 @@
             
             // Store the answer for later display
             window.lastSubmittedAnswer = answer;
+            console.log('💾 Stored answer in window.lastSubmittedAnswer:', answer);
         });
         
         // Enter key focuses on answer input
