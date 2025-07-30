@@ -952,11 +952,16 @@ const upload = multer({
 
 // Routes
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    console.log('🎯 Root route hit - serving game.html (player interface)');
+    res.sendFile(path.join(__dirname, 'public', 'game.html'));
 });
 
 app.get('/host', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'host.html'));
+});
+
+app.get('/welcome', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/display', (req, res) => {
