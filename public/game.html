@@ -614,6 +614,11 @@
                 console.log('🐑 Fetching sheep photos...');
                 const response = await fetch('/api/sheep-urls');
                 console.log('🐑 API Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const data = await response.json();
                 console.log('🐑 API Response data:', data);
                 
@@ -631,6 +636,8 @@
                 }
             } catch (error) {
                 console.error('Failed to load sheep photos:', error);
+                // Don't throw the error to prevent it from breaking the game
+                // Just log it and continue with default background
             }
         }
 
@@ -680,10 +687,20 @@
         }
 
         // Initialize carousel when page loads
-        document.addEventListener('DOMContentLoaded', initializeSheepCarousel);
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize carousel with error handling
+            initializeSheepCarousel().catch(error => {
+                console.error('Carousel initialization failed:', error);
+                // Continue with game initialization even if carousel fails
+            });
+        });
 
         // Refresh carousel every 5 minutes to pick up new uploads
-        setInterval(initializeSheepCarousel, 5 * 60 * 1000);
+        setInterval(() => {
+            initializeSheepCarousel().catch(error => {
+                console.error('Carousel refresh failed:', error);
+            });
+        }, 5 * 60 * 1000);
     </script>
 </body>
 </html> 
