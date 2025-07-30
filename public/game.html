@@ -238,11 +238,15 @@
             });
             
             socket.on('questionComplete', (data) => {
-                console.log('Question complete');
+                console.log('📝 Question complete event received:', data);
+                console.log('📝 data.gameState =', data.gameState);
+                console.log('📝 data.gameState === "grading" =', data.gameState === 'grading');
                 updateGameState(data);
                 if (data.gameState === 'grading') {
+                    console.log('🎯 Calling showGradingWait with data:', data);
                     showGradingWait(data);
                 } else {
+                    console.log('📊 Calling showResults with data:', data);
                     showResults(data);
                 }
                 showScreen('resultsScreen');
@@ -575,6 +579,7 @@
                 return;
             }
             
+            console.log('📤 Submitting answer:', answer);
             socket.emit('submitAnswer', { gameCode, answer });
             
             // Show "My answer" display
