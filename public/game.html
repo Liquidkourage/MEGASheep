@@ -454,15 +454,32 @@
         function showGradingWait(gameState) {
             const resultsContent = document.querySelector('#resultsScreen .results-content');
             resultsContent.innerHTML = `
-                <h2>📝 Host Reviewing Answers</h2>
-                <div class="grading-wait">
-                    <div class="grading-spinner"></div>
-                    <p>The host is categorizing and grading answers...</p>
+                <h2>⏳ Waiting for Host Grading</h2>
+                
+                <!-- Scoring System Explanation -->
+                <div class="scoring-system-box">
+                    <h3>Scoring System:</h3>
+                    <p>Points = Total Responses ÷ Responses with same answer (rounded up)</p>
+                    <p><strong>Rarer answers earn more points!</strong></p>
+                </div>
+                
+                <!-- Answers & Points Section -->
+                <h3>Answers & Points:</h3>
+                
+                <!-- Centered Waiting Message -->
+                <div class="waiting-message">
+                    <div class="loading-spinner"></div>
+                    <p>Host is reviewing and</p>
+                    <p>grading answers...</p>
                     <p>Results will appear shortly!</p>
                 </div>
+                
                 <div class="score-update">
                     <h3>Your Current Score: <span id="currentScore">0</span></h3>
                 </div>
+                
+                <!-- View Current Scores Button -->
+                <button class="btn btn-secondary" onclick="showCurrentScores()">VIEW CURRENT SCORES</button>
             `;
         }
 
@@ -521,6 +538,17 @@
         function showError(message) {
             document.getElementById('errorMessage').textContent = message;
             showScreen('errorScreen');
+        }
+        
+        function showCurrentScores() {
+            // This function can be expanded later to show current scores
+            // For now, just show a simple alert
+            if (gameState && gameState.players) {
+                const currentPlayer = gameState.players.find(p => p.name === playerName);
+                if (currentPlayer) {
+                    alert(`Your current score: ${currentPlayer.score || 0}`);
+                }
+            }
         }
         
         // Answer form submission
