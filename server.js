@@ -1629,30 +1629,30 @@ io.on('connection', (socket) => {
                     if (!dbQuestions || dbQuestions.length === 0) {
                         throw new Error('No questions found in database. Please upload sample questions first.');
                     }
+                    
+                    console.log('🔍 Debug: Raw database question structure:', dbQuestions[0]);
+                    console.log('🔍 Debug: Database field names:', Object.keys(dbQuestions[0]));
+                    
+                    // Map database fields to expected format
+                    questions = dbQuestions.map(q => ({
+                        id: q.id,
+                        prompt: q.prompt,  // Database field is already called 'prompt'
+                        round: q.round,
+                        question_order: q.question_order,
+                        correct_answers: Array.isArray(q.correct_answers) ? q.correct_answers : [q.correct_answers].filter(Boolean)
+                    }));
+                    
+                    console.log('🔍 Debug: Mapped question structure:', questions[0]);
+                    console.log('🔍 Debug: Mapped prompt field:', questions[0]?.prompt);
                 } catch (dbError) {
                     console.log('⚠️ Database query failed:', dbError.message);
                     if (dbError.message.includes('fetch failed') || dbError.message.includes('network') || dbError.message.includes('ENOTFOUND')) {
                         console.log('🌐 Network issue detected with database - falling back to demo questions');
                     }
                     // Fall back to demo questions
+                    console.log('📚 Falling back to demo questions due to database error');
                     supabaseConfigured = false;
-                    throw new Error('Database unavailable - using demo questions');
                 }
-                
-                console.log('🔍 Debug: Raw database question structure:', dbQuestions[0]);
-                console.log('🔍 Debug: Database field names:', Object.keys(dbQuestions[0]));
-                
-                // Map database fields to expected format
-                questions = dbQuestions.map(q => ({
-                    id: q.id,
-                    prompt: q.prompt,  // Database field is already called 'prompt'
-                    round: q.round,
-                    question_order: q.question_order,
-                    correct_answers: Array.isArray(q.correct_answers) ? q.correct_answers : [q.correct_answers].filter(Boolean)
-                }));
-                
-                console.log('🔍 Debug: Mapped question structure:', questions[0]);
-                console.log('🔍 Debug: Mapped prompt field:', questions[0]?.prompt);
             } else {
                 // Demo questions
                 questions = [
