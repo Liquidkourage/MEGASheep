@@ -454,8 +454,19 @@
         function showGradingWait(gameState) {
             console.log('🎯 showGradingWait called - updating player interface');
             const resultsContent = document.querySelector('#resultsScreen .results-content');
+            
+            // Get the player's submitted answer if available
+            const submittedAnswer = window.lastSubmittedAnswer || 'Your answer';
+            
             resultsContent.innerHTML = `
                 <h2>⏳ Waiting for Host Grading</h2>
+                
+                <!-- My Submitted Answer -->
+                <div class="my-answer-display">
+                    <h3>My Answer:</h3>
+                    <div class="my-answer-text">${submittedAnswer}</div>
+                    <div class="my-answer-status">Submitted ✓</div>
+                </div>
                 
                 <!-- Scoring System Explanation -->
                 <div class="scoring-system-box">
@@ -573,6 +584,9 @@
             document.getElementById('submitBtn').disabled = true;
             document.getElementById('answerStatus').innerHTML = '⏳ Submitting answer...';
             document.getElementById('answerStatus').className = 'answer-status pending';
+            
+            // Store the answer for later display
+            window.lastSubmittedAnswer = answer;
         });
         
         // Enter key focuses on answer input
