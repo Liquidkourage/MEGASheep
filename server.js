@@ -815,7 +815,8 @@ async function getSemanticMatches(question, correctAnswers, responses) {
                         question,
                         correct_answers: correctAnswers,
                         responses
-                    })
+                    }),
+                    timeout: 5000 // 5 second timeout
                 });
                 
                 if (res.ok) {
@@ -827,6 +828,7 @@ async function getSemanticMatches(question, correctAnswers, responses) {
                 }
             } catch (error) {
                 console.log('⚠️ Python service unavailable, falling back to JavaScript:', error.message);
+                // Don't re-throw the error, just continue with JavaScript fallback
             }
         } else {
             console.log('⚠️ Python service not ready, using JavaScript fallback');
@@ -1674,8 +1676,18 @@ io.on('connection', (socket) => {
             io.to(gameCode).emit('gameStarted', gameStateToSend);
             
         } catch (error) {
-            console.error('Error starting game:', error);
-            socket.emit('gameError', { message: error.message || 'Failed to start game' });
+            console.error('Error starting game:', {
+                message: error.message,
+                details: error.stack,
+                hint: 'Check if all required services are running',
+                code: error.code || ''
+            });
+            socket.emit('gameError', { 
+                message: error.message || 'Failed to start game',
+                details: error.stack,
+                hint: 'Check if all required services are running',
+                code: error.code || ''
+            });
         }
     });
 
