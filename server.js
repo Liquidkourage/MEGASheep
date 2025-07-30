@@ -2393,8 +2393,7 @@ app.get('/api/game/:gameCode', (req, res) => {
     });
 });
 
-// Serve static files
-app.use(express.static('public'));
+// Static files are already served above
 
 // Load questions API endpoint
 app.get('/api/load-questions', async (req, res) => {
