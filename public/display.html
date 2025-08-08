@@ -99,9 +99,9 @@
         .modern-player-card:nth-child(19) { animation-delay: 900ms; }
         .modern-player-card:nth-child(20) { animation-delay: 950ms; }
 
-        /* For cards beyond 20, keep a minimal delay to avoid invalid calc modulo */
+        /* For cards beyond 20, use a cycling pattern */
         .modern-player-card:nth-child(n+21) {
-            animation-delay: 0ms;
+            animation-delay: calc((var(--card-index, 0) % 20) * 50ms);
         }
 
         /* Hover effects for modern cards */
@@ -2605,106 +2605,86 @@
             `;
         }
 
-        // Dynamic Sheep Carousel System with preloading + crossfade
-        let sheepPlaylist = [];
-        let sheepIndex = 0;
-        let activeLayer = 0; // 0 or 1
-        let slideshowTimer = null;
-
-        function setupSheepBackgroundLayers() {
-            // Neutralize old ::after-based animation if present
-            const old = document.getElementById('dynamic-sheep-carousel');
-            if (old) old.remove();
-            if (!document.getElementById('sheep-bg-style')) {
-                const s = document.createElement('style');
-                s.id = 'sheep-bg-style';
-                s.textContent = `
-                    .sheep-bg-layer{position:fixed;inset:0;background-size:cover;background-position:center center;background-repeat:no-repeat;opacity:0;transition:opacity 1200ms ease;pointer-events:none;z-index:0}
-                    .sheep-bg-layer.visible{opacity:0.3}
-                    /* Hide legacy pseudo-background */
-                    .playing-container::after{background-image:none!important;opacity:0!important}
-                `;
-                document.head.appendChild(s);
-            }
-            const container = document.body; // fixed layers over viewport
-            let a = document.getElementById('sheepBgA');
-            let b = document.getElementById('sheepBgB');
-            if (!a) {
-                a = document.createElement('div');
-                a.id = 'sheepBgA';
-                a.className = 'sheep-bg-layer';
-                container.appendChild(a);
-            }
-            if (!b) {
-                b = document.createElement('div');
-                b.id = 'sheepBgB';
-                b.className = 'sheep-bg-layer';
-                container.appendChild(b);
-            }
-        }
-
-        function preloadImages(urls) {
-            return Promise.all(urls.map(url => new Promise(resolve => {
-                const img = new Image();
-                img.decoding = 'async';
-                img.onload = () => resolve({ url, ok: true });
-                img.onerror = () => resolve({ url, ok: false });
-                img.src = url;
-            }))).then(results => results.filter(r => r.ok).map(r => r.url));
-        }
-
-        function showImage(url) {
-            setupSheepBackgroundLayers();
-            const a = document.getElementById('sheepBgA');
-            const b = document.getElementById('sheepBgB');
-            const nextLayer = activeLayer === 0 ? b : a;
-            const currentLayer = activeLayer === 0 ? a : b;
-            nextLayer.style.backgroundImage = `url('${url}')`;
-            // Crossfade
-            nextLayer.classList.add('visible');
-            currentLayer.classList.remove('visible');
-            activeLayer = activeLayer === 0 ? 1 : 0;
-        }
-
-        function startSheepSlideshow(urls) {
-            if (!urls || urls.length === 0) return;
-            sheepPlaylist = urls.slice();
-            sheepIndex = 0;
-            setupSheepBackgroundLayers();
-            // Show first immediately
-            showImage(sheepPlaylist[0]);
-            // Schedule loop
-            scheduleNext();
-        }
-
-        function scheduleNext() {
-            clearTimeout(slideshowTimer);
-            const staticTimeMs = 10000; // 10s
-            slideshowTimer = setTimeout(() => {
-                sheepIndex = (sheepIndex + 1) % sheepPlaylist.length;
-                showImage(sheepPlaylist[sheepIndex]);
-                scheduleNext();
-            }, staticTimeMs);
-        }
-
+        // Dynamic Sheep Carousel System
         async function initializeSheepCarousel() {
             try {
-                const response = await fetch('/api/sheep-urls', { cache: 'no-cache' });
+                console.log('🐑 Fetching sheep photos...');
+                const response = await fetch('/api/sheep-urls');
+                console.log('🐑 API Response status:', response.status);
                 const data = await response.json();
-                const urls = Array.isArray(data.urls) ? data.urls : [];
-                if (urls.length === 0) return;
-                const loaded = await preloadImages(urls);
-                if (loaded.length === 0) return;
-                if (sheepPlaylist.length === 0) {
-                    startSheepSlideshow(loaded);
+                console.log('🐑 API Response data:', data);
+                
+                if (data.urls && data.urls.length > 0) {
+                    updateSheepCarousel(data.urls);
+                    console.log(`🐑 Loaded ${data.urls.length} sheep photos for background carousel`);
+                    
+                    // Test if first image loads
+                    const img = new Image();
+                    img.onload = () => console.log('✅ First sheep image loaded successfully:', data.urls[0]);
+                    img.onerror = () => console.error('❌ Failed to load first sheep image:', data.urls[0]);
+                    img.src = data.urls[0];
                 } else {
-                    // Merge new urls while keeping order
-                    const set = new Set(sheepPlaylist);
-                    loaded.forEach(u => { if (!set.has(u)) sheepPlaylist.push(u); });
+                    console.log('🐑 No uploaded sheep photos found, using default background');
                 }
-            } catch (e) {
-                console.error('Failed to initialize sheep slideshow', e);
+            } catch (error) {
+                console.error('Failed to load sheep photos:', error);
             }
+        }
+
+        function updateSheepCarousel(sheepUrls) {
+            console.log('🐑 Updating carousel with', sheepUrls.length, 'sheep photos');
+            
+            // Remove existing animation if it exists
+            const existingStyle = document.getElementById('dynamic-sheep-carousel');
+            if (existingStyle) {
+                existingStyle.remove();
+            }
+
+            if (sheepUrls.length === 0) {
+                console.log('🐑 No sheep URLs provided');
+                return;
+            }
+
+            // Calculate timing for smooth transitions with 10 seconds static time per image
+            const staticTimePerImage = 10; // 10 seconds static time per image
+            const transitionTime = 2; // 2 seconds for transition
+            const totalTimePerImage = staticTimePerImage + transitionTime;
+            const totalDuration = Math.max(60, sheepUrls.length * totalTimePerImage);
+            const stepPercentage = 100 / sheepUrls.length;
+
+            // Generate CSS keyframes with static periods
+            let keyframes = '@keyframes sheepCarousel {\n';
+            sheepUrls.forEach((url, index) => {
+                const startPercentage = (index * stepPercentage).toFixed(2);
+                const endPercentage = ((index + 1) * stepPercentage).toFixed(2);
+                
+                // Add static period for this image (most of the time)
+                const staticStart = parseFloat(startPercentage);
+                const staticEnd = parseFloat(endPercentage) - (transitionTime / totalTimePerImage * stepPercentage);
+                
+                keyframes += `    ${staticStart}% { background-image: url('${url}'); }\n`;
+                keyframes += `    ${staticEnd.toFixed(2)}% { background-image: url('${url}'); }\n`;
+            });
+            // Loop back to first image
+            keyframes += `    100% { background-image: url('${sheepUrls[0]}'); }\n`;
+            keyframes += '}\n\n';
+
+            // Set initial background and animation
+            keyframes += `.playing-container::after {\n`;
+            keyframes += `    background-image: url('${sheepUrls[0]}');\n`;
+            keyframes += `    animation: sheepCarousel ${totalDuration}s linear infinite;\n`;
+            keyframes += `}\n`;
+
+            console.log('🐑 Generated CSS for carousel:', keyframes.slice(0, 200) + '...');
+            console.log('🐑 Total duration:', totalDuration + 's, Static time per image:', staticTimePerImage + 's');
+
+            // Inject the CSS
+            const style = document.createElement('style');
+            style.id = 'dynamic-sheep-carousel';
+            style.textContent = keyframes;
+            document.head.appendChild(style);
+            
+            console.log('🐑 Carousel CSS injected, total duration:', totalDuration + 's');
         }
 
         // Initialize socket connection on page load
@@ -2713,7 +2693,7 @@
             initializeSheepCarousel();
         });
 
-        // Refresh list every 5 minutes to pick up new uploads
+        // Refresh carousel every 5 minutes to pick up new uploads
         setInterval(initializeSheepCarousel, 5 * 60 * 1000);
         
 

@@ -1216,15 +1216,7 @@ app.get('/api/semantic-status', (req, res) => {
 });
 
 // Serve uploaded images
-// Serve uploads with aggressive caching (filenames are timestamped → safe to cache)
-app.use('/uploads', express.static(uploadsDir, {
-    etag: true,
-    lastModified: true,
-    maxAge: '30d',
-    setHeaders: (res) => {
-        res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
-    }
-}));
+app.use('/uploads', express.static(uploadsDir));
 
 // Sheep upload API endpoints
 app.post('/api/upload-sheep', upload.array('sheep-photos', 20), (req, res) => {
