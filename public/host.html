@@ -2007,10 +2007,6 @@
                 });
             }
             if (openPickerBtn) openPickerBtn.addEventListener('click', () => openManualPicker());
-            // Initialize manual picker controls
-            setupManualPicker();
-            // Ensure UI reflects current mode on load
-            if (modeSel) modeSel.dispatchEvent(new Event('change'));
         });
 
         // Keyboard shortcuts for modal fullscreen
