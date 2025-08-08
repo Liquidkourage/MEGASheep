@@ -30,26 +30,27 @@ const io = socketIo(server, {
   pingInterval: 25000
 });
 
+// Keepalive handler for display clients
+io.on('connection', (socket) => {
+  socket.on('displayPing', (data) => {
+    // no-op; presence keeps transport warm
+  });
+});
+
 // Python semantic matcher service management
 let pythonSemanticService = null;
 let semanticServiceReady = false;
-const enablePythonService = (process.env.ENABLE_PYTHON === '1' || process.env.ENABLE_PYTHON === 'true');
 
 function startPythonSemanticService() {
-    if (!enablePythonService) {
-        console.log('🧠 Python semantic service disabled (ENABLE_PYTHON not set) - using JS fallback');
-        return;
-    }
-
     console.log('🚀 Starting Python semantic matcher service...');
-
+    
     // Check if semantic_matcher.py exists
     const semanticMatcherPath = path.join(__dirname, 'semantic_matcher.py');
     if (!fs.existsSync(semanticMatcherPath)) {
         console.log('⚠️  semantic_matcher.py not found - semantic matching will use fallback');
         return;
     }
-
+    
     try {
         // Start the Python service
         pythonSemanticService = spawn('python', [semanticMatcherPath], {
@@ -79,9 +80,9 @@ function startPythonSemanticService() {
         pythonSemanticService.on('close', (code) => {
             console.log(`🐍 Python semantic service exited with code ${code}`);
             semanticServiceReady = false;
-
-            // Do not retry if Python binary is missing (ENOENT handled below)
-            if (code !== 0 && enablePythonService) {
+            
+            // Restart after a delay if it wasn't intentionally stopped
+            if (code !== 0) {
                 console.log('🔄 Restarting Python semantic service in 5 seconds...');
                 setTimeout(startPythonSemanticService, 5000);
             }
@@ -91,11 +92,6 @@ function startPythonSemanticService() {
         pythonSemanticService.on('error', (error) => {
             console.error('❌ Failed to start Python semantic service:', error);
             semanticServiceReady = false;
-            if (error && (error.code === 'ENOENT' || error.errno === -2)) {
-                console.log('⚠️  Python runtime not found in container - disabling Python service and using JS fallback');
-                // Prevent restart loop in environments without Python
-                pythonSemanticService = null;
-            }
         });
         
     } catch (error) {
@@ -112,7 +108,7 @@ function stopPythonSemanticService() {
     }
 }
 
-// Start Python service when server starts (optionally)
+// Start Python service when server starts
 startPythonSemanticService();
 
 // Cleanup on server shutdown

@@ -99,10 +99,8 @@
         .modern-player-card:nth-child(19) { animation-delay: 900ms; }
         .modern-player-card:nth-child(20) { animation-delay: 950ms; }
 
-        /* For cards beyond 20, use a cycling pattern */
-        .modern-player-card:nth-child(n+21) {
-            animation-delay: calc((var(--card-index, 0) % 20) * 50ms);
-        }
+        /* For cards beyond 20, use base delay (advanced calc removed for compatibility) */
+        .modern-player-card:nth-child(n+21) { animation-delay: 0ms; }
 
         /* Hover effects for modern cards */
         .modern-player-card:hover {
@@ -1131,7 +1129,7 @@
                         <div class="qr-code-section">
                             <p class="qr-label">Scan to join the game:</p>
                             <div id="qrCodeIntro" class="qr-code"></div>
-                            <p class="game-url">Or go to <strong>localhost:3001</strong> and enter game code <span class="game-code-highlight">${displayGameCode || 'XXXX'}</span></p>
+                            <p class="game-url">Or go to <strong>megasheep.liquidkourage.com</strong> and enter game code <span class="game-code-highlight">${displayGameCode || 'XXXX'}</span></p>
                         </div>
                     </div>
                 </div>
@@ -1139,7 +1137,7 @@
             
             // Generate QR code after DOM is updated
             setTimeout(() => {
-                generateQRCode('qrCodeIntro', 'http://localhost:3001');
+                generateQRCode('qrCodeIntro', 'https://megasheep.liquidkourage.com');
             }, 100);
         }
 
@@ -1220,14 +1218,14 @@
                     ">
                         <p class="qr-label" style="font-size: 0.9rem !important; margin: 0 0 8px 0 !important;">Scan to join:</p>
                         <div id="qrCodeWaiting" class="qr-code" style="display: inline-block !important;"></div>
-                        <p class="game-url" style="font-size: 1rem !important; margin: 8px 0 0 0 !important;">Or go to <strong>localhost:3001</strong> and enter game code <span class="game-code-highlight">${displayGameCode || 'XXXX'}</span></p>
+                        <p class="game-url" style="font-size: 1rem !important; margin: 8px 0 0 0 !important;">Or go to <strong>megasheep.liquidkourage.com</strong> and enter game code <span class="game-code-highlight">${displayGameCode || 'XXXX'}</span></p>
                     </div>
                 </div>
             `;
             
             // Generate QR code after DOM is updated
             setTimeout(() => {
-                generateQRCode('qrCodeWaiting', 'http://localhost:3001');
+                generateQRCode('qrCodeWaiting', 'https://megasheep.liquidkourage.com');
             }, 100);
         }
 
@@ -2615,14 +2613,25 @@
                 console.log('🐑 API Response data:', data);
                 
                 if (data.urls && data.urls.length > 0) {
-                    updateSheepCarousel(data.urls);
-                    console.log(`🐑 Loaded ${data.urls.length} sheep photos for background carousel`);
-                    
-                    // Test if first image loads
-                    const img = new Image();
-                    img.onload = () => console.log('✅ First sheep image loaded successfully:', data.urls[0]);
-                    img.onerror = () => console.error('❌ Failed to load first sheep image:', data.urls[0]);
-                    img.src = data.urls[0];
+                    // Preload a subset before starting the carousel
+                    const decoded = await (async () => {
+                        const decodedUrls = new Set();
+                        const limit = Math.min(data.urls.length, 20);
+                        const firstBatch = data.urls.slice(0, limit);
+                        await Promise.all(firstBatch.map(url => new Promise(resolve => {
+                            const img = new Image();
+                            let done = false;
+                            const to = setTimeout(() => { if (!done) { done = true; resolve(); } }, 4000);
+                            img.onload = () => { if (!done) { done = true; clearTimeout(to); decodedUrls.add(url); resolve(); } };
+                            img.onerror = () => { if (!done) { done = true; clearTimeout(to); resolve(); } };
+                            img.src = url;
+                            if (img.decode) { img.decode().then(() => { decodedUrls.add(url); }).catch(() => {}); }
+                        })));
+                        return Array.from(decodedUrls);
+                    })();
+                    const prioritized = decoded.length > 0 ? [...decoded, ...data.urls.filter(u => !decoded.includes(u))] : data.urls;
+                    updateSheepCarousel(prioritized);
+                    console.log(`🐑 Preloaded ${decoded.length}/${data.urls.length} sheep photos; carousel started`);
                 } else {
                     console.log('🐑 No uploaded sheep photos found, using default background');
                 }
@@ -2689,6 +2698,10 @@
 
         // Initialize socket connection on page load
         document.addEventListener('DOMContentLoaded', () => {
+            // Register service worker for caching stability
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW registration failed', err));
+            }
             initializeSocket();
             initializeSheepCarousel();
         });
