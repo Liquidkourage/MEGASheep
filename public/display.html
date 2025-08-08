@@ -2658,8 +2658,8 @@
                 `;
                 document.head.appendChild(s);
             }
-            // Prefer mounting inside the display container to ensure layers sit above its background
-            const container = document.getElementById('displayScreen') || document.body; // fixed layers over viewport
+            // Mount on body so layers survive #displayScreen innerHTML swaps
+            const container = document.body; // fixed layers over viewport
             let a = document.getElementById('sheepBgA');
             let b = document.getElementById('sheepBgB');
             if (!a) {
@@ -2676,6 +2676,8 @@
             }
         }
         function setSheepBackgroundEnabled(enabled) {
+            // Ensure layers exist before toggling visibility
+            setupSheepBackgroundLayers();
             const layers = document.querySelectorAll('.sheep-bg-layer');
             layers.forEach(el => {
                 if (enabled) {
