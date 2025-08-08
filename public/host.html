@@ -13,15 +13,18 @@
             color: #ffffff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             min-height: 100vh;
             overflow-x: hidden;
+            overflow-y: auto;
         }
 
         .host-container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
+            min-height: 100vh;
+            overflow-y: auto;
         }
 
         /* Game Created Successfully Section */
@@ -160,6 +163,15 @@
             margin-bottom: 30px;
         }
 
+        /* Right Column: Host Controls + Game Settings */
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+
+
 
 
         .dashboard-panel {
@@ -175,18 +187,18 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
             border-bottom: 1px solid rgba(0, 123, 255, 0.3);
         }
 
         .panel-header h3 {
             color: #ffffff;
             margin: 0;
-            font-size: 1.5em;
+            font-size: 1em;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 6px;
         }
 
         /* Players Panel */
@@ -375,17 +387,17 @@
         /* Host Controls Panel */
         .host-controls {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
         }
 
         .control-btn {
             background: linear-gradient(135deg, #007bff, #0056b3);
             border: none;
-            border-radius: 12px;
-            padding: 15px 20px;
+            border-radius: 10px;
+            padding: 10px 15px;
             color: white;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -394,7 +406,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .control-btn:hover {
@@ -419,39 +431,40 @@
         .game-settings {
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid #007bff;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 123, 255, 0.2);
-            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 15px 30px rgba(0, 123, 255, 0.2);
+            padding: 10px;
             backdrop-filter: blur(10px);
+            min-height: 220px;
         }
 
         .settings-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
         }
 
         .setting-group {
-            margin-bottom: 20px;
+            margin-bottom: 8px;
         }
 
         .setting-group label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 3px;
             color: #ffffff;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 11px;
         }
 
         .setting-group select,
         .setting-group input {
             width: 100%;
-            padding: 12px;
+            padding: 6px;
             border: 1px solid rgba(0, 123, 255, 0.3);
-            border-radius: 8px;
+            border-radius: 4px;
             background: rgba(0, 0, 0, 0.5);
             color: #ffffff;
-            font-size: 16px;
+            font-size: 12px;
         }
 
         .setting-group select:focus,
@@ -463,8 +476,8 @@
 
         .setting-description {
             color: #cccccc;
-            font-size: 12px;
-            margin-top: 5px;
+            font-size: 9px;
+            margin-top: 2px;
         }
 
         /* Connection Status */
@@ -668,6 +681,10 @@
                 grid-template-columns: 1fr;
             }
             
+            .right-column {
+                flex-direction: column;
+            }
+            
             .host-controls {
                 grid-template-columns: 1fr;
             }
@@ -751,21 +768,55 @@
                     </div>
                 </div>
 
-
-
-                <!-- Host Controls Panel -->
-                <div class="dashboard-panel">
-                    <div class="panel-header">
-                        <h3>⏰ Host Controls</h3>
+                <!-- Right Column: Host Controls + Game Settings -->
+                <div class="right-column">
+                    <!-- Host Controls Panel -->
+                    <div class="dashboard-panel">
+                        <div class="panel-header">
+                            <h3>⏰ Host Controls</h3>
+                        </div>
+                        <div class="host-controls">
+                            <button id="startGameBtn" class="control-btn success">START GAME</button>
+                            <button id="endGameBtn" class="control-btn" style="background: linear-gradient(135deg, #dc3545, #c82333);">🛑 END GAME</button>
+                            <button id="gradingBtn" class="control-btn secondary">📝 GRADING INTERFACE</button>
+                            <button id="virtualTestBtn" class="control-btn warning">🎭 VIRTUAL TEST</button>
+                            <button id="multiGradingBtn" class="control-btn success">👥 MULTI-USER GRADING</button>
+                            <button id="testGameBtn" class="control-btn warning">▶️ TEST GAME</button>
+                            <button id="refreshQuestionsBtn" class="control-btn secondary">🔄 REFRESH QUESTIONS</button>
+                        </div>
                     </div>
-                    <div class="host-controls">
-                        <button id="startGameBtn" class="control-btn success">START GAME</button>
-                        <button id="endGameBtn" class="control-btn" style="background: linear-gradient(135deg, #dc3545, #c82333);">🛑 END GAME</button>
-                        <button id="gradingBtn" class="control-btn secondary">📝 GRADING INTERFACE</button>
-                        <button id="virtualTestBtn" class="control-btn warning">🎭 VIRTUAL TEST</button>
-                        <button id="multiGradingBtn" class="control-btn success">👥 MULTI-USER GRADING</button>
-                        <button id="testGameBtn" class="control-btn warning">▶️ TEST GAME</button>
-                        <button id="refreshQuestionsBtn" class="control-btn secondary">🔄 REFRESH QUESTIONS</button>
+
+                    <!-- Game Settings Panel -->
+                    <div class="game-settings">
+                        <div class="panel-header">
+                            <h3>⚙️ Game Settings</h3>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="setting-group">
+                                <label for="questionSet">Question Set:</label>
+                                <select id="questionSet">
+                                    <option value="supabase">Supabase Database (Recommended)</option>
+                                    <option value="demo">Demo Questions</option>
+                                    <option value="custom">Custom Questions</option>
+                                </select>
+                                <div class="setting-description">Supabase provides a large question database</div>
+                            </div>
+                            <div class="setting-group">
+                                <label for="timerDuration">Timer Duration (seconds):</label>
+                                <input type="number" id="timerDuration" value="180" min="30" max="600">
+                                <div class="setting-description">Default: 180 seconds (3 minutes)</div>
+                            </div>
+                            <div class="setting-group">
+                                <label for="maxPlayers">Maximum Players:</label>
+                                <input type="number" id="maxPlayers" value="0" min="0" max="50">
+                                <div class="setting-description">0 = unlimited players</div>
+                            </div>
+                            <div class="setting-group">
+                                <label for="questionsPerRound">Questions per Round:</label>
+                                <input type="number" id="questionsPerRound" value="5" min="1" max="20">
+                                <div class="setting-description">Number of questions per game round</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -777,39 +828,6 @@
                 </div>
                 <div class="scoring-content" id="scoringContent">
                     <!-- Scoring results will be populated here -->
-                </div>
-            </div>
-
-            <!-- Game Settings Panel -->
-            <div class="game-settings">
-                <div class="panel-header">
-                    <h3>⚙️ Game Settings</h3>
-                </div>
-                <div class="settings-grid">
-                    <div class="setting-group">
-                        <label for="questionSet">Question Set:</label>
-                        <select id="questionSet">
-                            <option value="supabase">Supabase Database (Recommended)</option>
-                            <option value="demo">Demo Questions</option>
-                            <option value="custom">Custom Questions</option>
-                        </select>
-                        <div class="setting-description">Supabase provides a large question database</div>
-                    </div>
-                    <div class="setting-group">
-                        <label for="timerDuration">Timer Duration (seconds):</label>
-                        <input type="number" id="timerDuration" value="180" min="30" max="600">
-                        <div class="setting-description">Default: 180 seconds (3 minutes)</div>
-                    </div>
-                    <div class="setting-group">
-                        <label for="maxPlayers">Maximum Players:</label>
-                        <input type="number" id="maxPlayers" value="0" min="0" max="50">
-                        <div class="setting-description">0 = unlimited players</div>
-                    </div>
-                    <div class="setting-group">
-                        <label for="questionsPerRound">Questions per Round:</label>
-                        <input type="number" id="questionsPerRound" value="5" min="1" max="20">
-                        <div class="setting-description">Number of questions per game round</div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -884,8 +902,14 @@
             
             socket.on('gameCreated', (data) => {
                 currentGame = data.gameState;
+                // Update gameState to match the actual server state
+                if (currentGame && currentGame.gameState) {
+                    gameState = currentGame.gameState;
+                    console.log('🔄 Updated gameState to match server:', gameState);
+                }
                 showActiveGame();
                 updateGameDisplay();
+                updateGameControls(); // Make sure controls reflect the correct state
                 console.log('Game created via socket:', data);
             });
             
@@ -958,21 +982,32 @@
             socket.on('gameEnded', (data) => {
                 console.log('Game completely ended by host:', data);
                 gameState = 'waiting';
+                
+                // Clear saved game code
+                localStorage.removeItem('gameCode');
+                
                 // Reset current game state
-                if (currentGame) {
-                    currentGame.gameState = 'waiting';
-                    currentGame.currentAnswerGroups = [];
-                    currentGame.categorizationData = null;
-                }
-                updateGameDisplay();
-                updatePlayerList();
-                updateGameControls();
-                updateLobbyDisplay();
+                currentGame = null;
+                
+                // Show create game screen
+                document.getElementById('noGameState').style.display = 'block';
+                document.getElementById('activeGameState').style.display = 'none';
                 
                 // Hide scoring panel if it's visible
                 document.getElementById('scoringPanel').style.display = 'none';
                 
-                alert('Game has been ended. The game is now reset and ready for a new round.');
+                // Close grading modal if open
+                const gradingModal = document.getElementById('gradingSingleModal');
+                if (gradingModal.style.display === 'block') {
+                    closeGradingSingleModal();
+                }
+                
+                // Close grading window if open
+                if (window.gradingWindow && !window.gradingWindow.closed) {
+                    window.gradingWindow.close();
+                }
+                
+                console.log('✅ Game ended - reset to create game screen');
             });
             
             socket.on('answerSubmitted', (data) => {
@@ -1012,7 +1047,13 @@
             socket.on('gameStateUpdate', (data) => {
                 if (data.gameState) {
                     currentGame = data.gameState;
+                    // Update the gameState variable to match the server state
+                    if (currentGame && currentGame.gameState) {
+                        gameState = currentGame.gameState;
+                        console.log('🔄 Updated gameState to match server:', gameState);
+                    }
                     updatePlayerList();
+                    updateGameControls(); // Make sure controls reflect the new state
                 }
             });
             
@@ -1037,6 +1078,17 @@
 
             socket.on('gradingComplete', (data) => {
                 console.log('📊 Grading complete received:', data);
+                console.log('📊 Data keys:', Object.keys(data || {}));
+                console.log('📊 currentAnswerGroups length:', data?.currentAnswerGroups?.length || 0);
+                
+                if (data && data.currentAnswerGroups) {
+                    console.log('📊 Sample answer group:', data.currentAnswerGroups[0]);
+                    console.log('📊 All answer groups with categories:');
+                    data.currentAnswerGroups.forEach((group, index) => {
+                        console.log(`  ${index + 1}. "${group.answer}" - Category: "${group.category}"`);
+                    });
+                }
+                
                 gameState = 'scoring';
                 // Update currentGame with the new data that includes recalculated scores
                 if (data) {
@@ -1047,6 +1099,14 @@
                 updateGameControls();
                 updateLobbyDisplay();
                 updatePlayerList(); // Update player list to show new scores
+                
+                // Force refresh the scoring panel to show updated categorization
+                setTimeout(() => {
+                    if (data && data.currentAnswerGroups) {
+                        console.log('🔄 Refreshing scoring panel with updated categorization');
+                        showScoringPanel(data);
+                    }
+                }, 500);
             });
             
             socket.on('nextQuestion', (data) => {
@@ -1060,11 +1120,21 @@
                 // Hide scoring panel when moving to next question
                 document.getElementById('scoringPanel').style.display = 'none';
                 
-                // Auto-open grading interface when first question starts (for preparation)
-                if (data.currentQuestion === 0) {
-                    console.log('🎯 Auto-opening grading interface for first question');
-                    openGradingWindow();
-                }
+                // Auto-open grading interface when any question starts (for preparation)
+                console.log('🎯 Auto-opening grading interface for question', data.currentQuestion + 1);
+                openGradingWindow();
+            });
+            
+            socket.on('roundComplete', (data) => {
+                console.log('🎯 Round complete received:', data);
+                currentGame = data;
+                gameState = 'roundComplete';
+                updateGameDisplay();
+                updatePlayerList();
+                updateGameControls();
+                updateLobbyDisplay();
+                // Hide scoring panel when round is complete
+                document.getElementById('scoringPanel').style.display = 'none';
             });
             
             socket.on('error', (error) => {
@@ -1167,19 +1237,7 @@
             });
         }
 
-        // Update game controls
-        function updateGameControls() {
-            const startBtn = document.getElementById('startGameBtn');
-            
-            if (gameState === 'waiting') {
-                startBtn.textContent = 'START GAME';
-                startBtn.className = 'control-btn success';
-            } else if (gameState === 'playing') {
-                startBtn.textContent = 'GAME IN PROGRESS';
-                startBtn.className = 'control-btn secondary';
-                startBtn.disabled = true;
-            }
-        }
+
 
         // Update player list when answers are submitted
         function updatePlayerListWithResponses() {
@@ -1213,11 +1271,96 @@
                 endGameBtn.style.display = 'inline-flex';
                 console.log('📝 Game state: grading - End Game button shown');
             } else if (gameState === 'scoring') {
-                startBtn.textContent = 'NEXT QUESTION';
+                // Check if current question is the last in the round
+                const currentQuestionNumber = currentGame?.currentQuestion || 0;
+                const questionsPerRound = currentGame?.questionsPerRound || 5;
+                const questionInRound = ((currentQuestionNumber) % questionsPerRound) + 1;
+                
+                console.log(`🔍 Button logic: currentQuestion=${currentQuestionNumber}, questionsPerRound=${questionsPerRound}, questionInRound=${questionInRound}`);
+                console.log(`🔍 currentGame object:`, currentGame);
+                
+                if (questionInRound === questionsPerRound) {
+                    // Current question is the last in the round
+                    startBtn.textContent = 'END ROUND';
+                    console.log(`🎯 Button text set to END ROUND (current question ${currentQuestionNumber} is last in round)`);
+                } else {
+                    // Regular next question
+                    startBtn.textContent = 'NEXT QUESTION';
+                    console.log(`➡️ Button text set to NEXT QUESTION (current question ${currentQuestionNumber}, question in round: ${questionInRound})`);
+                }
+                
                 startBtn.className = 'control-btn success';
                 startBtn.disabled = false;
                 endGameBtn.style.display = 'inline-flex';
                 console.log('🏆 Game state: scoring - End Game button shown');
+            } else if (gameState === 'roundComplete') {
+                // Check if this is the final round
+                const currentRound = currentGame?.currentRound || 1;
+                const totalRounds = currentGame?.totalRounds || 5;
+                
+                // For roundComplete state, we need to determine which round just finished
+                // The currentQuestion represents the last question of the completed round
+                const currentQuestion = currentGame?.currentQuestion || 0;
+                const questionsPerRound = currentGame?.questionsPerRound || 5;
+                const completedRound = Math.ceil(currentQuestion / questionsPerRound);
+                
+                console.log(`🔍 Round complete calculation debug:`);
+                console.log(`  - currentGame.currentRound: ${currentGame?.currentRound}`);
+                console.log(`  - currentQuestion: ${currentQuestion}`);
+                console.log(`  - questionsPerRound: ${questionsPerRound}`);
+                console.log(`  - completedRound: ${completedRound}`);
+                
+                if (completedRound >= totalRounds) {
+                    startBtn.textContent = 'END GAME';
+                    console.log(`🏁 Button text set to END GAME (completed round ${completedRound}/${totalRounds})`);
+                } else if (completedRound === 1) {
+                    // After first round, show START NEXT ROUND
+                    startBtn.textContent = 'START NEXT ROUND';
+                    console.log(`🔄 Button text set to START NEXT ROUND (completed round ${completedRound}/${totalRounds})`);
+                } else {
+                    // After rounds 2+, show OVERALL LEADERBOARD
+                    startBtn.textContent = 'OVERALL LEADERBOARD';
+                    console.log(`📊 Button text set to OVERALL LEADERBOARD (completed round ${completedRound}/${totalRounds})`);
+                }
+                
+                startBtn.className = 'control-btn success';
+                startBtn.disabled = false;
+                endGameBtn.style.display = 'inline-flex';
+                console.log('📊 Game state: roundComplete - End Game button shown');
+            } else if (gameState === 'overallLeaderboard') {
+                // Check if this is the final round
+                const currentQuestion = currentGame?.currentQuestion || 0;
+                const questionsPerRound = currentGame?.questionsPerRound || 5;
+                const completedRound = Math.ceil(currentQuestion / questionsPerRound);
+                const totalRounds = currentGame?.totalRounds || 5;
+                
+                console.log(`🔍 Overall leaderboard calculation debug:`);
+                console.log(`  - currentQuestion: ${currentQuestion}`);
+                console.log(`  - questionsPerRound: ${questionsPerRound}`);
+                console.log(`  - completedRound: ${completedRound}`);
+                console.log(`  - totalRounds: ${totalRounds}`);
+                
+                if (completedRound >= totalRounds) {
+                    // This is the final round, show END GAME
+                    startBtn.textContent = 'END GAME';
+                    startBtn.className = 'control-btn danger';
+                    console.log(`🏁 Button text set to END GAME (final round ${completedRound}/${totalRounds})`);
+                } else {
+                    // Not the final round, show START NEXT ROUND
+                    startBtn.textContent = 'START NEXT ROUND';
+                    startBtn.className = 'control-btn success';
+                    console.log(`🔄 Button text set to START NEXT ROUND (round ${completedRound}/${totalRounds})`);
+                }
+                
+                startBtn.disabled = false;
+                endGameBtn.style.display = 'inline-flex';
+                console.log('📊 Game state: overallLeaderboard - End Game button shown');
+            } else if (gameState === 'finished') {
+                startBtn.textContent = 'GAME FINISHED';
+                startBtn.className = 'control-btn secondary';
+                startBtn.disabled = true;
+                endGameBtn.style.display = 'none';
+                console.log('🏁 Game state: finished - Game completed');
             } else {
                 console.log('❓ Unknown game state:', gameState);
             }
@@ -1253,7 +1396,12 @@
             
             scoringPanel.style.display = 'block';
             
+            console.log('🎯 showScoringPanel called with data:', data);
+            
             if (data && data.currentAnswerGroups) {
+                console.log('📊 currentAnswerGroups received:', data.currentAnswerGroups);
+                console.log('📊 Number of answer groups:', data.currentAnswerGroups.length);
+                
                 scoringContent.innerHTML = '';
                 
                 // Group answers by category
@@ -1261,15 +1409,22 @@
                 const wrongAnswers = [];
                 const uncategorizedAnswers = [];
                 
-                (data.currentAnswerGroups || []).forEach(group => {
+                (data.currentAnswerGroups || []).forEach((group, index) => {
+                    console.log(`📝 Answer ${index + 1}: "${group.answer}" - Category: "${group.category}"`);
+                    
                     if (group.category === 'correct') {
                         correctAnswers.push(group);
+                        console.log(`✅ Added to correct: "${group.answer}"`);
                     } else if (group.category === 'wrong') {
                         wrongAnswers.push(group);
+                        console.log(`❌ Added to wrong: "${group.answer}"`);
                     } else {
                         uncategorizedAnswers.push(group);
+                        console.log(`📦 Added to uncategorized: "${group.answer}"`);
                     }
                 });
+                
+                console.log(`📊 Summary: ${correctAnswers.length} correct, ${wrongAnswers.length} wrong, ${uncategorizedAnswers.length} uncategorized`);
                 
                 // Create sections for each category
                 if (correctAnswers.length > 0) {
@@ -1286,6 +1441,8 @@
                     const uncategorizedSection = createScoringSection('📦 Uncategorized Answers', uncategorizedAnswers, '#f39c12');
                     scoringContent.appendChild(uncategorizedSection);
                 }
+            } else {
+                console.log('❌ No data or currentAnswerGroups in showScoringPanel');
             }
         }
 
@@ -1299,28 +1456,64 @@
             header.style.color = color;
             section.appendChild(header);
             
+            // Create scrollable container for answers
+            const answersContainer = document.createElement('div');
+            answersContainer.className = 'answers-container';
+            answersContainer.style.cssText = `
+                max-height: 300px;
+                overflow-y: auto;
+                padding: 10px;
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.05);
+                margin-top: 10px;
+            `;
+            
             answers.forEach(answer => {
                 const answerGroup = document.createElement('div');
                 answerGroup.className = 'answer-group';
+                answerGroup.style.cssText = `
+                    background: rgba(255, 255, 255, 0.1);
+                    padding: 12px;
+                    margin: 8px 0;
+                    border-radius: 6px;
+                    border-left: 4px solid ${color};
+                `;
                 
                 const answerText = document.createElement('div');
                 answerText.className = 'answer-text';
                 answerText.textContent = `"${answer.answer}"`;
+                answerText.style.cssText = `
+                    font-weight: bold;
+                    font-size: 16px;
+                    color: white;
+                    margin-bottom: 4px;
+                `;
                 
                 const answerPlayers = document.createElement('div');
                 answerPlayers.className = 'answer-players';
                 answerPlayers.textContent = `Players: ${answer.players.join(', ')}`;
+                answerPlayers.style.cssText = `
+                    font-size: 14px;
+                    color: #ccc;
+                    margin-bottom: 4px;
+                `;
                 
                 const answerPoints = document.createElement('div');
                 answerPoints.className = 'answer-points';
                 answerPoints.textContent = `Points: ${answer.points || 0}`;
+                answerPoints.style.cssText = `
+                    font-size: 14px;
+                    color: ${color};
+                    font-weight: bold;
+                `;
                 
                 answerGroup.appendChild(answerText);
                 answerGroup.appendChild(answerPlayers);
                 answerGroup.appendChild(answerPoints);
-                section.appendChild(answerGroup);
+                answersContainer.appendChild(answerGroup);
             });
             
+            section.appendChild(answersContainer);
             return section;
         }
 
@@ -1374,6 +1567,36 @@
                 socket.emit('startGame', { gameCode: currentGame.gameCode });
             } else if (gameState === 'scoring' && currentGame) {
                 socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
+            } else if (gameState === 'roundComplete' && currentGame) {
+                // Get the round that was just completed from round history
+                const roundHistory = currentGame.roundHistory || [];
+                const lastCompletedRound = roundHistory.length > 0 ? roundHistory[roundHistory.length - 1].roundNumber : 0;
+                const totalRounds = currentGame.totalRounds || 5;
+                
+                if (lastCompletedRound >= totalRounds) {
+                    // Final round completed - end the game
+                    socket.emit('endGame', { gameCode: currentGame.gameCode });
+                } else if (lastCompletedRound === 1) {
+                    // After first round - continue to next round
+                    socket.emit('continueToNextRound', { gameCode: currentGame.gameCode });
+                } else {
+                    // After rounds 2+ - show overall leaderboard
+                    socket.emit('showOverallLeaderboard', { gameCode: currentGame.gameCode });
+                }
+            } else if (gameState === 'overallLeaderboard' && currentGame) {
+                // Check if this is the final round
+                const currentQuestion = currentGame?.currentQuestion || 0;
+                const questionsPerRound = currentGame?.questionsPerRound || 5;
+                const completedRound = Math.ceil(currentQuestion / questionsPerRound);
+                const totalRounds = currentGame?.totalRounds || 5;
+                
+                if (completedRound >= totalRounds) {
+                    // This is the final round, end the game
+                    socket.emit('endGame', { gameCode: currentGame.gameCode });
+                } else {
+                    // Not the final round, continue to next round
+                    socket.emit('continueToNextRound', { gameCode: currentGame.gameCode });
+                }
             }
         });
 
@@ -1406,25 +1629,9 @@
         
         // Function to open grading interface in new window (for automatic opening)
         function openGradingWindow() {
-            // Check if grading window is already open
-            if (window.gradingWindow && !window.gradingWindow.closed) {
-                console.log('🔄 Grading window already open, focusing existing window');
-                window.gradingWindow.focus();
-                return;
-            }
-            
-            const gameCode = currentGame ? currentGame.gameCode : null;
-            const url = gameCode ? `/grading-single?gameCode=${gameCode}` : '/grading-single';
-            window.gradingWindow = window.open(url, 'grading', 'width=1200,height=800,scrollbars=yes,resizable=yes');
-            
-            // Focus the window if it was successfully opened
-            if (window.gradingWindow) {
-                window.gradingWindow.focus();
-                console.log('✅ Grading window opened successfully');
-            } else {
-                console.log('⚠️ Popup blocked - falling back to modal');
-                openGradingSingleModal();
-            }
+            // Always use modal instead of popup
+            console.log('📝 Opening grading interface as modal');
+            openGradingSingleModal();
         }
 
         // Function to get current game code for the grading interface
@@ -1725,6 +1932,26 @@
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
+            // Listen for messages from grading interface to close it
+            window.addEventListener('message', (event) => {
+                if (event.data === 'closeGradingInterface') {
+                    console.log('🎯 Received closeGradingInterface message from grading interface');
+                    
+                    // Close the grading modal (iframe)
+                    const gradingModal = document.getElementById('gradingSingleModal');
+                    if (gradingModal) {
+                        console.log('🎯 Closing grading interface modal');
+                        gradingModal.style.display = 'none';
+                    }
+                    
+                    // Also close popup window if it exists
+                    if (window.gradingWindow && !window.gradingWindow.closed) {
+                        console.log('🎯 Closing grading interface window');
+                        window.gradingWindow.close();
+                        window.gradingWindow = null;
+                    }
+                }
+            });
             initializeConnection();
         });
 

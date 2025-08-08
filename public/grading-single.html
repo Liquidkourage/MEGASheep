@@ -421,6 +421,13 @@
             margin-top: 20px;
         }
 
+        .grading-controls-top {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
         .control-btn {
             background: linear-gradient(135deg, #007bff, #0056b3);
             border: none;
@@ -440,6 +447,10 @@
 
         .control-btn.success {
             background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .control-btn.primary {
+            background: linear-gradient(135deg, #007bff, #0056b3);
         }
 
         .control-btn.warning {
@@ -649,6 +660,10 @@
             <div class="grading-header-controls">
                 <h3 class="grading-title">📝 Categorize Answers</h3>
             </div>
+            <div class="grading-controls-top">
+                <button id="applyCategorizationBtn" class="control-btn success">Complete Grading</button>
+                <button id="nextQuestionBtn" class="control-btn primary" style="display: none;">Next Question</button>
+            </div>
             
             <div class="grading-layout">
                 <!-- Question Section (Full Width) -->
@@ -706,10 +721,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="grading-controls">
-                <button id="applyCategorizationBtn" class="control-btn success">Complete Grading</button>
             </div>
         </div>
     </div>
@@ -819,9 +830,33 @@
             });
             
             socket.on('gradingComplete', (data) => {
-                console.log('✅ Grading completed successfully!', data);
-                // Confirmation already shown in applyCategorization, just redirect
-                backToGames();
+                console.log('🎯🎯🎯 GRADING COMPLETE EVENT RECEIVED! 🎯🎯🎯', data);
+                
+                // Auto-close this grading interface immediately
+                console.log('🎯 About to close window...');
+                console.log('🎯 window.opener exists:', !!window.opener);
+                console.log('🎯 window.parent exists:', !!window.parent);
+                console.log('🎯 window.parent !== window:', window.parent !== window);
+                
+                // Try multiple methods to close/return to host
+                try {
+                    if (window.opener && !window.opener.closed) {
+                        console.log('🎯 Method 1: Closing popup via window.opener');
+                        window.opener.focus();
+                        window.close();
+                    } else if (window.parent && window.parent !== window) {
+                        console.log('🎯 Method 2: Closing iframe/embedded window');
+                        window.parent.postMessage('closeGradingInterface', '*');
+                        window.close();
+                    } else {
+                        console.log('🎯 Method 3: Direct navigation to host');
+                        window.location.href = '/host';
+                    }
+                } catch (error) {
+                    console.error('🎯 Error closing grading interface:', error);
+                    // Fallback
+                    window.location.href = '/host';
+                }
             });
 
             // Real-time answer updates
@@ -1076,6 +1111,11 @@
         async function updateGradingInterface() {
             if (!currentGame || !currentGame.currentAnswerGroups) return;
             
+            console.log('🔄 Updating grading interface for question:', currentGame.currentQuestionIndex);
+            
+            // CRITICAL: Clear grading states from previous questions to prevent wrong answers from persisting
+            clearPreviousGradingStates();
+            
             // Update question display
             updateQuestionDisplay();
             
@@ -1094,7 +1134,10 @@
         async function updateGradingInterfaceSmoothly() {
             if (!currentGame || !currentGame.currentAnswerGroups) return;
             
-            console.log('🔄 Smooth update: updating grading interface');
+            console.log('🔄 Smooth update: updating grading interface for question:', currentGame.currentQuestionIndex);
+            
+            // Clear previous question states in case this is triggered by question transition
+            clearPreviousGradingStates();
             
             // Update question display
             updateQuestionDisplay();
@@ -1109,7 +1152,7 @@
         async function updateAnswerBucketsSmoothly() {
             if (!currentGame || !currentGame.currentQuestionData) return;
             
-            const correctAnswers = currentGame.currentQuestionData.correct_answers || [];
+            const correctAnswers = (currentGame.currentQuestionData.correct_answers || []).slice().sort();
             const correctAnswersContainer = document.getElementById('correctAnswers');
             const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
             
@@ -1378,6 +1421,16 @@
             
             console.log('🔍 Current question data:', questionData);
             console.log('✅ Correct answers from DB:', correctAnswerList);
+            console.log('📊 Current answer groups from server:', currentGame.currentAnswerGroups);
+            console.log('🎯 Current question index:', currentGame.currentQuestionIndex);
+            
+            // CRITICAL DEBUG: Check if answer groups contain old data
+            if (currentGame.currentAnswerGroups && currentGame.currentAnswerGroups.length > 0) {
+                console.log('⚠️ DEBUGGING ANSWER SOURCE:');
+                currentGame.currentAnswerGroups.forEach((group, index) => {
+                    console.log(`  Answer ${index + 1}: "${group.answer}" - Players: ${group.players?.join(', ') || 'unknown'} - Count: ${group.count}`);
+                });
+            }
             
             // Create correct answer buckets and sort alphabetically
             const correctAnswerBuckets = correctAnswerList.map((correctAnswer, index) => ({
@@ -1440,7 +1493,9 @@
                     let bestConfidence = 0;
                     
                     // Try each correct answer
-                    correctAnswerBuckets.forEach(bucket => {
+                    // Sort buckets alphabetically before rendering
+            correctAnswerBuckets.sort((a, b) => a.name.localeCompare(b.name));
+            correctAnswerBuckets.forEach(bucket => {
                         const confidence = calculateSemanticConfidence(answerGroup.answer, bucket.correctAnswer);
                         if (confidence > bestConfidence) {
                             bestConfidence = confidence;
@@ -1460,6 +1515,8 @@
             }
             
             // Render ALL correct answer buckets (even empty ones)
+            // Sort buckets alphabetically before rendering
+            correctAnswerBuckets.sort((a, b) => a.name.localeCompare(b.name));
             correctAnswerBuckets.forEach(bucket => {
                 const bucketDiv = document.createElement('div');
                 
@@ -1506,6 +1563,10 @@
             
                     // Restore saved grading state if available
         setTimeout(() => {
+            console.log('🔄 setTimeout triggered for state restoration after 100ms');
+            console.log('🔄 Current question:', currentGame?.currentQuestionIndex);
+            console.log('🔄 Skip restoration flag:', window.skipStateRestoration);
+            
             const restored = restoreGradingState();
             if (restored) {
                 // State was restored - clear any duplicates and skip repopulation
@@ -1517,7 +1578,9 @@
                 }, 1000);
             } else {
                 // No saved state - save the initial auto-categorized state
+                console.log('💾 No state restored - will save fresh state in 500ms');
                 setTimeout(() => {
+                    console.log('💾 Saving fresh grading state');
                     saveGradingState();
                 }, 500);
             }
@@ -1768,10 +1831,21 @@
             
             if (draggedElement && dropZone) {
                 console.log('🎯 Moving element to bucket drop zone');
+                
+                // Get bucket name for consolidation
+                const bucketName = bucket.querySelector('h4')?.textContent?.replace(/[▼▶]\s*/, '').trim() || 'Unknown';
+                const draggedAnswer = draggedElement.dataset.answerText;
+                
+                console.log(`🎯 Consolidating "${draggedAnswer}" into "${bucketName}" bucket`);
+                
+                // Add the dragged element first
                 dropZone.appendChild(draggedElement);
                 
                 // Update confidence display for moved element
                 updateConfidenceForMovedElement(draggedElement, dropZone);
+                
+                // Consolidate all answers in this bucket
+                consolidateBucketAnswers(dropZone, bucketName);
                 
                 updateCountBadges();
                 
@@ -1781,6 +1855,78 @@
             } else {
                 console.log('🎯 Bucket drop failed:', { draggedElement: !!draggedElement, dropZone: !!dropZone });
             }
+        }
+
+        function consolidateBucketAnswers(dropZone, bucketName) {
+            console.log(`🎯 Consolidating answers in bucket: "${bucketName}"`);
+            
+            // Get all answer items in this bucket
+            const answerItems = Array.from(dropZone.querySelectorAll('.answer-item'));
+            console.log(`🎯 Found ${answerItems.length} answer items to consolidate`);
+            
+            if (answerItems.length <= 1) {
+                console.log('🎯 Only one answer item, no consolidation needed');
+                return;
+            }
+            
+            // Calculate total player count
+            let totalPlayers = 0;
+            const allPlayerNames = [];
+            const individualAnswers = [];
+            
+            answerItems.forEach(item => {
+                const playerCount = parseInt(item.querySelector('.answer-count-badge')?.textContent || '1');
+                const answerText = item.dataset.answerText;
+                totalPlayers += playerCount;
+                
+                // Collect player names if available
+                const playerNames = item.querySelector('.answer-players')?.textContent;
+                if (playerNames) {
+                    allPlayerNames.push(playerNames);
+                }
+                
+                // Store individual answer for display
+                individualAnswers.push({
+                    text: answerText,
+                    count: playerCount,
+                    players: playerNames
+                });
+            });
+            
+            console.log(`🎯 Total players across all answers: ${totalPlayers}`);
+            console.log(`🎯 Individual answers:`, individualAnswers);
+            
+            // Clear the drop zone
+            dropZone.innerHTML = '';
+            
+            // Create individual answer items
+            individualAnswers.forEach(answer => {
+                const answerItem = document.createElement('div');
+                answerItem.className = 'answer-item';
+                answerItem.draggable = true;
+                answerItem.dataset.answerText = answer.text;
+                answerItem.dataset.playerNames = answer.players || '';
+                
+                // Style for individual answers within bucket
+                answerItem.style.cssText = `
+                    background: rgba(46, 204, 113, 0.1);
+                    border: 1px solid rgba(46, 204, 113, 0.3);
+                    margin: 4px 0;
+                    padding: 6px 10px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                `;
+                
+                answerItem.innerHTML = `
+                    <div class="answer-text">"${answer.text}" <span class="answer-count-badge">${answer.count}</span></div>
+                    <div class="answer-players" style="font-size: 10px; color: #666;">${answer.players || ''}</div>
+                `;
+                
+                dropZone.appendChild(answerItem);
+            });
+            
+            console.log(`🎯 Created bucket header: "${bucketName}" with ${totalPlayers} total players`);
+            console.log(`🎯 Added ${individualAnswers.length} individual answer items`);
         }
 
         function showGradingConfirmation(categorization) {
@@ -1800,6 +1946,12 @@
             // Add details for correct answers
             if (totalCorrect > 0) {
                 summaryText += `✅ Correct Answers:\n`;
+                // Sort buckets alphabetically before processing
+                categorization.correctAnswerBuckets.sort((a, b) => {
+                    const nameA = a.name || a.id || '';
+                    const nameB = b.name || b.id || '';
+                    return nameA.localeCompare(nameB);
+                });
                 categorization.correctAnswerBuckets.forEach(bucket => {
                     if (bucket.answers.length > 0) {
                         // Get bucket name from DOM
@@ -1826,7 +1978,7 @@
             summaryText += `Click OK to continue to scoring phase.`;
             
             // Show the confirmation
-            alert(summaryText);
+            // alert(summaryText); // Removed alert box
         }
 
         function applyCategorization() {
@@ -1886,8 +2038,40 @@
             document.getElementById('gameSelection').style.display = 'block';
             updateGameList();
             
-            // Navigate to host creation screen
-            window.location.href = '/host';
+            // Close this grading interface window and focus back on main host window
+            if (window.opener) {
+                // If opened as popup, close this window and focus opener
+                window.opener.focus();
+                window.close();
+            } else {
+                // If opened in same tab, navigate to host
+                window.location.href = '/host';
+            }
+        }
+
+        function nextQuestion() {
+            if (!currentGame) {
+                console.error('❌ No current game to proceed to next question');
+                return;
+            }
+
+            console.log('▶️ Proceeding to next question for game:', currentGame.gameCode);
+            
+            // Check if this is the last question in the round/game
+            const isLastQuestion = currentGame.currentQuestion >= currentGame.questionsPerRound;
+            
+            if (isLastQuestion) {
+                console.log('🏁 This was the last question in the game');
+                showTemporaryMessage('🏁 Game completed! Final scores will be displayed.', 'success');
+            }
+            
+            // Emit nextQuestion event to server
+            socket.emit('nextQuestion', {
+                gameCode: currentGame.gameCode
+            });
+
+            // Hide the Next Question button after clicking
+            document.getElementById('nextQuestionBtn').style.display = 'none';
         }
 
         function normalizeAnswer(answer) {
@@ -2010,7 +2194,8 @@
         }
 
         // Event listeners
-        document.getElementById('applyCategorizationBtn').addEventListener('click', applyCategorization);
+                    document.getElementById('applyCategorizationBtn').addEventListener('click', applyCategorization);
+            document.getElementById('nextQuestionBtn').addEventListener('click', nextQuestion);
 
         // Update confidence display for moved elements
         function updateConfidenceForMovedElement(draggedElement, dropZone) {
@@ -2150,15 +2335,72 @@
             // Show save indicator
             showSaveIndicator();
         }
+
+        // Clear grading state for previous questions to prevent wrong answers from persisting
+        function clearPreviousGradingStates() {
+            if (!currentGame) return;
+            
+            console.log('🧹 Clearing previous grading states for game:', currentGame.gameCode);
+            
+            // Get all localStorage keys that match our grading state pattern
+            const gradingStatePrefix = `grading_state_${currentGame.gameCode}_`;
+            const keysToRemove = [];
+            
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith(gradingStatePrefix)) {
+                    // Extract the question index from the key
+                    const questionIndex = parseInt(key.replace(gradingStatePrefix, ''));
+                    
+                    // Remove states from previous questions (not current)
+                    if (!isNaN(questionIndex) && questionIndex !== currentGame.currentQuestionIndex) {
+                        keysToRemove.push(key);
+                        console.log(`🗑️ Marking for removal: ${key} (Q${questionIndex} != current Q${currentGame.currentQuestionIndex})`);
+                    }
+                }
+            }
+            
+            // Remove the identified keys
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                console.log(`🗑️ Removed old grading state: ${key}`);
+            });
+            
+            console.log(`🧹 Cleared ${keysToRemove.length} previous grading states`);
+            
+            // CRITICAL: Also clear the current question's state to start completely fresh
+            const currentStateKey = `grading_state_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`;
+            const currentState = localStorage.getItem(currentStateKey);
+            if (currentState) {
+                localStorage.removeItem(currentStateKey);
+                console.log(`🗑️ ALSO cleared current question state for fresh start: ${currentStateKey}`);
+            }
+            
+            // Set a flag to prevent restoration for this question load
+            window.skipStateRestoration = true;
+            setTimeout(() => {
+                window.skipStateRestoration = false;
+            }, 2000);
+        }
         
         // Restore grading state from localStorage
         function restoreGradingState() {
             if (!currentGame || !currentGame.currentQuestionData) return false;
             
+            // Check if state restoration should be skipped (after clearing previous states)
+            if (window.skipStateRestoration) {
+                console.log('⏭️ Skipping state restoration due to fresh question load');
+                return false;
+            }
+            
             const stateKey = `grading_state_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`;
             const savedState = localStorage.getItem(stateKey);
             
+            console.log('💾 Attempting to restore state for key:', stateKey);
+            console.log('💾 Found saved state:', !!savedState);
+            
             if (!savedState) {
+                console.log('💾 No saved state found for current question');
                 return false;
             }
             
