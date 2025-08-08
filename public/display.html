@@ -7,8 +7,40 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20241220">
     <style>
+        /* Dynamic scaling based on screen resolution */
+        :root {
+            --scale-factor: 0.65;
+            --font-scale: 0.65;
+        }
+        
+        /* JavaScript will update these values based on screen resolution */
+        
+        /* Base scaling for 1920x1080 */
+        @media screen and (max-width: 1920px) {
+            :root {
+                --scale-factor: 0.65;
+                --font-scale: 0.65;
+            }
+        }
+        
+        /* Larger scaling for 2560x1600 and similar high-res displays */
+        @media screen and (min-width: 2560px) {
+            :root {
+                --scale-factor: 0.85;
+                --font-scale: 0.85;
+            }
+        }
+        
+        /* Medium scaling for 1920x1200 and similar */
+        @media screen and (min-width: 1921px) and (max-width: 2559px) {
+            :root {
+                --scale-factor: 0.75;
+                --font-scale: 0.75;
+            }
+        }
+        
         /* Modern Player Card Animations */
         @keyframes cardSlideIn {
             0% {
@@ -105,7 +137,7 @@
 
         /* Enhanced text styling */
         .modern-player-name {
-            font-size: 1.3rem !important;
+            font-size: calc(1.3rem * var(--font-scale)) !important;
             color: #ffffff !important;
             font-weight: 700 !important;
             white-space: nowrap !important;
@@ -123,7 +155,7 @@
         }
 
         .modern-player-score {
-            font-size: 1.1rem !important;
+            font-size: calc(1.1rem * var(--font-scale)) !important;
             color: #00ff88 !important;
             font-weight: 800 !important;
             white-space: nowrap !important;
@@ -183,6 +215,448 @@
             justify-content: center;
             font-size: 0.8rem;
             box-shadow: 0 2px 8px rgba(255, 255, 255, 0.4);
+        }
+
+        /* Main two-column layout for display screen */
+        .display-main-container {
+            display: grid;
+            grid-template-columns: 75% 25%;
+            gap: calc(20px * var(--scale-factor));
+            height: 100vh;
+            width: 100vw;
+            padding: calc(20px * var(--scale-factor));
+            box-sizing: border-box;
+            align-items: start;
+        }
+
+        /* Left column: Question Results */
+        .question-results-section {
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 40, 80, 0.1);
+            border: 1px solid rgba(0, 123, 255, 0.2);
+            border-radius: calc(15px * var(--scale-factor));
+            padding: calc(18px * var(--scale-factor));
+            overflow: hidden;
+        }
+
+        /* Right column: Current Scores */
+        .current-scores-section {
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 40, 80, 0.1);
+            border: 1px solid rgba(0, 123, 255, 0.2);
+            border-radius: calc(15px * var(--scale-factor));
+            padding: calc(18px * var(--scale-factor));
+            overflow: hidden;
+        }
+
+        /* Headers for both sections */
+        .scoring-header, .scores-header {
+            text-align: center;
+            margin: 0 0 calc(20px * var(--scale-factor)) 0;
+            flex-shrink: 0;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: calc(10px * var(--scale-factor));
+            padding: calc(15px * var(--scale-factor));
+        }
+
+        .scoring-header h1, .scores-header h1 {
+            color: #e8e8e8 !important;
+            font-size: calc(2.8rem * var(--font-scale));
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+            margin: 0;
+            font-weight: bold;
+            -webkit-text-fill-color: #e8e8e8 !important;
+            background: none !important;
+            text-align: center;
+        }
+
+        .scoring-subtitle {
+            color: #cccccc;
+            font-size: calc(1.3rem * var(--font-scale));
+            margin: 10px 0 0 0;
+        }
+
+
+
+        /* Content areas */
+        .scoring-content {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: calc(12px * var(--scale-factor));
+        }
+
+        .scores-content {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* Navigation footer */
+        .scoring-navigation {
+            flex-shrink: 0;
+            text-align: center;
+            margin-top: calc(20px * var(--scale-factor));
+            padding: calc(15px * var(--scale-factor));
+            background: rgba(0, 123, 255, 0.1);
+            border-radius: calc(10px * var(--scale-factor));
+            border: 1px solid rgba(0, 123, 255, 0.2);
+        }
+
+        .scoring-navigation p {
+            color: #ffffff;
+            font-size: calc(1.1rem * var(--font-scale));
+            margin: 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+
+        /* Compact scores for sidebar */
+        .compact-scores-list {
+            display: flex;
+            flex-direction: column;
+            gap: calc(8px * var(--scale-factor));
+        }
+
+        .compact-score-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: calc(8px * var(--scale-factor));
+            padding: calc(8px * var(--scale-factor)) calc(12px * var(--scale-factor));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .compact-score-name {
+            color: #ffffff;
+            font-weight: 600;
+            font-size: calc(1rem * var(--font-scale));
+        }
+
+        .compact-score-value {
+            color: #00ff88;
+            font-weight: bold;
+            font-size: calc(1.1rem * var(--font-scale));
+        }
+
+        /* Auto-scrolling scores container - 60% of screen height */
+        .auto-scroll-container {
+            height: 66vh; /* Exactly 60% of screen height */
+            overflow: hidden;
+            border-radius: calc(10px * var(--scale-factor));
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .auto-scroll-content {
+            display: flex;
+            flex-direction: column;
+            gap: calc(8px * var(--scale-factor));
+            padding: calc(10px * var(--scale-factor));
+        }
+
+        /* Optimized auto-scroll animation - no hold at top, compressed loop */
+        @keyframes autoScrollDown {
+            0% {
+                transform: translateY(0); /* Start at top */
+            }
+            17% {
+                transform: translateY(0); /* Brief pause at top */
+            }
+            80% {
+                transform: translateY(calc(-100% + 66vh)); /* Scroll to bottom */
+            }
+            98% {
+                transform: translateY(calc(-100% + 66vh)); /* Brief pause at bottom */
+            }
+            100% {
+                transform: translateY(0); /* Fast reset - immediate restart */
+            }
+        }
+
+        /* Pause animation on hover for better UX */
+        .auto-scroll-container:hover .auto-scroll-content {
+            animation-play-state: paused;
+        }
+
+        /* Top Submitted Answers styling overrides */
+        .answers-section .answer-text {
+            font-size: calc(1.4rem * var(--font-scale)) !important;
+            margin-right: calc(20px * var(--scale-factor)) !important;
+            margin-left: 0 !important;
+            align-self: flex-start !important;
+            text-transform: capitalize !important;
+        }
+
+        /* Rank badge designed to work with rounded card corners */
+        .answer-rank {
+            position: absolute !important;
+            top: -2px !important;
+            left: -2px !important;
+            background: rgba(0, 123, 255, 0.8) !important;
+            border: 1px solid rgba(0, 123, 255, 0.6) !important;
+            border-radius: 0 0 8px 0 !important;
+            padding: 3px 8px !important;
+            font-size: 0.75rem !important;
+            font-weight: 700 !important;
+            color: #ffffff !important;
+            text-align: center !important;
+            min-width: 32px !important;
+            z-index: 10 !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .answers-section .answer-card {
+            position: relative;
+            align-items: flex-start !important;
+            padding-top: 0 !important;
+            min-height: calc(40px * var(--scale-factor)) !important;
+            padding: calc(8px * var(--scale-factor)) calc(12px * var(--scale-factor)) !important;
+        }
+
+        .answers-section .answer-count {
+            margin-top: calc(8px * var(--scale-factor)) !important;
+            font-size: calc(1.1rem * var(--font-scale)) !important;
+        }
+
+        .answers-section .answer-points {
+            background: transparent !important;
+            font-size: calc(1.1rem * var(--font-scale)) !important;
+        }
+
+        /* Correct answer badge with proper colors and centering */
+        .correct-answer-badge {
+            background: rgba(44, 62, 80, 0.9) !important;
+            border: 2px solid rgba(52, 73, 94, 0.8) !important;
+            border-radius: 10px;
+            padding: 8px 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            width: fit-content;
+            max-width: 140px;
+            color: #ecf0f1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+        }
+
+        .correct-answer-badge .correct-answer-text {
+            font-size: calc(1.2rem * var(--scale-factor));
+            line-height: 1.2;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            display: block;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+        }
+
+        /* Dynamic text sizing for correct answer badges */
+        .correct-answer-badge[data-answer-length="short"] .correct-answer-text {
+            font-size: calc(1.4rem * var(--scale-factor));
+        }
+
+        .correct-answer-badge[data-answer-length="medium"] .correct-answer-text {
+            font-size: calc(1.2rem * var(--scale-factor));
+        }
+
+        .correct-answer-badge[data-answer-length="long"] .correct-answer-text {
+            font-size: calc(1rem * var(--scale-factor));
+        }
+
+        .correct-answer-badge[data-answer-length="very-long"] .correct-answer-text {
+            font-size: calc(0.9rem * var(--scale-factor));
+        }
+
+        /* Wrong answers grid - 2 rows */
+        .wrong-answers-grid {
+            display: grid !important;
+            grid-template-rows: repeat(2, 1fr) !important;
+            grid-auto-flow: column !important;
+            gap: calc(10px * var(--scale-factor)) !important;
+            margin: calc(12px * var(--scale-factor)) 0 !important;
+        }
+
+        /* Wrong answer card vertical layout */
+        .wrong-answer-card {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: calc(8px * var(--scale-factor)) !important;
+            min-height: calc(35px * var(--scale-factor)) !important;
+            padding: calc(6px * var(--scale-factor)) calc(10px * var(--scale-factor)) !important;
+        }
+
+        .wrong-answer-text {
+            font-weight: bold !important;
+            margin-bottom: calc(5px * var(--scale-factor)) !important;
+            font-size: calc(1rem * var(--font-scale)) !important;
+        }
+
+        .wrong-answer-count {
+            font-size: calc(0.9rem * var(--font-scale)) !important;
+            opacity: 0.8 !important;
+        }
+
+
+
+        /* Animate sections */
+        .answers-section, .correct-not-given-section, .wrong-answers-section {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: sectionSlideIn 0.6s ease-out forwards;
+        }
+
+        .answers-section {
+            animation-delay: 0.1s;
+        }
+
+        .correct-not-given-section {
+            animation-delay: 0.3s;
+        }
+
+        .wrong-answers-section {
+            animation-delay: 0.5s;
+        }
+
+        @keyframes sectionSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Answer cards for round results - matching reference image */
+        .player-answers-row {
+            display: flex;
+            gap: calc(8px * var(--scale-factor));
+            margin-top: calc(12px * var(--scale-factor));
+            justify-content: flex-start;
+            width: 100%;
+        }
+
+        .answer-card-small {
+            background: #2ecc71;
+            color: white;
+            padding: calc(10px * var(--scale-factor)) calc(12px * var(--scale-factor));
+            border-radius: calc(8px * var(--scale-factor));
+            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            min-height: calc(60px * var(--scale-factor));
+            border: none;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            max-width: calc(250px * var(--scale-factor));
+            text-align: center;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .answer-card-small .answer-text-small {
+            font-size: calc(1.2rem * var(--scale-factor));
+            line-height: 1.2;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            display: block;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+        }
+
+        /* Dynamic text sizing based on answer length */
+        .answer-card-small[data-answer-length="short"] .answer-text-small {
+            font-size: calc(1.4rem * var(--scale-factor));
+        }
+
+        .answer-card-small[data-answer-length="medium"] .answer-text-small {
+            font-size: calc(1.2rem * var(--scale-factor));
+        }
+
+        .answer-card-small[data-answer-length="long"] .answer-text-small {
+            font-size: calc(1rem * var(--scale-factor));
+        }
+
+        .answer-card-small[data-answer-length="very-long"] .answer-text-small {
+            font-size: calc(0.9rem * var(--scale-factor));
+        }
+
+        .answer-card-small.wrong-answer {
+            background: #e74c3c;
+        }
+
+        .answer-text-small {
+            font-size: calc(1.1rem * var(--font-scale));
+            font-weight: bold;
+            line-height: 1.2;
+            margin-bottom: calc(2px * var(--scale-factor));
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+            text-align: center;
+            width: 100%;
+        }
+
+        .answer-points-small {
+            font-size: calc(0.9rem * var(--font-scale));
+            font-weight: 600;
+            opacity: 0.9;
+            line-height: 1;
+        }
+
+        .no-answers-player {
+            color: #95a5a6;
+            font-style: italic;
+            font-size: calc(0.8rem * var(--font-scale));
+            margin-top: calc(10px * var(--scale-factor));
+        }
+
+        /* 1920x1080 Grid Width Optimizations */
+        .answers-grid, .answers-results-grid, .scores-list, .final-scores-list {
+            grid-template-columns: repeat(auto-fit, minmax(calc(400px * var(--scale-factor)), 1fr)) !important;
+        }
+
+        .answers-results-grid {
+            grid-template-columns: repeat(auto-fit, minmax(calc(450px * var(--scale-factor)), 1fr)) !important;
+        }
+
+        .correct-answers-grid {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(calc(60px * var(--scale-factor)), 1fr)) !important;
+            gap: calc(8px * var(--scale-factor)) !important;
+            margin: calc(12px * var(--scale-factor)) 0 !important;
+        }
+        
+        .wrong-answers-grid {
+            grid-template-columns: repeat(auto-fit, minmax(calc(60px * var(--scale-factor)), 1fr)) !important;
+        }
+
+        .top-answers-grid, .incorrect-answers-grid {
+            grid-template-columns: repeat(auto-fit, minmax(calc(380px * var(--scale-factor, 0.65)), 1fr)) !important;
+        }
+
+        .display-players {
+            grid-template-columns: repeat(auto-fit, minmax(calc(140px * var(--scale-factor)), 1fr)) !important;
+        }
+
+        /* Reduce font size for submitted answers section headers */
+        .answers-section h3,
+        .correct-not-given-section h3,
+        .wrong-answers-section h3 {
+            font-size: calc(1.2rem * var(--font-scale)) !important;
+            margin-bottom: calc(8px * var(--scale-factor)) !important;
+            margin-top: calc(8px * var(--scale-factor)) !important;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
@@ -452,7 +926,9 @@
             });
             
             socket.on('roundComplete', (gameStateData) => {
-                console.log('Display: Round complete');
+                console.log('Display: Round complete event received');
+                console.log('Display: Game state data:', gameStateData);
+                console.log('Display: Game state:', gameStateData.gameState);
                 updateDisplayFromGameState(gameStateData);
             });
             
@@ -462,8 +938,22 @@
             });
             
             socket.on('gameFinished', (gameStateData) => {
-                console.log('Display: Game finished');
-                updateDisplayFromGameState(gameStateData);
+                console.log('Display: Game finished event received');
+                console.log('Display: gameStateData:', gameStateData);
+                console.log('Display: gameStateData.gameState:', gameStateData?.gameState);
+                console.log('Display: gameStateData.players:', gameStateData?.players);
+                
+                try {
+                    updateDisplayFromGameState(gameStateData);
+                    console.log('Display: updateDisplayFromGameState completed successfully');
+                } catch (error) {
+                    console.error('Display: Error in updateDisplayFromGameState:', error);
+                }
+            });
+            
+            socket.on('showOverallLeaderboard', (gameStateData) => {
+                console.log('Display: Showing overall leaderboard');
+                showOverallLeaderboardScreen(gameStateData);
             });
             
             socket.on('timerUpdate', (data) => {
@@ -521,8 +1011,15 @@
             
             socket.on('answerUpdate', (data) => {
                 console.log('Display: Answer update', data);
-                if (gameState && gameState.gameState === 'playing') {
+                console.log('Current game state:', gameState?.gameState);
+                console.log('Answers received:', data.answersReceived, 'Total players:', data.totalPlayers);
+                
+                // Update response indicator for both 'playing' and 'questionActive' states
+                if (gameState && (gameState.gameState === 'playing' || gameState.gameState === 'questionActive')) {
                     updateResponseIndicator(data.answersReceived, data.totalPlayers);
+                    console.log('✅ Updated response indicator');
+                } else {
+                    console.log('❌ Response indicator not updated - wrong game state:', gameState?.gameState);
                 }
             });
             
@@ -530,6 +1027,14 @@
                 console.log('Display: Question complete - all responses received');
                 console.log('Display: Switching to grading mode automatically');
                 updateDisplayFromGameState(gameStateData);
+            });
+
+            // Auto-generate virtual responses when question starts
+            socket.on('questionStarted', (data) => {
+                console.log('🎭 Question started - generating virtual responses');
+                if (gameState && gameState.players) {
+                    generateVirtualResponsesForDisplay(data.question);
+                }
             });
         }
 
@@ -542,30 +1047,39 @@
             }
             
             console.log('📺 Updating display with game state:', gameState.gameState);
+            console.log('📺 Full game state data:', gameState);
             
             switch (gameState.gameState) {
                 case 'waiting':
+                    console.log('📺 Showing waiting screen');
                     showWaitingScreen();
                     break;
                 case 'playing':
+                    console.log('📺 Showing playing screen');
                     showPlayingScreen();
                     break;
                 case 'grading':
+                    console.log('📺 Showing grading screen');
                     showGradingScreen();
                     break;
                 case 'scoring':
+                    console.log('📺 Showing scoring screen');
                     showScoringScreen();
                     break;
                 case 'roundComplete':
+                    console.log('📺 Showing round complete screen');
                     showRoundCompleteScreen();
                     break;
                 case 'leaderboard':
+                    console.log('📺 Showing leaderboard screen');
                     showLeaderboardScreen();
                     break;
                 case 'finished':
+                    console.log('📺 Showing game finished screen');
                     showGameFinishedScreen();
                     break;
                 default:
+                    console.log('📺 Unknown game state, showing intro screen');
                     showIntroScreen();
             }
         }
@@ -759,8 +1273,26 @@
             // Set initial timer state
             updateDisplayTimer(gameState.timeLeft || 30);
             
-            // Initialize response indicator
-            updateResponseIndicator(0, gameState.players.length);
+            // Initialize response indicator with actual response count if available
+            const actualResponseCount = gameState.currentAnswerGroups ? 
+                gameState.currentAnswerGroups.reduce((total, group) => total + (group.count || 0), 0) : 0;
+            const fallbackResponseCount = gameState.answersReceived || actualResponseCount || 0;
+            
+            console.log('🔍 Response count calculation:');
+            console.log('  - gameState.answersReceived:', gameState.answersReceived);
+            console.log('  - actualResponseCount from answer groups:', actualResponseCount);
+            console.log('  - Using fallback count:', fallbackResponseCount);
+            
+            updateResponseIndicator(fallbackResponseCount, gameState.players.length);
+            
+            // Auto-generate virtual responses when playing screen loads
+            console.log('🎭 Playing screen loaded - triggering virtual responses');
+            if (currentQuestion && gameState.players) {
+                // Delay slightly to ensure screen is fully loaded
+                setTimeout(() => {
+                    generateVirtualResponsesForDisplay(currentQuestion);
+                }, 1000);
+            }
         }
         
         function updateDisplayTimer(timeLeft) {
@@ -853,27 +1385,53 @@
         }
 
         function showScoringScreen() {
+            // Get the correct and wrong answers for this question
+            const { submittedAnswers, correctNotGiven, wrongAnswers } = categorizeAnswersForDisplay();
+            
             document.getElementById('displayScreen').innerHTML = `
-                <div class="scoring-container">
-                    <div class="scoring-header">
-                        <h1>📊 Question Results</h1>
-                        <p class="scoring-subtitle">Answer Breakdown</p>
-                    </div>
-                    
-                    <div class="scoring-content">
-                        <div class="answers-section">
-                            <h3>🏆 Top Answers</h3>
-                            ${generateAnswersDisplay(gameState.currentAnswerGroups)}
+                <div class="display-main-container">
+                    <!-- Left Column: Question Results (75%) -->
+                    <div class="question-results-section">
+                        <div class="scoring-header">
+                            <h1>📊 Question Results</h1>
+                            <p class="scoring-subtitle">${gameState.currentQuestionData?.prompt || 'Answer Breakdown'}</p>
                         </div>
                         
-                        <div class="scores-section">
-                            <h3>📈 Current Scores</h3>
-                            ${generateScoresDisplay(gameState.players)}
+                        <div class="scoring-content">
+                            <!-- Top Submitted Answers -->
+                            <div class="answers-section">
+                                <h3>🏆 Top Submitted Answers</h3>
+                                ${generateTopAnswersDisplay(submittedAnswers)}
+                            </div>
+                            
+                            <!-- Correct Answers Not Given -->
+                            <div class="correct-not-given-section">
+                                <h3>✅ Correct Answers Not Given</h3>
+                                ${generateCorrectNotGivenDisplay(correctNotGiven)}
+                            </div>
+                            
+                            <!-- Wrong Answers Submitted -->
+                            <div class="wrong-answers-section">
+                                <h3>❌ Wrong Answers Submitted</h3>
+                                ${generateWrongAnswersDisplay(wrongAnswers)}
+                            </div>
+                        </div>
+                        
+                        <div class="scoring-navigation">
+                            <p>Next question starting soon...</p>
                         </div>
                     </div>
                     
-                    <div class="scoring-navigation">
-                        <p>Next question starting soon...</p>
+                    <!-- Right Column: Current Scores (25%) -->
+                    <div class="current-scores-section">
+                        <div class="scores-header">
+                            <h1>📈 Current Scores</h1>
+                            <p class="scoring-subtitle">Round ${Math.ceil((gameState.currentQuestion + 1) / gameState.questionsPerRound)}/5 • Question ${((gameState.currentQuestion) % gameState.questionsPerRound) + 1} of 5</p>
+                        </div>
+                        
+                        <div class="scores-content">
+                            ${generateCompactScoresDisplay(gameState.players)}
+                        </div>
                     </div>
                 </div>
             `;
@@ -1102,10 +1660,9 @@
                 ">
                 <div class="stable-players-grid" style="
                     display: grid;
-                    grid-template-columns: repeat(${cols}, ${cardWidth}px);
                     grid-template-rows: repeat(${rows}, ${cardHeight}px);
+                    grid-auto-flow: column;
                     gap: ${gap}px;
-                    width: ${finalGridWidth}px;
                     height: ${finalGridHeight}px;
                     margin: 0;
                     padding: 0;
@@ -1172,6 +1729,18 @@
             // Update player count tracking
             lastPlayerCount = players.length;
             
+            // Add auto-scroll if there are many players
+            if (players.length > 12) {
+                setTimeout(() => {
+                    const gridContainer = document.querySelector('.stable-players-grid');
+                    if (gridContainer) {
+                        gridContainer.style.overflow = 'hidden';
+                        const content = gridContainer.querySelector('.auto-scroll-content') || gridContainer;
+                        content.style.animation = `autoScrollDown ${Math.max(players.length * 0.5, 8)}s ease-in-out infinite`;
+                    }
+                }, 1000);
+            }
+            
             return html;
         }
 
@@ -1208,6 +1777,174 @@
             return html;
         }
 
+        function generateCompactScoresDisplay(players) {
+            if (!players || players.length === 0) {
+                return '<p style="color: #cccccc; text-align: center;">No players yet</p>';
+            }
+            
+            // Sort players by score (highest first)
+            const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+            
+            // If 20 or fewer players, show all without scrolling
+            if (sortedPlayers.length <= 20) {
+                let html = '<div class="compact-scores-list">';
+                sortedPlayers.forEach((player, index) => {
+                    const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+                    html += `
+                        <div class="compact-score-item">
+                            <div class="compact-score-name">
+                                <span style="margin-right: 8px;">${rankEmoji}</span>
+                                ${player.name}
+                            </div>
+                            <div class="compact-score-value">${player.score}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                return html;
+            }
+            
+            // For more than 20 players, create auto-scrolling list
+            const scrollId = `scroll-scores-${Date.now()}`;
+            let html = `<div class="auto-scroll-container" id="${scrollId}">`;
+            html += '<div class="auto-scroll-content">';
+            
+            // Create the scrolling content - just one list (no duplication needed)
+            sortedPlayers.forEach((player, index) => {
+                const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+                html += `
+                    <div class="compact-score-item">
+                        <div class="compact-score-name">
+                            <span style="margin-right: 8px;">${rankEmoji}</span>
+                            ${player.name}
+                        </div>
+                        <div class="compact-score-value">${player.score}</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+            
+            // Add scroll indicator
+            html += `<div style="text-align: center; color: #cccccc; margin-top: 10px; font-size: 0.9rem;">
+                📋 Cycling through all ${sortedPlayers.length} players
+            </div>`;
+            
+            // Start auto-scroll after a delay
+            setTimeout(() => {
+                startAutoScroll(scrollId, sortedPlayers.length);
+            }, 1000);
+            
+            return html;
+        }
+
+        function generateVirtualResponsesForDisplay(question) {
+            if (!gameState || !gameState.players) return;
+            
+            console.log('🎭 Generating virtual responses for display');
+            
+            // Get virtual players only
+            const virtualPlayers = gameState.players.filter(p => p.isVirtual);
+            console.log(`🎭 Found ${virtualPlayers.length} virtual players to generate responses for`);
+            
+            if (virtualPlayers.length === 0) {
+                console.log('🎭 No virtual players found');
+                return;
+            }
+            
+            // Get correct answers for this question
+            const correctAnswers = question.correct_answers || [];
+            const questionText = question.prompt || 'Unknown question';
+            
+            console.log(`🎭 Question: "${questionText}"`);
+            console.log(`🎭 Correct answers:`, correctAnswers);
+            
+            // Generate responses for each virtual player
+            virtualPlayers.forEach((player, index) => {
+                // Simulate response time (0.5 to 3 seconds)
+                const responseDelay = 500 + Math.random() * 2500;
+                
+                setTimeout(() => {
+                    let response;
+                    let isCorrect;
+                    
+                    // 75% correct answers, 25% incorrect
+                    if (Math.random() < 0.75 && correctAnswers.length > 0) {
+                        response = correctAnswers[Math.floor(Math.random() * correctAnswers.length)];
+                        isCorrect = true;
+                    } else {
+                        // Generate incorrect answers based on question type
+                        const incorrectAnswers = [
+                            'I don\'t know',
+                            'Maybe',
+                            'Not sure', 
+                            'Could be',
+                            'Possibly',
+                            'I think so',
+                            'Probably not',
+                            'Definitely not',
+                            'No idea',
+                            'Unsure'
+                        ];
+                        response = incorrectAnswers[Math.floor(Math.random() * incorrectAnswers.length)];
+                        isCorrect = false;
+                    }
+                    
+                    // 20% of correct answers should be modified for manual grading practice
+                    if (isCorrect && Math.random() < 0.2) {
+                        response = modifyAnswerForGrading(response);
+                    }
+                    
+                    console.log(`🎭 Virtual player ${player.name} answered: "${response}" (${isCorrect ? 'correct' : 'incorrect'})`);
+                    
+                    // Emit the virtual response via socket
+                    if (socket) {
+                        socket.emit('virtualAnswerSubmitted', {
+                            gameCode: gameState.gameCode,
+                            playerId: player.id,
+                            playerName: player.name,
+                            answer: response,
+                            isCorrect: isCorrect
+                        });
+                    }
+                    
+                }, responseDelay);
+            });
+        }
+
+        function modifyAnswerForGrading(answer) {
+            // Add slight variations to correct answers for manual grading practice
+            const variations = [
+                answer + '!',
+                answer + '?',
+                answer + '...',
+                answer + ' (I think)',
+                answer + ' maybe',
+                answer.toLowerCase(),
+                answer.toUpperCase(),
+                answer.charAt(0).toUpperCase() + answer.slice(1).toLowerCase()
+            ];
+            return variations[Math.floor(Math.random() * variations.length)];
+        }
+
+        function startAutoScroll(scrollId, playerCount) {
+            const container = document.getElementById(scrollId);
+            if (!container) return;
+            
+            const content = container.querySelector('.auto-scroll-content');
+            if (!content) return;
+            
+            // Calculate cycle time: 1.5x faster across the board
+            // About 2 seconds per player visible, minimum 10 seconds total
+            const baseTime = Math.max(playerCount * 1.0, 10);
+            const totalCycleTime = baseTime / 1.5; // 1.5x speed increase
+            
+            // Start the scroll animation - down, pause, reset
+            content.style.animation = `autoScrollDown ${totalCycleTime}s ease-in-out infinite`;
+            
+            console.log(`🔄 Started auto-scroll for ${playerCount} players, cycle time: ${totalCycleTime}s (1.5x faster)`);
+        }
+
         function generateScoresDisplay(players) {
             if (!players || players.length === 0) {
                 return '<p>No players yet.</p>';
@@ -1240,44 +1977,42 @@
         }
 
         function showRoundCompleteScreen() {
-            const currentRound = gameState.currentRound;
             const roundHistory = gameState.roundHistory;
             const currentRoundData = roundHistory[roundHistory.length - 1];
+            const currentRound = currentRoundData.roundNumber; // Use the actual round number from the round data
+            
+            const playerCount = gameState.players.length;
+            
+            // Determine column layout based on player count
+            let columnClass = 'leaderboard-single-column';
+            if (playerCount > 20) {
+                columnClass = 'leaderboard-three-column';
+            } else if (playerCount > 10) {
+                columnClass = 'leaderboard-two-column';
+            }
             
             document.getElementById('displayScreen').innerHTML = `
-                <div class="display-content">
-                    <div class="display-section">
-                        <div class="display-header">
-                            <h1 class="display-title">🎯 Round ${currentRound} Complete!</h1>
-                            <p class="display-subtitle">Detailed Score Breakdown</p>
-                            <p class="display-brand">by Liquid Kourage Entertainment</p>
+                <div class="round-leaderboard-container ${columnClass}">
+                    <div class="round-leaderboard-header">
+                        <h1>🎯 Round ${currentRound} Complete!</h1>
+                        <p class="round-subtitle">Round ${currentRound} Scores • Questions ${currentRoundData.questionStart} - ${currentRoundData.questionEnd} • ${gameState.players.length} Players</p>
                     </div>
                     
-                    <div class="round-details">
-                        <div class="round-info">
-                            <h3>📊 Round Summary</h3>
-                            <p>Questions ${currentRoundData.questionStart} - ${currentRoundData.questionEnd}</p>
-                            <p>Total Players: ${gameState.players.length}</p>
-                        </div>
-                        
-                        <div class="round-answers">
-                            <h3>🏆 Top Answers This Round</h3>
-                            ${generateRoundAnswersDisplay(currentRoundData.answerGroups)}
-                        </div>
-                        
-                        <div class="round-scores">
-                            <h3>📈 Round Scores</h3>
-                            ${generateRoundScoresDisplay(currentRoundData.players)}
-                        </div>
-                    </div>
-                    
-                    <div class="round-navigation">
-                        <button onclick="showLeaderboard()" class="btn btn-primary">View Overall Leaderboard</button>
-                        <button onclick="continueToNextRound()" class="btn btn-secondary">Continue to Next Round</button>
+                    <div class="round-leaderboard-content" id="roundLeaderboardContent">
+                        <div class="auto-scroll-content">
+                            ${generateAdvancedRoundDisplay(currentRoundData, columnClass)}
                         </div>
                     </div>
                 </div>
             `;
+            
+            // Set up auto-scrolling for the round leaderboard
+            setTimeout(() => {
+                const content = document.getElementById('roundLeaderboardContent');
+                if (content && content.scrollHeight > content.clientHeight) {
+                    startAutoScroll('roundLeaderboardContent', gameState.players.length);
+                }
+            }, 100);
         }
 
         function showLeaderboardScreen() {
@@ -1339,6 +2074,92 @@
             `;
         }
 
+        function showOverallLeaderboardScreen(gameStateData) {
+            updateDisplayFromGameState(gameStateData);
+            
+            const roundHistory = gameState.roundHistory || [];
+            const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
+            
+            // Determine column layout based on player count
+            const playerCount = gameState.players.length;
+            let columnClass = '';
+            if (playerCount <= 3) columnClass = 'three-columns';
+            else if (playerCount <= 6) columnClass = 'four-columns';
+            else if (playerCount <= 10) columnClass = 'five-columns';
+            else columnClass = 'six-columns';
+            
+            document.getElementById('displayScreen').innerHTML = `
+                <div class="round-leaderboard-container ${columnClass}">
+                    <div class="round-leaderboard-header">
+                        <h1>🏆 Overall Leaderboard</h1>
+                        <p class="round-subtitle">Cumulative Scores • ${gameState.players.length} Players</p>
+                    </div>
+                    
+                    <div class="round-leaderboard-content" id="roundLeaderboardContent">
+                        ${generateOverallLeaderboardDisplay(sortedPlayers, roundHistory)}
+                    </div>
+                </div>
+            `;
+            
+            // Start auto-scroll for the leaderboard
+            startAutoScroll('roundLeaderboardContent');
+        }
+        
+        function generateOverallLeaderboardDisplay(sortedPlayers, roundHistory) {
+            let html = '';
+            
+            sortedPlayers.forEach((player, playerIndex) => {
+                const rankClass = playerIndex < 3 ? `rank-${playerIndex + 1}` : '';
+                const playerRounds = generatePlayerRoundsDisplay(player, roundHistory);
+                
+                html += `
+                    <div class="player-card ${rankClass}">
+                        <div class="player-header">
+                            <div class="player-rank">#${playerIndex + 1}</div>
+                            <div class="player-name">${player.name}</div>
+                            <div class="player-total-score">${player.score} pts</div>
+                        </div>
+                        <div class="player-answers-container">
+                            ${playerRounds}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return html;
+        }
+        
+        function generatePlayerRoundsDisplay(player, roundHistory) {
+            let html = '<div class="player-answers-row">';
+            
+            roundHistory.forEach((roundData, index) => {
+                // Find this player's score for this round
+                const playerRoundData = roundData.players.find(p => p.name === player.name);
+                const roundScore = playerRoundData ? playerRoundData.score : 0;
+                const roundNumber = roundData.roundNumber;
+                
+                // Determine text size based on round number length
+                let textSizeClass = 'medium';
+                if (roundNumber <= 9) {
+                    textSizeClass = 'short';
+                } else if (roundNumber <= 99) {
+                    textSizeClass = 'medium';
+                } else {
+                    textSizeClass = 'long';
+                }
+                
+                html += `
+                    <div class="answer-card-small correct" data-answer-length="${textSizeClass}">
+                        <span class="answer-text-small">Round ${roundNumber}</span>
+                        <span class="answer-points-small">${roundScore}</span>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+
         function generateRoundAnswersDisplay(answerGroups) {
             if (!answerGroups || answerGroups.length === 0) {
                 return '<p>No answers submitted this round.</p>';
@@ -1398,6 +2219,275 @@
                 html += `<div class="more-scores-indicator">And ${players.length - 20} more players...</div>`;
             }
             
+            return html;
+        }
+
+        function generateAdvancedRoundDisplay(roundData, columnClass) {
+            // Use round-specific scores from roundData instead of cumulative scores
+            const players = [...roundData.players].sort((a, b) => b.score - a.score);
+            const answerGroups = roundData.answerGroups || [];
+            
+            console.log('Round data:', roundData);
+            console.log('Players:', players);
+            console.log('Answer groups:', answerGroups);
+            
+            // Try to get round-specific player answers, fallback to recent answers
+            const playersWithAnswers = players.map(player => {
+                let roundAnswers = [];
+                
+                // Try multiple sources for player answers
+                if (roundData.playerAnswers && roundData.playerAnswers[player.id]) {
+                    roundAnswers = roundData.playerAnswers[player.id];
+                } else if (gameState.answers && gameState.answers[player.id]) {
+                    // Fallback to current game state answers
+                    roundAnswers = Array.isArray(gameState.answers[player.id]) 
+                        ? gameState.answers[player.id] 
+                        : [gameState.answers[player.id]];
+                } else {
+                    // Generate player-specific answers based on answer groups and player data
+                    const playerSpecificAnswers = [];
+                    
+                    // Find answers that this specific player gave
+                    answerGroups.forEach(group => {
+                        if (group.players && group.players.includes(player.name)) {
+                            playerSpecificAnswers.push(group.answer);
+                        }
+                    });
+                    
+                    // If we found player-specific answers, use them
+                    if (playerSpecificAnswers.length >= 5) {
+                        roundAnswers = playerSpecificAnswers.slice(0, 5);
+                    } else {
+                        // Mix of player-specific answers and varied samples
+                        const sampleAnswers = ['dog', 'horse', 'rabbit', 'rooster', 'tiger'];
+                        roundAnswers = [...playerSpecificAnswers, ...sampleAnswers].slice(0, 5);
+                    }
+                }
+                
+                // Ensure exactly 5 answers for consistent display
+                if (roundAnswers.length > 5) {
+                    roundAnswers = roundAnswers.slice(0, 5);
+                } else {
+                    while (roundAnswers.length < 5) {
+                        roundAnswers.push('---');
+                    }
+                }
+                
+                return {
+                    ...player,
+                    roundAnswers: roundAnswers,
+                    roundScore: player.score || 0  // Use the round-specific score from roundData
+                };
+            });
+            
+            console.log('Players with answers:', playersWithAnswers);
+            
+            if (columnClass === 'leaderboard-single-column') {
+                return generateSingleColumnDisplay(playersWithAnswers, answerGroups, roundData);
+            } else if (columnClass === 'leaderboard-two-column') {
+                return generateTwoColumnDisplay(playersWithAnswers, answerGroups, roundData);
+            } else {
+                return generateThreeColumnDisplay(playersWithAnswers, answerGroups, roundData);
+            }
+        }
+
+        function generateSingleColumnDisplay(players, answerGroups, roundData) {
+            let html = '<div class="leaderboard-single-column">';
+            
+            players.forEach((player, index) => {
+                const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                const medal = index < 3 ? ['🥇', '🥈', '🥉'][index] : '';
+                
+                html += `
+                    <div class="leaderboard-row ${rankClass}">
+                        <div class="player-info">
+                            <span class="player-rank">${medal || `#${index + 1}`}</span>
+                            <span class="player-name">${player.name}</span>
+                            <span class="player-score">${player.score} pts</span>
+                        </div>
+                        <div class="player-answers">
+                            ${generatePlayerAnswersDisplay(player.roundAnswers || [], answerGroups, roundData)}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
+
+        function generateTwoColumnDisplay(players, answerGroups, roundData) {
+            let html = '<div class="leaderboard-two-column">';
+            
+            // Create 2 columns
+            for (let colIndex = 0; colIndex < 2; colIndex++) {
+                html += `<div class="leaderboard-column column-${colIndex + 1}">`;
+                
+                // Add players to this column (every 2nd player starting from colIndex)
+                for (let i = colIndex; i < players.length; i += 2) {
+                    const player = players[i];
+                    const globalIndex = i;
+                    const rankClass = globalIndex < 3 ? `rank-${globalIndex + 1}` : '';
+                    const medal = globalIndex < 3 ? ['🥇', '🥈', '🥉'][globalIndex] : '';
+                    
+                    html += `
+                        <div class="leaderboard-row ${rankClass}">
+                            <div class="player-info">
+                                <span class="player-rank">${medal} #${globalIndex + 1}</span>
+                                <span class="player-name">${player.name}</span>
+                                <span class="player-score">${player.score} pts</span>
+                            </div>
+                            <div class="player-answers">
+                                ${generatePlayerAnswersDisplay(player.roundAnswers || [], answerGroups, roundData)}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        function generateThreeColumnDisplay(players, answerGroups, roundData) {
+            let html = '<div class="leaderboard-three-column">';
+            
+            // Create 3 columns
+            for (let colIndex = 0; colIndex < 3; colIndex++) {
+                html += `<div class="leaderboard-column column-${colIndex + 1}">`;
+                
+                // Add players to this column (every 3rd player starting from colIndex)
+                for (let i = colIndex; i < players.length; i += 3) {
+                    const player = players[i];
+                    const globalIndex = i;
+                    const rankClass = globalIndex < 3 ? `rank-${globalIndex + 1}` : '';
+                    const medal = globalIndex < 3 ? ['🥇', '🥈', '🥉'][globalIndex] : '';
+                    
+                    html += `
+                        <div class="leaderboard-row ${rankClass}">
+                            <div class="player-info">
+                                <span class="player-rank">${medal} #${globalIndex + 1}</span>
+                                <span class="player-name">${player.name}</span>
+                                <span class="player-score">${player.score} pts</span>
+                            </div>
+                            <div class="player-answers">
+                                ${generatePlayerAnswersDisplay(player.roundAnswers || [], answerGroups, roundData)}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            return html;
+        }
+
+        function generatePlayerAnswersDisplay(playerAnswers, answerGroups, roundData) {
+            if (!playerAnswers || playerAnswers.length === 0) {
+                return '<div class="no-answers-player">No answers submitted</div>';
+            }
+            
+            console.log('generatePlayerAnswersDisplay - Player answers:', playerAnswers);
+            console.log('generatePlayerAnswersDisplay - Answer groups:', answerGroups);
+            console.log('generatePlayerAnswersDisplay - Round data:', roundData);
+            
+            let html = '<div class="player-answers-row">';
+            
+            // For single player games, use the answer groups directly since they represent the actual answers
+            if (roundData.players && roundData.players.length === 1) {
+                answerGroups.forEach((group, index) => {
+                    const points = group.points;
+                    const isCorrect = points > 0;
+                    const answer = group.answer;
+                    
+                    console.log(`✅ Using answer group ${index}: "${answer}" - points=${points}, isCorrect=${isCorrect}`);
+                    
+                    const statusClass = isCorrect ? 'correct-answer' : 'wrong-answer';
+                    
+                    // Determine text size based on answer length
+                    let textSizeClass = 'medium';
+                    if (answer.length <= 8) {
+                        textSizeClass = 'short';
+                    } else if (answer.length <= 15) {
+                        textSizeClass = 'medium';
+                    } else if (answer.length <= 25) {
+                        textSizeClass = 'long';
+                    } else {
+                        textSizeClass = 'very-long';
+                    }
+                    
+                    html += `
+                        <div class="answer-card-small ${statusClass}" data-answer-length="${textSizeClass}">
+                            <span class="answer-text-small">${answer}</span>
+                            <span class="answer-points-small">${points}</span>
+                        </div>
+                    `;
+                });
+            } else {
+                // For multi-player games, match player answers with answer groups
+                playerAnswers.forEach((answer, index) => {
+                    let points = 0;
+                    let isCorrect = false;
+                    
+                    // Find the answer group that matches this player's answer
+                    const answerGroup = answerGroups.find(group => {
+                        const normalizedGroupAnswer = group.answer.toLowerCase().trim();
+                        const normalizedPlayerAnswer = answer.toLowerCase().trim();
+                        
+                        // Exact match
+                        if (normalizedGroupAnswer === normalizedPlayerAnswer) {
+                            return true;
+                        }
+                        
+                        // Partial match: player answer contained in group answer
+                        if (normalizedGroupAnswer.includes(normalizedPlayerAnswer)) {
+                            return true;
+                        }
+                        
+                        // Reverse partial match: group answer contained in player answer
+                        if (normalizedPlayerAnswer.includes(normalizedGroupAnswer)) {
+                            return true;
+                        }
+                        
+                        return false;
+                    });
+                    
+                    if (answerGroup) {
+                        points = answerGroup.points;
+                        isCorrect = points > 0;
+                        console.log(`✅ Found answer group for "${answer}": points=${points}, isCorrect=${isCorrect}`);
+                    } else {
+                        console.log(`❌ No answer group found for "${answer}"`);
+                    }
+                    
+                    const statusClass = isCorrect ? 'correct-answer' : 'wrong-answer';
+                    
+                    // Determine text size based on answer length
+                    let textSizeClass = 'medium';
+                    if (answer.length <= 8) {
+                        textSizeClass = 'short';
+                    } else if (answer.length <= 15) {
+                        textSizeClass = 'medium';
+                    } else if (answer.length <= 25) {
+                        textSizeClass = 'long';
+                    } else {
+                        textSizeClass = 'very-long';
+                    }
+                    
+                    html += `
+                        <div class="answer-card-small ${statusClass}" data-answer-length="${textSizeClass}">
+                            <span class="answer-text-small">${answer}</span>
+                            <span class="answer-points-small">${points}</span>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += '</div>';
             return html;
         }
 
@@ -1607,6 +2697,229 @@
         setInterval(initializeSheepCarousel, 5 * 60 * 1000);
         
 
+        // Helper functions for the new question results layout
+        function categorizeAnswersForDisplay() {
+            // Use current question-specific data to avoid persistence issues
+            const currentQuestionIndex = gameState.currentQuestion;
+            const submittedAnswers = gameState.currentAnswerGroups || [];
+            const correctAnswers = gameState.currentQuestionData?.correct_answers || [];
+            const wrongAnswers = [];
+            const correctNotGiven = [];
+            
+            console.log('Categorizing answers for question:', currentQuestionIndex);
+            console.log('Current answer groups:', submittedAnswers);
+            console.log('Correct answers for this question:', correctAnswers);
+            
+            // Create a set of submitted answer texts (normalized)
+            const submittedTexts = new Set();
+            submittedAnswers.forEach(group => {
+                submittedTexts.add(group.answer.toLowerCase().trim());
+            });
+            
+            // Separate correct answers that weren't submitted
+            correctAnswers.forEach(correctAnswer => {
+                const normalized = correctAnswer.toLowerCase().trim();
+                if (!submittedTexts.has(normalized)) {
+                    correctNotGiven.push(correctAnswer);
+                }
+            });
+            
+            // Separate wrong answers (those with 0 points) - only for current question
+            submittedAnswers.forEach(group => {
+                if (group.points === 0) {
+                    wrongAnswers.push(group);
+                }
+            });
+            
+            // Filter submitted answers to only correct ones (points > 0)
+            const correctSubmitted = submittedAnswers.filter(group => group.points > 0);
+            
+            console.log('Categorized - Correct submitted:', correctSubmitted.length, 'Wrong:', wrongAnswers.length, 'Correct not given:', correctNotGiven.length);
+            
+            return {
+                submittedAnswers: correctSubmitted,
+                correctNotGiven: correctNotGiven,
+                wrongAnswers: wrongAnswers
+            };
+        }
+
+        function generateTopAnswersDisplay(submittedAnswers) {
+            if (!submittedAnswers || submittedAnswers.length === 0) {
+                return '<p class="no-answers">No correct answers submitted</p>';
+            }
+            
+            const html = `
+                <div class="answers-grid">
+                    ${submittedAnswers.map((group, index) => `
+                        <div class="answer-card rank-${Math.min(index + 1, 3)}">
+                            <div class="answer-rank">#${index + 1}</div>
+                            <div class="answer-text">${group.answer}</div>
+                            <div class="answer-stats">
+                                <div class="answer-count">${group.count} player${group.count !== 1 ? 's' : ''}</div>
+                                <div class="answer-points">${group.points} pts</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            return html;
+        }
+
+        function generateCorrectNotGivenDisplay(correctNotGiven) {
+            if (!correctNotGiven || correctNotGiven.length === 0) {
+                return '<p class="no-answers">All correct answers were given!</p>';
+            }
+            
+            const html = `
+                <div class="correct-answers-grid">
+                    ${correctNotGiven.map(answer => {
+                        // Determine text size based on answer length
+                        let textSizeClass = 'medium';
+                        if (answer.length <= 8) {
+                            textSizeClass = 'short';
+                        } else if (answer.length <= 15) {
+                            textSizeClass = 'medium';
+                        } else if (answer.length <= 25) {
+                            textSizeClass = 'long';
+                        } else {
+                            textSizeClass = 'very-long';
+                        }
+                        
+                        return `
+                            <div class="correct-answer-badge" data-answer-length="${textSizeClass}">
+                                <div class="correct-answer-text">${answer}</div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            
+            return html;
+        }
+
+        function generateWrongAnswersDisplay(wrongAnswers) {
+            if (!wrongAnswers || wrongAnswers.length === 0) {
+                return '<p class="no-answers">No wrong answers submitted.</p>';
+            }
+            
+            return `
+                <div class="wrong-answers-grid">
+                    ${wrongAnswers.map(group => `
+                        <div class="wrong-answer-card">
+                            <div class="wrong-answer-text">${group.answer}</div>
+                            <div class="wrong-answer-count">${group.count} player${group.count !== 1 ? 's' : ''}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Dynamic scaling calculation based on screen resolution
+        function calculateDynamicScaling() {
+            const screenWidth = window.screen.width;
+            const screenHeight = window.screen.height;
+            
+            console.log(`Screen resolution: ${screenWidth}x${screenHeight}`);
+            
+            let scaleFactor = 0.65; // Default for 1920x1080
+            
+            // Calculate scaling based on screen resolution
+            if (screenWidth >= 2560) {
+                // High-res displays like 2560x1600, 2560x1440, 3840x2160
+                scaleFactor = 0.85;
+                console.log('High-res display detected, using scale factor: 0.85');
+            } else if (screenWidth >= 1921) {
+                // Medium displays like 1920x1200, 2048x1536
+                scaleFactor = 0.75;
+                console.log('Medium-res display detected, using scale factor: 0.75');
+            } else {
+                // Standard displays like 1920x1080, 1366x768
+                scaleFactor = 0.65;
+                console.log('Standard display detected, using scale factor: 0.65');
+            }
+            
+            // Apply the scaling factor to CSS variables
+            document.documentElement.style.setProperty('--scale-factor', scaleFactor);
+            document.documentElement.style.setProperty('--font-scale', scaleFactor);
+            
+            console.log(`Applied scale factor: ${scaleFactor}`);
+            
+            // Force a recalculation by triggering a reflow
+            document.body.offsetHeight;
+            
+            // Log the computed value to verify it's working
+            const computedScale = getComputedStyle(document.documentElement).getPropertyValue('--scale-factor');
+            console.log(`Computed scale factor: ${computedScale}`);
+            
+            // Calculate what the minmax value should be
+            const minmaxValue = 380 * scaleFactor;
+            console.log(`Minmax value should be: ${minmaxValue}px`);
+            
+            // Also set the grid template columns directly via JavaScript as backup
+            const topAnswersGrids = document.querySelectorAll('.top-answers-grid, .incorrect-answers-grid');
+            console.log(`Found ${topAnswersGrids.length} grid elements to update`);
+            topAnswersGrids.forEach((grid, index) => {
+                grid.style.gridTemplateColumns = `repeat(auto-fit, minmax(${minmaxValue}px, 1fr))`;
+                console.log(`Grid ${index + 1} (${grid.className}): ${grid.style.gridTemplateColumns}`);
+                
+                // Also log the computed style to see what's actually applied
+                const computedStyle = getComputedStyle(grid).gridTemplateColumns;
+                console.log(`Grid ${index + 1} computed style: ${computedStyle}`);
+                
+                // Count how many cards are actually in the grid
+                const cards = grid.querySelectorAll('.answer-card, .wrong-answer-card');
+                console.log(`Grid ${index + 1} has ${cards.length} cards`);
+            });
+        }
+        
+        // Calculate scaling on page load
+        document.addEventListener('DOMContentLoaded', calculateDynamicScaling);
+        
+        // Recalculate on window resize (in case of resolution changes)
+        window.addEventListener('resize', calculateDynamicScaling);
+        
+        // Also calculate immediately if DOM is already loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', calculateDynamicScaling);
+        } else {
+            calculateDynamicScaling();
+        }
+
+        function generateRoundHistoryDisplay(roundHistory) {
+            if (!roundHistory || roundHistory.length === 0) {
+                return '<p>No rounds completed yet.</p>';
+            }
+            
+            let html = '<div class="round-history-list">';
+            
+            roundHistory.forEach((round, index) => {
+                const roundNumber = round.roundNumber;
+                const questionRange = `Questions ${round.questionStart} - ${round.questionEnd}`;
+                const sortedPlayers = [...round.players].sort((a, b) => b.score - a.score);
+                
+                html += `
+                    <div class="round-history-item">
+                        <div class="round-header">
+                            <h4>Round ${roundNumber}</h4>
+                            <span class="round-range">${questionRange}</span>
+                        </div>
+                        <div class="round-scores">
+                            ${sortedPlayers.map((player, playerIndex) => `
+                                <div class="round-player-score ${playerIndex < 3 ? `rank-${playerIndex + 1}` : ''}">
+                                    <span class="player-name">${player.name}</span>
+                                    <span class="player-score">${player.score} pts</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            return html;
+        }
     </script>
 </body>
+</html> 
 </html> 

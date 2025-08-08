@@ -9,7 +9,13 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const multer = require('multer');
 const fs = require('fs');
-const fetch = require('node-fetch'); // Add at the top if not present
+// Prefer Node 18+ global fetch; fallback to dynamic import for older runtimes
+const fetch = (globalThis && globalThis.fetch)
+  ? globalThis.fetch.bind(globalThis)
+  : (async (...args) => {
+      const { default: nodeFetch } = await import('node-fetch');
+      return nodeFetch(...args);
+    });
 
 const app = express();
 const server = http.createServer(app);
@@ -114,7 +120,7 @@ process.on('SIGTERM', () => {
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+// Note: express.static moved after routes to allow custom routing
 
 // Supabase configuration
 let supabase = null;
@@ -217,6 +223,7 @@ class Game {
         this.categorizationData = null;
         this.pointsForCurrentQuestion = new Map(); // socketId -> points for current question only
         this.currentQuestionScored = false; // Track if current question has been scored
+        this.roundAnswerGroups = []; // Accumulate all answer groups for the current round
     }
 
     addPlayer(socketId, playerName) {
@@ -438,6 +445,75 @@ class Game {
     this.calculateScoresFromGroups(answerGroups, totalResponses);
   }
 
+  updateAnswerGroupsWithCategorization(categorizationData) {
+    console.log(`📊 updateAnswerGroupsWithCategorization called with:`, categorizationData);
+    
+    if (!this.currentAnswerGroups) {
+      console.log(`⚠️ No currentAnswerGroups to update`);
+      return;
+    }
+    
+    console.log(`📊 Starting with ${this.currentAnswerGroups.length} answer groups`);
+    
+    // Create a map to track which answers have been categorized
+    const categorizedAnswers = new Set();
+    
+    // Process correct answer buckets
+    if (categorizationData.correctAnswerBuckets && Array.isArray(categorizationData.correctAnswerBuckets)) {
+      console.log(`📊 Processing ${categorizationData.correctAnswerBuckets.length} correct answer buckets`);
+      for (const bucket of categorizationData.correctAnswerBuckets) {
+        console.log(`📊 Processing bucket: ${bucket.id} with ${bucket.answers?.length || 0} answers`);
+        if (bucket.answers && Array.isArray(bucket.answers)) {
+          for (const answerData of bucket.answers) {
+            console.log(`📊 Looking for answer: "${answerData.answer}"`);
+            // Find and update the corresponding answer group
+            const answerGroup = this.currentAnswerGroups.find(group => 
+              group.answer.toLowerCase().trim() === answerData.answer.toLowerCase().trim()
+            );
+            if (answerGroup) {
+              answerGroup.category = 'correct';
+              answerGroup.correctAnswer = bucket.correctAnswer || bucket.name;
+              categorizedAnswers.add(answerData.answer.toLowerCase().trim());
+              console.log(`✅ Categorized "${answerData.answer}" as correct (bucket: "${bucket.correctAnswer || bucket.name}")`);
+            } else {
+              console.log(`⚠️ Could not find answer group for "${answerData.answer}"`);
+            }
+          }
+        }
+      }
+    }
+    
+    // Process wrong answers
+    if (categorizationData.wrong && Array.isArray(categorizationData.wrong)) {
+      console.log(`📊 Processing ${categorizationData.wrong.length} wrong answers`);
+      for (const answerData of categorizationData.wrong) {
+        console.log(`📊 Looking for wrong answer: "${answerData.answer}"`);
+        const answerGroup = this.currentAnswerGroups.find(group => 
+          group.answer.toLowerCase().trim() === answerData.answer.toLowerCase().trim()
+        );
+        if (answerGroup) {
+          answerGroup.category = 'wrong';
+          categorizedAnswers.add(answerData.answer.toLowerCase().trim());
+          console.log(`❌ Categorized "${answerData.answer}" as wrong`);
+        } else {
+          console.log(`⚠️ Could not find answer group for wrong answer "${answerData.answer}"`);
+        }
+      }
+    }
+    
+    // Mark remaining answers as uncategorized
+    console.log(`📊 Marking remaining answers as uncategorized`);
+    this.currentAnswerGroups.forEach(group => {
+      if (!categorizedAnswers.has(group.answer.toLowerCase().trim())) {
+        group.category = 'uncategorized';
+        console.log(`📦 Marked "${group.answer}" as uncategorized`);
+      }
+    });
+    
+    console.log(`📊 Final result - Updated ${this.currentAnswerGroups.length} answer groups with categorization`);
+    console.log(`📊 Categorized answers set:`, Array.from(categorizedAnswers));
+  }
+
   calculateScoresFromGroups(answerGroups, totalResponses) {
     // Clear previous question points
     this.pointsForCurrentQuestion.clear();
@@ -448,7 +524,16 @@ class Game {
       const Y = totalResponses;   // Total number of responses
       
       // Determine if this is a correct answer (bucket ID) or wrong/uncategorized
-      const isCorrectAnswer = answer.startsWith('correct_');
+      // Check if this answer exists in the correctAnswerBuckets
+      console.log(`🔍 Checking if answer "${answer}" is correct...`);
+      if (this.categorizationData && this.categorizationData.correctAnswerBuckets) {
+        console.log(`🔍 Available buckets: ${this.categorizationData.correctAnswerBuckets.map(b => `"${b.id}"`).join(', ')}`);
+        const matchingBucket = this.categorizationData.correctAnswerBuckets.find(bucket => bucket.id === answer);
+        console.log(`🔍 Matching bucket for "${answer}": ${matchingBucket ? `"${matchingBucket.id}"` : 'none'}`);
+      }
+      const isCorrectAnswer = this.categorizationData && 
+        this.categorizationData.correctAnswerBuckets && 
+        this.categorizationData.correctAnswerBuckets.some(bucket => bucket.id === answer);
       const Z = isCorrectAnswer ? Math.ceil(Y / X) : 0; // 0 points for wrong/uncategorized answers
       
       console.log(`📊 Answer "${answer}": ${X} players, ${Y} total responses, ${Z} points each (${isCorrectAnswer ? 'correct' : 'wrong/uncategorized'})`);
@@ -466,46 +551,53 @@ class Game {
     for (const [groupKey, socketIds] of answerGroups.entries()) {
       const X = socketIds.length;
       const Y = totalResponses;
-      const Z = Math.ceil(Y / X);
       
-      // If this is a bucket ID (starts with 'correct_'), find the original answers
+      // Use the same scoring logic as above
+      const isCorrectAnswer = this.categorizationData && 
+        this.categorizationData.correctAnswerBuckets && 
+        this.categorizationData.correctAnswerBuckets.some(bucket => bucket.id === groupKey);
+      const Z = isCorrectAnswer ? Math.ceil(Y / X) : 0;
+      
+      // If this is a bucket ID (starts with 'correct_'), consolidate under the correct answer name
       if (groupKey.startsWith('correct_') && this.categorizationData) {
         const bucket = this.categorizationData.correctAnswerBuckets.find(b => b.id === groupKey);
-        if (bucket && bucket.answers) {
-          // Create a separate entry for each original answer in this bucket
-          for (const answerData of bucket.answers) {
-            // Find which players had this specific answer
-            const playersWithThisAnswer = socketIds.filter(socketId => {
-              const player = this.players.get(socketId);
-              if (!player) return false;
-              
-              // Check if this player's original answer matches
-              const originalAnswer = this.answers.get(socketId);
-              return originalAnswer && originalAnswer.toLowerCase().trim() === answerData.answer.toLowerCase().trim();
-            });
-            
-            if (playersWithThisAnswer.length > 0) {
-              this.currentAnswerGroups.push({
-                answer: answerData.answer, // Use the original answer text
-                count: playersWithThisAnswer.length,
-                points: Z,
-                totalResponses: Y,
-                players: playersWithThisAnswer.map(id => {
-                  const player = this.players.get(id);
-                  return player ? player.name : 'Unknown';
-                })
-              });
-            }
-          }
+        if (bucket) {
+          // Extract the correct answer name from the bucket ID (remove 'correct_' prefix and replace underscores and hyphens with spaces)
+          const correctAnswerName = groupKey.replace('correct_', '').replace(/[_-]/g, ' ');
+          
+          this.currentAnswerGroups.push({
+            answer: correctAnswerName, // Use the correct answer name, not individual variations
+            count: X,
+            points: Z,
+            totalResponses: Y,
+            category: 'correct',
+            players: socketIds.map(id => {
+              const player = this.players.get(id);
+              return player ? player.name : 'Unknown';
+            })
+          });
         }
       } else {
-        // For wrong/uncategorized answers, use the group key as the answer
-        // Wrong and uncategorized answers always get 0 points
+        // For direct bucket IDs or wrong/uncategorized answers, use the group key as the answer
+        // Use the calculated points Z (which is 0 for wrong answers, correct points for bucket IDs)
+        
+        // Determine the category based on the group key
+        let category = 'uncategorized';
+        if (this.categorizationData && this.categorizationData.correctAnswerBuckets) {
+          const isCorrect = this.categorizationData.correctAnswerBuckets.some(bucket => bucket.id === groupKey);
+          if (isCorrect) {
+            category = 'correct';
+          } else if (this.categorizationData.wrong && this.categorizationData.wrong.some(wrong => wrong.answer === groupKey)) {
+            category = 'wrong';
+          }
+        }
+        
         this.currentAnswerGroups.push({
-          answer: groupKey,
+          answer: groupKey.replace(/[_-]/g, ' '), // Convert hyphens and underscores to spaces for display
           count: X,
-          points: 0, // Always 0 points for wrong/uncategorized answers
+          points: Z, // Use calculated points (0 for wrong, correct points for valid buckets)
           totalResponses: Y,
+          category: category, // Add the category
           players: socketIds.map(id => {
             const player = this.players.get(id);
             return player ? player.name : 'Unknown';
@@ -629,26 +721,39 @@ class Game {
     }
 
     nextQuestion() {
-        this.currentQuestion++;
-        this.answers.clear();
+        // Before moving to next question, save current answer groups to round history
+        if (this.currentAnswerGroups && this.currentAnswerGroups.length > 0) {
+            this.roundAnswerGroups.push(...this.currentAnswerGroups);
+            console.log(`📊 Added ${this.currentAnswerGroups.length} answer groups to round history. Total: ${this.roundAnswerGroups.length}`);
+        }
         
-        // Reset question scoring state for the new question
-        this.resetQuestionScoring();
-        
-        // Check if we've completed a round (5 questions per round)
-        const currentRound = Math.ceil(this.currentQuestion / this.settings.questionsPerRound);
-        const questionInRound = ((this.currentQuestion - 1) % this.settings.questionsPerRound) + 1;
+        // Check if we're starting a new round
+        const currentRound = Math.ceil((this.currentQuestion + 1) / this.settings.questionsPerRound);
+        const nextQuestionInRound = ((this.currentQuestion) % this.settings.questionsPerRound) + 1;
         
         // DEVELOPMENT: For testing, trigger round complete after 2 questions instead of 5
         const questionsForRoundComplete = process.env.NODE_ENV === 'development' ? 2 : this.settings.questionsPerRound;
         
-        // If we just finished the last question of a round, show round results
-        if (questionInRound === questionsForRoundComplete) {
+        console.log(`🔍 Round logic debug: currentQuestion=${this.currentQuestion}, currentRound=${currentRound}, nextQuestionInRound=${nextQuestionInRound}, questionsForRoundComplete=${questionsForRoundComplete}, NODE_ENV=${process.env.NODE_ENV}`);
+        console.log(`🔍 Round complete condition check: nextQuestionInRound (${nextQuestionInRound}) === questionsForRoundComplete (${questionsForRoundComplete}) = ${nextQuestionInRound === questionsForRoundComplete}`);
+        
+        // If the next question would be the last question of the current round, complete the round instead
+        if (nextQuestionInRound === questionsForRoundComplete) {
+            console.log(`🎯 Triggering round complete: nextQuestionInRound (${nextQuestionInRound}) === questionsForRoundComplete (${questionsForRoundComplete})`);
             this.completeRound();
         } else if (this.currentQuestion >= this.questions.length) {
+            console.log(`🎯 Game finished: currentQuestion (${this.currentQuestion}) >= questions.length (${this.questions.length})`);
             this.gameState = 'finished';
             io.to(this.gameCode).emit('gameFinished', this.getGameState());
         } else {
+            // Increment to next question
+            this.currentQuestion++;
+            this.answers.clear();
+            
+            // Reset question scoring state for the new question
+            this.resetQuestionScoring();
+            
+            console.log(`🎯 Continuing to next question: currentQuestion=${this.currentQuestion}, gameState=playing`);
             this.gameState = 'playing';
             this.startTimer();
             io.to(this.gameCode).emit('nextQuestion', this.getGameState());
@@ -656,27 +761,82 @@ class Game {
     }
 
     completeRound() {
+        console.log(`🎯 completeRound() called for game ${this.gameCode}`);
+        
         const currentRound = Math.ceil(this.currentQuestion / this.settings.questionsPerRound);
         const roundStartQuestion = (currentRound - 1) * this.settings.questionsPerRound + 1;
         const roundEndQuestion = Math.min(currentRound * this.settings.questionsPerRound, this.questions.length);
         
-        // Create round summary data
+        // Calculate round-specific scores by summing points from this round's answer groups
+        const roundSpecificScores = new Map();
+        
+        // Initialize all players with 0 points for this round
+        Array.from(this.players.values()).forEach(player => {
+            roundSpecificScores.set(player.name, 0);
+        });
+        
+        // Sum up points from this round's answer groups
+        if (this.roundAnswerGroups && this.roundAnswerGroups.length > 0) {
+            this.roundAnswerGroups.forEach(group => {
+                if (group.players && group.players.length > 0) {
+                    // Points are already calculated per player during question scoring
+                    const pointsPerPlayer = group.points;
+                    group.players.forEach(playerName => {
+                        const currentScore = roundSpecificScores.get(playerName) || 0;
+                        roundSpecificScores.set(playerName, currentScore + pointsPerPlayer);
+                    });
+                }
+            });
+        }
+        
+        // Create round summary data using accumulated answer groups
         const roundData = {
             roundNumber: currentRound,
             questionStart: roundStartQuestion,
             questionEnd: roundEndQuestion,
             players: Array.from(this.players.values()).map(player => ({
                 name: player.name,
-                score: this.scores.get(player.id) || 0
+                score: roundSpecificScores.get(player.name) || 0
             })),
-            answerGroups: this.currentAnswerGroups || []
+            answerGroups: this.roundAnswerGroups || []
         };
         
-        this.roundHistory.push(roundData);
-        this.gameState = 'roundComplete';
+        console.log(`🎯 Round ${currentRound} completed for game ${this.gameCode}. Answer groups in round: ${this.roundAnswerGroups.length}`);
+        console.log(`📊 Round data:`, JSON.stringify(roundData, null, 2));
         
-        console.log(`🎯 Round ${currentRound} completed for game ${this.gameCode}`);
-        io.to(this.gameCode).emit('roundComplete', this.getGameState());
+        this.roundHistory.push(roundData);
+        
+        // Check if this is the final round (round 5)
+        const totalRounds = Math.ceil(this.questions.length / this.settings.questionsPerRound);
+        
+        if (currentRound >= totalRounds) {
+            // This is the final round, show overall leaderboard
+            console.log(`🏆 Final round (${currentRound}) completed. Showing overall leaderboard.`);
+            this.gameState = 'overallLeaderboard';
+            
+            // Emit to display
+            io.to(this.gameCode).emit('showOverallLeaderboard', this.getGameState());
+            
+            // Emit to host to update button state
+            const hostSocket = Array.from(io.sockets.sockets.values()).find(socket => 
+                socket.gameCode === this.gameCode && socket.isHost
+            );
+            if (hostSocket) {
+                hostSocket.emit('gameStateUpdate', { gameState: this.getGameState() });
+            }
+        } else {
+            // Not the final round, proceed normally
+            this.gameState = 'roundComplete';
+            
+            console.log(`🎯 Game state set to 'roundComplete' for game ${this.gameCode}`);
+            
+            // Reset round answer groups for next round
+            this.roundAnswerGroups = [];
+            
+            console.log(`🎯 Emitting 'roundComplete' event to game ${this.gameCode}`);
+            io.to(this.gameCode).emit('roundComplete', this.getGameState());
+            console.log(`🎯 'roundComplete' event emitted successfully`);
+        }
     }
 
     continueToNextRound() {
@@ -684,10 +844,32 @@ class Game {
             this.gameState = 'finished';
             io.to(this.gameCode).emit('gameFinished', this.getGameState());
         } else {
-            this.gameState = 'playing';
-            this.startTimer();
-            io.to(this.gameCode).emit('nextQuestion', this.getGameState());
+            // Start the next round without triggering round completion logic
+            this.startNextRound();
         }
+    }
+
+    startNextRound() {
+        // Increment to next question
+        this.currentQuestion++;
+        
+        // Check if the next question exists
+        if (this.currentQuestion >= this.questions.length) {
+            console.log(`🎯 Game finished: currentQuestion (${this.currentQuestion}) >= questions.length (${this.questions.length})`);
+            this.gameState = 'finished';
+            io.to(this.gameCode).emit('gameFinished', this.getGameState());
+            return;
+        }
+        
+        this.answers.clear();
+        
+        // Reset question scoring state for the new question
+        this.resetQuestionScoring();
+        
+        console.log(`🎯 Starting next round: currentQuestion=${this.currentQuestion}, gameState=playing`);
+        this.gameState = 'playing';
+        this.startTimer();
+        io.to(this.gameCode).emit('nextQuestion', this.getGameState());
     }
 
     cleanup() {
@@ -952,8 +1134,7 @@ const upload = multer({
 
 // Routes
 app.get('/', (req, res) => {
-    console.log('🎯 Root route hit - serving game.html (player interface)');
-    res.sendFile(path.join(__dirname, 'public', 'game.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/host', (req, res) => {
@@ -980,6 +1161,9 @@ app.get('/game', (req, res) => {
     console.log('🎯 /game route hit - serving game.html');
     res.sendFile(path.join(__dirname, 'public', 'game.html'));
 });
+
+// Static file middleware AFTER custom routes
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/upload', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'upload.html'));
@@ -1207,25 +1391,23 @@ app.post('/api/create-game', (req, res) => {
     // Use default host name if not provided
     const finalHostName = hostName || 'Host';
     
-    try {
-        const game = new Game(finalHostName);
-        activeGames.set(game.gameCode, game);
-        
-        console.log(`🎮 Created new game: ${game.gameCode} by ${finalHostName}`);
-        
-        res.json({
-            status: 'success',
-            gameCode: game.gameCode,
-            hostName: finalHostName,
-            message: `Game created with code: ${game.gameCode}`
-        });
-    } catch (error) {
-        console.error('Error creating game:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to create game'
-        });
-    }
+    // Generate unique 4-digit game code
+    let gameCode;
+    do {
+        gameCode = Math.floor(1000 + Math.random() * 9000).toString();
+    } while (activeGames.has(gameCode));
+    
+    // Create new game
+    const game = new Game(finalHostName, gameCode);
+    activeGames.set(gameCode, game);
+    
+    console.log(`🎮 New game created: ${gameCode} by ${finalHostName}`);
+    
+    res.json({ 
+        status: 'success', 
+        gameCode: gameCode,
+        gameState: game.getGameState()
+    });
 });
 
 app.post('/api/join-game', (req, res) => {
@@ -1905,7 +2087,35 @@ io.on('connection', (socket) => {
         
         // Store categorized answers if provided
         if (categorizedAnswers) {
+            // Sort correctAnswerBuckets alphabetically before storing
+            if (categorizedAnswers.correctAnswerBuckets) {
+                categorizedAnswers.correctAnswerBuckets.sort((a, b) => {
+                    const nameA = a.name || a.id || '';
+                    const nameB = b.name || b.id || '';
+                    return nameA.localeCompare(nameB);
+                });
+            }
+            
             game.categorizationData = categorizedAnswers;
+            
+            // Update currentAnswerGroups with categorization information
+            console.log(`📊 Updating currentAnswerGroups with categorization data`);
+            console.log(`📊 Before update - currentAnswerGroups length:`, game.currentAnswerGroups?.length || 0);
+            console.log(`🔍 ABOUT TO CALL updateAnswerGroupsWithCategorization`);
+            game.updateAnswerGroupsWithCategorization(categorizedAnswers);
+            console.log(`🔍 FINISHED CALLING updateAnswerGroupsWithCategorization`);
+            console.log(`📊 After update - currentAnswerGroups length:`, game.currentAnswerGroups?.length || 0);
+            
+            // Debug: Show what categories were set
+            if (game.currentAnswerGroups) {
+                console.log(`📊 Updated answer groups with categories:`);
+                game.currentAnswerGroups.forEach((group, index) => {
+                    console.log(`  ${index + 1}. "${group.answer}" - Category: "${group.category}"`);
+                });
+            }
+            
+            // Reset current question points before recalculating
+            game.pointsForCurrentQuestion.clear();
             
             // Recalculate scores based on the categorization data
             console.log(`📊 Recalculating scores based on categorization data`);
@@ -1917,7 +2127,18 @@ io.on('connection', (socket) => {
         
         // Move to scoring phase to show results
         game.gameState = 'scoring';
-        io.to(gameCode).emit('gradingComplete', game.getGameState());
+        
+        // Debug: Log what we're sending to clients
+        const gameStateToSend = game.getGameState();
+        console.log(`🔍 Sending currentAnswerGroups to clients:`, JSON.stringify(gameStateToSend.currentAnswerGroups, null, 2));
+        
+        // Debug: Check if categories are present in the sent data
+        console.log(`🔍 Checking categories in sent data:`);
+        gameStateToSend.currentAnswerGroups.forEach((group, index) => {
+            console.log(`  ${index + 1}. "${group.answer}" - Category: "${group.category || 'MISSING'}"`);
+        });
+        
+        io.to(gameCode).emit('gradingComplete', gameStateToSend);
         
         console.log(`📝 Host completed grading for game ${gameCode}`);
     });
@@ -1942,7 +2163,7 @@ io.on('connection', (socket) => {
         const game = activeGames.get(gameCode);
         if (!game) return;
         
-        if (game.gameState !== 'scoring') {
+        if (game.gameState !== 'scoring' && game.gameState !== 'roundComplete') {
             socket.emit('gameError', { message: 'Must complete grading before proceeding' });
             return;
         }
@@ -1970,13 +2191,48 @@ io.on('connection', (socket) => {
         const game = activeGames.get(gameCode);
         if (!game) return;
         
-        if (game.gameState !== 'roundComplete') {
-            socket.emit('gameError', { message: 'Game is not in round complete state' });
+        if (game.gameState !== 'roundComplete' && game.gameState !== 'overallLeaderboard') {
+            socket.emit('gameError', { message: 'Game is not in round complete or overall leaderboard state' });
             return;
         }
         
         console.log(`🎯 Host continuing to next round for game ${gameCode}`);
         game.continueToNextRound();
+    });
+
+    // Show overall leaderboard (from round complete screen after round 2+)
+    socket.on('showOverallLeaderboard', (data) => {
+        if (!data) {
+            console.log('⚠️ showOverallLeaderboard event received with no data');
+            return;
+        }
+        
+        const { gameCode } = data;
+        
+        if (!gameCode) {
+            console.log('⚠️ showOverallLeaderboard event received with no gameCode');
+            return;
+        }
+        
+        const playerInfo = connectedPlayers.get(socket.id);
+        if (!playerInfo || !playerInfo.isHost) return;
+        
+        const game = activeGames.get(gameCode);
+        if (!game) return;
+        
+        if (game.gameState !== 'roundComplete') {
+            socket.emit('gameError', { message: 'Game is not in round complete state' });
+            return;
+        }
+        
+        console.log(`📊 Host showing overall leaderboard for game ${gameCode}`);
+        game.gameState = 'overallLeaderboard'; // Set new state instead of 'finished'
+        
+        // Emit to display
+        io.to(gameCode).emit('showOverallLeaderboard', game.getGameState());
+        
+        // Emit to host to update button state
+        socket.emit('gameStateUpdate', { gameState: game.getGameState() });
     });
 
     // End question (host can end current question early)
@@ -2027,6 +2283,9 @@ io.on('connection', (socket) => {
 
     // End game
     socket.on('endGame', (data) => {
+        console.log('🎮 endGame event received from socket:', socket.id);
+        console.log('🎮 endGame data:', data);
+        
         if (!data) {
             console.log('⚠️ endGame event received with no data');
             return;
@@ -2040,20 +2299,33 @@ io.on('connection', (socket) => {
         }
         
         const playerInfo = connectedPlayers.get(socket.id);
-        if (!playerInfo || !playerInfo.isHost) return;
+        if (!playerInfo || !playerInfo.isHost) {
+            console.log('⚠️ endGame event received from non-host player');
+            return;
+        }
         
         const game = activeGames.get(gameCode);
-        if (!game) return;
+        if (!game) {
+            console.log('⚠️ endGame event received for non-existent game:', gameCode);
+            return;
+        }
+        
+        console.log(`🎮 Ending game ${gameCode} - emitting gameFinished event`);
+        
+        // Set game state to finished before getting the state
+        game.gameState = 'finished';
+        
+        // Get game state after setting to finished
+        const gameState = game.getGameState();
+        console.log(`🎮 Game state before cleanup:`, gameState.gameState);
         
         game.cleanup();
         activeGames.delete(gameCode);
         
-        io.to(gameCode).emit('gameEnded', { 
-            gameCode: gameCode,
-            message: 'Game has been ended by the host.'
-        });
+        // Emit to all clients in the game room
+        io.to(gameCode).emit('gameFinished', gameState);
         
-        console.log(`🎮 Game ${gameCode} ended by host`);
+        console.log(`🎮 Game ${gameCode} ended by host - gameFinished event emitted`);
     });
 
     // Join display room for specific game
@@ -2328,44 +2600,54 @@ app.post('/api/create-game', (req, res) => {
     // Use default host name if not provided
     const finalHostName = hostName || 'Host';
     
-    // Generate unique 4-digit game code
-    let gameCode;
-    do {
-        gameCode = Math.floor(1000 + Math.random() * 9000).toString();
-    } while (activeGames.has(gameCode));
-    
-    // Create new game
-    const game = new Game(finalHostName, gameCode);
-    activeGames.set(gameCode, game);
-    
-    console.log(`🎮 New game created: ${gameCode} by ${finalHostName}`);
-    
-    res.json({ 
-        status: 'success', 
-        gameCode: gameCode,
-        gameState: game.getGameState()
-    });
+    try {
+        const game = new Game(finalHostName);
+        activeGames.set(game.gameCode, game);
+        
+        console.log(`🎮 Created new game: ${game.gameCode} by ${finalHostName}`);
+        
+        res.json({
+            status: 'success',
+            gameCode: game.gameCode,
+            hostName: finalHostName,
+            message: `Game created with code: ${game.gameCode}`
+        });
+    } catch (error) {
+        console.error('Error creating game:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to create game'
+        });
+    }
 });
 
 app.post('/api/join-game', (req, res) => {
     const { gameCode, playerName } = req.body;
     
-    if (!gameCode || !playerName) {
-        return res.json({ status: 'error', message: 'Game code and player name are required' });
+    if (!gameCode || !playerName || playerName.trim() === '') {
+        return res.status(400).json({ 
+            status: 'error', 
+            message: 'Game code and player name are required' 
+        });
     }
     
     const game = activeGames.get(gameCode);
     if (!game) {
-        return res.json({ status: 'error', message: 'Game not found' });
+        return res.status(404).json({ 
+            status: 'error', 
+            message: 'Game not found. Please check the game code.' 
+        });
     }
     
     if (game.status !== 'waiting') {
-        return res.json({ status: 'error', message: 'Game has already started' });
+        return res.status(400).json({ 
+            status: 'error', 
+            message: 'Game has already started' });
     }
     
     // Check if game is full
     if (game.settings.maxPlayers > 0 && game.players.size >= game.settings.maxPlayers) {
-        return res.json({ status: 'error', message: 'Game is full' });
+        return res.status(400).json({ status: 'error', message: 'Game is full' });
     }
     
     // Check for duplicate names (only among connected players)
@@ -2374,7 +2656,7 @@ app.post('/api/join-game', (req, res) => {
         // Check if this player is still connected
         const existingPlayerInfo = connectedPlayers.get(existingPlayer.id);
         if (existingPlayerInfo && existingPlayerInfo.playerName === playerName) {
-            return res.json({ status: 'error', message: 'Player name already taken' });
+            return res.status(400).json({ status: 'error', message: 'Player name already taken' });
         }
     }
     
@@ -2390,7 +2672,7 @@ app.get('/api/game/:gameCode', (req, res) => {
     
     const game = activeGames.get(gameCode);
     if (!game) {
-        return res.json({ status: 'error', message: 'Game not found' });
+        return res.status(404).json({ status: 'error', message: 'Game not found' });
     }
     
     res.json({ 

@@ -6,6 +6,19 @@
     <title>MEGASheep - Game</title>
     <link rel="stylesheet" href="styles.css?v=1.0.1">
     <script src="/socket.io/socket.io.js"></script>
+    <style>
+        /* Player interface enhancements */
+        .connection-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .dot.ok { background: #2ecc71; box-shadow: 0 0 6px rgba(46, 204, 113, 0.6); }
+        .dot.warn { background: #f1c40f; box-shadow: 0 0 6px rgba(241, 196, 15, 0.6); }
+        .dot.err { background: #e74c3c; box-shadow: 0 0 6px rgba(231, 76, 60, 0.6); }
+        .connection-toast { position: fixed; top: 12px; right: 12px; background: rgba(0,0,0,0.8); color: #fff; border: 1px solid rgba(255,255,255,0.15); padding: 10px 12px; border-radius: 8px; z-index: 9999; display: none; }
+        .answer-progress { height: 8px; background: rgba(0,0,0,0.08); border-radius: 999px; overflow: hidden; margin-top: 8px; }
+        .answer-progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #28a745, #20c997); transition: width 0.3s ease; }
+        .btn-inline { background: transparent; border: 1px solid rgba(255,255,255,0.25); padding: 4px 8px; border-radius: 6px; color: inherit; cursor: pointer; font-size: 12px; }
+        .btn-inline:hover { background: rgba(255,255,255,0.08); }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -30,6 +43,10 @@
             <div class="status-item">
                 <span class="label">Score:</span>
                 <span id="scoreDisplay">0</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Connection:</span>
+                <span class="connection-pill"><span id="connectionDot" class="dot warn"></span><span id="connectionText">Connecting…</span></span>
             </div>
         </div>
 
@@ -79,9 +96,13 @@
                     <div class="my-answer-status" id="myAnswerStatus">Submitted ✓</div>
                 </div>
                 
-                <div class="answer-status" id="answerStatus"></div>
+                <div class="answer-status" id="answerStatus" role="status" aria-live="polite"></div>
+                <div id="answerRetryContainer" style="display:none; margin-top:6px;">
+                    <button type="button" id="retrySubmitBtn" class="btn-inline">Retry submission</button>
+                </div>
                 <div class="players-answered">
                     <span id="answeredCount">0</span> of <span id="totalPlayersCount">0</span> players answered
+                    <div class="answer-progress"><div id="answerProgressBar" class="answer-progress-bar"></div></div>
                 </div>
             </div>
         </div>
@@ -141,12 +162,14 @@
     <script>
         console.log('🎯 GAME.HTML EMBEDDED JAVASCRIPT LOADED!');
         console.log('🎯 This should appear if game.html JavaScript is being used');
-        alert('🎯 GAME.HTML EMBEDDED JAVASCRIPT LOADED!');
         
         let socket;
         let gameCode;
         let playerName;
         let gameState = null;
+        let reconnectionTimeoutId = null;
+        let awaitingAnswerAck = false;
+        let answerAckTimerId = null;
         
         // Check session data on load
         window.addEventListener('load', function() {
@@ -170,7 +193,6 @@
         });
         
         function initializeSocket() {
-            alert('DEBUG: New game.html code loaded!'); // Temporary debug alert
             console.log('Player: Initializing socket connection...');
             console.log('Player: Socket.IO version check - io object:', typeof io);
             console.log('Player: Socket.IO version check - io function:', io);
@@ -185,17 +207,44 @@
             
             socket.on('disconnect', () => {
                 console.log('Player: Disconnected from server');
-                showError('Lost connection to game server.');
+                updateConnectionUI('disconnected');
+                showConnectionToast('Lost connection. Reconnecting…');
+                clearTimeout(reconnectionTimeoutId);
+                reconnectionTimeoutId = setTimeout(() => {
+                    showError('Unable to reconnect to game server.');
+                }, 15000);
             });
             
             socket.on('connect_error', (error) => {
                 console.error('Player: Connection error:', error);
-                showError('Failed to connect to game server.');
+                updateConnectionUI('connecting');
+                showConnectionToast('Connection issue. Retrying…');
             });
             
             socket.on('error', (error) => {
                 console.error('Player: Socket error:', error);
             });
+
+            // Reconnection lifecycle feedback
+            if (socket.io) {
+                socket.io.on('reconnect_attempt', (attempt) => {
+                    updateConnectionUI('connecting');
+                    showConnectionToast(`Reconnecting (attempt ${attempt})…`);
+                });
+                socket.io.on('reconnect', () => {
+                    clearTimeout(reconnectionTimeoutId);
+                    updateConnectionUI('connected');
+                    showConnectionToast('Reconnected!', 2500);
+                });
+                socket.io.on('reconnect_error', () => {
+                    updateConnectionUI('connecting');
+                    showConnectionToast('Reconnection failed. Trying again…');
+                });
+                socket.io.on('reconnect_failed', () => {
+                    updateConnectionUI('disconnected');
+                    showConnectionToast('Could not reconnect.');
+                });
+            }
             
             // Game events
             socket.on('gameJoined', (data) => {
@@ -338,6 +387,9 @@
                 document.getElementById('answerStatus').className = 'answer-status success';
                 document.getElementById('submitBtn').disabled = true;
                 document.getElementById('answerInput').disabled = true;
+                awaitingAnswerAck = false;
+                clearTimeout(answerAckTimerId);
+                document.getElementById('answerRetryContainer').style.display = 'none';
             });
             
             socket.on('gameError', (data) => {
@@ -360,6 +412,8 @@
                 console.log('Player: Connected to server with socket ID:', socket.id);
                 console.log('Player: Socket connected state after connect:', socket.connected);
                 console.log('Player: Joining game with code:', gameCode, 'and name:', playerName);
+                updateConnectionUI('connected');
+                hideConnectionToast();
                 
                 // Test the connection with a ping
                 console.log('Player: Sending ping to server...');
@@ -422,8 +476,14 @@
             
             const question = gameState.questions[gameState.currentQuestion];
             document.getElementById('questionText').textContent = question.prompt;
-            document.getElementById('currentQuestionNum').textContent = (gameState.currentQuestion || 0) + 1;
-            document.getElementById('totalQuestions').textContent = gameState.questions.length;
+            
+            // Calculate round and question within round
+            const questionNumber = gameState.currentQuestion + 1;
+            const roundNumber = Math.ceil(questionNumber / gameState.questionsPerRound);
+            const questionInRound = ((questionNumber - 1) % gameState.questionsPerRound) + 1;
+            
+            document.getElementById('currentQuestionNum').textContent = questionInRound;
+            document.getElementById('totalQuestions').textContent = gameState.questionsPerRound;
             
             // Reset form
             document.getElementById('answerInput').value = '';
@@ -449,6 +509,9 @@
             // Add visual urgency
             if (timeLeft <= 10) {
                 timerElement.classList.add('urgent');
+                if (timeLeft === 10 && navigator.vibrate) {
+                    navigator.vibrate(150);
+                }
             } else {
                 timerElement.classList.remove('urgent');
             }
@@ -457,6 +520,9 @@
         function updateAnswerCount(answered, total) {
             document.getElementById('answeredCount').textContent = answered;
             document.getElementById('totalPlayersCount').textContent = total;
+            const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((answered / total) * 100))) : 0;
+            const bar = document.getElementById('answerProgressBar');
+            if (bar) bar.style.width = pct + '%';
         }
         
         function showGradingWait(gameState) {
@@ -464,9 +530,10 @@
             const resultsContent = document.querySelector('#resultsScreen .results-content');
             
             // Get the player's submitted answer if available
-            const submittedAnswer = window.lastSubmittedAnswer || 'Your answer';
+            const submittedAnswer = window.lastSubmittedAnswer || 'No answer submitted';
             console.log('🔍 Debug: submittedAnswer =', submittedAnswer);
             console.log('🔍 Debug: window.lastSubmittedAnswer =', window.lastSubmittedAnswer);
+            console.log('🔍 Debug: All window properties containing "answer":', Object.keys(window).filter(key => key.toLowerCase().includes('answer')));
             
             resultsContent.innerHTML = `
                 <h2>⏳ Waiting for Host Grading</h2>
@@ -491,9 +558,7 @@
                 <!-- Centered Waiting Message -->
                 <div class="waiting-message" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: 20px auto; max-width: 600px; background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 10px; padding: 20px; min-height: 200px;">
                     <div class="loading-spinner"></div>
-                    <p>Host is reviewing and</p>
-                    <p>grading answers...</p>
-                    <p>Results will appear shortly!</p>
+                    <p style="text-align: center; margin: 5px 0;">Host is reviewing and<br>grading answers...<br>Results will appear shortly!</p>
                 </div>
                 
                 <div class="score-update">
@@ -562,6 +627,35 @@
             document.getElementById('errorMessage').textContent = message;
             showScreen('errorScreen');
         }
+
+        function updateConnectionUI(state) {
+            const dot = document.getElementById('connectionDot');
+            const text = document.getElementById('connectionText');
+            if (!dot || !text) return;
+            if (state === 'connected') { dot.className = 'dot ok'; text.textContent = 'Connected'; }
+            else if (state === 'connecting') { dot.className = 'dot warn'; text.textContent = 'Reconnecting…'; }
+            else { dot.className = 'dot err'; text.textContent = 'Offline'; }
+        }
+
+        function showConnectionToast(message, autoHideMs) {
+            let toast = document.getElementById('connectionToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'connectionToast';
+                toast.className = 'connection-toast';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = message;
+            toast.style.display = 'block';
+            if (autoHideMs) {
+                setTimeout(() => hideConnectionToast(), autoHideMs);
+            }
+        }
+
+        function hideConnectionToast() {
+            const toast = document.getElementById('connectionToast');
+            if (toast) toast.style.display = 'none';
+        }
         
         function showCurrentScores() {
             // This function can be expanded later to show current scores
@@ -599,6 +693,42 @@
             // Store the answer for later display
             window.lastSubmittedAnswer = answer;
             console.log('💾 Stored answer in window.lastSubmittedAnswer:', answer);
+
+            // Persist to session (same-session refresh resilience)
+            try {
+                const qIndex = (gameState && typeof gameState.currentQuestion === 'number') ? gameState.currentQuestion : null;
+                if (qIndex !== null && gameCode) {
+                    sessionStorage.setItem(`lastAnswer-${gameCode}-${qIndex}`, answer);
+                }
+            } catch (_) {}
+
+            // If no ack arrives soon, allow retry
+            awaitingAnswerAck = true;
+            clearTimeout(answerAckTimerId);
+            answerAckTimerId = setTimeout(() => {
+                if (awaitingAnswerAck) {
+                    document.getElementById('answerStatus').innerHTML = '⚠️ Still sending… network is slow. You can retry.';
+                    document.getElementById('answerStatus').className = 'answer-status pending';
+                    document.getElementById('answerRetryContainer').style.display = 'block';
+                }
+            }, 2500);
+        });
+
+        // Retry submission
+        document.getElementById('retrySubmitBtn').addEventListener('click', function() {
+            if (!window.lastSubmittedAnswer) return;
+            console.log('🔁 Retrying answer submission');
+            document.getElementById('answerStatus').innerHTML = '⏳ Resubmitting…';
+            document.getElementById('answerRetryContainer').style.display = 'none';
+            awaitingAnswerAck = true;
+            clearTimeout(answerAckTimerId);
+            socket.emit('submitAnswer', { gameCode, answer: window.lastSubmittedAnswer });
+            answerAckTimerId = setTimeout(() => {
+                if (awaitingAnswerAck) {
+                    document.getElementById('answerStatus').innerHTML = '⚠️ Still sending… will keep trying.';
+                    document.getElementById('answerRetryContainer').style.display = 'block';
+                }
+            }, 2500);
         });
         
         // Enter key focuses on answer input
@@ -704,6 +834,16 @@
             initializeSheepCarousel().catch(error => {
                 console.error('Carousel initialization failed:', error);
                 // Continue with game initialization even if carousel fails
+            });
+            // Guard against losing unsent answer
+            window.addEventListener('beforeunload', (e) => {
+                const onQuestion = document.getElementById('questionScreen').classList.contains('active');
+                const input = document.getElementById('answerInput');
+                const submitted = input.disabled;
+                if (onQuestion && !submitted && input.value.trim().length > 0) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
             });
         });
 

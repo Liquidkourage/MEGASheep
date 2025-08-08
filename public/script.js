@@ -551,6 +551,11 @@ function submitAnswer() {
         return;
     }
     
+    // Store the submitted answer for later display
+    window.lastSubmittedAnswer = answer;
+    localStorage.setItem('lastSubmittedAnswer', answer);
+    console.log('💾 Stored submitted answer:', answer);
+    
     socket.emit('submitAnswer', { gameCode: gameState.gameCode, answer });
     answerInput.value = '';
     
@@ -1899,8 +1904,15 @@ function displayCurrentQuestion() {
     console.log('🔍 Debug: Question prompt:', question?.prompt);
     
     document.getElementById('questionText').textContent = question.prompt;
-    document.getElementById('questionNumber').textContent = currentQuestionIndex + 1;
-    document.getElementById('totalQuestions').textContent = questions.length;
+    
+    // Calculate round and question within round
+    const questionNumber = currentQuestionIndex + 1;
+    const roundNumber = Math.ceil(questionNumber / (gameState.questionsPerRound || 5));
+    const questionInRound = ((questionNumber - 1) % (gameState.questionsPerRound || 5)) + 1;
+    
+    document.getElementById('roundNumber').textContent = roundNumber;
+    document.getElementById('questionNumber').textContent = questionInRound;
+    document.getElementById('totalQuestions').textContent = gameState.questionsPerRound || 5;
     
 
     
@@ -2397,6 +2409,9 @@ function createCorrectAnswerBuckets() {
         answerCategorization.correctAnswerBuckets.push(bucket);
     });
     
+    // Sort buckets alphabetically by name
+    answerCategorization.correctAnswerBuckets.sort((a, b) => a.name.localeCompare(b.name));
+    
     // Render the correct answer buckets
     renderCorrectAnswerBuckets();
 }
@@ -2410,7 +2425,9 @@ function renderCorrectAnswerBuckets() {
     
     container.innerHTML = '';
     
-    answerCategorization.correctAnswerBuckets.forEach(bucket => {
+    // Sort buckets alphabetically before rendering
+    const sortedBuckets = [...answerCategorization.correctAnswerBuckets].sort((a, b) => a.name.localeCompare(b.name));
+    sortedBuckets.forEach(bucket => {
         const bucketElement = document.createElement('div');
         bucketElement.className = 'answer-bucket correct-answer-bucket';
         bucketElement.dataset.bucket = bucket.id;
@@ -2996,11 +3013,26 @@ function showWaitingForGrading() {
     // Hide answer results until grading is complete
     const answersList = document.getElementById('answersList');
     if (answersList) {
+        // Get the submitted answer from window storage
+        const submittedAnswer = window.lastSubmittedAnswer || localStorage.getItem('lastSubmittedAnswer') || 'No answer submitted';
+        console.log('🎯 Retrieved submitted answer:', submittedAnswer);
+        
+        // Override grid layout for centering
+        answersList.style.display = 'flex';
+        answersList.style.flexDirection = 'column';
+        answersList.style.alignItems = 'center';
+        answersList.style.justifyContent = 'center';
+        answersList.style.minHeight = '400px';
+        
         answersList.innerHTML = `
-            <div class="waiting-message">
+            <!-- My Submitted Answer -->
+            <div style="background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center; width: 100%; max-width: 500px;">
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 5px; color: #ffffff; font-size: 18px; font-weight: bold;">${submittedAnswer}</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%; max-width: 500px; background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 10px; padding: 30px;">
                 <div class="loading-spinner"></div>
-                <p>Host is reviewing and grading answers...</p>
-                <p>Results will appear shortly!</p>
+                <p style="text-align: center; margin: 15px 0; color: #ffffff; font-size: 16px; line-height: 1.4;">Host is reviewing and<br>grading answers...<br>Results will appear shortly!</p>
             </div>
         `;
     }
@@ -3322,6 +3354,9 @@ function showSimpleGradingInterface(questionIndex, testAnswers) {
             window.gradingCategorization.correctAnswerBuckets.push(bucket);
         });
         
+        // Sort buckets alphabetically by name
+        window.gradingCategorization.correctAnswerBuckets.sort((a, b) => a.name.localeCompare(b.name));
+        
         // Handle real player data vs test data
         if (testAnswers.length === 0) {
             // Show message that real player data is required
@@ -3383,7 +3418,9 @@ function renderGradingCategorizationInterface() {
                 <div class="correct-answer-buckets-section">
                     <h4>✅ Correct Answer Buckets</h4>
                     <div id="gradingCorrectAnswerBuckets" class="correct-answer-buckets">
-                        ${categorization.correctAnswerBuckets.map(bucket => `
+                        ${categorization.correctAnswerBuckets
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map(bucket => `
                             <div class="answer-bucket correct-answer-bucket collapsed" data-bucket="${bucket.id}">
                                 <h5 class="bucket-header" onclick="toggleBucketCollapse(this.parentElement)">
                                     <span class="bucket-toggle">▼</span>

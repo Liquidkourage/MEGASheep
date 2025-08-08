@@ -654,7 +654,6 @@ body {
 .answer-text {
     font-weight: 500;
     color: #ffffff;
-    font-size: 14px; /* Reduced from default size */
 }
 
 .answer-count {
@@ -2210,9 +2209,7 @@ body {
     font-weight: 700;
     color: #ffffff;
     flex: 1;
-    margin-left: 60px;
-    margin-right: 60px;
-    text-align: center;
+    margin-left: 10px;
 }
 
 .answers-grid .answer-card .answer-count,
@@ -2220,14 +2217,13 @@ body {
     color: #ffffff;
     font-weight: 700;
     font-size: 0.9rem;
-    text-align: center;
+    margin-right: 10px;
 }
 
 .answers-results-grid .answer-card .answer-points {
     color: #ffffff;
     font-weight: 700;
     font-size: 0.9rem;
-    text-align: center;
 }
 
 /* Enhanced score cards for large groups */
@@ -2253,64 +2249,18 @@ body {
     box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
 }
 
-/* Host interface player names - specific selectors to avoid affecting public display */
-.host-interface .scores-list .score-card .player-name,
-.host-interface .final-scores-list .final-score-card .player-name,
-.grading-interface .scores-list .score-card .player-name,
-.grading-interface .final-scores-list .final-score-card .player-name,
-#hostScreen .scores-list .score-entry .score-name,
-#gradingScreen .scores-list .score-entry .score-name {
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9) !important;
-    font-size: 16px !important;
+.scores-list .score-card .player-name,
+.final-scores-list .final-score-card .player-name {
+    font-weight: 700;
+    color: #ffffff;
     flex: 1;
-    margin-left: 60px !important; /* Increased from 20px to ensure clearance from rank badge */
-}
-
-/* Public display current scores - ensure proper visibility */
-#displayCurrentScores .score-card .player-name {
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9) !important;
-    font-size: 16px !important;
-    flex: 1;
-    margin-left: 20px !important; /* Normal spacing for public display */
-}
-
-/* Public display scores - fix for .score-name class */
-.display-mode .score-entry .score-name,
-.display-mode .scores-list .score-name {
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9) !important;
-    font-size: 28px !important; /* Increased from 16px to make better use of space */
-    flex: 1;
-    margin-left: 60px !important; /* Adequate spacing to clear rank badge */
-    text-align: left !important;
-}
-
-#displayCurrentScores .score-card .score-rank {
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9) !important;
-    font-size: 20px !important; /* Increased to maintain visual hierarchy */
-    margin-right: 15px;
-    min-width: 40px; /* Increased to accommodate larger text */
-}
-
-#displayCurrentScores .score-card .player-score {
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9) !important;
-    font-size: 24px !important; /* Increased to balance with larger player name */
+    margin-left: 20px;
 }
 
 .scores-list .score-card .player-score,
 .final-scores-list .final-score-card .player-score {
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.8) !important;
+    color: #ffffff;
+    font-weight: 700;
     font-size: 0.9rem;
 }
 
@@ -2750,8 +2700,7 @@ body {
     position: relative !important;
     box-shadow: 0 0 12px rgba(74, 222, 128, 0.4) !important;
     background: #4ade80 !important; /* Solid green background, no gradient */
-    min-width: 120px !important; /* Increased from 80px to accommodate multi-word answers */
-    max-width: none !important; /* Remove fixed max-width to allow growth */
+    max-width: calc(20% - 2px) !important;
 }
 
 /* Incorrect cards inherit EVERYTHING from correct, only change background */
@@ -2767,8 +2716,7 @@ body {
     position: relative !important;
     box-shadow: 0 0 12px rgba(248, 113, 113, 0.4) !important;
     background: #f87171 !important; /* Solid red background, no gradient */
-    min-width: 80px !important; /* Minimum width for readability */
-    max-width: none !important; /* Remove fixed max-width to allow growth */
+    max-width: calc(20% - 2px) !important;
 }
 
 /* Force identical text styling for round leaderboard cards */
@@ -2776,19 +2724,19 @@ body {
     font-weight: 500 !important;
     margin: 0 !important;
     padding: 0 !important;
-    line-height: 1.2 !important; /* Slightly increased for multi-line text */
+    line-height: 1 !important; /* Tighter line height to fit larger font */
     color: #ffffff !important;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
     text-align: center !important;
     width: 100% !important;
     display: block !important;
-    min-height: 1.2em !important; /* Allow for multi-line text */
+    height: 1em !important; /* Reduced height to match tighter line height */
     vertical-align: baseline !important;
     position: relative !important;
     top: 0 !important;
-    word-wrap: break-word !important; /* Allow text to wrap */
-    overflow-wrap: break-word !important; /* Modern word wrapping */
-    white-space: normal !important; /* Allow text to wrap to multiple lines */
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
 }
 
 .round-leaderboard-container .answer-card .answer-points {
@@ -3809,7 +3757,7 @@ body {
 }
 
 .question-prompt {
-    font-size: 4.2rem;
+    font-size: 5.6rem;
     line-height: 1.3;
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     color: #ffffff;
@@ -3873,7 +3821,7 @@ body {
 
 .response-text {
     text-align: center;
-    font-size: 1.2rem;
+    font-size: 3.3rem;
     color: #ffffff;
     font-weight: 400;
     text-shadow: 0 3px 6px rgba(0,0,0,0.6);
@@ -4238,15 +4186,11 @@ body {
 }
 
 .answer-rank {
-    font-size: 1.1rem;
+    font-size: 1.5rem;
     font-weight: bold;
     color: #000000;
     text-shadow: none;
-    min-width: 35px;
-    padding: 2px 4px;
-    background-color: #ff0000 !important;
-    border: 2px solid #00ff00 !important;
-    border-radius: 5px !important;
+    min-width: 40px;
 }
 
 .answer-text {
@@ -4262,7 +4206,7 @@ body {
 .answer-stats {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-end;
     gap: 5px;
 }
 
@@ -4393,14 +4337,9 @@ body {
 }
 
 .answer-rank {
-    font-size: 1.1rem;
     font-weight: bold;
-    margin-right: 12px;
-    min-width: 35px;
-    padding: 2px 4px;
-    background-color: #ff0000 !important;
-    border: 2px solid #00ff00 !important;
-    border-radius: 5px !important;
+    margin-right: 15px;
+    min-width: 30px;
 }
 
 .answer-text {
@@ -4436,47 +4375,16 @@ body {
     border: 1px solid rgba(0, 123, 255, 0.3);
 }
 
-/* Host/grading interface specific rank styling */
-.host-interface .score-entry.rank-1 .score-name,
-.grading-interface .score-entry.rank-1 .score-name,
-#hostScreen .score-entry.rank-1 .score-name,
-#gradingScreen .score-entry.rank-1 .score-name {
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9) !important;
-    margin-left: 60px !important;
-}
-
 .score-entry.rank-2 {
     background: rgba(0, 123, 255, 0.12);
     color: #ffffff;
     border: 1px solid rgba(0, 123, 255, 0.25);
 }
 
-.host-interface .score-entry.rank-2 .score-name,
-.grading-interface .score-entry.rank-2 .score-name,
-#hostScreen .score-entry.rank-2 .score-name,
-#gradingScreen .score-entry.rank-2 .score-name {
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9) !important;
-    margin-left: 60px !important;
-}
-
 .score-entry.rank-3 {
     background: rgba(0, 123, 255, 0.1);
     color: #ffffff;
     border: 1px solid rgba(0, 123, 255, 0.2);
-}
-
-.host-interface .score-entry.rank-3 .score-name,
-.grading-interface .score-entry.rank-3 .score-name,
-#hostScreen .score-entry.rank-3 .score-name,
-#gradingScreen .score-entry.rank-3 .score-name {
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9) !important;
-    margin-left: 60px !important;
 }
 
 .score-rank {
@@ -5974,7 +5882,7 @@ body {
 .top-answers-grid,
 .incorrect-answers-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(calc(380px * var(--scale-factor)), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
     max-height: 500px;
     overflow-y: auto;
@@ -6464,215 +6372,4 @@ body {
     animation: spin 1s linear infinite;
     margin: 20px auto;
     display: block;
-}
-
-/* ===== NEW QUESTION RESULTS LAYOUT ===== */
-.scoring-content {
-    display: flex;
-    flex-direction: column;
-    gap: 30px;
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-.answers-section,
-.correct-not-given-section,
-.wrong-answers-section {
-    background: rgba(0, 123, 255, 0.1);
-    border: 1px solid rgba(0, 123, 255, 0.3);
-    border-radius: 15px;
-    padding: 25px;
-    margin-bottom: 20px;
-}
-
-.answers-section h3,
-.correct-not-given-section h3,
-.wrong-answers-section h3 {
-    font-size: 1.8rem;
-    margin-bottom: 20px;
-    text-align: center;
-    color: #ffffff;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
-}
-
-/* Correct Answers Not Given Section */
-.correct-answers-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 15px;
-    margin: 20px 0;
-    justify-items: center;
-    align-items: center;
-}
-
-.correct-answer-badge {
-    background: rgba(44, 62, 80, 0.9) !important;
-    border: 2px solid rgba(52, 73, 94, 0.8) !important;
-    border-radius: 10px;
-    padding: 8px 15px;
-    text-align: center;
-    transition: all 0.3s ease;
-    width: fit-content;
-    max-width: 140px;
-    color: #ecf0f1;
-}
-
-.correct-answer-badge:hover {
-    background: rgba(40, 167, 69, 0.3);
-    transform: scale(1.02);
-}
-
-.correct-badge {
-    background: rgba(40, 167, 69, 0.8);
-    color: white;
-    padding: 4px 8px;
-    border-radius: 5px;
-    font-size: 0.85rem;
-    font-weight: bold;
-    margin-bottom: 8px;
-    display: inline-block;
-}
-
-.correct-answer-text {
-    color: #ffffff;
-    font-size: 1.2rem;
-    font-weight: 700;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
-    margin-top: 8px;
-}
-
-/* Wrong Answers Section */
-.wrong-answers-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 15px;
-    margin: 20px 0;
-}
-
-.wrong-answer-card {
-    background: rgba(220, 53, 69, 0.2);
-    border: 2px solid rgba(220, 53, 69, 0.5);
-    border-radius: 10px;
-    padding: 15px;
-    text-align: center;
-    transition: all 0.3s ease;
-}
-
-.wrong-answer-card:hover {
-    background: rgba(220, 53, 69, 0.3);
-    transform: scale(1.02);
-}
-
-.wrong-answer-text {
-    color: #ffffff;
-    font-size: 1.2rem;
-    font-weight: 700;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
-    margin-bottom: 8px;
-}
-
-.wrong-answer-count {
-    color: #ffffff;
-    font-size: 0.9rem;
-    opacity: 0.8;
-}
-
-/* No answers message */
-.no-answers {
-    text-align: center;
-    color: #ffffff;
-    font-size: 1.1rem;
-    opacity: 0.7;
-    font-style: italic;
-    margin: 20px 0;
-}
-
-/* Round History Display */
-.round-history-list {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    margin-top: 20px;
-}
-
-.round-history-item {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
-
-.round-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.round-header h4 {
-    margin: 0;
-    color: var(--text-primary);
-    font-size: 1.2rem;
-    font-weight: 600;
-}
-
-.round-range {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-}
-
-.round-scores {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.round-player-score {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    background: var(--bg-secondary);
-    border-radius: 8px;
-    font-size: 0.95rem;
-}
-
-.round-player-score.rank-1 {
-    background: linear-gradient(135deg, #ffd700, #ffed4e);
-    color: #333;
-}
-
-.round-player-score.rank-2 {
-    background: linear-gradient(135deg, #c0c0c0, #e5e5e5);
-    color: #333;
-}
-
-.round-player-score.rank-3 {
-    background: linear-gradient(135deg, #cd7f32, #daa520);
-    color: #333;
-}
-
-.player-name {
-    font-weight: 500;
-}
-
-.player-score {
-    font-weight: 600;
-    color: var(--accent-color);
-}
-
-/* Overall Leaderboard */
-.overall-leaderboard {
-    margin-bottom: 30px;
-}
-
-.overall-leaderboard h3 {
-    color: var(--text-primary);
-    margin-bottom: 15px;
-    font-size: 1.3rem;
-    font-weight: 600;
 }
