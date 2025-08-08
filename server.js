@@ -35,6 +35,21 @@ io.on('connection', (socket) => {
   socket.on('displayPing', (data) => {
     // no-op; presence keeps transport warm
   });
+
+  // Host can request clarification from a specific player
+  socket.on('requestClarification', (data) => {
+    try {
+      const { gameCode, targetSocketId } = data || {};
+      if (!gameCode || !targetSocketId) return;
+      const hostInfo = connectedPlayers.get(socket.id);
+      if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) return;
+      const targetInfo = connectedPlayers.get(targetSocketId);
+      if (!targetInfo || targetInfo.gameCode !== gameCode) return;
+      io.to(targetSocketId).emit('requestClarification', { gameCode });
+    } catch (e) {
+      console.error('requestClarification error:', e.message);
+    }
+  });
 });
 
 // Python semantic matcher service management
@@ -1953,6 +1968,12 @@ io.on('connection', (socket) => {
                 io.to(hostSocket[0]).emit('answerSubmitted', {
                     playerName: playerName,
                     answer: answer
+                });
+                // NEW: Also emit to host requests channel for potential clarification UI
+                io.to(hostSocket[0]).emit('playerAnswerUpdate', {
+                    playerName,
+                    answer,
+                    socketId: socket.id
                 });
             } else {
                 console.log(`❌ No host socket found for game ${gameCode}`);

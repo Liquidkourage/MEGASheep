@@ -396,6 +396,18 @@
                 console.log('Player: Game error received:', data);
                 showError(data.message);
             });
+
+            // Host requests clarification on your answer
+            socket.on('requestClarification', () => {
+                const input = document.getElementById('answerInput');
+                const btn = document.getElementById('submitBtn');
+                input.disabled = false;
+                btn.disabled = false;
+                btn.textContent = 'Submit Clarification';
+                document.getElementById('answerStatus').innerHTML = '✍️ Host requested clarification. Update and submit.';
+                document.getElementById('answerStatus').className = 'answer-status pending';
+                input.focus();
+            });
             
             socket.on('testEvent', (data) => {
                 console.log('Player: Received test event from server:', data);
@@ -515,6 +527,7 @@
             } else {
                 timerElement.classList.remove('urgent');
             }
+            // No extra behavior here now
         }
         
         function updateAnswerCount(answered, total) {
@@ -575,23 +588,54 @@
             const answerGroupsDiv = document.getElementById('answerGroups');
             answerGroupsDiv.innerHTML = '';
             
+            // Determine player's group and points for delta
+            let myDelta = 0;
+            let myGroupIndex = -1;
             if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
-                gameState.currentAnswerGroups.forEach(group => {
+                gameState.currentAnswerGroups.forEach((group, idx) => {
+                    if (Array.isArray(group.players) && group.players.includes(playerName)) {
+                        myDelta = group.points || 0;
+                        myGroupIndex = idx;
+                    }
+                });
+                // Render groups with highlight for my group
+                gameState.currentAnswerGroups.forEach((group, idx) => {
                     const groupDiv = document.createElement('div');
-                    groupDiv.className = 'answer-group';
+                    groupDiv.className = 'answer-group' + (idx === myGroupIndex ? ' my-answer-group' : '');
                     groupDiv.innerHTML = `
                         <div class="answer-text">"${group.answer}"</div>
                         <div class="answer-stats">
                             <span class="answer-count">${group.count} ${group.count === 1 ? 'person' : 'people'}</span>
                             <span class="answer-points">+${group.points} points each</span>
                         </div>
-                        <div class="answer-players">${group.players.join(', ')}</div>
+                        <div class="answer-players">${group.players.map(p => p === playerName ? p + ' (you)' : p).join(', ')}</div>
                     `;
                     answerGroupsDiv.appendChild(groupDiv);
                 });
             } else {
                 answerGroupsDiv.innerHTML = '<p>No answers submitted for this question.</p>';
             }
+
+            // Update score delta display if available
+            try {
+                const scoreEl = document.getElementById('currentScore');
+                if (scoreEl && typeof myDelta === 'number') {
+                    const parent = scoreEl.parentElement;
+                    let deltaEl = parent.querySelector('.score-delta');
+                    if (!deltaEl) {
+                        deltaEl = document.createElement('span');
+                        deltaEl.className = 'score-delta';
+                        deltaEl.style.marginLeft = '8px';
+                        parent.appendChild(deltaEl);
+                    }
+                    deltaEl.style.color = myDelta > 0 ? '#28a745' : '#ccc';
+                    deltaEl.textContent = myDelta > 0 ? `(+${myDelta})` : '';
+                }
+                const highlight = document.querySelector('.my-answer-group');
+                if (highlight) {
+                    highlight.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            } catch (_) {}
         }
         
         function showFinalResults(gameState) {

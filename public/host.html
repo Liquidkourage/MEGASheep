@@ -283,7 +283,6 @@
 
         .response-status.waiting {
             color: #6c757d;
-        }
             font-size: 16px;
             font-style: italic;
             background: rgba(0, 123, 255, 0.2);
@@ -756,6 +755,7 @@
                         <button id="multiGradingBtn" class="control-btn success">👥 MULTI-USER GRADING</button>
                         <button id="testGameBtn" class="control-btn warning">▶️ TEST GAME</button>
                         <button id="refreshQuestionsBtn" class="control-btn secondary">🔄 REFRESH QUESTIONS</button>
+                        <button id="clarifyBtn" class="control-btn warning">✍️ REQUEST CLARIFICATION</button>
                     </div>
                 </div>
             </div>
@@ -1170,6 +1170,31 @@
         document.getElementById('refreshQuestionsBtn').addEventListener('click', () => {
             // Refresh questions from server
             socket.emit('refresh-questions');
+        });
+
+        // Clarification request flow
+        const pendingClarifications = new Map(); // socketId -> true
+        document.getElementById('clarifyBtn').addEventListener('click', () => {
+            if (!currentGame || !currentGame.currentAnswerGroups) {
+                alert('No answers to clarify yet.');
+                return;
+            }
+            // Simple prompt: host enters player name to request clarification
+            const target = prompt('Enter player name to request clarification from:');
+            if (!target) return;
+            const entry = Array.from(currentGame.players || []).find(([id, p]) => p.name && p.name.toLowerCase() === target.toLowerCase());
+            if (!entry) { alert('Player not found'); return; }
+            const [socketId, player] = entry;
+            if (pendingClarifications.has(socketId)) { alert('Clarification already requested for this player.'); return; }
+            pendingClarifications.set(socketId, true);
+            socket.emit('requestClarification', { gameCode: currentGame.gameCode, targetSocketId: socketId });
+            alert(`Requested clarification from ${player.name}`);
+        });
+
+        // Display new/updated answers in real time
+        socket.on('playerAnswerUpdate', (data) => {
+            // Just refresh player list; advanced UI (mark an icon) can be added later
+            updatePlayerList();
         });
 
         // Grading modal functions
