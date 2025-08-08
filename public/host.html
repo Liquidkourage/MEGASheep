@@ -816,16 +816,6 @@
                                 <input type="number" id="questionsPerRound" value="5" min="1" max="20">
                                 <div class="setting-description">Number of questions per game round</div>
                             </div>
-                            <div class="setting-group">
-                                <label>Question Selection Mode:</label>
-                                <select id="questionSelectionMode">
-                                    <option value="auto" selected>Automatic (from source)</option>
-                                    <option value="manual">Manual: pick 25</option>
-                                </select>
-                                <div class="setting-description">Manual lets you search/pick 25 exact questions</div>
-                                <button id="openManualPickerBtn" class="control-btn small" style="margin-top:6px; display:none;">Select 25 Questions</button>
-                                <div id="manualSelectedCount" style="margin-top:4px; font-size:12px; color:#ccc; display:none;">Selected: 0 / 25</div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -838,33 +828,6 @@
                 </div>
                 <div class="scoring-content" id="scoringContent">
                     <!-- Scoring results will be populated here -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Manual Question Picker Modal -->
-    <div id="manualPickerModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>🧩 Pick 25 Questions</h2>
-                <span class="close" id="closeManualPicker">&times;</span>
-            </div>
-            <div class="modal-body" style="padding:16px; display:flex; gap:16px; height:calc(100% - 80px);">
-                <div style="flex:1; display:flex; flex-direction:column;">
-                    <div style="display:flex; gap:8px; margin-bottom:8px;">
-                        <input id="manualSearch" placeholder="Search prompts..." style="flex:1; padding:8px;">
-                        <button id="manualSearchBtn" class="control-btn small">Search</button>
-                    </div>
-                    <div id="manualList" style="flex:1; overflow:auto; border:1px solid rgba(255,255,255,0.2); border-radius:8px; padding:8px;"></div>
-                </div>
-                <div style="width:360px; display:flex; flex-direction:column;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-                        <div>Selected (<span id="manualSelectedNum">0</span>/25)</div>
-                        <button id="manualClearBtn" class="control-btn small">Clear</button>
-                    </div>
-                    <div id="manualSelected" style="flex:1; overflow:auto; border:1px solid rgba(255,255,255,0.2); border-radius:8px; padding:8px; min-height:0;"></div>
-                    <button id="manualApplyBtn" class="control-btn success" style="margin-top:8px;">Apply Selection</button>
                 </div>
             </div>
         </div>
@@ -1601,12 +1564,7 @@
 
         document.getElementById('startGameBtn').addEventListener('click', () => {
             if (gameState === 'waiting' && currentGame) {
-                const manual = (document.getElementById('questionSelectionMode')?.value === 'manual');
-                if (manual && window.manualSelectedIds && window.manualSelectedIds.length === 25) {
-                    socket.emit('startGame', { gameCode: currentGame.gameCode, selectedQuestionIds: window.manualSelectedIds });
-                } else {
-                    socket.emit('startGame', { gameCode: currentGame.gameCode });
-                }
+                socket.emit('startGame', { gameCode: currentGame.gameCode });
             } else if (gameState === 'scoring' && currentGame) {
                 socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
             } else if (gameState === 'roundComplete' && currentGame) {
@@ -1995,18 +1953,6 @@
                 }
             });
             initializeConnection();
-            // Manual selection UX wiring
-            const modeSel = document.getElementById('questionSelectionMode');
-            const openPickerBtn = document.getElementById('openManualPickerBtn');
-            const countLbl = document.getElementById('manualSelectedCount');
-            if (modeSel) {
-                modeSel.addEventListener('change', () => {
-                    const manual = modeSel.value === 'manual';
-                    if (openPickerBtn) openPickerBtn.style.display = manual ? 'inline-flex' : 'none';
-                    if (countLbl) countLbl.style.display = manual ? 'block' : 'none';
-                });
-            }
-            if (openPickerBtn) openPickerBtn.addEventListener('click', () => openManualPicker());
         });
 
         // Keyboard shortcuts for modal fullscreen
@@ -2028,99 +1974,6 @@
                 }
             }
         });
-    </script>
-    <script>
-        // Manual picker implementation (lightweight)
-        window.manualSelectedIds = [];
-
-        function openManualPicker(){
-            const modal = document.getElementById('manualPickerModal');
-            if (modal) { modal.style.display = 'block'; loadManualList(); }
-        }
-
-        function setupManualPicker() {
-            const modal = document.getElementById('manualPickerModal');
-            const closeBtn = document.getElementById('closeManualPicker');
-            const searchBtn = document.getElementById('manualSearchBtn');
-            const clearBtn = document.getElementById('manualClearBtn');
-            const applyBtn = document.getElementById('manualApplyBtn');
-            if (closeBtn) closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
-            if (searchBtn) searchBtn.addEventListener('click', () => loadManualList());
-            if (clearBtn) clearBtn.addEventListener('click', () => { window.manualSelectedIds = []; renderManualSelected(); });
-            if (applyBtn) applyBtn.addEventListener('click', () => { modal.style.display = 'none'; updateManualSelectedCount(); });
-            window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
-        }
-
-        async function loadManualList(offset=0) {
-            const q = (document.getElementById('manualSearch')?.value || '').trim();
-            const params = new URLSearchParams();
-            if (q) params.set('search', q);
-            params.set('limit', '200'); params.set('offset', String(offset));
-            const res = await fetch('/api/questions?' + params.toString());
-            const data = await res.json();
-            const list = document.getElementById('manualList');
-            if (!list) return;
-            list.innerHTML = '';
-            (data.questions || []).forEach(item => {
-                const row = document.createElement('div');
-                row.style.cssText = 'padding:8px; border-bottom:1px solid rgba(255,255,255,0.08); display:flex; gap:8px; align-items:center;';
-                const addBtn = document.createElement('button');
-                addBtn.textContent = '+';
-                addBtn.className = 'control-btn small';
-                addBtn.onclick = () => addManualItem(item.id);
-                const label = document.createElement('div');
-                label.style.flex = '1';
-                label.textContent = item.prompt;
-                row.appendChild(addBtn); row.appendChild(label); list.appendChild(row);
-            });
-        }
-
-        function addManualItem(id) {
-            if (window.manualSelectedIds.length >= 25) return;
-            if (!window.manualSelectedIds.includes(id)) {
-                window.manualSelectedIds.push(id);
-                renderManualSelected();
-            }
-        }
-
-        function removeManualItem(id) {
-            window.manualSelectedIds = window.manualSelectedIds.filter(x => x !== id);
-            renderManualSelected();
-        }
-
-        function renderManualSelected() {
-            const box = document.getElementById('manualSelected');
-            const num = document.getElementById('manualSelectedNum');
-            if (!box) return;
-            box.innerHTML = '';
-            (window.manualSelectedIds || []).forEach((id, idx) => {
-                const row = document.createElement('div');
-                row.style.cssText = 'padding:6px; border:1px solid rgba(255,255,255,0.1); border-radius:6px; margin-bottom:6px; display:flex; gap:6px; align-items:center;';
-                const idxBadge = document.createElement('span'); idxBadge.textContent = String(idx+1).padStart(2,'0'); idxBadge.style.cssText = 'min-width:24px; text-align:center; opacity:0.7;';
-                const idText = document.createElement('span'); idText.textContent = String(id); idText.style.flex = '1';
-                const up = document.createElement('button'); up.textContent = '↑'; up.className = 'control-btn small'; up.onclick = () => moveManual(idx, -1);
-                const down = document.createElement('button'); down.textContent = '↓'; down.className = 'control-btn small'; down.onclick = () => moveManual(idx, +1);
-                const rm = document.createElement('button'); rm.textContent = '✕'; rm.className = 'control-btn small'; rm.onclick = () => removeManualItem(id);
-                row.appendChild(idxBadge); row.appendChild(idText); row.appendChild(up); row.appendChild(down); row.appendChild(rm); box.appendChild(row);
-            });
-            if (num) num.textContent = String(window.manualSelectedIds.length);
-            updateManualSelectedCount();
-        }
-
-        function moveManual(idx, delta) {
-            const arr = window.manualSelectedIds;
-            const j = idx + delta;
-            if (j < 0 || j >= arr.length) return;
-            [arr[idx], arr[j]] = [arr[j], arr[idx]];
-            renderManualSelected();
-        }
-
-        function updateManualSelectedCount() {
-            const lbl = document.getElementById('manualSelectedCount');
-            if (!lbl) return;
-            const n = (window.manualSelectedIds || []).length;
-            lbl.textContent = `Selected: ${n} / 25`;
-        }
     </script>
 </body>
 </html> 

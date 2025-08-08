@@ -333,6 +333,8 @@ function setupEventListeners() {
     
     const gradingAutoCategorizeBtn = document.getElementById('gradingAutoCategorizeBtn');
     if (gradingAutoCategorizeBtn) gradingAutoCategorizeBtn.addEventListener('click', () => autoCategorizeAnswers('grading'));
+    const gradingSuggestMergesBtn = document.getElementById('gradingSuggestMergesBtn');
+    if (gradingSuggestMergesBtn) gradingSuggestMergesBtn.addEventListener('click', () => suggestMergesAI());
     
     // Scores modal
     const closeScoresModalBtn = document.getElementById('closeScoresModal');
@@ -3082,6 +3084,91 @@ function autoCategorizeAnswers() {
     renderCustomBuckets();
     
     showSuccess('Answers auto-categorized!');
+}
+
+// AI-assisted merge suggestions: non-destructive, host approves
+async function suggestMergesAI() {
+    if (!gameState || !gameState.currentAnswerGroups || gameState.currentAnswerGroups.length < 2) {
+        showInfo('Not enough answers to suggest merges.');
+        return;
+    }
+    try {
+        // Lightweight normalization + similarity scoring on client
+        const normalize = (s) => s.toLowerCase().trim().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ');
+        const answers = gameState.currentAnswerGroups.map(g => ({ text: g.answer, norm: normalize(g.answer) }));
+        const pairs = [];
+        const jw = (a, b) => {
+            // Quick Jaro-Winkler approximation for short strings
+            if (a === b) return 1;
+            const m = Math.floor(Math.max(a.length, b.length) / 2) - 1;
+            const mt = (s1, s2) => {
+                const flags = new Array(s2.length).fill(false);
+                let matches = 0;
+                let trans = 0;
+                const ms1 = [];
+                const ms2 = [];
+                for (let i = 0; i < s1.length; i++) {
+                    const start = Math.max(0, i - m);
+                    const end = Math.min(i + m + 1, s2.length);
+                    for (let j = start; j < end; j++) if (!flags[j] && s1[i] === s2[j]) { flags[j] = true; matches++; ms1.push(s1[i]); break; }
+                }
+                let k = 0;
+                for (let j = 0; j < s2.length; j++) if (flags[j]) ms2.push(s2[j]);
+                for (let i = 0; i < ms1.length; i++) if (ms1[i] !== ms2[i]) trans++;
+                return { matches, trans: trans / 2 };
+            };
+            const r = mt(a, b);
+            if (r.matches === 0) return 0;
+            const j = (r.matches / a.length + r.matches / b.length + (r.matches - r.trans) / r.matches) / 3;
+            // Winkler boost
+            let l = 0; while (l < 4 && a[l] === b[l]) l++;
+            return j + l * 0.1 * (1 - j);
+        };
+        for (let i = 0; i < answers.length; i++) {
+            for (let j = i + 1; j < answers.length; j++) {
+                const s = jw(answers[i].norm, answers[j].norm);
+                if (s >= 0.90) pairs.push({ a: answers[i].text, b: answers[j].text, score: s, level: 'high' });
+                else if (s >= 0.80) pairs.push({ a: answers[i].text, b: answers[j].text, score: s, level: 'medium' });
+            }
+        }
+        if (pairs.length === 0) { showInfo('No merge suggestions found.'); return; }
+        // Render a small suggestion tray
+        const tray = document.createElement('div');
+        tray.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:10000;background:rgba(0,0,0,0.85);color:#fff;padding:12px;border-radius:10px;max-width:420px;box-shadow:0 8px 30px rgba(0,0,0,0.4)';
+        tray.innerHTML = `<div style="font-weight:bold;margin-bottom:8px">AI Suggestions (${pairs.length})</div>` +
+            pairs.slice(0, 12).map(p => `
+            <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+                <span style="opacity:.85">“${p.a}” ↔ “${p.b}”</span>
+                <span style="margin-left:auto;font-size:12px;opacity:.7">${p.level}</span>
+                <button class="btn btn-small" data-merge="${encodeURIComponent(p.a)}|${encodeURIComponent(p.b)}">Merge</button>
+            </div>`).join('') +
+            `<div style="margin-top:8px;text-align:right"><button class="btn btn-small" id="closeSuggestTray">Close</button></div>`;
+        document.body.appendChild(tray);
+        tray.querySelector('#closeSuggestTray').onclick = () => tray.remove();
+        tray.querySelectorAll('[data-merge]').forEach(btn => {
+            btn.onclick = () => {
+                const [a,b] = decodeURIComponent(btn.dataset.merge).split('|');
+                // Move b into a’s bucket if exists, else create custom bucket named a
+                const targetBucketId = (() => {
+                    const correct = answerCategorization.correctAnswerBuckets.find(bk => bk.answers.some(x => x.answer === a));
+                    if (correct) return correct.id;
+                    const custom = (answerCategorization.customBuckets||[]).find(bk => bk.answers.some(x => x.answer === a));
+                    if (custom) return custom.id;
+                    return 'uncategorized';
+                })();
+                const group = findAnswerGroup(b);
+                if (group) moveAnswerToBucket(group, targetBucketId);
+                // Update UI: place DOM of b next to a’s container if possible
+                const container = document.querySelector(`[data-bucket="${targetBucketId}"]`);
+                const item = document.querySelector(`[data-answer="${CSS.escape(b)}"]`);
+                if (container && item) container.appendChild(item);
+            };
+        });
+        showSuccess('Suggestions ready. Review and click Merge to apply.');
+    } catch (e) {
+        console.error('suggestMergesAI failed', e);
+        showInfo('Could not generate suggestions.');
+    }
 }
 
 // Grading Modal Functions
