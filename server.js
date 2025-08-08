@@ -35,21 +35,6 @@ io.on('connection', (socket) => {
   socket.on('displayPing', (data) => {
     // no-op; presence keeps transport warm
   });
-
-  // Host can request clarification from a specific player
-  socket.on('requestClarification', (data) => {
-    try {
-      const { gameCode, targetSocketId } = data || {};
-      if (!gameCode || !targetSocketId) return;
-      const hostInfo = connectedPlayers.get(socket.id);
-      if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) return;
-      const targetInfo = connectedPlayers.get(targetSocketId);
-      if (!targetInfo || targetInfo.gameCode !== gameCode) return;
-      io.to(targetSocketId).emit('requestClarification', { gameCode });
-    } catch (e) {
-      console.error('requestClarification error:', e.message);
-    }
-  });
 });
 
 // Python semantic matcher service management
@@ -123,12 +108,8 @@ function stopPythonSemanticService() {
     }
 }
 
-// Start Python service when explicitly enabled
-if (process.env.ENABLE_PYTHON_SEMANTIC === '1') {
-  startPythonSemanticService();
-} else {
-  console.log('🧠 Python semantic service disabled (set ENABLE_PYTHON_SEMANTIC=1 to enable)');
-}
+// Start Python service when server starts
+startPythonSemanticService();
 
 // Cleanup on server shutdown
 process.on('SIGINT', () => {
@@ -250,6 +231,7 @@ class Game {
         this.pointsForCurrentQuestion = new Map(); // socketId -> points for current question only
         this.currentQuestionScored = false; // Track if current question has been scored
         this.roundAnswerGroups = []; // Accumulate all answer groups for the current round
+        this.answersNeedingEdit = new Map(); // socketId -> { reason, requestedAt, originalAnswer }
     }
 
     addPlayer(socketId, playerName) {
@@ -1956,6 +1938,10 @@ io.on('connection', (socket) => {
         if (!game) return;
         
         if (game.submitAnswer(socket.id, answer)) {
+            // If this player was sent back for edit, clear the flag on update
+            if (game.answersNeedingEdit.has(socket.id)) {
+                game.answersNeedingEdit.delete(socket.id);
+            }
             socket.emit('answerSubmitted');
             
             // Get player name for the answer
@@ -1973,12 +1959,23 @@ io.on('connection', (socket) => {
                     playerName: playerName,
                     answer: answer
                 });
-                // NEW: Also emit to host requests channel for potential clarification UI
-                io.to(hostSocket[0]).emit('playerAnswerUpdate', {
-                    playerName,
-                    answer,
-                    socketId: socket.id
-                });
+
+  // Host requests a player's answer edit ("Send Back")
+  socket.on('hostRequestEdit', (data) => {
+    const { gameCode, playerSocketId, reason } = data || {};
+    const hostInfo = connectedPlayers.get(socket.id);
+    if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) return;
+    const game = activeGames.get(gameCode);
+    if (!game) return;
+    if (!game.players.has(playerSocketId)) return;
+    const original = game.answers.get(playerSocketId) || '';
+    game.answersNeedingEdit.set(playerSocketId, {
+      reason: reason || 'Please be more specific',
+      requestedAt: Date.now(),
+      originalAnswer: original
+    });
+    io.to(playerSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific' });
+  });
             } else {
                 console.log(`❌ No host socket found for game ${gameCode}`);
             }
