@@ -224,6 +224,7 @@ class Game {
         this.pointsForCurrentQuestion = new Map(); // socketId -> points for current question only
         this.currentQuestionScored = false; // Track if current question has been scored
         this.roundAnswerGroups = []; // Accumulate all answer groups for the current round
+        this.manualQuestionIds = null; // Optional list of question IDs selected by host
     }
 
     addPlayer(socketId, playerName) {
@@ -1820,8 +1821,16 @@ io.on('connection', (socket) => {
                     console.log('🔍 Debug: Raw database question structure:', dbQuestions[0]);
                     console.log('🔍 Debug: Database field names:', Object.keys(dbQuestions[0]));
                     
+                    // If manual selection is set, filter by selected IDs
+                    let sourceQuestions = dbQuestions;
+                    if (Array.isArray(game.manualQuestionIds) && game.manualQuestionIds.length > 0) {
+                        const selectedSet = new Set(game.manualQuestionIds.map(String));
+                        sourceQuestions = dbQuestions.filter(q => selectedSet.has(String(q.id)));
+                        console.log(`🎯 Using ${sourceQuestions.length}/${dbQuestions.length} manually selected questions`);
+                    }
+
                     // Map database fields to expected format
-                    questions = dbQuestions.map(q => ({
+                    questions = sourceQuestions.map(q => ({
                         id: q.id,
                         prompt: q.prompt,  // Database field is already called 'prompt'
                         round: q.round,
@@ -2766,6 +2775,30 @@ app.get('/api/load-questions', async (req, res) => {
             message: 'Failed to load questions',
             error: error.message
         });
+    }
+});
+
+// Lightweight page for manual question selection
+app.get('/questions-select', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'questions-select.html'));
+});
+
+// Host sets manual question selection
+app.post('/api/select-questions', (req, res) => {
+    try {
+        const { gameCode, questionIds } = req.body || {};
+        if (!gameCode || !Array.isArray(questionIds)) {
+            return res.status(400).json({ status: 'error', message: 'gameCode and questionIds are required' });
+        }
+        const game = activeGames.get(gameCode);
+        if (!game) {
+            return res.status(404).json({ status: 'error', message: 'Game not found' });
+        }
+        game.manualQuestionIds = questionIds.map(String);
+        return res.json({ status: 'success', count: game.manualQuestionIds.length });
+    } catch (error) {
+        console.error('❌ Error selecting questions:', error);
+        return res.status(500).json({ status: 'error', message: 'Failed to select questions' });
     }
 });
 

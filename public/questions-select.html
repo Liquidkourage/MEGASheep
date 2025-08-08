@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MEGASheep - Question Selector</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    body { background:#0b0e13; color:#fff; font-family: system-ui, Arial, sans-serif; margin:0; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    .topbar { display:flex; gap:8px; align-items:center; margin-bottom:12px; }
+    .pill { padding:4px 10px; border:1px solid rgba(255,255,255,0.2); border-radius:999px; font-size:12px; color:#ddd; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:10px; }
+    .card { border:1px solid rgba(255,255,255,0.2); border-radius:10px; padding:10px; background:rgba(0,0,0,0.4); cursor:pointer; }
+    .card.selected { outline: 2px solid #28a745; }
+    .controls { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+    .btn { background: linear-gradient(135deg, #007bff, #0056b3); border:none; color:#fff; border-radius:8px; padding:8px 12px; font-weight:600; cursor:pointer; }
+    .btn.secondary { background: linear-gradient(135deg, #6c757d, #5a6268); }
+    .btn.success { background: linear-gradient(135deg, #28a745, #20c997); }
+    .muted { color:#aaa; font-size:12px; }
+    input, select { background: rgba(255,255,255,0.06); color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:6px; padding:6px 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🧩 Question Selector</h2>
+    <div class="topbar">
+      <div class="pill">Game Code: <span id="gameCodePill">-</span></div>
+      <div class="pill">Loaded: <span id="loadedCount">0</span></div>
+      <div class="pill">Selected: <span id="selectedCount">0</span></div>
+      <div style="margin-left:auto;" class="muted">Tip: Click cards to select. Filter by text.</div>
+    </div>
+
+    <div class="controls">
+      <button id="loadBtn" class="btn secondary">Load from DB</button>
+      <input id="filterInput" type="text" placeholder="Filter by text…" style="flex:1;" />
+      <select id="sortSelect">
+        <option value="round_asc">Round ↑, Order ↑</option>
+        <option value="id_asc">ID ↑</option>
+      </select>
+      <button id="applyBtn" class="btn success">Apply Selection</button>
+    </div>
+
+    <div id="grid" class="grid"></div>
+  </div>
+
+  <script>
+    const gameCode = (new URLSearchParams(location.search).get('gameCode')) || localStorage.getItem('gameCode') || '';
+    const gameCodeEl = document.getElementById('gameCodePill');
+    const loadedCountEl = document.getElementById('loadedCount');
+    const selectedCountEl = document.getElementById('selectedCount');
+    const grid = document.getElementById('grid');
+    const filterInput = document.getElementById('filterInput');
+    const sortSelect = document.getElementById('sortSelect');
+
+    gameCodeEl.textContent = gameCode || '-';
+
+    let all = [];
+    let selected = new Set();
+
+    function render() {
+      const q = (filterInput.value || '').toLowerCase();
+      let items = all.slice();
+      if (q) items = items.filter(it => (it.prompt || '').toLowerCase().includes(q));
+      if (sortSelect.value === 'id_asc') items.sort((a,b) => (a.id+'').localeCompare(b.id+''));
+      else items.sort((a,b) => (a.round||0)-(b.round||0) || (a.question_order||0)-(b.question_order||0));
+
+      grid.innerHTML = '';
+      for (const it of items) {
+        const card = document.createElement('div');
+        card.className = 'card' + (selected.has(String(it.id)) ? ' selected' : '');
+        card.innerHTML = `<div style="font-weight:700; color:#fff;">#${it.id} • R${it.round ?? '-'} Q${it.question_order ?? '-'} </div>
+                          <div class=\"muted\" style=\"margin-top:4px;\">${it.prompt || ''}</div>`;
+        card.onclick = () => {
+          const key = String(it.id);
+          if (selected.has(key)) selected.delete(key); else selected.add(key);
+          render();
+        };
+        grid.appendChild(card);
+      }
+      loadedCountEl.textContent = all.length;
+      selectedCountEl.textContent = selected.size;
+    }
+
+    document.getElementById('loadBtn').onclick = async () => {
+      grid.innerHTML = '<div class="muted">Loading…</div>';
+      selected.clear();
+      try {
+        const r = await fetch('/api/load-questions');
+        const data = await r.json();
+        all = Array.isArray(data.questions) ? data.questions : [];
+      } catch (e) {
+        grid.innerHTML = `<div style="color:#ff6b6b">Failed to load: ${e?.message||e}</div>`;
+        return;
+      }
+      render();
+    };
+
+    document.getElementById('applyBtn').onclick = async () => {
+      if (!gameCode) {
+        alert('Missing gameCode. Open from Host Console so it passes the code, or set localStorage.gameCode.');
+        return;
+      }
+      try {
+        const body = { gameCode, questionIds: Array.from(selected) };
+        const r = await fetch('/api/select-questions', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        const data = await r.json();
+        if (data.status === 'success') {
+          alert(`Applied ${data.count} selected question(s). You can now start the game.`);
+        } else {
+          alert('Failed to apply selection: ' + (data.message || 'unknown error'));
+        }
+      } catch (e) {
+        alert('Failed to apply selection: ' + (e?.message||e));
+      }
+    };
+
+    filterInput.oninput = render;
+    sortSelect.onchange = render;
+
+    // Auto-load on open
+    document.getElementById('loadBtn').click();
+  </script>
+</body>
+</html>
+
