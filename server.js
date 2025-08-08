@@ -9,7 +9,13 @@ require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const multer = require('multer');
 const fs = require('fs');
-const fetch = require('node-fetch'); // Add at the top if not present
+// Prefer Node 18+ global fetch; fallback to dynamic import for older runtimes
+const fetch = (globalThis && globalThis.fetch)
+  ? globalThis.fetch.bind(globalThis)
+  : (async (...args) => {
+      const { default: nodeFetch } = await import('node-fetch');
+      return nodeFetch(...args);
+    });
 
 const app = express();
 const server = http.createServer(app);
