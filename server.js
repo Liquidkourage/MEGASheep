@@ -30,6 +30,9 @@ const io = socketIo(server, {
   pingInterval: 25000
 });
 
+// Feature flags
+const ENABLE_AI_SUGGESTIONS = (process.env.ENABLE_AI_SUGGESTIONS || 'true').toLowerCase() === 'true';
+
 // Python semantic matcher service management
 let pythonSemanticService = null;
 let semanticServiceReady = false;
@@ -1392,6 +1395,98 @@ app.post('/api/remove-duplicates', (req, res) => {
     }
 });
 
+// --------------------
+// Grading assist (non-invasive, suggestion-only)
+// --------------------
+
+function normalizeText(input) {
+    if (!input) return '';
+    return String(input)
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function tokenSetSimilarity(a, b) {
+    const A = new Set(normalizeText(a).split(' ').filter(Boolean));
+    const B = new Set(normalizeText(b).split(' ').filter(Boolean));
+    if (A.size === 0 && B.size === 0) return 1;
+    if (A.size === 0 || B.size === 0) return 0;
+    let inter = 0;
+    for (const t of A) if (B.has(t)) inter++;
+    const union = A.size + B.size - inter;
+    const jaccard = union === 0 ? 0 : inter / union;
+    const subsetBonus = (inter / Math.max(A.size, B.size));
+    return (jaccard * 0.7) + (subsetBonus * 0.3);
+}
+
+function bestMatchScore(candidate, choices) {
+    let best = { score: 0, choice: null };
+    for (const choice of choices) {
+        const score = tokenSetSimilarity(candidate, choice);
+        if (score > best.score) best = { score, choice };
+    }
+    return best;
+}
+
+function buildGradingSuggestions(game) {
+    const suggestions = {
+        enabled: ENABLE_AI_SUGGESTIONS,
+        questionIndex: game.currentQuestion || 0,
+        correctSuggestions: [],
+        reviewSuggestions: [],
+        groupSuggestions: []
+    };
+    if (!ENABLE_AI_SUGGESTIONS) return suggestions;
+    const qIdx = game.currentQuestion || 0;
+    const question = (game.questions || [])[qIdx];
+    const correctAnswers = Array.isArray(question?.correct_answers) ? question.correct_answers : [];
+    const groups = Array.isArray(game.currentAnswerGroups) ? game.currentAnswerGroups : [];
+    const answers = groups.map(g => g.answer).filter(Boolean);
+
+    for (const ans of answers) {
+        const { score, choice } = bestMatchScore(ans, correctAnswers);
+        if (!choice) continue;
+        if (score >= 0.90) {
+            suggestions.correctSuggestions.push({ answer: ans, mapsTo: choice, confidence: Number(score.toFixed(3)) });
+        } else if (score >= 0.80) {
+            suggestions.reviewSuggestions.push({ answer: ans, candidate: choice, confidence: Number(score.toFixed(3)) });
+        }
+    }
+
+    for (let i = 0; i < answers.length; i++) {
+        for (let j = i + 1; j < answers.length; j++) {
+            const a = answers[i], b = answers[j];
+            const score = tokenSetSimilarity(a, b);
+            if (score >= 0.85) {
+                suggestions.groupSuggestions.push({ a, b, confidence: Number(score.toFixed(3)) });
+            }
+        }
+    }
+
+    suggestions.correctSuggestions = suggestions.correctSuggestions.slice(0, 50);
+    suggestions.reviewSuggestions = suggestions.reviewSuggestions.slice(0, 50);
+    suggestions.groupSuggestions = suggestions.groupSuggestions.slice(0, 100);
+    return suggestions;
+}
+
+app.get('/api/grading-suggestions', (req, res) => {
+    try {
+        if (!ENABLE_AI_SUGGESTIONS) return res.json({ enabled: false, message: 'AI suggestions disabled' });
+        const gameCode = req.query.gameCode;
+        if (!gameCode || !activeGames.has(gameCode)) {
+            return res.status(400).json({ error: 'Invalid or missing gameCode' });
+        }
+        const game = activeGames.get(gameCode);
+        const data = buildGradingSuggestions(game);
+        res.json(data);
+    } catch (e) {
+        console.error('grading suggestions error:', e);
+        res.status(500).json({ error: 'Failed to build suggestions' });
+    }
+});
 // API Endpoints
 app.post('/api/create-game', (req, res) => {
     const { hostName } = req.body;
@@ -1418,6 +1513,30 @@ app.post('/api/create-game', (req, res) => {
     });
 });
 
+// Questions listing for manual selection (host)
+app.get('/api/questions', async (req, res) => {
+    try {
+        if (!(supabase && supabaseConfigured)) {
+            return res.json({ questions: [] });
+        }
+        const limit = Math.min(parseInt(req.query.limit || '200', 10), 500);
+        const offset = Math.max(parseInt(req.query.offset || '0', 10), 0);
+        const search = (req.query.search || '').toString().trim();
+        let query = supabase.from('questions').select('*');
+        if (search) {
+            // Basic ILIKE search on prompt
+            query = query.ilike('prompt', `%${search}%`);
+        }
+        query = query.order('prompt', { ascending: true }).range(offset, offset + limit - 1);
+        const { data, error } = await query;
+        if (error) throw error;
+        const questions = (data || []).map(q => ({ id: q.id, prompt: q.prompt, difficulty: q.difficulty || null, category: q.category || null }));
+        res.json({ questions, offset, limit });
+    } catch (e) {
+        console.error('questions list error:', e.message);
+        res.status(500).json({ error: 'Failed to load questions' });
+    }
+});
 app.post('/api/join-game', (req, res) => {
     const { gameCode, playerName } = req.body;
     
@@ -1771,7 +1890,7 @@ io.on('connection', (socket) => {
             return;
         }
         
-        const { gameCode } = data;
+        const { gameCode, selectedQuestionIds } = data || {};
         
         if (!gameCode) {
             console.log('⚠️ startGame event received with no gameCode');
@@ -1811,8 +1930,40 @@ io.on('connection', (socket) => {
   
         try {
             let questions = [];
-            
-            if (supabase && supabaseConfigured) {
+
+            // Manual selection path (host picked exact order)
+            if (Array.isArray(selectedQuestionIds) && selectedQuestionIds.length > 0) {
+                if (selectedQuestionIds.length !== 25) {
+                    socket.emit('gameError', { message: 'Please select exactly 25 questions.' });
+                    return;
+                }
+                if (supabase && supabaseConfigured) {
+                    const { data: dbQuestions, error } = await supabase
+                        .from('questions')
+                        .select('*')
+                        .in('id', selectedQuestionIds);
+                    if (error) throw error;
+                    if (!dbQuestions || dbQuestions.length < selectedQuestionIds.length) {
+                        throw new Error('Some selected questions were not found in the database.');
+                    }
+                    const orderMap = new Map(selectedQuestionIds.map((id, idx) => [String(id), idx]));
+                    const sorted = [...dbQuestions].sort((a, b) => (orderMap.get(String(a.id)) ?? 0) - (orderMap.get(String(b.id)) ?? 0));
+                    const qPerRound = game.settings?.questionsPerRound || 5;
+                    questions = sorted.map((q, idx) => ({
+                        id: q.id,
+                        prompt: q.prompt,
+                        correct_answers: Array.isArray(q.correct_answers) ? q.correct_answers : [q.correct_answers].filter(Boolean),
+                        round: Math.floor(idx / qPerRound) + 1,
+                        question_order: (idx % qPerRound) + 1
+                    }));
+                } else {
+                    // No DB configured; cannot honor manual selection reliably
+                    socket.emit('gameError', { message: 'Manual selection requires database to be configured.' });
+                    return;
+                }
+            }
+            // Automatic selection path
+            else if (supabase && supabaseConfigured) {
                 try {
                     const { data: dbQuestions, error } = await supabase
                         .from('questions')
