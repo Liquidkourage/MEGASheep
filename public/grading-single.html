@@ -1862,9 +1862,8 @@
                         const reason = prompt('Reason to send back (optional):', 'Please be more specific');
                         names.forEach(name => {
                             const socketId = getSocketIdByPlayerName(name);
-                            if (socketId) {
-                                socket.emit('hostRequestEdit', { gameCode: currentGame.gameCode, playerSocketId: socketId, reason });
-                            }
+                            // Prefer socket id, fallback to name resolution on server
+                            socket.emit('hostRequestEdit', { gameCode: currentGame.gameCode, playerSocketId: socketId || undefined, playerName: name, reason });
                         });
                     } catch (err) { console.warn('Failed to send back request', err); }
                 }

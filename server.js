@@ -1962,19 +1962,26 @@ io.on('connection', (socket) => {
 
   // Host requests a player's answer edit ("Send Back")
   socket.on('hostRequestEdit', (data) => {
-    const { gameCode, playerSocketId, reason } = data || {};
+    const { gameCode, playerSocketId, playerName, reason } = data || {};
     const hostInfo = connectedPlayers.get(socket.id);
     if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) return;
     const game = activeGames.get(gameCode);
     if (!game) return;
-    if (!game.players.has(playerSocketId)) return;
-    const original = game.answers.get(playerSocketId) || '';
-    game.answersNeedingEdit.set(playerSocketId, {
+    // Resolve target socketId by either provided socketId or playerName
+    let targetSocketId = playerSocketId;
+    if (!targetSocketId && playerName) {
+      for (const [sid, p] of game.players.entries()) {
+        if ((p.name || '').trim() === playerName.trim()) { targetSocketId = sid; break; }
+      }
+    }
+    if (!targetSocketId || !game.players.has(targetSocketId)) return;
+    const original = game.answers.get(targetSocketId) || '';
+    game.answersNeedingEdit.set(targetSocketId, {
       reason: reason || 'Please be more specific',
       requestedAt: Date.now(),
       originalAnswer: original
     });
-    io.to(playerSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific' });
+    io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific' });
   });
             } else {
                 console.log(`❌ No host socket found for game ${gameCode}`);
