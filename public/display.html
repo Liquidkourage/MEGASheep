@@ -9,6 +9,10 @@
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=20241220">
     <style>
+        /* Ensure main display container does not cover background layers */
+        #displayScreen, .display-mode {
+            background: transparent !important;
+        }
         /* Dynamic scaling based on screen resolution */
         :root {
             --scale-factor: 0.65;
@@ -1167,6 +1171,7 @@
         }
 
         function showWaitingScreen() {
+            setSheepBackgroundEnabled(false);
             preventAllScrolling();
             document.getElementById('displayScreen').innerHTML = `
                 <div class="display-content" style="
@@ -1232,6 +1237,7 @@
         }
 
         function showPlayingScreen() {
+            setSheepBackgroundEnabled(true);
             const currentQuestion = gameState.questions[gameState.currentQuestion];
             const questionNumber = gameState.currentQuestion + 1;
             const roundNumber = Math.ceil(questionNumber / gameState.questionsPerRound);
@@ -1350,6 +1356,7 @@
         }
 
         function showGradingScreen() {
+            setSheepBackgroundEnabled(false);
             document.getElementById('displayScreen').innerHTML = `
                 <div class="grading-container">
                     <div class="grading-header">
@@ -1385,6 +1392,7 @@
         }
 
         function showScoringScreen() {
+            setSheepBackgroundEnabled(false);
             // Get the correct and wrong answers for this question
             const { submittedAnswers, correctNotGiven, wrongAnswers } = categorizeAnswersForDisplay();
             
@@ -1977,6 +1985,7 @@
         }
 
         function showRoundCompleteScreen() {
+            setSheepBackgroundEnabled(false);
             const roundHistory = gameState.roundHistory;
             const currentRoundData = roundHistory[roundHistory.length - 1];
             const currentRound = currentRoundData.roundNumber; // Use the actual round number from the round data
@@ -2016,6 +2025,7 @@
         }
 
         function showLeaderboardScreen() {
+            setSheepBackgroundEnabled(false);
             const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
             
             document.getElementById('displayScreen').innerHTML = `
@@ -2041,6 +2051,7 @@
         }
 
         function showGameFinishedScreen() {
+            setSheepBackgroundEnabled(false);
             const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
             const winner = sortedPlayers[0];
             
@@ -2610,6 +2621,27 @@
         let sheepIndex = 0;
         let activeLayer = 0; // 0 or 1
         let slideshowTimer = null;
+        let formatSupport = { avif: null, webp: null };
+
+        function detectFormatSupport() {
+            // Run once; cache result
+            if (formatSupport.avif !== null && formatSupport.webp !== null) return Promise.resolve(formatSupport);
+            const test = (type, data) => new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => resolve(img.width > 0 && img.height > 0);
+                img.onerror = () => resolve(false);
+                img.src = `data:image/${type};base64,${data}`;
+            });
+            // Tiny 1x1 images
+            const avifData = 
+                'AAAAIGZ0eXBhdmlmAAAAAG1pZjFoZWlmAAACAG1ldGEAAAABbWRhdGEAAACWAAAAAQEAAAEBAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+            const webpData = 
+                'UklGRhYAAABXRUJQVlA4WAoAAAAQAAAAHwAAHwAAQUxQSCQAAAABAAAnAAQAAAABAAAAAAAAAAAAAAAAAAAAAAAA';
+            return Promise.all([
+                test('avif', avifData).then(ok => { formatSupport.avif = ok; }),
+                test('webp', webpData).then(ok => { formatSupport.webp = ok; })
+            ]).then(() => formatSupport);
+        }
 
         function setupSheepBackgroundLayers() {
             // Neutralize old ::after-based animation if present
@@ -2619,14 +2651,15 @@
                 const s = document.createElement('style');
                 s.id = 'sheep-bg-style';
                 s.textContent = `
-                    .sheep-bg-layer{position:fixed;inset:0;background-size:cover;background-position:center center;background-repeat:no-repeat;opacity:0;transition:opacity 1200ms ease;pointer-events:none;z-index:0}
-                    .sheep-bg-layer.visible{opacity:0.3}
+                    .sheep-bg-layer{position:fixed;inset:0;background-size:cover;background-position:center center;background-repeat:no-repeat;opacity:0;transition:opacity 1200ms ease;pointer-events:none;z-index:1}
+                    .sheep-bg-layer.visible{opacity:0.6}
                     /* Hide legacy pseudo-background */
                     .playing-container::after{background-image:none!important;opacity:0!important}
                 `;
                 document.head.appendChild(s);
             }
-            const container = document.body; // fixed layers over viewport
+            // Prefer mounting inside the display container to ensure layers sit above its background
+            const container = document.getElementById('displayScreen') || document.body; // fixed layers over viewport
             let a = document.getElementById('sheepBgA');
             let b = document.getElementById('sheepBgB');
             if (!a) {
@@ -2641,6 +2674,16 @@
                 b.className = 'sheep-bg-layer';
                 container.appendChild(b);
             }
+        }
+        function setSheepBackgroundEnabled(enabled) {
+            const layers = document.querySelectorAll('.sheep-bg-layer');
+            layers.forEach(el => {
+                if (enabled) {
+                    el.classList.add('visible');
+                } else {
+                    el.classList.remove('visible');
+                }
+            });
         }
 
         function preloadImages(urls) {
@@ -2664,6 +2707,9 @@
             nextLayer.classList.add('visible');
             currentLayer.classList.remove('visible');
             activeLayer = activeLayer === 0 ? 1 : 0;
+            // Ensure layers are above base background but below content overlays
+            a.style.zIndex = '1';
+            b.style.zIndex = '1';
         }
 
         function startSheepSlideshow(urls) {
@@ -2692,8 +2738,16 @@
                 const response = await fetch('/api/sheep-urls', { cache: 'no-cache' });
                 const data = await response.json();
                 const urls = Array.isArray(data.urls) ? data.urls : [];
-                if (urls.length === 0) return;
-                const loaded = await preloadImages(urls);
+                // Filter by browser format support
+                const support = await detectFormatSupport();
+                const filtered = urls.filter(u => {
+                    const ext = (u.split('.').pop() || '').toLowerCase();
+                    if (ext === 'avif') return !!support.avif;
+                    if (ext === 'webp') return !!support.webp;
+                    return ['jpg','jpeg','png','gif'].includes(ext);
+                });
+                if (filtered.length === 0) return;
+                const loaded = await preloadImages(filtered);
                 if (loaded.length === 0) return;
                 if (sheepPlaylist.length === 0) {
                     startSheepSlideshow(loaded);
