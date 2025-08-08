@@ -1143,8 +1143,23 @@
                     // Store game info
                     localStorage.setItem('gameCode', data.gameCode);
                     
-                    // Join the game room via socket
-                    socket.emit('createGame');
+                    // Join the game room via socket (robust to not-yet-connected socket)
+                    const tryJoin = () => {
+                        try {
+                            if (socket && socket.connected) {
+                                // Prefer explicit reconnect with gameCode
+                                socket.emit('host-reconnect', { gameCode: data.gameCode });
+                            } else if (socket) {
+                                socket.once('connect', () => socket.emit('host-reconnect', { gameCode: data.gameCode }));
+                            } else {
+                                initializeConnection();
+                                // After connection initializes, the connect handler will emit host-reconnect using saved code
+                            }
+                        } catch (e) {
+                            console.error('Failed to join game room:', e);
+                        }
+                    };
+                    tryJoin();
                     
                     console.log('Game created successfully:', data);
                 } else {
