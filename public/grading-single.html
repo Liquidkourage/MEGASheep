@@ -712,11 +712,19 @@
                                 <h4 onclick="toggleBucket(this)">
                                     <span class="bucket-toggle">▼</span>
                                     ❌ Wrong Answers
-                                    <span class="answer-count-badge" id="wrongAnswersCount">0</span>
-                                </h4>
-                                <div id="wrongAnswers" class="answer-items" data-bucket="wrong" data-bucket-id="wrong">
-                                    <!-- Wrong answers will be dragged here -->
-                                </div>
+                            <span class="answer-count-badge" id="wrongAnswersCount">0</span>
+                        </h4>
+                        <div id="wrongAnswers" class="answer-items" data-bucket="wrong" data-bucket-id="wrong">
+                            <!-- Wrong answers will be dragged here -->
+                        </div>
+                    </div>
+
+                    <!-- Send Back Bucket -->
+                    <div class="answer-bucket sendback-bucket">
+                        <h4>✏️ Send Back (Refine)</h4>
+                        <div id="sendBackAnswers" class="answer-items" data-bucket="sendBack" data-bucket-id="sendBack">
+                            <!-- Answers needing edit will be dragged here -->
+                        </div>
                             </div>
                         </div>
                     </div>
@@ -1846,6 +1854,20 @@
                 
                 // Consolidate all answers in this bucket
                 consolidateBucketAnswers(dropZone, bucketName);
+
+                // If this is the Send Back bucket, request edits from players
+                if (bucketName === '✏️ Send Back (Refine)') {
+                    try {
+                        const names = (draggedElement.dataset.playerNames || '').split(',').map(n => n.trim()).filter(Boolean);
+                        const reason = prompt('Reason to send back (optional):', 'Please be more specific');
+                        names.forEach(name => {
+                            const socketId = getSocketIdByPlayerName(name);
+                            if (socketId) {
+                                socket.emit('hostRequestEdit', { gameCode: currentGame.gameCode, playerSocketId: socketId, reason });
+                            }
+                        });
+                    } catch (err) { console.warn('Failed to send back request', err); }
+                }
                 
                 updateCountBadges();
                 
