@@ -123,8 +123,12 @@ function stopPythonSemanticService() {
     }
 }
 
-// Start Python service when server starts
-startPythonSemanticService();
+// Start Python service when explicitly enabled
+if (process.env.ENABLE_PYTHON_SEMANTIC === '1') {
+  startPythonSemanticService();
+} else {
+  console.log('🧠 Python semantic service disabled (set ENABLE_PYTHON_SEMANTIC=1 to enable)');
+}
 
 // Cleanup on server shutdown
 process.on('SIGINT', () => {
