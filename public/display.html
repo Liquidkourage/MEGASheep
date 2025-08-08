@@ -9,6 +9,9 @@
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=20241220">
     <style>
+        /* Phase-driven visibility: only show sheep during question (playing) */
+        body[data-display-phase="playing"] .sheep-bg-layer.visible { opacity: 0.6; }
+        body[data-display-phase]:not([data-display-phase="playing"]) .sheep-bg-layer { opacity: 0; }
         /* Ensure main display container does not cover background layers */
         #displayScreen, .display-mode {
             background: transparent !important;
@@ -1171,6 +1174,7 @@
         }
 
         function showWaitingScreen() {
+            setDisplayPhase('waiting');
             setSheepBackgroundEnabled(false);
             preventAllScrolling();
             document.getElementById('displayScreen').innerHTML = `
@@ -1237,6 +1241,7 @@
         }
 
         function showPlayingScreen() {
+            setDisplayPhase('playing');
             setSheepBackgroundEnabled(true);
             const currentQuestion = gameState.questions[gameState.currentQuestion];
             const questionNumber = gameState.currentQuestion + 1;
@@ -1356,6 +1361,7 @@
         }
 
         function showGradingScreen() {
+            setDisplayPhase('grading');
             setSheepBackgroundEnabled(false);
             document.getElementById('displayScreen').innerHTML = `
                 <div class="grading-container">
@@ -1392,6 +1398,7 @@
         }
 
         function showScoringScreen() {
+            setDisplayPhase('scoring');
             setSheepBackgroundEnabled(false);
             // Get the correct and wrong answers for this question
             const { submittedAnswers, correctNotGiven, wrongAnswers } = categorizeAnswersForDisplay();
@@ -1985,6 +1992,7 @@
         }
 
         function showRoundCompleteScreen() {
+            setDisplayPhase('roundComplete');
             setSheepBackgroundEnabled(false);
             const roundHistory = gameState.roundHistory;
             const currentRoundData = roundHistory[roundHistory.length - 1];
@@ -2025,6 +2033,7 @@
         }
 
         function showLeaderboardScreen() {
+            setDisplayPhase('leaderboard');
             setSheepBackgroundEnabled(false);
             const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
             
@@ -2051,6 +2060,7 @@
         }
 
         function showGameFinishedScreen() {
+            setDisplayPhase('finished');
             setSheepBackgroundEnabled(false);
             const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
             const winner = sortedPlayers[0];
@@ -2651,7 +2661,7 @@
                 const s = document.createElement('style');
                 s.id = 'sheep-bg-style';
                 s.textContent = `
-                    .sheep-bg-layer{position:fixed;inset:0;background-size:cover;background-position:center center;background-repeat:no-repeat;opacity:0;transition:opacity 1200ms ease;pointer-events:none;z-index:1}
+                    .sheep-bg-layer{position:fixed;inset:0;background-size:cover;background-position:center center;background-repeat:no-repeat;opacity:0;transition:opacity 1200ms ease;pointer-events:none;z-index:2}
                     .sheep-bg-layer.visible{opacity:0.6}
                     /* Hide legacy pseudo-background */
                     .playing-container::after{background-image:none!important;opacity:0!important}
@@ -2686,6 +2696,11 @@
                     el.classList.remove('visible');
                 }
             });
+        }
+
+        function setDisplayPhase(phase) {
+            // phase: 'waiting' | 'playing' | 'grading' | 'scoring' | 'roundComplete' | 'leaderboard' | 'finished'
+            document.body.setAttribute('data-display-phase', phase);
         }
 
         function preloadImages(urls) {
