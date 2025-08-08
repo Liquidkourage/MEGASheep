@@ -1099,7 +1099,7 @@ async function getSemanticMatches(question, correctAnswers, responses) {
 // You should call this function during grading and use the result to populate the correct, wrong, and uncategorized buckets. Pass the confidence scores to the frontend as needed.
 
 // Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, 'uploads');
+const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -1107,7 +1107,7 @@ if (!fs.existsSync(uploadsDir)) {
 // Configure multer for file uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'uploads/');
+        cb(null, uploadsDir);
     },
     filename: function (req, file, cb) {
         // Keep original filename with timestamp prefix
@@ -1216,7 +1216,7 @@ app.get('/api/semantic-status', (req, res) => {
 });
 
 // Serve uploaded images
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(uploadsDir));
 
 // Sheep upload API endpoints
 app.post('/api/upload-sheep', upload.array('sheep-photos', 20), (req, res) => {
@@ -1247,7 +1247,7 @@ app.post('/api/upload-sheep', upload.array('sheep-photos', 20), (req, res) => {
 
 app.get('/api/sheep-photos', (req, res) => {
     try {
-        const uploadsPath = path.join(__dirname, 'uploads');
+        const uploadsPath = uploadsDir;
         
         if (!fs.existsSync(uploadsPath)) {
             return res.json({ photos: [] });
@@ -1277,7 +1277,7 @@ app.get('/api/sheep-photos', (req, res) => {
 app.delete('/api/sheep-photos/:filename', (req, res) => {
     try {
         const filename = req.params.filename;
-        const filePath = path.join(__dirname, 'uploads', filename);
+        const filePath = path.join(uploadsDir, filename);
         
         if (!filename.startsWith('sheep_')) {
             return res.status(400).json({ error: 'Invalid filename' });
@@ -1298,7 +1298,7 @@ app.delete('/api/sheep-photos/:filename', (req, res) => {
 
 app.get('/api/sheep-urls', (req, res) => {
     try {
-        const uploadsPath = path.join(__dirname, 'uploads');
+        const uploadsPath = uploadsDir;
         
         if (!fs.existsSync(uploadsPath)) {
             return res.json({ urls: [] });
@@ -1318,7 +1318,7 @@ app.get('/api/sheep-urls', (req, res) => {
 
 app.post('/api/remove-duplicates', (req, res) => {
     try {
-        const uploadsPath = path.join(__dirname, 'uploads');
+        const uploadsPath = uploadsDir;
         
         if (!fs.existsSync(uploadsPath)) {
             return res.json({ removed: [], message: 'No uploads directory found' });
