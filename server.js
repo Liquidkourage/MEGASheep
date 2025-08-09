@@ -1993,8 +1993,12 @@ io.on('connection', (socket) => {
   
         try {
             let questions = [];
-            
-            if (supabase && supabaseConfigured) {
+
+            // Prefer any preloaded question set (e.g., from host Question Picker)
+            if (Array.isArray(game.questions) && game.questions.length > 0) {
+                questions = game.questions;
+                console.log(`🗂️ Using preloaded question set for game ${gameCode}: ${questions.length} questions`);
+            } else if (supabase && supabaseConfigured) {
                 try {
                     const { data: dbQuestions, error } = await supabase
                         .from('questions')
