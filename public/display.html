@@ -993,7 +993,7 @@
                 updateDisplayFromGameState(gameStateData);
             });
 
-            // Stay attached to the same game after grading completes
+            // Always stay attached to current game; never revert to pairing unless explicitly told
             socket.on('gameFinished', (gameStateData) => {
                 console.log('Display: Game finished event received');
                 updateDisplayFromGameState(gameStateData);

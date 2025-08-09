@@ -1706,6 +1706,16 @@ function handleNextQuestion(gameStateData) {
     showScreen('game');
     displayCurrentQuestion();
     startTimer();
+    // Clear any lingering clarification prompt/state from previous question
+    try {
+        const status = document.getElementById('answerStatus');
+        if (status) { status.innerHTML = ''; status.className = 'answer-status'; }
+        const input = document.getElementById('answerInput');
+        const btn = document.getElementById('submitAnswerBtn');
+        if (input) { input.disabled = false; input.value = ''; }
+        if (btn) { btn.disabled = false; }
+        window.lastSubmittedAnswer = '';
+    } catch (_) {}
     
     // Show End Question button for new question
     const endQuestionBtn = document.getElementById('endQuestionBtn');
