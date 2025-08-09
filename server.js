@@ -676,7 +676,17 @@ class Game {
             questionsPerRound: this.settings.questionsPerRound,
             createdAt: this.createdAt,
             playerCount: this.players.size,
-            isTestMode: this.isTestMode
+            isTestMode: this.isTestMode,
+            pendingEdits: Array.from(this.answersNeedingEdit.entries()).map(([sid, info]) => {
+              const player = this.players.get(sid);
+              return {
+                socketId: sid,
+                playerName: player ? player.name : 'Unknown',
+                originalAnswer: info?.originalAnswer || '',
+                reason: info?.reason || 'Please be more specific',
+                requestedAt: info?.requestedAt || Date.now()
+              };
+            })
         };
     }
 
@@ -1676,6 +1686,15 @@ io.on('connection', (socket) => {
                     if (!game.scores.has(socket.id)) game.scores.set(socket.id, 0);
                     io.to(gameCode).emit('playerJoined', game.getGameState());
                 }
+
+                // If this returning player had a pending clarification, re-prompt them immediately
+                for (const [sid, info] of game.answersNeedingEdit.entries()) {
+                    const p = game.players.get(sid);
+                    if (p && p.name === playerName) {
+                        io.to(socket.id).emit('requireAnswerEdit', { reason: info?.reason || 'Please be more specific', originalAnswer: info?.originalAnswer || '' });
+                        break;
+                    }
+                }
             } else {
                 console.log('🏠 Host', playerName, 'joined room for game', gameCode);
             }
@@ -2068,9 +2087,8 @@ io.on('connection', (socket) => {
                 totalPlayers: game.players.size
             });
             
-            // Check if all answered (exclude players currently needing clarification)
-            const pendingEditsCount = Array.from(game.answersNeedingEdit.keys()).length;
-            if (game.answers.size === (game.players.size - pendingEditsCount)) {
+            // Check if all answered (require NO pending clarifications)
+            if (game.answersNeedingEdit.size === 0 && game.answers.size === game.players.size) {
                 console.log(`🎯 All players (${game.players.size}) have submitted answers, ending question automatically`);
                 game.calculateScores();
                 game.gameState = 'grading'; // Changed from 'scoring' to 'grading'
@@ -2085,6 +2103,8 @@ io.on('connection', (socket) => {
                 console.log(`🔍 Room ${gameCode} has ${roomSockets.length} sockets:`, roomSockets.map(s => s.id));
                 
                 io.to(gameCode).emit('questionComplete', gameStateToSend);
+            } else if (game.answersNeedingEdit.size > 0) {
+                console.log(`⏳ Not auto-ending: ${game.answers.size}/${game.players.size} answers, ${game.answersNeedingEdit.size} pending clarifications`);
             }
         }
     });
