@@ -1134,8 +1134,8 @@
                     <div class="display-section">
                         <div class="display-header">
                             <h1 class="display-title">🐑 MEGASheep</h1>
-                            <p class="display-subtitle">Pull the wool over everyone’s eyes with ewe-nique answers to fleece the competition.<br>Flock around and find out who’s a shear genius and who’s mutton but a wolf in sheep’s clothing.</p>
                             <p class="display-brand">by Liquid Kourage Entertainment</p>
+                            <p class="display-subtitle">Pull the wool over everyone’s eyes with ewe-nique answers to fleece the competition.<br>Flock around and find out who’s a shear genius and who’s mutton but a wolf in sheep’s clothing.</p>
                         </div>
                         ${displayGameCode ? `
                             <div class="display-status">
@@ -1148,12 +1148,12 @@
                                 <p class="game-url">Or go to <strong>megasheep.liquidkourage.com</strong> and enter game code <span class="game-code-highlight">${displayGameCode}</span></p>
                             </div>
                         ` : `
-                            <div class="display-status" style="margin-bottom: 8px;">
-                                <div class="loading-spinner" style="margin: 0 auto;"></div>
-                            </div>
                             <div class="qr-code-section">
-                                <div style="font-size:3.2rem;font-weight:900;letter-spacing:0.28em;margin:10px 0;color:#fff;">${((window.displayPairingCode || '----').split('').join(' '))}</div>
                                 <p class="game-url" style="color:#ccc;">Host: use this code to connect this display in the host console</p>
+                                <div style="font-size:3.2rem;font-weight:900;letter-spacing:0.28em;margin:10px 0;color:#fff;">${((window.displayPairingCode || '----').split('').join(' '))}</div>
+                            </div>
+                            <div class="display-status" style="margin: 10px 0 0 0;">
+                                <div class="loading-spinner" style="margin: 12px auto 0 auto;"></div>
                             </div>
                         `}
                     </div>
