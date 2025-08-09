@@ -872,7 +872,7 @@
                     } else if (window.parent && window.parent !== window) {
                         console.log('🎯 Method 2: Closing iframe/embedded window');
                         window.parent.postMessage('closeGradingInterface', '*');
-                        window.close();
+                        try { window.close(); } catch (_) {}
                     } else {
                         console.log('🎯 Method 3: Direct navigation to host');
                         window.location.href = '/host';

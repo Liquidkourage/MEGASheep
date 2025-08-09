@@ -931,7 +931,12 @@
             });
             
             socket.on('gradingComplete', (data) => {
+                // Update current game state and UI controls
+                currentGame = data;
                 gameState = 'scoring';
+                try { updateGameControls(); } catch (_) {}
+                // Close the single-user grading modal if open
+                try { closeGradingSingleModal(); } catch (_) {}
                 showScoringPanel(data);
             });
 
