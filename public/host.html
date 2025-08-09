@@ -711,7 +711,6 @@
                         <a href="/" target="_blank" class="action-btn">👤 Player Join Page</a>
                         <a href="/display" target="_blank" class="action-btn">📺 Display Screen</a>
                         <a href="/grading" target="_blank" class="action-btn">📝 Grading Console</a>
-                        <button class="action-btn" id="alwaysEndGameBtn" title="End the current game immediately">🛑 End Game</button>
                         <div style="display:inline-flex;gap:6px;align-items:center;margin-left:8px;">
                             <input id="displayPairCode" placeholder="DISPLAY CODE" maxlength="4" style="width:100px;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);color:#fff;text-transform:uppercase;" />
                             <button class="action-btn" id="pairDisplayBtn" title="Pair display by code">🔗 Pair Display</button>
@@ -750,6 +749,7 @@
                     </div>
                     <div class="host-controls">
                         <button id="startGameBtn" class="control-btn success">START GAME</button>
+                        <button id="endGameMainBtn" class="control-btn warning">🛑 END GAME</button>
                         <button id="gradingBtn" class="control-btn secondary">📝 GRADING INTERFACE</button>
                         <button id="multiGradingBtn" class="control-btn success">👥 MULTI-USER GRADING</button>
                         <button id="testGameBtn" class="control-btn warning">▶️ TEST GAME</button>
@@ -966,22 +966,7 @@
             });
         }
 
-        // Always-on End Game button
-        document.addEventListener('DOMContentLoaded', () => {
-            const endBtn = document.getElementById('alwaysEndGameBtn');
-            if (endBtn) {
-                endBtn.addEventListener('click', () => {
-                    try {
-                        if (!currentGame || !currentGame.gameCode) {
-                            alert('No active game to end.');
-                            return;
-                        }
-                        if (!confirm('End the current game for all players?')) return;
-                        socket.emit('endGame', { gameCode: currentGame.gameCode });
-                    } catch (e) { console.warn('Failed to emit endGame', e); }
-                });
-            }
-        });
+        // (moved) End Game handler now lives in main controls
 
         // Update connection status
         function updateConnectionStatus(connected) {
@@ -1070,19 +1055,23 @@
         // Update game controls
         function updateGameControls() {
             const startBtn = document.getElementById('startGameBtn');
+            const endBtnMain = document.getElementById('endGameMainBtn');
             
             if (gameState === 'waiting') {
                 startBtn.textContent = 'START GAME';
                 startBtn.className = 'control-btn success';
                 startBtn.disabled = false;
+                if (endBtnMain) endBtnMain.disabled = false;
             } else if (gameState === 'playing') {
                 startBtn.textContent = 'GAME IN PROGRESS';
                 startBtn.className = 'control-btn secondary';
                 startBtn.disabled = true;
+                if (endBtnMain) endBtnMain.disabled = false;
             } else if (gameState === 'scoring' || gameState === 'roundComplete') {
                 startBtn.textContent = 'NEXT QUESTION';
                 startBtn.className = 'control-btn success';
                 startBtn.disabled = false;
+                if (endBtnMain) endBtnMain.disabled = false;
             }
         }
 
@@ -1221,6 +1210,17 @@
             } else if (gameState === 'scoring' || gameState === 'roundComplete') {
                 socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
             }
+        });
+
+        document.getElementById('endGameMainBtn').addEventListener('click', () => {
+            try {
+                if (!currentGame || !currentGame.gameCode) {
+                    alert('No active game to end.');
+                    return;
+                }
+                if (!confirm('End the current game for all players?')) return;
+                socket.emit('endGame', { gameCode: currentGame.gameCode });
+            } catch (e) { console.warn('Failed to emit endGame', e); }
         });
 
         document.getElementById('testGameBtn').addEventListener('click', () => {
