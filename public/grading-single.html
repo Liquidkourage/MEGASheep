@@ -1860,6 +1860,16 @@
                     try {
                         const names = (draggedElement.dataset.playerNames || '').split(',').map(n => n.trim()).filter(Boolean);
                         const reason = prompt('Reason to send back (optional):', 'Please be more specific');
+                        // Fallback: if no names were embedded on the chip, derive from current answer groups by text
+                        if (!names || names.length === 0) {
+                            try {
+                                const draggedText = draggedElement?.dataset?.answerText || '';
+                                const group = (currentGame?.currentAnswerGroups || []).find(g => (g.answer || '').toLowerCase().trim() === draggedText.toLowerCase().trim());
+                                if (group && Array.isArray(group.players) && group.players.length > 0) {
+                                    names = group.players.slice();
+                                }
+                            } catch (_) {}
+                        }
                         console.log('✏️ Sending back for refinement:', { names, reason, gameCode: currentGame?.gameCode });
                         names.forEach(name => {
                             // Try to resolve socketId if helper exists; otherwise rely on server name resolution
