@@ -1955,7 +1955,7 @@ io.on('connection', (socket) => {
                 .find(([id, info]) => info.gameCode === gameCode && info.isHost);
             
             if (hostSocket) {
-                console.log(`📤 Emitting answerSubmitted to host socket ${hostSocket[0]} for player ${playerName}`);
+                console.log(`📤 [server] Emitting answerSubmitted to host socket ${hostSocket[0]} for player ${playerName}`);
                 io.to(hostSocket[0]).emit('answerSubmitted', {
                     playerName: playerName,
                     answer: answer
@@ -1985,11 +1985,11 @@ io.on('connection', (socket) => {
     io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });
   });
             } else {
-                console.log(`❌ No host socket found for game ${gameCode}`);
+                console.log(`❌ [server] No host socket found for game ${gameCode}`);
             }
             
             // Notify grading interface of new answer (real-time updates)
-            console.log(`📤 Emitting newAnswerSubmitted to room ${gameCode} for player ${playerName}`);
+            console.log(`📡 [server] Broadcasting newAnswerSubmitted to room ${gameCode} for ${playerName}: "${answer}"`);
             console.log(`📤 Room ${gameCode} sockets:`, Array.from(io.sockets.adapter.rooms.get(gameCode) || []));
             
             io.to(gameCode).emit('newAnswerSubmitted', {

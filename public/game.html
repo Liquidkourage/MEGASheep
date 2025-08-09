@@ -396,6 +396,7 @@
             socket.on('requireAnswerEdit', (data) => {
                 try {
                     const reason = (data && data.reason) ? data.reason : 'Please refine your answer';
+                    console.log('✏️ requireAnswerEdit received:', data);
                     const statusEl = document.getElementById('answerStatus');
                     statusEl.innerHTML = `✏️ Edit requested by host: ${reason}`;
                     statusEl.className = 'answer-status warning';
@@ -409,6 +410,7 @@
                     }
                     // Ensure the question screen is visible (works even during grading)
                     if (!document.getElementById('questionScreen').classList.contains('active')) {
+                        console.log('✏️ Switching to questionScreen for clarification');
                         showScreen('questionScreen');
                     }
                     input.focus();

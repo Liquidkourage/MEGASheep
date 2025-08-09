@@ -1860,6 +1860,7 @@
                     try {
                         const names = (draggedElement.dataset.playerNames || '').split(',').map(n => n.trim()).filter(Boolean);
                         const reason = prompt('Reason to send back (optional):', 'Please be more specific');
+                        console.log('✏️ Sending back for refinement:', { names, reason, gameCode: currentGame?.gameCode });
                         names.forEach(name => {
                             const socketId = getSocketIdByPlayerName(name);
                             // Prefer socket id, fallback to name resolution on server

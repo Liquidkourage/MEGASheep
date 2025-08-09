@@ -911,6 +911,7 @@
             // Real-time answer stream from server for host
             socket.on('newAnswerSubmitted', (data) => {
                 try {
+                    console.log('📡 [host] newAnswerSubmitted:', data);
                     if (!currentGame) return;
                     // Ensure the player response appears immediately in the list
                     updatePlayerListWithResponses();
