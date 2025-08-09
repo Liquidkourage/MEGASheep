@@ -2072,6 +2072,12 @@
                 gameCode: currentGame.gameCode,
                 categorizedAnswers: categorization
             });
+
+            // Optimistically close modal and signal completion in UI
+            try {
+                showTemporaryMessage('✅ Grading submitted. Waiting for results…', 'success');
+            } catch (_) {}
+            try { window.close(); } catch (_) {}
         }
 
         function backToGames() {
