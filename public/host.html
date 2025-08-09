@@ -914,6 +914,7 @@
         let gameState = 'waiting'; // waiting, playing, scoring, finished
         let qpAll = [];
         let qpSelectedIds = new Set();
+        let creatingNewGame = false;
 
         // Initialize connection
         function initializeConnection() {
@@ -921,7 +922,7 @@
             
             socket.on('connect', () => {
                 updateConnectionStatus(true);
-                
+                console.log('🔌 Host connected');
                 // Check if we have a saved game session
                 const savedGameCode = localStorage.getItem('gameCode');
                 
@@ -932,7 +933,7 @@
                         localStorage.removeItem('gameCode');
                         document.getElementById('noGameState').style.display = 'block';
                         document.getElementById('activeGameState').style.display = 'none';
-                    }, 3000); // 3 second timeout
+                    }, 10000); // 10s tolerance
                     
                     socket.emit('host-reconnect', { gameCode: savedGameCode });
                     
@@ -952,8 +953,14 @@
                 showActiveGame();
                 updateGameDisplay();
                 console.log('Game created via socket:', data);
-                // Initialize picker state
-                qpSelectedIds = new Set();
+                // Preserve picker state across reconnect; only reset on new game
+                if (creatingNewGame) {
+                    qpSelectedIds = new Set();
+                    creatingNewGame = false;
+                    saveQpSel();
+                } else {
+                    restoreQpSel();
+                }
                 renderQp();
             });
             
@@ -1326,6 +1333,7 @@
         document.getElementById('createGameBtn').addEventListener('click', async () => {
             try {
                 // Create game via API
+                creatingNewGame = true;
                 const response = await fetch('/api/create-game', {
                     method: 'POST',
                     headers: {
@@ -1339,6 +1347,7 @@
                 if (data.status === 'success') {
                     // Store game info
                     localStorage.setItem('gameCode', data.gameCode);
+                    saveQpSel();
                     
                     // Join the game room via socket
                     socket.emit('createGame');
@@ -1491,6 +1500,7 @@
                 const res = await fetch('/api/load-questions');
                 const json = await res.json();
                 qpAll = Array.isArray(json.questions) ? json.questions : [];
+                restoreQpSel();
                 renderQp();
             } catch (e) {
                 console.warn('Failed to load questions', e);
@@ -1523,12 +1533,25 @@
             const selectedCount = qpSelectedIds.size;
             if (count) count.textContent = `${selectedCount} / 25`;
             if (useBtn) { useBtn.disabled = selectedCount !== 25; useBtn.textContent = `Use Selected (${selectedCount})`; }
+            saveQpSel();
         }
 
         function toggleSelectQ(id) {
             if (qpSelectedIds.has(id)) qpSelectedIds.delete(id);
             else if (qpSelectedIds.size < 25) qpSelectedIds.add(id);
             renderQp();
+        }
+
+        function saveQpSel() {
+            try { localStorage.setItem('qpSelectedIds', JSON.stringify(Array.from(qpSelectedIds))); } catch (_) {}
+        }
+        function restoreQpSel() {
+            try {
+                const raw = localStorage.getItem('qpSelectedIds');
+                if (!raw) return;
+                const arr = JSON.parse(raw);
+                if (Array.isArray(arr)) qpSelectedIds = new Set(arr);
+            } catch (_) {}
         }
 
         function escapeHtml(s){
@@ -1548,6 +1571,8 @@
                 const selected = Array.from(qpSelectedIds).map(id => byId.get(id)).filter(Boolean);
                 socket.emit('loadQuestions', { gameCode: currentGame.gameCode, questions: selected });
                 alert('Loaded selected questions into game');
+                // Persist set per game code for resilience
+                try { localStorage.setItem(`qpSet_${currentGame.gameCode}`, JSON.stringify(selected.map(q=>q.id))); } catch (_) {}
             } catch (e) { console.warn('Failed to use selected questions', e); }
         });
 

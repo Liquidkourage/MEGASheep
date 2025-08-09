@@ -2831,7 +2831,7 @@ io.on('connection', (socket) => {
                                 }
                             }, 5000);
                         }
-                    }, 1500);
+                    }, 3000);
                 } else {
                     console.log(`📺 Display disconnected from game ${playerInfo.gameCode}`);
                 }
