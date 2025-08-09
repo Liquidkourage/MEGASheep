@@ -894,6 +894,15 @@
                 console.log('📝 Event data playerName:', data.playerName);
                 console.log('📝 Event data answer:', data.answer);
                 
+                // Ignore live answers from players currently pending clarification
+                try {
+                    const pending = (currentGame?.pendingEdits || []).map(p => String(p.playerName || '').toLowerCase());
+                    if (pending.includes(String(data.playerName || '').toLowerCase())) {
+                        console.log('✏️ Ignoring answer from pending-clarification player:', data.playerName);
+                        return;
+                    }
+                } catch (_) {}
+
                 // Update the current game with the new answer
                 if (currentGame && currentGame.currentAnswerGroups) {
                     // Find if this player already has an answer
