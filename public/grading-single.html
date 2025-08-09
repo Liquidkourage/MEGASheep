@@ -957,6 +957,24 @@
                                 bucket.id = bucketId;
                                 document.getElementById('correctAnswers').appendChild(bucket);
                             }
+                            // Consolidate groups for the same normalized answer into a single combined players list
+                            try {
+                                const norm = (txt) => String(txt || '').toLowerCase().trim();
+                                const sameGroups = (currentGame.currentAnswerGroups || []).filter(g => norm(g.answer) === norm(group?.answer));
+                                const combinedPlayersSet = new Set();
+                                sameGroups.forEach(g => (g.players || []).forEach(p => combinedPlayersSet.add(String(p))));
+                                const combinedPlayers = Array.from(combinedPlayersSet);
+                                // Update one canonical group and remove duplicates from data
+                                if (sameGroups.length > 0) {
+                                    sameGroups[0].players = combinedPlayers;
+                                    sameGroups[0].count = combinedPlayers.length;
+                                    currentGame.currentAnswerGroups = currentGame.currentAnswerGroups.filter(g => g === sameGroups[0] || norm(g.answer) !== norm(group?.answer));
+                                    group = sameGroups[0];
+                                } else {
+                                    group.players = combinedPlayers.length ? combinedPlayers : (group.players || [affectedName]);
+                                    group.count = group.players.length;
+                                }
+                            } catch(_) {}
                             // Remove this player from uncategorized DOM if present
                             try {
                                 const unc = document.getElementById('uncategorizedAnswers');
