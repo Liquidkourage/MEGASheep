@@ -1357,8 +1357,9 @@
                 }
             });
             
-            // Clear and repopulate uncategorized (this section is smaller, so less jarring)
+            // Clear and repopulate uncategorized (guard against duplicate fills)
             uncategorizedContainer.innerHTML = '';
+            window.skipPopulateUncategorized = false;
             await populateUncategorizedAnswers();
             
             // Re-setup drag and drop for all new elements
@@ -1551,8 +1552,12 @@
             // Render ALL correct answer buckets (even empty ones)
             // Sort buckets alphabetically before rendering
             correctAnswerBuckets.sort((a, b) => a.name.localeCompare(b.name));
+            // Clear container first to ensure no duplicates remain from previous renders
+            const correctAnswersRoot = document.getElementById('correctAnswers');
+            if (correctAnswersRoot) correctAnswersRoot.innerHTML = '';
             correctAnswerBuckets.forEach(bucket => {
                 const bucketDiv = document.createElement('div');
+                const bucketId = `bucket-${bucket.name.toLowerCase().replace(/\s+/g, '-')}`;
                 
                 // Calculate total player count for this bucket
                 let totalPlayerCount = 0;
@@ -1568,6 +1573,7 @@
                 
                 const isEmpty = totalPlayerCount === 0;
                 bucketDiv.className = `answer-bucket correct-bucket${isEmpty ? ' empty' : ''}`;
+                bucketDiv.id = bucketId; // align with updateAnswerBucketsSmoothly to avoid duplicates
                 bucketDiv.dataset.bucketId = bucket.id;
                 bucketDiv.innerHTML = `
                     <h4 onclick="toggleBucket(this)">
@@ -1592,7 +1598,7 @@
             // Update count badges
             updateCountBadges();
             
-            // Setup drag and drop for all elements
+            // Setup drag and drop for all elements (rebind once)
             setupDragAndDrop();
             
                     // Restore saved grading state if available
