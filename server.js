@@ -32,6 +32,74 @@ const io = socketIo(server, {
 
 // Keepalive handler for display clients
 io.on('connection', (socket) => {
+  // Player → Host: ask a private question (top-level)
+  socket.on('playerQuestion', (data) => {
+    try {
+      console.log('💬 playerQuestion received from', socket.id, 'question:', data && data.question);
+      if (!data || typeof data.question !== 'string') {
+        try { socket.emit('playerQuestionAck', { ok: false, reason: 'bad-payload' }); } catch (_) {}
+        return;
+      }
+      const question = data.question.trim();
+      if (question.length === 0) {
+        try { socket.emit('playerQuestionAck', { ok: false, reason: 'empty' }); } catch (_) {}
+        return;
+      }
+
+      const playerInfo = connectedPlayers.get(socket.id) || {};
+      // Prefer socket-associated gameCode; fall back to client-provided gameCode
+      const gameCode = playerInfo.gameCode || data.gameCode;
+      const playerName = playerInfo.playerName || data.playerName || 'Unknown';
+
+      if (!gameCode) {
+        console.log('💬 playerQuestion missing gameCode for socket', socket.id);
+        try { socket.emit('playerQuestionAck', { ok: false, reason: 'not-in-game' }); } catch (_) {}
+        return;
+      }
+
+      const hostEntry = Array.from(connectedPlayers.entries()).find(([_, info]) => info.gameCode === gameCode && info.isHost);
+      if (!hostEntry) {
+        console.log('💬 No host socket found for Q&A in game', gameCode);
+        try { socket.emit('playerQuestionAck', { ok: false, reason: 'no-host' }); } catch (_) {}
+        return;
+      }
+      const hostSocketId = hostEntry[0];
+      console.log('💬 Forwarding question to host', hostSocketId, 'player:', playerName, 'game:', gameCode, 'q:', question);
+      io.to(hostSocketId).emit('playerQuestion', { gameCode, playerName, playerSocketId: socket.id, question, at: Date.now() });
+      try { socket.emit('playerQuestionAck', { ok: true }); } catch (_) {}
+    } catch (e) {
+      console.warn('playerQuestion handling failed', e);
+      try { socket.emit('playerQuestionAck', { ok: false, reason: 'error' }); } catch (_) {}
+    }
+  });
+
+  // Host → Player: answer a private question (top-level)
+  socket.on('hostAnswer', (data) => {
+    try {
+      console.log('💬 hostAnswer received from', socket.id, 'answer:', data && data.answer, 'target:', data && (data.targetSocketId || data.targetPlayerName));
+      if (!data || typeof data.answer !== 'string') return;
+      const answer = data.answer.trim();
+      const { gameCode, targetSocketId, targetPlayerName } = data;
+      if (!gameCode || answer.length === 0) return;
+      const hostInfo = connectedPlayers.get(socket.id);
+      if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) return;
+      const game = activeGames.get(gameCode);
+      if (!game) return;
+      let targetSid = targetSocketId;
+      if (!targetSid && targetPlayerName) {
+        const lower = String(targetPlayerName).toLowerCase();
+        for (const [sid, p] of game.players.entries()) {
+          if (String(p.name || '').toLowerCase() === lower) { targetSid = sid; break; }
+        }
+      }
+      if (!targetSid) return;
+      console.log('💬 Forwarding host answer to', targetSid);
+      io.to(targetSid).emit('hostAnswer', { gameCode, answer, at: Date.now() });
+      try { socket.emit('hostAnswerAck', { ok: true }); } catch (_) {}
+    } catch (e) {
+      console.warn('hostAnswer handling failed', e);
+    }
+  });
   socket.on('displayPing', (data) => {
     // no-op; presence keeps transport warm
   });
@@ -2073,75 +2141,6 @@ io.on('connection', (socket) => {
                     playerName: playerName,
                     answer: answer
                 });
-
-  // Player → Host: ask a private question
-  socket.on('playerQuestion', (data) => {
-    try {
-      console.log('💬 playerQuestion received from', socket.id, 'question:', data && data.question);
-      if (!data || typeof data.question !== 'string') {
-        try { socket.emit('playerQuestionAck', { ok: false, reason: 'bad-payload' }); } catch (_) {}
-        return;
-      }
-      const question = data.question.trim();
-      if (question.length === 0) {
-        try { socket.emit('playerQuestionAck', { ok: false, reason: 'empty' }); } catch (_) {}
-        return;
-      }
-
-      const playerInfo = connectedPlayers.get(socket.id) || {};
-      // Prefer socket-associated gameCode; fall back to client-provided gameCode
-      const gameCode = playerInfo.gameCode || data.gameCode;
-      const playerName = playerInfo.playerName || data.playerName || 'Unknown';
-
-      if (!gameCode) {
-        console.log('💬 playerQuestion missing gameCode for socket', socket.id);
-        try { socket.emit('playerQuestionAck', { ok: false, reason: 'not-in-game' }); } catch (_) {}
-        return;
-      }
-
-      const hostEntry = Array.from(connectedPlayers.entries()).find(([_, info]) => info.gameCode === gameCode && info.isHost);
-      if (!hostEntry) {
-        console.log('💬 No host socket found for Q&A in game', gameCode);
-        try { socket.emit('playerQuestionAck', { ok: false, reason: 'no-host' }); } catch (_) {}
-        return;
-      }
-      const hostSocketId = hostEntry[0];
-      console.log('💬 Forwarding question to host', hostSocketId, 'player:', playerName, 'game:', gameCode, 'q:', question);
-      io.to(hostSocketId).emit('playerQuestion', { gameCode, playerName, playerSocketId: socket.id, question, at: Date.now() });
-      try { socket.emit('playerQuestionAck', { ok: true }); } catch (_) {}
-    } catch (e) {
-      console.warn('playerQuestion handling failed', e);
-      try { socket.emit('playerQuestionAck', { ok: false, reason: 'error' }); } catch (_) {}
-    }
-  });
-
-  // Host → Player: answer a private question
-  socket.on('hostAnswer', (data) => {
-    try {
-      console.log('💬 hostAnswer received from', socket.id, 'answer:', data && data.answer, 'target:', data && (data.targetSocketId || data.targetPlayerName));
-      if (!data || typeof data.answer !== 'string') return;
-      const answer = data.answer.trim();
-      const { gameCode, targetSocketId, targetPlayerName } = data;
-      if (!gameCode || answer.length === 0) return;
-      const hostInfo = connectedPlayers.get(socket.id);
-      if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) return;
-      const game = activeGames.get(gameCode);
-      if (!game) return;
-      let targetSid = targetSocketId;
-      if (!targetSid && targetPlayerName) {
-        const lower = String(targetPlayerName).toLowerCase();
-        for (const [sid, p] of game.players.entries()) {
-          if (String(p.name || '').toLowerCase() === lower) { targetSid = sid; break; }
-        }
-      }
-      if (!targetSid) return;
-      console.log('💬 Forwarding host answer to', targetSid);
-      io.to(targetSid).emit('hostAnswer', { gameCode, answer, at: Date.now() });
-      try { socket.emit('hostAnswerAck', { ok: true }); } catch (_) {}
-    } catch (e) {
-      console.warn('hostAnswer handling failed', e);
-    }
-  });
 
       // Q&A handlers are registered at top-level (outside submitAnswer)
             } else {

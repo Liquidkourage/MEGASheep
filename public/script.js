@@ -351,6 +351,21 @@ function setupEventListeners() {
             }
             console.log('💬 [player] Emitting playerQuestion:', q);
             try {
+                // One-shot ACK listener bound just before emit to guarantee capture
+                socket.once('playerQuestionAck', (ack) => {
+                    console.log('💬 [player] playerQuestionAck (once):', ack);
+                    const statusEl = document.getElementById('answerStatus');
+                    if (statusEl) {
+                        if (ack && ack.ok) {
+                            statusEl.textContent = `${statusEl.textContent || '💬 Sent to host'} ✓`;
+                        } else {
+                            const reason = (ack && (ack.reason || ack.message)) || 'unknown';
+                            statusEl.textContent = `⚠️ Not delivered (${reason}).`;
+                        }
+                    }
+                });
+            } catch (_) {}
+            try {
                 const payload = { question: q };
                 try {
                     let resolvedGameCode = null;

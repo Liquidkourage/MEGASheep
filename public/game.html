@@ -808,6 +808,11 @@
             }
             console.log('💬 [player] Emitting playerQuestion:', q);
             try {
+                socket.once('playerQuestionAck', function(ack) {
+                    console.log('💬 [player] playerQuestionAck (once, game.html):', ack);
+                });
+            } catch (_) {}
+            try {
                 const payload = { question: q };
                 try {
                     let resolvedGameCode = sessionStorage.getItem('gameCode') || null;
