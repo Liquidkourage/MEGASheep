@@ -810,10 +810,38 @@
             try {
                 const payload = { question: q };
                 try {
-                    const gc = (window.gameCode) || (sessionStorage.getItem('gameCode'));
-                    const pn = (window.playerName) || (sessionStorage.getItem('playerName'));
-                    if (gc) payload.gameCode = gc;
-                    if (pn) payload.playerName = pn;
+                    let resolvedGameCode = sessionStorage.getItem('gameCode') || null;
+                    let resolvedPlayerName = sessionStorage.getItem('playerName') || null;
+
+                    // Fallback to inputs if present (join flow)
+                    const gcInput = document.getElementById('gameCode');
+                    if (!resolvedGameCode && gcInput && typeof gcInput.value === 'string' && gcInput.value.trim().length > 0) {
+                        resolvedGameCode = gcInput.value.trim();
+                    }
+                    const pnInput = document.getElementById('playerName');
+                    if (!resolvedPlayerName && pnInput && typeof pnInput.value === 'string' && pnInput.value.trim().length > 0) {
+                        resolvedPlayerName = pnInput.value.trim();
+                    }
+
+                    // Avoid ID globals that are DOM nodes; only accept strings or use .value
+                    if (!resolvedGameCode && typeof window.gameCode === 'string') {
+                        resolvedGameCode = window.gameCode.trim();
+                    } else if (!resolvedGameCode && window.gameCode && typeof window.gameCode === 'object' && typeof window.gameCode.value === 'string') {
+                        resolvedGameCode = window.gameCode.value.trim();
+                    }
+                    if (!resolvedPlayerName && typeof window.playerName === 'string') {
+                        resolvedPlayerName = window.playerName.trim();
+                    } else if (!resolvedPlayerName && window.playerName && typeof window.playerName === 'object' && typeof window.playerName.value === 'string') {
+                        resolvedPlayerName = window.playerName.value.trim();
+                    }
+
+                    if (resolvedGameCode) payload.gameCode = resolvedGameCode;
+                    if (resolvedPlayerName) payload.playerName = resolvedPlayerName;
+                    console.log('💬 [player] Resolved identifiers (game.html):', {
+                        gameCode: resolvedGameCode,
+                        playerName: resolvedPlayerName,
+                        types: { gameCode: typeof resolvedGameCode, playerName: typeof resolvedPlayerName }
+                    });
                 } catch (_) {}
                 console.log('💬 [player] playerQuestion payload (game.html):', payload);
                 socket.emit('playerQuestion', payload);

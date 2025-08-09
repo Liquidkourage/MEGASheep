@@ -353,10 +353,43 @@ function setupEventListeners() {
             try {
                 const payload = { question: q };
                 try {
-                    const gc = (window.gameCode) || (typeof gameState !== 'undefined' && gameState && gameState.gameCode) || (sessionStorage.getItem('gameCode'));
-                    const pn = (window.playerName) || (sessionStorage.getItem('playerName'));
-                    if (gc) payload.gameCode = gc;
-                    if (pn) payload.playerName = pn;
+                    let resolvedGameCode = null;
+                    let resolvedPlayerName = null;
+
+                    // Prefer sessionStorage (set after joining)
+                    resolvedGameCode = sessionStorage.getItem('gameCode') || resolvedGameCode;
+                    resolvedPlayerName = sessionStorage.getItem('playerName') || resolvedPlayerName;
+
+                    // Fallback to inputs if present on join screen
+                    const gcInput = document.getElementById('gameCode');
+                    if (!resolvedGameCode && gcInput && typeof gcInput.value === 'string' && gcInput.value.trim().length > 0) {
+                        resolvedGameCode = gcInput.value.trim();
+                    }
+                    const pnInput = document.getElementById('playerName');
+                    if (!resolvedPlayerName && pnInput && typeof pnInput.value === 'string' && pnInput.value.trim().length > 0) {
+                        resolvedPlayerName = pnInput.value.trim();
+                    }
+
+                    // Avoid ID globals (window.gameCode may be a DOM element). If it is a string, accept; if element, use .value
+                    if (!resolvedGameCode && typeof window.gameCode === 'string') {
+                        resolvedGameCode = window.gameCode.trim();
+                    } else if (!resolvedGameCode && window.gameCode && typeof window.gameCode === 'object' && typeof window.gameCode.value === 'string') {
+                        resolvedGameCode = window.gameCode.value.trim();
+                    }
+                    if (!resolvedPlayerName && typeof window.playerName === 'string') {
+                        resolvedPlayerName = window.playerName.trim();
+                    } else if (!resolvedPlayerName && window.playerName && typeof window.playerName === 'object' && typeof window.playerName.value === 'string') {
+                        resolvedPlayerName = window.playerName.value.trim();
+                    }
+
+                    if (resolvedGameCode) payload.gameCode = resolvedGameCode;
+                    if (resolvedPlayerName) payload.playerName = resolvedPlayerName;
+
+                    console.log('💬 [player] Resolved identifiers:', {
+                        gameCode: resolvedGameCode,
+                        playerName: resolvedPlayerName,
+                        types: { gameCode: typeof resolvedGameCode, playerName: typeof resolvedPlayerName }
+                    });
                 } catch (_) {}
                 console.log('💬 [player] playerQuestion payload:', payload);
                 socket.emit('playerQuestion', payload);
@@ -378,7 +411,8 @@ function setupEventListeners() {
                 if (ack && ack.ok) {
                     statusEl.textContent = `${statusEl.textContent || '💬 Sent to host'} ✓`;
                 } else {
-                    statusEl.textContent = `⚠️ Host not connected. Your question wasn\'t delivered.`;
+                    const reason = (ack && ack.reason) || (ack && ack.message) || 'unknown';
+                    statusEl.textContent = `⚠️ Not delivered (${reason}).`;
                 }
             });
             socket.on('hostAnswer', (data) => {
