@@ -1745,6 +1745,42 @@ io.on('connection', (socket) => {
       requestedAt: Date.now(),
       originalAnswer: original
     });
+
+    // If the player had an existing answer, remove it so counts/groups reflect the pending clarification
+    if (game.answers.has(targetSocketId)) {
+      game.answers.delete(targetSocketId);
+      try {
+        // Remove this player's entry from currentAnswerGroups if present
+        if (Array.isArray(game.currentAnswerGroups)) {
+          let groupsChanged = false;
+          for (const group of game.currentAnswerGroups) {
+            if (Array.isArray(group.players)) {
+              const before = group.players.length;
+              group.players = group.players.filter(n => {
+                const player = game.players.get(targetSocketId);
+                return player ? n !== player.name : true;
+              });
+              if (group.players.length !== before) {
+                groupsChanged = true;
+                group.count = Math.max(0, group.players.length);
+              }
+            }
+          }
+          // Drop empty groups
+          if (groupsChanged) {
+            game.currentAnswerGroups = game.currentAnswerGroups.filter(g => (g.players && g.players.length > 0));
+          }
+        }
+      } catch (_) {}
+      // Notify clients of updated answer counts immediately
+      io.to(gameCode).emit('answerUpdate', {
+        answersReceived: game.answers.size,
+        totalPlayers: game.players.size
+      });
+      // If already in grading, push a lightweight game state update so grading UI reflects removed answer
+      try { io.to(gameCode).emit('gameStateUpdate', { gameState: game.getGameState() }); } catch (_) {}
+    }
+
     console.log(`✏️ [server] hostRequestEdit → target=${playerName||targetSocketId} sid=${targetSocketId} reason="${reason}" original="${original}"`);
     io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });
   });
@@ -2032,8 +2068,9 @@ io.on('connection', (socket) => {
                 totalPlayers: game.players.size
             });
             
-            // Check if all answered
-            if (game.answers.size === game.players.size) {
+            // Check if all answered (exclude players currently needing clarification)
+            const pendingEditsCount = Array.from(game.answersNeedingEdit.keys()).length;
+            if (game.answers.size === (game.players.size - pendingEditsCount)) {
                 console.log(`🎯 All players (${game.players.size}) have submitted answers, ending question automatically`);
                 game.calculateScores();
                 game.gameState = 'grading'; // Changed from 'scoring' to 'grading'
