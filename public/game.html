@@ -35,7 +35,7 @@
 
         /* Compact playing layout */
         #timer { font-size: clamp(20px, 5.5vw, 28px); }
-        #questionText { font-size: clamp(17px, 3.8vw, 20px); line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        #questionText { font-size: clamp(18px, 4.6vw, 22px); line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
         .players-answered { font-size: 12px; color: #cfd8dc; margin-top: 6px; }
         .answer-progress { height: 6px; margin-top: 6px; }
         #playerCommRow { margin-top: 8px; gap: 8px; }
@@ -118,7 +118,7 @@
                 </form>
                 <!-- Multi-purpose communication: answerStatus doubles as input/display -->
                 <div id="playerCommRow" style="margin-top:8px; gap:8px; align-items:center; display:flex;">
-                    <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Type a private message to host…" style="flex:1; min-height:38px; padding:10px 12px;"></div>
+                    <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Type a private message to host…" style="flex:1; min-height:48px; padding:12px; border:1px solid rgba(255,255,255,0.25); border-radius:10px; background:rgba(255,255,255,0.08);"></div>
                     <button id="askHostBtn" class="btn btn-secondary" type="button" style="white-space:nowrap;">Send to host</button>
                 </div>
                 <div id="dmHistory" style="margin-top:6px; font-size:13px; color: #cfd8dc;"></div>
