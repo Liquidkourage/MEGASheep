@@ -316,7 +316,8 @@ class Game {
     }
 
     submitAnswer(socketId, answer) {
-        if (this.gameState !== 'playing') return false;
+        // Allow resubmission during grading only if this player was asked to edit
+        if (this.gameState !== 'playing' && !this.answersNeedingEdit.has(socketId)) return false;
         
         this.answers.set(socketId, answer.trim());
         const player = this.players.get(socketId);
