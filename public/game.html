@@ -90,9 +90,9 @@
                         <button type="submit" class="btn btn-primary" id="submitBtn">Submit Answer</button>
                     </div>
                 </form>
-                <!-- Multi-purpose communication input+display (contenteditable) -->
+                <!-- Multi-purpose communication: answerStatus doubles as input/display -->
                 <div id="playerCommRow" style="margin-top:8px; gap:8px; align-items:center; display:flex;">
-                    <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" style="flex:1; min-height:38px; padding:10px 12px; border:1px solid rgba(255,255,255,.25); border-radius:8px; background:rgba(255,255,255,0.06);"></div>
+                    <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Type a private message to host…" style="flex:1; min-height:38px; padding:10px 12px;"></div>
                     <button id="askHostBtn" class="btn btn-secondary" type="button" style="white-space:nowrap;">Send to host</button>
                 </div>
                 
@@ -103,7 +103,7 @@
                     <div class="my-answer-status" id="myAnswerStatus">Submitted ✓</div>
                 </div>
                 
-                <div class="answer-status" id="answerStatus" role="status" aria-live="polite"></div>
+                <!-- Removed dedicated status element; handled by contenteditable above -->
                 <div id="answerRetryContainer" style="display:none; margin-top:6px;">
                     <button type="button" id="retrySubmitBtn" class="btn-inline">Retry submission</button>
                 </div>
@@ -354,8 +354,13 @@
                     const msg = data && data.answer ? data.answer : '';
                     if (!msg) return;
                     const statusEl = document.getElementById('answerStatus');
-                    statusEl.innerHTML = `💬 Host: ${msg}`;
-                    statusEl.className = 'answer-status info';
+                    const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    if (statusEl && statusEl.getAttribute('contenteditable') === 'true') {
+                        statusEl.innerText = `(${ts}) 💬 Host: ${msg}`;
+                    } else if (statusEl) {
+                        statusEl.innerHTML = `(${ts}) 💬 Host: ${msg}`;
+                        statusEl.className = 'answer-status info';
+                    }
                 } catch (_) {}
             });
             

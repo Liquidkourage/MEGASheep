@@ -328,27 +328,32 @@ function setupEventListeners() {
     const submitAnswerBtn = document.getElementById('submitAnswerBtn');
     if (submitAnswerBtn) submitAnswerBtn.addEventListener('click', submitAnswer);
     const askHostBtn = document.getElementById('askHostBtn');
-    const askHostInput = document.getElementById('askHostInput');
-    const statusBox = document.getElementById('answerStatus');
+    // Use answerStatus as the multi-purpose input/display if contenteditable
+    let multiBox = document.getElementById('answerStatus');
+    const isMultiBoxEditable = !!(multiBox && multiBox.getAttribute && multiBox.getAttribute('contenteditable') === 'true');
+    const askHostInput = isMultiBoxEditable ? multiBox : document.getElementById('askHostInput');
     if (askHostBtn) {
         console.log('💬 [player] Send to Host button found; attaching handler');
-        const readBoxText = () => {
-            if (statusBox && statusBox.isContentEditable) {
-                return (statusBox.textContent || '').trim();
+        const getText = () => {
+            if (!askHostInput) return '';
+            if (isMultiBoxEditable) return (askHostInput.innerText || '').trim();
+            return (askHostInput.value || '').trim();
+        };
+        const setText = (val) => {
+            if (!askHostInput) return;
+            if (isMultiBoxEditable) askHostInput.innerText = val;
+            else askHostInput.value = val;
+        };
+        const setPlaceholderIfEmpty = () => {
+            if (!askHostInput) return;
+            if (isMultiBoxEditable && !(askHostInput.innerText || '').trim()) {
+                askHostInput.setAttribute('data-empty', 'true');
+            } else if (isMultiBoxEditable) {
+                askHostInput.removeAttribute('data-empty');
             }
-            if (askHostInput && typeof askHostInput.value === 'string') return askHostInput.value.trim();
-            return '';
-        };
-        const setBoxText = (text) => {
-            if (statusBox && statusBox.isContentEditable) { statusBox.textContent = text; return; }
-            if (askHostInput) askHostInput.value = text;
-        };
-        const setButtonState = (label, disabled) => {
-            askHostBtn.textContent = label;
-            askHostBtn.disabled = !!disabled;
         };
         const sendMessage = () => {
-            const q = readBoxText();
+            const q = getText();
             if (!q) return;
             console.log('💬 [player] Send-to-host clicked, text:', q);
             try {
@@ -358,9 +363,11 @@ function setupEventListeners() {
             try {
                 socket.once('playerQuestionAck', (ack) => {
                     console.log('💬 [player] playerQuestionAck (once):', ack);
-                    if (ack && ack.ok) setButtonState('Awaiting response…', true);
-                    else setButtonState('Send to host', false);
-                });
+            const statusEl = document.getElementById('answerStatus');
+            if (statusEl) {
+                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                statusEl.textContent = ack && ack.ok ? `(${ts}) 💬 You: ${q} ✓` : `(${ts}) ⚠️ Not delivered: ${q} (${(ack && (ack.reason||ack.message))||'unknown'})`;
+            }
                 });
             } catch (_) {}
             try {
@@ -382,15 +389,25 @@ function setupEventListeners() {
             } catch (e) {
                 console.warn('💬 [player] Failed to emit playerQuestion', e);
             }
-            const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-            setBoxText(`(${ts}) 💬 You: ${q}`);
+            const statusEl = document.getElementById('answerStatus');
+            if (statusEl) {
+                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                if (isMultiBoxEditable) statusEl.innerText = `(${ts}) 💬 You: ${q} …`;
+                else statusEl.textContent = `(${ts}) 💬 You: ${q} …`;
+            }
+            setText('');
+            setPlaceholderIfEmpty();
         };
         askHostBtn.addEventListener('click', sendMessage);
-        if (askHostInput) askHostInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-        if (statusBox && statusBox.isContentEditable) statusBox.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }});
+        if (askHostInput) askHostInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }});
         // Ensure comm row visible for players
         const commRow = document.getElementById('playerCommRow');
         if (commRow && !isHost) commRow.style.display = 'flex';
+        // Placeholder styling for contenteditable
+        if (isMultiBoxEditable) {
+            multiBox.addEventListener('input', setPlaceholderIfEmpty);
+            setPlaceholderIfEmpty();
+        }
     }
 
     // Delivery confirmation / failure
@@ -398,16 +415,27 @@ function setupEventListeners() {
         try {
             socket.on('playerQuestionAck', (ack) => {
                 console.log('💬 [player] playerQuestionAck received:', ack);
-                if (!(ack && ack.ok)) setButtonState('Send to host', false);
+                const statusEl = document.getElementById('answerStatus');
+                if (!statusEl) return;
+                if (ack && ack.ok) {
+                    statusEl.textContent = `${statusEl.textContent || '💬 Sent to host'} ✓`;
+                } else {
+                    const reason = (ack && ack.reason) || (ack && ack.message) || 'unknown';
+                    statusEl.textContent = `⚠️ Not delivered (${reason}).`;
+                }
             });
             socket.on('hostAnswer', (data) => {
                 console.log('💬 [player] hostAnswer received:', data);
                 try {
                     const msg = data && data.answer ? data.answer : '';
                     if (!msg) return;
+                    const statusEl = document.getElementById('answerStatus');
                     const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                    setBoxText(`(${ts}) 💬 Host: ${msg}`);
-                    setButtonState('Send to host', false);
+                    if (statusEl && statusEl.getAttribute('contenteditable') === 'true') {
+                        statusEl.innerText = `(${ts}) 💬 Host: ${msg}`;
+                    } else if (statusEl) {
+                        statusEl.textContent = `(${ts}) 💬 Host: ${msg}`;
+                    }
                 } catch (_) {}
             });
         } catch (_) {}

@@ -10,7 +10,7 @@
 <body>
     <div class="container">
         <!-- Welcome Screen -->
-        <div id="welcomeScreen" class="screen">
+        <div id="welcomeScreen" class="screen active">
             <div class="welcome-content">
                 <h1 class="title">🐑 MEGASheep Trivia</h1>
                 <p class="subtitle">The ultimate multiplayer trivia experience</p>
@@ -41,7 +41,7 @@
         </div>
 
         <!-- Join Game Screen -->
-        <div id="joinGameScreen" class="screen active">
+        <div id="joinGameScreen" class="screen">
             <div class="screen-content">
                 <h2>Join Game</h2>
                 <div class="form-group">
@@ -263,9 +263,9 @@
                     <input type="text" id="answerInput" placeholder="Type your answer..." maxlength="100">
                     <button id="submitAnswerBtn" class="btn btn-primary">Submit Answer</button>
                 </div>
-                <!-- Multi-purpose communication input+display (contenteditable) -->
+                <!-- Multi-purpose communication: answerStatus doubles as input/display -->
                 <div id="playerCommRow" style="display:none;margin-top:8px; gap:8px; align-items:center; display:flex;">
-                    <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" style="flex:1; min-height:38px; padding:10px 12px; border:1px solid rgba(255,255,255,.25); border-radius:8px; background:rgba(255,255,255,0.06);"></div>
+                    <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Type a private message to host…" style="flex:1; min-height:38px; padding:10px 12px;"></div>
                     <button id="askHostBtn" class="btn btn-secondary" type="button" style="white-space:nowrap;">Send to host</button>
                 </div>
                 
