@@ -790,31 +790,38 @@
             socket.on('gameStateUpdate', (data) => {
                 console.log('🔄 Game state update received:', data);
                 
-                // Auto-open grading interface when game state changes to playing (question starts)
-                if (data.gameState === 'playing' && data.gameCode) {
-                    console.log('📝 Game entered playing state (question started), auto-opening interface');
+                // Auto-open grading interface when question starts or grading begins
+                if ((data.gameState === 'playing' || data.gameState === 'grading') && data.gameCode) {
                     autoOpenGradingInterface(data.gameCode);
                 }
                 
-                // Also auto-open for grading state as a fallback
-                if (data.gameState === 'grading' && data.gameCode) {
-                    console.log('📝 Game entered grading state, auto-opening interface');
-                    autoOpenGradingInterface(data.gameCode);
-                }
+                if (!currentGame || data.gameCode !== currentGame.gameCode) return;
                 
-                // Update current game if it matches
-                if (currentGame && data.gameCode === currentGame.gameCode) {
-                    currentGame = data;
-                    updateGradingInterface();
-                }
+                // Update only lightweight parts to avoid wiping manual categorizations
+                // Preserve local DOM placements; refresh pending edits banner
+                currentGame.pendingEdits = data.pendingEdits || [];
+                currentGame.currentQuestionIndex = data.currentQuestionIndex;
+                currentGame.currentQuestionData = data.currentQuestionData || currentGame.currentQuestionData;
                 
-                // Force grading interface to be visible if we have game data
-                if (data.gameCode) {
-                    const gradingInterface = document.getElementById('gradingInterface');
-                    if (gradingInterface) {
-                        gradingInterface.style.display = 'block';
+                try {
+                    if (Array.isArray(currentGame.pendingEdits) && currentGame.pendingEdits.length > 0) {
+                        const notice = document.getElementById('pendingEditsNotice') || (function(){
+                            const n = document.createElement('div');
+                            n.id = 'pendingEditsNotice';
+                            n.style.cssText = 'margin:8px 0;padding:8px 12px;border:1px solid rgba(241,196,15,.4);background:rgba(241,196,15,.12);border-radius:8px;color:#b9770e;';
+                            n.innerHTML = '<strong>Pending clarifications:</strong> <span id="pendingEditsList"></span>';
+                            document.querySelector('#gradingInterface')?.prepend(n);
+                            return n;
+                        })();
+                        const listEl = document.getElementById('pendingEditsList');
+                        if (listEl) listEl.textContent = currentGame.pendingEdits.map(p=>`${p.playerName} ("${p.originalAnswer}")`).join(', ');
+                    } else {
+                        const n = document.getElementById('pendingEditsNotice');
+                        if (n && n.parentNode) n.parentNode.removeChild(n);
                     }
-                }
+                } catch (_) {}
+                
+                // Do not re-render buckets here to preserve manual categorization
             });
             
             socket.on('gameStateResponse', (data) => {
@@ -903,7 +910,7 @@
                     }
                 } catch (_) {}
 
-                // Update the current game with the new answer
+                // Update the current game with the new answer WITHOUT resetting manual categorizations
                 if (currentGame && currentGame.currentAnswerGroups) {
                     // Find if this player already has an answer
                     const existingIndex = currentGame.currentAnswerGroups.findIndex(group =>
@@ -911,7 +918,7 @@
                     );
 
                     if (existingIndex >= 0) {
-                        // Update existing answer
+                        // Update only the group's answer text in-place
                         console.log('🔄 Updating existing answer for player:', data.playerName);
                         currentGame.currentAnswerGroups[existingIndex].answer = data.answer;
                     } else {
@@ -926,11 +933,55 @@
                         });
                     }
                     
-                    // Smoothly update the grading interface without full reload
-                    console.log('🔄 Calling updateGradingInterfaceSmoothly');
-                    console.log('🔄 Current answer groups before update:', JSON.stringify(currentGame.currentAnswerGroups));
-                    updateGradingInterfaceSmoothly();
-                    console.log('🔄 updateGradingInterfaceSmoothly called successfully');
+                    // Update only the affected DOM bucket if it exists; otherwise place in Uncategorized
+                    try {
+                        const affectedName = data.playerName;
+                        const group = currentGame.currentAnswerGroups.find(g => g.players && g.players.includes(affectedName));
+                        const correctAnswers = (currentGame.currentQuestionData?.correct_answers || []).slice();
+                        const normalized = (group?.answer || '').toLowerCase().trim();
+                        const matchingCorrect = correctAnswers.find(c => c.toLowerCase().trim() === normalized);
+                        if (matchingCorrect) {
+                            // Ensure correct bucket exists and reflect updated players/answer
+                            const bucketId = `bucket-${matchingCorrect.toLowerCase().replace(/\s+/g, '-')}`;
+                            let bucket = document.getElementById(bucketId);
+                            if (!bucket) {
+                                bucket = createAnswerBucket(matchingCorrect, group || { players:[affectedName], count:1 });
+                                bucket.id = bucketId;
+                                document.getElementById('correctAnswers').appendChild(bucket);
+                            }
+                            updateBucketAnswerList(bucket, group);
+                        } else {
+                            // Move/update in Uncategorized only if not already categorized manually
+                            // If the player is currently listed in any correct/wrong bucket DOM, skip auto-move
+                            let listedSomewhere = false;
+                            try {
+                                const playerEls = Array.from(document.querySelectorAll('.answer-players'));
+                                for (const el of playerEls) {
+                                    if ((el.textContent || '').split(',').map(s => s.trim().toLowerCase()).includes(String(affectedName).toLowerCase())) {
+                                        // If this element is inside uncategorized, allow update there; otherwise treat as categorized
+                                        const parentBucket = el.closest('.answer-bucket');
+                                        const isUncategorized = parentBucket && parentBucket.classList.contains('uncategorized-bucket');
+                                        if (!isUncategorized) { listedSomewhere = true; }
+                                        break;
+                                    }
+                                }
+                            } catch(_) {}
+                            if (!listedSomewhere) {
+                                const unc = document.getElementById('uncategorizedAnswers');
+                                if (unc) {
+                                    // Remove any previous item for this player's old answer
+                                    Array.from(unc.children).forEach(ch => {
+                                        if ((ch.dataset?.answerText || '') && (group?.answer || '') && ch.dataset.answerText.toLowerCase().trim() === group.answer.toLowerCase().trim()) {
+                                            ch.remove();
+                                        }
+                                    });
+                                    const newItem = createAnswerItem({ answer: group?.answer || data.answer, players:[affectedName], semanticConfidence: group?.semanticConfidence, semanticMatch: group?.semanticMatch }, 0);
+                                    unc.appendChild(newItem);
+                                }
+                            }
+                        }
+                        updateCountBadges();
+                    } catch (e) { console.warn('Failed partial DOM update for new answer', e); }
                 } else {
                     console.log('⚠️ Cannot update: no current game or answer groups');
                 }
