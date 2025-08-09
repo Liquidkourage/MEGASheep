@@ -156,6 +156,18 @@ function initializeSocket() {
     socket.on('timerUpdate', handleTimerUpdate);
     socket.on('gradingComplete', handleGradingComplete);
 
+    // Private host answer for this player
+    socket.on('hostAnswer', (data) => {
+        try {
+            const msg = data && data.answer ? data.answer : '';
+            if (!msg) return;
+            const statusEl = document.getElementById('answerStatus');
+            if (statusEl) {
+                statusEl.textContent = `💬 Host: ${msg}`;
+            }
+        } catch (_) {}
+    });
+
     // Host requested a more specific answer (Send Back)
     socket.on('requireAnswerEdit', (data) => {
         try {
@@ -315,6 +327,14 @@ function setupEventListeners() {
     // Game screen
     const submitAnswerBtn = document.getElementById('submitAnswerBtn');
     if (submitAnswerBtn) submitAnswerBtn.addEventListener('click', submitAnswer);
+    const askHostBtn = document.getElementById('askHostBtn');
+    if (askHostBtn) askHostBtn.addEventListener('click', () => {
+        const q = prompt('Question for host (only host sees this):');
+        if (!q) return;
+        socket.emit('playerQuestion', { question: q });
+        const statusEl = document.getElementById('answerStatus');
+        if (statusEl) { statusEl.textContent = '💬 Sent question to host'; }
+    });
     
     const answerInput = document.getElementById('answerInput');
     if (answerInput) answerInput.addEventListener('keypress', (e) => {
