@@ -44,7 +44,25 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Only show join game screen if we're on the main page (not grading page)
     if (typeof screens !== 'undefined' && screens.joinGame) {
-        showScreen('joinGame');
+        // If a game code is present in the URL, prefill and show join screen
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const codeParam = params.get('game') || params.get('code') || params.get('gameCode');
+            if (codeParam && /^\d{4}$/.test(codeParam)) {
+                showScreen('joinGame');
+                const gameCodeInput = document.getElementById('gameCode');
+                if (gameCodeInput) {
+                    gameCodeInput.value = codeParam;
+                }
+                // Focus name field to speed up joining
+                const playerNameInput = document.getElementById('playerName');
+                if (playerNameInput) playerNameInput.focus();
+            } else {
+                showScreen('joinGame');
+            }
+        } catch (_) {
+            showScreen('joinGame');
+        }
         
         // Auto-focus game code input when join game screen is shown
         setTimeout(() => {
@@ -1268,7 +1286,7 @@ function resumeGame() {
 }
 
 function copyGameLink() {
-    const gameUrl = window.location.href;
+    const gameUrl = getJoinUrl(gameState?.gameCode);
     navigator.clipboard.writeText(gameUrl).then(() => {
         showSuccess('Game link copied to clipboard!');
     }).catch(() => {
@@ -1277,7 +1295,7 @@ function copyGameLink() {
 }
 
 function showQRCode() {
-    const gameUrl = window.location.href;
+    const gameUrl = getJoinUrl(gameState?.gameCode);
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(gameUrl)}`;
     
     // Create modal for QR code
@@ -1298,6 +1316,15 @@ function showQRCode() {
     
     document.body.appendChild(modal);
     modal.style.display = 'block';
+}
+
+// Build a join URL that lands players directly on the join screen with game code prefilled
+function getJoinUrl(code) {
+    const base = window.location.origin;
+    if (code && /^\d{4}$/.test(String(code))) {
+        return `${base}/?game=${code}`;
+    }
+    return `${base}/`;
 }
 
 function exportResults() {

@@ -1137,7 +1137,9 @@
             
             // Generate QR code after DOM is updated
             setTimeout(() => {
-                generateQRCode('qrCodeIntro', 'https://megasheep.liquidkourage.com');
+                // Direct join link with game code if available from server via template or later replacement
+                const introUrl = window.currentGameCode ? `https://megasheep.liquidkourage.com/?game=${window.currentGameCode}` : 'https://megasheep.liquidkourage.com';
+                generateQRCode('qrCodeIntro', introUrl);
             }, 100);
         }
 
@@ -1225,7 +1227,8 @@
             
             // Generate QR code after DOM is updated
             setTimeout(() => {
-                generateQRCode('qrCodeWaiting', 'https://megasheep.liquidkourage.com');
+                const waitingUrl = window.currentGameCode ? `https://megasheep.liquidkourage.com/?game=${window.currentGameCode}` : 'https://megasheep.liquidkourage.com';
+                generateQRCode('qrCodeWaiting', waitingUrl);
             }, 100);
         }
 
