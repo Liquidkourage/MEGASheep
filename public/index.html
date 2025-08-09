@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep Trivia</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+      /* Mobile portrait sizing overrides for player screen */
+      #timer { font-size: clamp(20px, 5.5vw, 28px); }
+      #questionText { font-size: clamp(18px, 4.6vw, 22px); line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+      #playerCommRow { margin-top: 8px; gap: 8px; }
+      #answerStatus[contenteditable="true"] { min-height: 48px; padding: 12px; border: 1px solid rgba(255,255,255,0.25); border-radius: 10px; background: rgba(255,255,255,0.08); }
+      #dmHistory div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    </style>
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>

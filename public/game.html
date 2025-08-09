@@ -35,7 +35,9 @@
 
         /* Compact playing layout */
         #timer { font-size: clamp(20px, 5.5vw, 28px); }
-        #questionText { font-size: clamp(18px, 4.6vw, 22px); line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+        /* Ensure question clamps and expands on tap */
+        #questionText { font-size: clamp(18px, 4.6vw, 22px); line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+        #questionText.expanded { display: block; -webkit-line-clamp: unset; max-height: none; }
         .players-answered { font-size: 12px; color: #cfd8dc; margin-top: 6px; }
         .answer-progress { height: 6px; margin-top: 6px; }
         #playerCommRow { margin-top: 8px; gap: 8px; }
@@ -583,7 +585,9 @@
             }
             
             const question = gameState.questions[gameState.currentQuestion];
-            document.getElementById('questionText').textContent = question.prompt;
+            const qEl = document.getElementById('questionText');
+            qEl.textContent = question.prompt;
+            qEl.classList.remove('expanded');
             
             // Calculate round and question within round
             const questionNumber = gameState.currentQuestion + 1;
@@ -1008,6 +1012,11 @@
                     requestWakeLock();
                     document.addEventListener('visibilitychange', () => { if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock(); });
                 }
+            } catch (_) {}
+            // Tap to expand/collapse long question
+            try {
+                const qEl = document.getElementById('questionText');
+                qEl.addEventListener('click', () => qEl.classList.toggle('expanded'));
             } catch (_) {}
             // Guard against losing unsent answer
             window.addEventListener('beforeunload', (e) => {
