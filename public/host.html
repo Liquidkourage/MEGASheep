@@ -171,6 +171,16 @@
             backdrop-filter: blur(10px);
         }
 
+        /* Question Picker */
+        .qp-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+        .qp-toolbar input { flex:1; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.35); color:#fff; }
+        .qp-list { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:10px; max-height:380px; overflow-y:auto; }
+        .qp-item { background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; cursor:pointer; transition: background .15s ease, border-color .15s ease; }
+        .qp-item:hover { background: rgba(255,255,255,0.09); }
+        .qp-item.selected { border-color:#28a745; box-shadow: inset 0 0 0 2px rgba(40,167,69,0.35); }
+        .qp-item h4 { margin:0 0 6px 0; font-size:14px; color:#fff; }
+        .qp-item .qp-meta { font-size:12px; color:#bbb; }
+
         .panel-header {
             display: flex;
             justify-content: space-between;
@@ -799,6 +809,21 @@
                     </div>
                 </div>
 
+                <!-- Question Picker Panel -->
+                <div class="dashboard-panel" id="questionPickerPanel">
+                    <div class="panel-header">
+                        <h3>🗂️ Question Picker <span id="qpCount" style="font-size:.8em;color:#bbb;margin-left:6px;">0 / 25</span></h3>
+                        <div>
+                            <button id="qpLoadBtn" class="control-btn secondary">Load from DB</button>
+                            <button id="qpUseBtn" class="control-btn success" disabled>Use Selected (0)</button>
+                        </div>
+                    </div>
+                    <div class="qp-toolbar">
+                        <input id="qpSearch" placeholder="Search questions..." />
+                    </div>
+                    <div id="qpList" class="qp-list"></div>
+                </div>
+
                 <!-- Questions Inbox Panel -->
                 <div class="dashboard-panel">
                     <div class="panel-header">
@@ -887,6 +912,8 @@
         let socket = null;
         let currentGame = null;
         let gameState = 'waiting'; // waiting, playing, scoring, finished
+        let qpAll = [];
+        let qpSelectedIds = new Set();
 
         // Initialize connection
         function initializeConnection() {
@@ -925,6 +952,9 @@
                 showActiveGame();
                 updateGameDisplay();
                 console.log('Game created via socket:', data);
+                // Initialize picker state
+                qpSelectedIds = new Set();
+                renderQp();
             });
             
             socket.on('playerJoined', (data) => {
@@ -1451,6 +1481,74 @@
                     }
                 });
             }
+        });
+
+        // Question Picker logic
+        async function qpLoad() {
+            try {
+                const btn = document.getElementById('qpLoadBtn');
+                if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
+                const res = await fetch('/api/load-questions');
+                const json = await res.json();
+                qpAll = Array.isArray(json.questions) ? json.questions : [];
+                renderQp();
+            } catch (e) {
+                console.warn('Failed to load questions', e);
+                alert('Failed to load questions from DB');
+            } finally {
+                const btn = document.getElementById('qpLoadBtn');
+                if (btn) { btn.disabled = false; btn.textContent = 'Load from DB'; }
+            }
+        }
+
+        function renderQp() {
+            const list = document.getElementById('qpList');
+            const search = document.getElementById('qpSearch');
+            const count = document.getElementById('qpCount');
+            const useBtn = document.getElementById('qpUseBtn');
+            if (!list) return;
+            const term = (search?.value || '').toLowerCase().trim();
+            list.innerHTML = '';
+            const items = qpAll.filter(q => !term || String(q.prompt||'').toLowerCase().includes(term));
+            items.forEach(q => {
+                const div = document.createElement('div');
+                div.className = 'qp-item' + (qpSelectedIds.has(q.id) ? ' selected' : '');
+                div.onclick = () => { toggleSelectQ(q.id); };
+                div.innerHTML = `
+                    <h4>#${q.id}: ${escapeHtml(q.prompt || '')}</h4>
+                    <div class="qp-meta">Round ${q.round ?? '-'} • Order ${q.question_order ?? '-'}</div>
+                `;
+                list.appendChild(div);
+            });
+            const selectedCount = qpSelectedIds.size;
+            if (count) count.textContent = `${selectedCount} / 25`;
+            if (useBtn) { useBtn.disabled = selectedCount !== 25; useBtn.textContent = `Use Selected (${selectedCount})`; }
+        }
+
+        function toggleSelectQ(id) {
+            if (qpSelectedIds.has(id)) qpSelectedIds.delete(id);
+            else if (qpSelectedIds.size < 25) qpSelectedIds.add(id);
+            renderQp();
+        }
+
+        function escapeHtml(s){
+            return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+        }
+
+        const qpLoadBtn = document.getElementById('qpLoadBtn');
+        if (qpLoadBtn) qpLoadBtn.addEventListener('click', qpLoad);
+        const qpSearch = document.getElementById('qpSearch');
+        if (qpSearch) qpSearch.addEventListener('input', renderQp);
+        const qpUseBtn = document.getElementById('qpUseBtn');
+        if (qpUseBtn) qpUseBtn.addEventListener('click', () => {
+            try {
+                if (!currentGame || !currentGame.gameCode) { alert('No active game'); return; }
+                if (qpSelectedIds.size !== 25) { alert('Select exactly 25 questions.'); return; }
+                const byId = new Map(qpAll.map(q=>[q.id,q]));
+                const selected = Array.from(qpSelectedIds).map(id => byId.get(id)).filter(Boolean);
+                socket.emit('loadQuestions', { gameCode: currentGame.gameCode, questions: selected });
+                alert('Loaded selected questions into game');
+            } catch (e) { console.warn('Failed to use selected questions', e); }
         });
 
         // Keyboard shortcuts for modal fullscreen
