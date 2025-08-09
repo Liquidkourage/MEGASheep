@@ -190,6 +190,8 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY &&
 const activeGames = new Map(); // Map of gameCode -> Game
 const connectedPlayers = new Map(); // Map of socketId -> PlayerInfo
 const activeGameCodes = new Set(); // Track active 4-digit codes
+// Defer cleanup of empty games to allow brief reconnects
+const emptyGameCleanupTimers = new Map(); // gameCode -> timeoutId
 // Temporary display pairing codes: code -> { socketId, createdAt }
 const displayPairings = new Map();
 
@@ -2741,17 +2743,25 @@ io.on('connection', (socket) => {
             if (game) {
                 // Only remove as player if it's not a display
                 if (!playerInfo.isDisplay) {
-                game.removePlayer(socket.id);
-                
-                // Notify everyone in the game room (including host)
-                    io.to(playerInfo.gameCode).emit('playerLeft', game.getGameState());
-                
-                // Clean up empty games
-                if (game.players.size === 0) {
-                    game.cleanup();
-                    activeGames.delete(playerInfo.gameCode);
-                    console.log(`🏠 Removed empty game: ${playerInfo.gameCode}`);
-                    }
+                    // Delay removal slightly to tolerate brief reconnects
+                    setTimeout(() => {
+                        const stillConnected = connectedPlayers.has(socket.id);
+                        if (stillConnected) return;
+                        game.removePlayer(socket.id);
+                        io.to(playerInfo.gameCode).emit('playerLeft', game.getGameState());
+                        if (game.players.size === 0) {
+                            // Delay empty game cleanup to allow reconnection
+                            const code = playerInfo.gameCode;
+                            setTimeout(() => {
+                                const g = activeGames.get(code);
+                                if (g && g.players.size === 0) {
+                                    g.cleanup();
+                                    activeGames.delete(code);
+                                    console.log(`🏠 Removed empty game: ${code}`);
+                                }
+                            }, 5000);
+                        }
+                    }, 1500);
                 } else {
                     console.log(`📺 Display disconnected from game ${playerInfo.gameCode}`);
                 }
