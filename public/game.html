@@ -32,6 +32,18 @@
 
         /* DM history small text */
         #dmHistory div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Compact playing layout */
+        #timer { font-size: clamp(20px, 5.5vw, 28px); }
+        #questionText { font-size: clamp(17px, 3.8vw, 20px); line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .players-answered { font-size: 12px; color: #cfd8dc; margin-top: 6px; }
+        .answer-progress { height: 6px; margin-top: 6px; }
+        #playerCommRow { margin-top: 8px; gap: 8px; }
+        .screen-content > * { margin-bottom: 8px; }
+
+        /* Hero answer clamp */
+        .hero-answer { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+        .hero-card { margin-bottom: 12px; }
     </style>
 </head>
 <body>
@@ -594,7 +606,12 @@
             // Focus on input and ensure visible above mobile keyboard
             const ans = document.getElementById('answerInput');
             ans.focus({ preventScroll: false });
-            try { setTimeout(() => { ans.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 50); } catch(_) {}
+            try {
+                setTimeout(() => {
+                    const y = ans.getBoundingClientRect().top + window.pageYOffset - (window.visualViewport ? window.visualViewport.offsetTop : 0) - 80;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                }, 60);
+            } catch(_) {}
             
             // Reset answer count
             updateAnswerCount(0, gameState.players.length);
@@ -628,9 +645,9 @@
             const me = (gameState && gameState.players || []).find(p => p.name === playerName) || {};
             const currentScore = me.score || 0;
             resultsContent.innerHTML = `
-                <div class="hero-card" style="background: rgba(0,123,255,0.10); border:1px solid rgba(0,123,255,0.30); border-radius:12px; padding:16px; margin-bottom:14px;">
+                <div class="hero-card" style="background: rgba(0,123,255,0.10); border:1px solid rgba(0,123,255,0.30); border-radius:12px; padding:16px; margin-bottom:12px;">
                     <div style="font-weight:600; color:#cfe8ff; font-size:13px; letter-spacing:.3px;">Your Answer</div>
-                    <div style="font-size:20px; color:#fff; margin:6px 0 10px 0; word-break:break-word;">${submittedAnswer}</div>
+                    <div class="hero-answer" style="font-size:20px; color:#fff; margin:6px 0 8px 0;">${submittedAnswer}</div>
                     <div style="display:flex; align-items:center; gap:10px;">
                         <div class="loading-spinner"></div>
                         <div style="color:#90caf9;">Waiting for grading…</div>
@@ -658,13 +675,13 @@
             // Hero card with your result
             const hero = document.createElement('div');
             hero.className = 'hero-card';
-            hero.style.cssText = 'background: rgba(46,204,113,0.10); border:1px solid rgba(46,204,113,0.30); border-radius:12px; padding:16px; margin-bottom:14px;';
+            hero.style.cssText = 'background: rgba(46,204,113,0.10); border:1px solid rgba(46,204,113,0.30); border-radius:12px; padding:16px; margin-bottom:12px;';
             hero.innerHTML = `
                 <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                     <div style="font-weight:600; color:#c8e6c9; font-size:13px; letter-spacing:.3px;">Your Answer</div>
                     <div style="margin-left:auto; font-weight:700; color:#fff;">Score: ${me.score || 0}</div>
                 </div>
-                <div style="font-size:20px; color:#fff; margin:6px 0 2px 0; word-break:break-word;">${myAnswer}</div>
+                <div class=\"hero-answer\" style=\"font-size:20px; color:#fff; margin:6px 0 2px 0;\">${myAnswer}</div>
                 <div style="display:flex; gap:10px; align-items:center; color:#a5d6a7;">
                     <div style="font-size:18px; font-weight:800; color:#fff;">+${myPoints}</div>
                     <div>this question</div>
