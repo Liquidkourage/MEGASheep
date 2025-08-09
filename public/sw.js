@@ -1,5 +1,5 @@
 /* MEGASheep lightweight Service Worker for display stability */
-const VERSION = 'ms-v1';
+const VERSION = 'ms-v2';
 const CORE_CACHE = `core-${VERSION}`;
 const RUNTIME_CACHE = `runtime-${VERSION}`;
 
