@@ -1063,10 +1063,15 @@
             if (gameState === 'waiting') {
                 startBtn.textContent = 'START GAME';
                 startBtn.className = 'control-btn success';
+                startBtn.disabled = false;
             } else if (gameState === 'playing') {
                 startBtn.textContent = 'GAME IN PROGRESS';
                 startBtn.className = 'control-btn secondary';
                 startBtn.disabled = true;
+            } else if (gameState === 'scoring' || gameState === 'roundComplete') {
+                startBtn.textContent = 'NEXT QUESTION';
+                startBtn.className = 'control-btn success';
+                startBtn.disabled = false;
             }
         }
 
@@ -1199,8 +1204,11 @@
         });
 
         document.getElementById('startGameBtn').addEventListener('click', () => {
-            if (gameState === 'waiting' && currentGame) {
+            if (!currentGame) return;
+            if (gameState === 'waiting') {
                 socket.emit('startGame', { gameCode: currentGame.gameCode });
+            } else if (gameState === 'scoring' || gameState === 'roundComplete') {
+                socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
             }
         });
 
