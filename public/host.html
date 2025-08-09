@@ -712,6 +712,10 @@
                         <a href="/display" target="_blank" class="action-btn">📺 Display Screen</a>
                         <a href="/grading" target="_blank" class="action-btn">📝 Grading Console</a>
                         <button class="action-btn" id="alwaysEndGameBtn" title="End the current game immediately">🛑 End Game</button>
+                        <div style="display:inline-flex;gap:6px;align-items:center;margin-left:8px;">
+                            <input id="displayPairCode" placeholder="DISPLAY CODE" maxlength="4" style="width:100px;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);color:#fff;text-transform:uppercase;" />
+                            <button class="action-btn" id="pairDisplayBtn" title="Pair display by code">🔗 Pair Display</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1279,6 +1283,30 @@
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
             initializeConnection();
+            // Pair display handlers
+            const codeInput = document.getElementById('displayPairCode');
+            const pairBtn = document.getElementById('pairDisplayBtn');
+            if (codeInput) {
+                codeInput.addEventListener('input', (e) => { e.target.value = (e.target.value || '').replace(/[^A-Za-z]/g,'').toUpperCase(); });
+            }
+            if (pairBtn) {
+                pairBtn.addEventListener('click', () => {
+                    const code = (codeInput?.value || '').toUpperCase();
+                    if (!code || code.length !== 4) { alert('Enter 4-letter display code'); return; }
+                    if (!currentGame || !currentGame.gameCode) { alert('No active game'); return; }
+                    socket.emit('pairDisplayToGame', { pairingCode: code, gameCode: currentGame.gameCode });
+                });
+            }
+            if (socket) {
+                socket.on('pairDisplayResult', (res) => {
+                    if (res && res.ok) {
+                        console.log('Display paired:', res.message);
+                        try { alert('Display paired to this game'); } catch (_) {}
+                    } else if (res) {
+                        try { alert('Pairing failed: ' + (res.message || 'Unknown error')); } catch (_) {}
+                    }
+                });
+            }
         });
 
         // Keyboard shortcuts for modal fullscreen

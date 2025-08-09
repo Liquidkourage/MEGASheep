@@ -190,6 +190,8 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY &&
 const activeGames = new Map(); // Map of gameCode -> Game
 const connectedPlayers = new Map(); // Map of socketId -> PlayerInfo
 const activeGameCodes = new Set(); // Track active 4-digit codes
+// Temporary display pairing codes: code -> { socketId, createdAt }
+const displayPairings = new Map();
 
 // Generate unique 4-digit game code
 function generateGameCode() {
@@ -2414,6 +2416,56 @@ io.on('connection', (socket) => {
         console.log(`📺 Display connected to game ${gameCode}`);
     });
 
+    // Generate a short pairing code for a display screen
+    socket.on('requestDisplayPairingCode', () => {
+        // Generate unique 4-letter code (A-Z)
+        function generateCode() {
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            let code = '';
+            for (let i = 0; i < 4; i++) code += letters[Math.floor(Math.random() * letters.length)];
+            return code;
+        }
+        let code;
+        do { code = generateCode(); } while (displayPairings.has(code));
+        displayPairings.set(code, { socketId: socket.id, createdAt: Date.now() });
+        socket.emit('displayPairingCode', { code });
+        console.log(`📺 Issued display pairing code ${code} for socket ${socket.id}`);
+    });
+
+    // Host pairs a display (identified by pairing code) to a game
+    socket.on('pairDisplayToGame', (data) => {
+        const { pairingCode, gameCode } = data || {};
+        if (!pairingCode || !gameCode) return;
+        const hostInfo = connectedPlayers.get(socket.id);
+        if (!hostInfo || !hostInfo.isHost) return;
+        const pairing = displayPairings.get((pairingCode || '').toUpperCase());
+        const game = activeGames.get(gameCode);
+        if (!pairing || !game) {
+            io.to(socket.id).emit('pairDisplayResult', { ok: false, message: 'Invalid code or game not found' });
+            return;
+        }
+        const displaySocketId = pairing.socketId;
+        const displaySocket = io.sockets.sockets.get(displaySocketId);
+        if (!displaySocket) {
+            displayPairings.delete((pairingCode || '').toUpperCase());
+            io.to(socket.id).emit('pairDisplayResult', { ok: false, message: 'Display disconnected' });
+            return;
+        }
+        // Update display connection info
+        const info = connectedPlayers.get(displaySocketId) || { id: displaySocketId };
+        info.gameCode = gameCode;
+        info.isDisplay = true;
+        connectedPlayers.set(displaySocketId, info);
+        // Join room and send current game state to display
+        displaySocket.join(gameCode);
+        displaySocket.emit('displayGameState', game.getGameState());
+        // Clear the pairing code (one-time use)
+        displayPairings.delete((pairingCode || '').toUpperCase());
+        // Ack host
+        io.to(socket.id).emit('pairDisplayResult', { ok: true, message: `Display paired to game ${gameCode}` });
+        console.log(`🔗 Paired display ${displaySocketId} -> game ${gameCode} via code ${pairingCode}`);
+    });
+
     // Join game room for grading interface
     socket.on('joinGameRoom', (data) => {
         const { gameCode } = data;
@@ -2644,6 +2696,10 @@ io.on('connection', (socket) => {
         }
         
         connectedPlayers.delete(socket.id);
+        // Cleanup any pairing codes issued to this socket
+        for (const [code, entry] of displayPairings.entries()) {
+            if (entry.socketId === socket.id) displayPairings.delete(code);
+        }
         console.log('🔌 User disconnected:', socket.id);
     });
 });

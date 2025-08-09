@@ -859,6 +859,8 @@
             
             socket.on('connect', () => {
                 console.log('🔌 Display connected to server');
+                // Request a pairing code so host can attach this display to a game
+                try { socket.emit('requestDisplayPairingCode'); } catch (_) {}
                 
                 // Get game code from URL parameter or sessionStorage
                 const urlParams = new URLSearchParams(window.location.search);
@@ -872,6 +874,13 @@
                     console.log('📺 No game code specified, showing welcome screen');
                     showIntroScreen();
                 }
+            });
+            socket.on('displayPairingCode', (data) => {
+                const code = data?.code || '----';
+                window.displayPairingCode = code;
+                console.log('📺 Display pairing code:', code);
+                // If intro screen visible, regenerate QR/text to show pairing code to host/operator
+                try { showIntroScreen(); } catch (_) {}
             });
             
             socket.on('disconnect', () => {
@@ -1132,6 +1141,7 @@
                             <p class="qr-label">Scan to join the game:</p>
                             <div id="qrCodeIntro" class="qr-code"></div>
                             <p class="game-url">Or go to <strong>megasheep.liquidkourage.com</strong> and enter game code <span class="game-code-highlight">${displayGameCode || 'XXXX'}</span></p>
+                            <p class="game-url" style="margin-top:8px;color:#ccc;">Display pairing code: <strong>${window.displayPairingCode || '----'}</strong></p>
                         </div>
                     </div>
                 </div>
