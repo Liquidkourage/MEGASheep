@@ -992,6 +992,12 @@
                 console.log('Display: Grading complete');
                 updateDisplayFromGameState(gameStateData);
             });
+
+            // Stay attached to the same game after grading completes
+            socket.on('gameFinished', (gameStateData) => {
+                console.log('Display: Game finished event received');
+                updateDisplayFromGameState(gameStateData);
+            });
             
             socket.on('gameFinished', (gameStateData) => {
                 console.log('Display: Game finished event received');

@@ -949,6 +949,16 @@
                     openGradingSingleModal();
                 } catch (e) { console.warn('Failed to auto-open grading on questionComplete', e); }
             });
+
+            // Auto-open grading interface when a new question starts
+            socket.on('nextQuestion', (data) => {
+                try {
+                    currentGame = data;
+                    gameState = 'playing';
+                    updateGameControls();
+                    openGradingSingleModal();
+                } catch (e) { console.warn('Failed to auto-open grading on nextQuestion', e); }
+            });
             
             socket.on('error', (error) => {
                 console.error('Socket error:', error);

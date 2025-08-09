@@ -775,6 +775,11 @@ class Game {
             
             // Reset question scoring state for the new question
             this.resetQuestionScoring();
+
+            // Clear any pending clarification flags for the new question
+            if (this.answersNeedingEdit) {
+                this.answersNeedingEdit.clear();
+            }
             
             console.log(`🎯 Continuing to next question: currentQuestion=${this.currentQuestion}, gameState=playing`);
             this.gameState = 'playing';
