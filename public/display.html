@@ -862,9 +862,16 @@
                 // Request a pairing code so host can attach this display to a game
                 try { socket.emit('requestDisplayPairingCode'); } catch (_) {}
                 
-                // Get game code from URL parameter or sessionStorage
+                // Prefer explicit URL param; do not reuse stale session code
                 const urlParams = new URLSearchParams(window.location.search);
-                displayGameCode = urlParams.get('game') || sessionStorage.getItem('displayGameCode');
+                const codeFromUrl = urlParams.get('game');
+                if (codeFromUrl) {
+                    displayGameCode = codeFromUrl;
+                    sessionStorage.setItem('displayGameCode', displayGameCode);
+                } else {
+                    sessionStorage.removeItem('displayGameCode');
+                    displayGameCode = null;
+                }
                 
                 if (displayGameCode) {
                     console.log('📺 Display connecting to game:', displayGameCode);
@@ -1130,19 +1137,27 @@
                             <p class="display-subtitle">The Ultimate Word Association Game</p>
                             <p class="display-brand">by Liquid Kourage Entertainment</p>
                         </div>
-                        <div class="display-status">
-                            ${displayGameCode ? 
-                                `<p>Connecting to game ${displayGameCode}...</p>` : 
-                                `<p>Waiting for game to start...</p>`
-                            }
-                            <div class="loading-spinner"></div>
-                        </div>
-                        <div class="qr-code-section">
-                            <p class="qr-label">Scan to join the game:</p>
-                            <div id="qrCodeIntro" class="qr-code"></div>
-                            <p class="game-url">Or go to <strong>megasheep.liquidkourage.com</strong> and enter game code <span class="game-code-highlight">${displayGameCode || 'XXXX'}</span></p>
-                            <p class="game-url" style="margin-top:8px;color:#ccc;">Display pairing code: <strong>${window.displayPairingCode || '----'}</strong></p>
-                        </div>
+                        ${displayGameCode ? `
+                            <div class="display-status">
+                                <p>Connecting to game ${displayGameCode}...</p>
+                                <div class="loading-spinner"></div>
+                            </div>
+                            <div class="qr-code-section">
+                                <p class="qr-label">Scan to join the game:</p>
+                                <div id="qrCodeIntro" class="qr-code"></div>
+                                <p class="game-url">Or go to <strong>megasheep.liquidkourage.com</strong> and enter game code <span class="game-code-highlight">${displayGameCode}</span></p>
+                            </div>
+                        ` : `
+                            <div class="display-status">
+                                <p>Pair this display to a game</p>
+                                <div class="loading-spinner"></div>
+                            </div>
+                            <div class="qr-code-section">
+                                <p class="qr-label">Give this code to the host:</p>
+                                <div style="font-size:3rem;font-weight:800;letter-spacing:0.2em;margin:10px 0;">${(window.displayPairingCode || '----')}</div>
+                                <p class="game-url" style="color:#ccc;">Host: enter the DISPLAY CODE in the host console → Pair Display</p>
+                            </div>
+                        `}
                     </div>
                 </div>
             `;
