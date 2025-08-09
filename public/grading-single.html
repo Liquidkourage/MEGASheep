@@ -741,6 +741,26 @@
 
         function initializeConnection() {
             socket = io();
+
+            // Lightweight Q&A toast for grader
+            (function ensureQaToast(){
+                if (document.getElementById('graderQaToast')) return;
+                const toast = document.createElement('div');
+                toast.id = 'graderQaToast';
+                toast.style.cssText = 'position:fixed;top:16px;right:16px;max-width:360px;background:rgba(0,0,0,0.85);color:#fff;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:9999;display:none;font-size:14px;line-height:1.35;';
+                toast.innerHTML = '<strong>New player question</strong><div id="graderQaToastText" style="margin-top:4px;opacity:.9;"></div>';
+                document.body.appendChild(toast);
+            })();
+
+            const showQaToast = (msg) => {
+                const toast = document.getElementById('graderQaToast');
+                const text = document.getElementById('graderQaToastText');
+                if (!toast || !text) return;
+                text.textContent = msg;
+                toast.style.display = 'block';
+                clearTimeout(window.__qaToastTimer);
+                window.__qaToastTimer = setTimeout(()=>{ toast.style.display = 'none'; }, 3000);
+            };
             
             socket.on('connect', () => {
                 updateConnectionStatus(true);
@@ -889,6 +909,14 @@
                     // Fallback
                     window.location.href = '/host';
                 }
+            });
+
+            // Q&A: notify grader when a player question arrives
+            socket.on('playerQuestion', (payload) => {
+                try {
+                    if (!payload || !payload.playerName || !payload.question) return;
+                    showQaToast(`${payload.playerName}: ${payload.question}`);
+                } catch (_) {}
             });
 
             // Real-time answer updates

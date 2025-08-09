@@ -86,11 +86,15 @@
                         <label for="answerInput">Your Answer:</label>
                         <input type="text" id="answerInput" placeholder="Type your answer here..." maxlength="100" required>
                     </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                         <button type="submit" class="btn btn-primary" id="submitBtn">Submit Answer</button>
-                        <button type="button" class="btn btn-secondary" id="askHostBtn">Ask host</button>
                     </div>
                 </form>
+                <!-- Multi-purpose communication input+display -->
+                <div id="playerCommRow" style="margin-top:8px; gap:8px; align-items:center; display:flex;">
+                    <input type="text" id="askHostInput" placeholder="Type a private message to host…" maxlength="200" style="flex:1;">
+                    <button id="askHostBtn" class="btn btn-secondary" type="button" style="white-space:nowrap;">Send to host</button>
+                </div>
                 
                 <!-- My Answer Display -->
                 <div id="myAnswerDisplay" class="my-answer-display" style="display: none;">
@@ -786,75 +790,37 @@
             }, 2500);
         });
 
-        // Ask host a private question
-        document.getElementById('askHostBtn').addEventListener('click', function() {
-            console.log('💬 [player] Ask Host button clicked (game.html)');
-            console.log('💬 [player] Opening Ask Host prompt/modal');
-            const q = prompt('Question for host (only host sees this):');
-            if (q === null) {
-                console.log('💬 [player] Ask Host prompt closed without input (Cancel)');
-                return;
-            }
-            console.log('💬 [player] Ask Host prompt text entered:', q);
-            console.log('💬 [player] Ask Host modal send clicked');
-            try {
-                window.lastAskedQuestion = q;
-                sessionStorage.setItem('lastAskedQuestion', q);
-                console.log('💬 [player] Stored question to window.lastAskedQuestion and sessionStorage');
-                console.log('💬 [player] Stored (window):', window.lastAskedQuestion);
-                console.log('💬 [player] Stored (session):', sessionStorage.getItem('lastAskedQuestion'));
-            } catch (e) {
-                console.warn('💬 [player] Failed to persist lastAskedQuestion', e);
-            }
-            console.log('💬 [player] Emitting playerQuestion:', q);
-            try {
-                socket.once('playerQuestionAck', function(ack) {
-                    console.log('💬 [player] playerQuestionAck (once, game.html):', ack);
-                });
-            } catch (_) {}
-            try {
-                const payload = { question: q };
+        // Send-to-host (inline input)
+        (function(){
+            const btn = document.getElementById('askHostBtn');
+            const input = document.getElementById('askHostInput');
+            const send = function(){
+                const q = (input && typeof input.value === 'string') ? input.value.trim() : '';
+                if (!q) return;
+                console.log('💬 [player] Send-to-host clicked (game.html), text:', q);
+                try { window.lastAskedQuestion = q; sessionStorage.setItem('lastAskedQuestion', q); } catch(_){}
+                try { socket.once('playerQuestionAck', function(ack){ console.log('💬 [player] playerQuestionAck (once, game.html):', ack); }); } catch(_){}
                 try {
-                    let resolvedGameCode = sessionStorage.getItem('gameCode') || null;
-                    let resolvedPlayerName = sessionStorage.getItem('playerName') || null;
-
-                    // Fallback to inputs if present (join flow)
-                    const gcInput = document.getElementById('gameCode');
-                    if (!resolvedGameCode && gcInput && typeof gcInput.value === 'string' && gcInput.value.trim().length > 0) {
-                        resolvedGameCode = gcInput.value.trim();
-                    }
-                    const pnInput = document.getElementById('playerName');
-                    if (!resolvedPlayerName && pnInput && typeof pnInput.value === 'string' && pnInput.value.trim().length > 0) {
-                        resolvedPlayerName = pnInput.value.trim();
-                    }
-
-                    // Avoid ID globals that are DOM nodes; only accept strings or use .value
-                    if (!resolvedGameCode && typeof window.gameCode === 'string') {
-                        resolvedGameCode = window.gameCode.trim();
-                    } else if (!resolvedGameCode && window.gameCode && typeof window.gameCode === 'object' && typeof window.gameCode.value === 'string') {
-                        resolvedGameCode = window.gameCode.value.trim();
-                    }
-                    if (!resolvedPlayerName && typeof window.playerName === 'string') {
-                        resolvedPlayerName = window.playerName.trim();
-                    } else if (!resolvedPlayerName && window.playerName && typeof window.playerName === 'object' && typeof window.playerName.value === 'string') {
-                        resolvedPlayerName = window.playerName.value.trim();
-                    }
-
-                    if (resolvedGameCode) payload.gameCode = resolvedGameCode;
-                    if (resolvedPlayerName) payload.playerName = resolvedPlayerName;
-                    console.log('💬 [player] Resolved identifiers (game.html):', {
-                        gameCode: resolvedGameCode,
-                        playerName: resolvedPlayerName,
-                        types: { gameCode: typeof resolvedGameCode, playerName: typeof resolvedPlayerName }
-                    });
-                } catch (_) {}
-                console.log('💬 [player] playerQuestion payload (game.html):', payload);
-                socket.emit('playerQuestion', payload);
-            } catch (e) { console.warn('💬 [player] Failed to emit playerQuestion', e); }
-            const statusEl = document.getElementById('answerStatus');
-            statusEl.innerHTML = `💬 Sent to host: ${q}`;
-            statusEl.className = 'answer-status info';
-        });
+                    const payload = { question: q };
+                    try {
+                        let gc = sessionStorage.getItem('gameCode') || null;
+                        let pn = sessionStorage.getItem('playerName') || null;
+                        if (gc) payload.gameCode = gc; if (pn) payload.playerName = pn;
+                    } catch(_){}
+                    console.log('💬 [player] playerQuestion payload (game.html):', payload);
+                    socket.emit('playerQuestion', payload);
+                } catch(e){ console.warn('💬 [player] Failed to emit playerQuestion', e); }
+                const statusEl = document.getElementById('answerStatus');
+                if (statusEl) {
+                    const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    statusEl.innerHTML = `(${ts}) 💬 You: ${q} …`;
+                    statusEl.className = 'answer-status info';
+                }
+                if (input) input.value = '';
+            };
+            if (btn) btn.addEventListener('click', send);
+            if (input) input.addEventListener('keypress', function(e){ if (e.key === 'Enter') send(); });
+        })();
 
         // Show ack logs in game.html too
         socket.on('playerQuestionAck', function(ack) {

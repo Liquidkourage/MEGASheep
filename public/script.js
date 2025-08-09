@@ -328,83 +328,40 @@ function setupEventListeners() {
     const submitAnswerBtn = document.getElementById('submitAnswerBtn');
     if (submitAnswerBtn) submitAnswerBtn.addEventListener('click', submitAnswer);
     const askHostBtn = document.getElementById('askHostBtn');
+    const askHostInput = document.getElementById('askHostInput');
     if (askHostBtn) {
-        console.log('💬 [player] Ask Host button found; attaching handler');
-        askHostBtn.addEventListener('click', () => {
-            console.log('💬 [player] Ask Host button clicked');
-            console.log('💬 [player] Opening Ask Host prompt/modal');
-            const q = prompt('Question for host (only host sees this):');
-            if (q === null) {
-                console.log('💬 [player] Ask Host prompt closed without input (Cancel)');
-                return;
-            }
-            console.log('💬 [player] Ask Host prompt text entered:', q);
-            console.log('💬 [player] Ask Host modal send clicked');
+        console.log('💬 [player] Send to Host button found; attaching handler');
+        const sendMessage = () => {
+            const q = (askHostInput && typeof askHostInput.value === 'string') ? askHostInput.value.trim() : '';
+            if (!q) return;
+            console.log('💬 [player] Send-to-host clicked, text:', q);
             try {
                 window.lastAskedQuestion = q;
                 sessionStorage.setItem('lastAskedQuestion', q);
-                console.log('💬 [player] Stored question to window.lastAskedQuestion and sessionStorage');
-                console.log('💬 [player] Stored (window):', window.lastAskedQuestion);
-                console.log('💬 [player] Stored (session):', sessionStorage.getItem('lastAskedQuestion'));
-            } catch (e) {
-                console.warn('💬 [player] Failed to persist lastAskedQuestion', e);
-            }
-            console.log('💬 [player] Emitting playerQuestion:', q);
+            } catch (_) {}
             try {
-                // One-shot ACK listener bound just before emit to guarantee capture
                 socket.once('playerQuestionAck', (ack) => {
                     console.log('💬 [player] playerQuestionAck (once):', ack);
-                    const statusEl = document.getElementById('answerStatus');
-                    if (statusEl) {
-                        if (ack && ack.ok) {
-                            statusEl.textContent = `${statusEl.textContent || '💬 Sent to host'} ✓`;
-                        } else {
-                            const reason = (ack && (ack.reason || ack.message)) || 'unknown';
-                            statusEl.textContent = `⚠️ Not delivered (${reason}).`;
-                        }
-                    }
+            const statusEl = document.getElementById('answerStatus');
+            if (statusEl) {
+                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                statusEl.textContent = ack && ack.ok ? `(${ts}) 💬 You: ${q} ✓` : `(${ts}) ⚠️ Not delivered: ${q} (${(ack && (ack.reason||ack.message))||'unknown'})`;
+            }
                 });
             } catch (_) {}
             try {
                 const payload = { question: q };
                 try {
-                    let resolvedGameCode = null;
-                    let resolvedPlayerName = null;
-
-                    // Prefer sessionStorage (set after joining)
-                    resolvedGameCode = sessionStorage.getItem('gameCode') || resolvedGameCode;
-                    resolvedPlayerName = sessionStorage.getItem('playerName') || resolvedPlayerName;
-
-                    // Fallback to inputs if present on join screen
+                    let resolvedGameCode = sessionStorage.getItem('gameCode') || null;
+                    let resolvedPlayerName = sessionStorage.getItem('playerName') || null;
                     const gcInput = document.getElementById('gameCode');
-                    if (!resolvedGameCode && gcInput && typeof gcInput.value === 'string' && gcInput.value.trim().length > 0) {
-                        resolvedGameCode = gcInput.value.trim();
-                    }
+                    if (!resolvedGameCode && gcInput && typeof gcInput.value === 'string' && gcInput.value.trim()) resolvedGameCode = gcInput.value.trim();
                     const pnInput = document.getElementById('playerName');
-                    if (!resolvedPlayerName && pnInput && typeof pnInput.value === 'string' && pnInput.value.trim().length > 0) {
-                        resolvedPlayerName = pnInput.value.trim();
-                    }
-
-                    // Avoid ID globals (window.gameCode may be a DOM element). If it is a string, accept; if element, use .value
-                    if (!resolvedGameCode && typeof window.gameCode === 'string') {
-                        resolvedGameCode = window.gameCode.trim();
-                    } else if (!resolvedGameCode && window.gameCode && typeof window.gameCode === 'object' && typeof window.gameCode.value === 'string') {
-                        resolvedGameCode = window.gameCode.value.trim();
-                    }
-                    if (!resolvedPlayerName && typeof window.playerName === 'string') {
-                        resolvedPlayerName = window.playerName.trim();
-                    } else if (!resolvedPlayerName && window.playerName && typeof window.playerName === 'object' && typeof window.playerName.value === 'string') {
-                        resolvedPlayerName = window.playerName.value.trim();
-                    }
-
+                    if (!resolvedPlayerName && pnInput && typeof pnInput.value === 'string' && pnInput.value.trim()) resolvedPlayerName = pnInput.value.trim();
+                    if (!resolvedGameCode && typeof window.gameCode === 'string') resolvedGameCode = window.gameCode.trim();
+                    if (!resolvedPlayerName && typeof window.playerName === 'string') resolvedPlayerName = window.playerName.trim();
                     if (resolvedGameCode) payload.gameCode = resolvedGameCode;
                     if (resolvedPlayerName) payload.playerName = resolvedPlayerName;
-
-                    console.log('💬 [player] Resolved identifiers:', {
-                        gameCode: resolvedGameCode,
-                        playerName: resolvedPlayerName,
-                        types: { gameCode: typeof resolvedGameCode, playerName: typeof resolvedPlayerName }
-                    });
                 } catch (_) {}
                 console.log('💬 [player] playerQuestion payload:', payload);
                 socket.emit('playerQuestion', payload);
@@ -412,8 +369,17 @@ function setupEventListeners() {
                 console.warn('💬 [player] Failed to emit playerQuestion', e);
             }
             const statusEl = document.getElementById('answerStatus');
-            if (statusEl) { statusEl.textContent = `💬 Sent to host: ${q}`; }
-        });
+            if (statusEl) {
+                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                statusEl.textContent = `(${ts}) 💬 You: ${q} …`;
+            }
+            if (askHostInput) askHostInput.value = '';
+        };
+        askHostBtn.addEventListener('click', sendMessage);
+        if (askHostInput) askHostInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+        // Ensure comm row visible for players
+        const commRow = document.getElementById('playerCommRow');
+        if (commRow && !isHost) commRow.style.display = 'flex';
     }
 
     // Delivery confirmation / failure

@@ -262,10 +262,13 @@
                 <div id="playerAnswerForm" class="answer-form" style="display: none; gap:8px; align-items:center;">
                     <input type="text" id="answerInput" placeholder="Type your answer..." maxlength="100">
                     <button id="submitAnswerBtn" class="btn btn-primary">Submit Answer</button>
-                    <button id="askHostBtn" class="btn btn-secondary" type="button">Ask host</button>
                 </div>
-                <!-- Inline status area for answer submissions and host replies -->
-                <div class="answer-status" id="answerStatus" role="status" aria-live="polite"></div>
+                <!-- Multi-purpose communication input+display -->
+                <div id="playerCommRow" style="display:none;margin-top:8px; gap:8px; align-items:center; display:flex;">
+                    <input type="text" id="askHostInput" placeholder="Type a private message to host…" maxlength="200" style="flex:1;">
+                    <button id="askHostBtn" class="btn btn-secondary" type="button" style="white-space:nowrap;">Send to host</button>
+                </div>
+                <div class="answer-status" id="answerStatus" role="status" aria-live="polite" style="margin-top:6px;"></div>
                 
                 <!-- Host Controls (hidden for players) -->
                 <div id="hostControls" class="host-controls" style="display: none;">
