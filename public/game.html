@@ -51,9 +51,10 @@
         #questionText.expanded { display: block; -webkit-line-clamp: unset; max-height: none; }
         .players-answered { font-size: 12px; color: #cfd8dc; margin-top: 6px; }
         .answer-progress { height: 6px; margin-top: 6px; }
-        #playerCommRow { margin-top: 8px; gap: 8px; align-items: stretch; }
-        #playerCommRow > [contenteditable="true"] { flex: 1 1 0; min-width: 0; }
-        #playerCommRow > #askHostBtn { flex: 0 0 auto; min-width: 110px; padding: 8px 12px; }
+        #playerCommRow { margin-top: 8px; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+        /* Prefer a 60/40 split so input never collapses */
+        #playerCommRow > [contenteditable="true"] { flex: 1 0 60%; min-width: 60%; }
+        #playerCommRow > #askHostBtn { flex: 1 0 38%; min-width: 38%; padding: 8px 12px; }
         /* Placeholder for empty contenteditable */
         #answerStatus[contenteditable="true"][data-empty="true"]::before { content: attr(data-placeholder); color: #b0bec5; opacity: .9; }
         .screen-content > * { margin-bottom: var(--gap-md); }
@@ -67,6 +68,12 @@
           :root { --gap-sm: 6px; --gap-md: 10px; }
           #questionText { -webkit-line-clamp: 3; }
           #dmHistory { max-height: 18px; overflow: hidden; }
+        }
+
+        @media (max-width: 420px) {
+          #playerCommRow { flex-direction: column; }
+          #playerCommRow > [contenteditable="true"],
+          #playerCommRow > #askHostBtn { min-width: 100%; flex: 1 0 100%; }
         }
     </style>
 </head>
