@@ -891,6 +891,8 @@
                     if (gameStateData.gameCode) {
                         displayGameCode = gameStateData.gameCode;
                         sessionStorage.setItem('displayGameCode', displayGameCode);
+                        // Expose globally so QR builders can include it
+                        window.currentGameCode = displayGameCode;
                     }
                     updateDisplayFromGameState(gameStateData);
                 } else {
