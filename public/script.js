@@ -331,9 +331,14 @@ function setupEventListeners() {
     if (askHostBtn) askHostBtn.addEventListener('click', () => {
         const q = prompt('Question for host (only host sees this):');
         if (!q) return;
-        socket.emit('playerQuestion', { question: q });
+        console.log('💬 [player] Emitting playerQuestion:', q);
+        try {
+            socket.emit('playerQuestion', { question: q });
+        } catch (e) {
+            console.warn('💬 [player] Failed to emit playerQuestion', e);
+        }
         const statusEl = document.getElementById('answerStatus');
-        if (statusEl) { statusEl.textContent = '💬 Sent question to host'; }
+        if (statusEl) { statusEl.textContent = `💬 Sent to host: ${q}`; }
     });
     
     const answerInput = document.getElementById('answerInput');

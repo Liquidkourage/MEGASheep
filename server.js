@@ -2077,7 +2077,7 @@ io.on('connection', (socket) => {
   // Player → Host: ask a private question
   socket.on('playerQuestion', (data) => {
     try {
-      console.log('💬 playerQuestion received from', socket.id, 'data:', data);
+      console.log('💬 playerQuestion received from', socket.id, 'question:', data && data.question);
       if (!data || typeof data.question !== 'string') return;
       const question = data.question.trim();
       const playerInfo = connectedPlayers.get(socket.id);
@@ -2102,7 +2102,7 @@ io.on('connection', (socket) => {
   // Host → Player: answer a private question
   socket.on('hostAnswer', (data) => {
     try {
-      console.log('💬 hostAnswer received from', socket.id, 'data:', data);
+      console.log('💬 hostAnswer received from', socket.id, 'answer:', data && data.answer, 'target:', data && (data.targetSocketId || data.targetPlayerName));
       if (!data || typeof data.answer !== 'string') return;
       const answer = data.answer.trim();
       const { gameCode, targetSocketId, targetPlayerName } = data;

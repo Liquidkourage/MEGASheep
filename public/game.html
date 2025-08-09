@@ -789,9 +789,10 @@
         document.getElementById('askHostBtn').addEventListener('click', function() {
             const q = prompt('Question for host (only host sees this):');
             if (!q) return;
-            socket.emit('playerQuestion', { question: q });
+            console.log('💬 [player] Emitting playerQuestion:', q);
+            try { socket.emit('playerQuestion', { question: q }); } catch (e) { console.warn('💬 [player] Failed to emit playerQuestion', e); }
             const statusEl = document.getElementById('answerStatus');
-            statusEl.innerHTML = '💬 Sent question to host';
+            statusEl.innerHTML = `💬 Sent to host: ${q}`;
             statusEl.className = 'answer-status info';
         });
 
