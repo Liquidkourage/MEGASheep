@@ -189,6 +189,33 @@
             gap: 10px;
         }
 
+        /* Q&A Inbox */
+        .qa-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 22px;
+            height: 22px;
+            padding: 0 6px;
+            border-radius: 12px;
+            background: #ffc107;
+            color: #000;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .qa-item {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .qa-meta { color: #bbb; font-size: 12px; margin-bottom: 6px; }
+        .qa-question { color: #fff; margin: 6px 0 10px 0; }
+        .qa-reply-row { display: flex; gap: 8px; align-items: center; }
+        .qa-reply-row input { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.4); color: #fff; }
+        .qa-reply-row button { white-space: nowrap; }
+
         /* Players Panel */
         .player-list {
             max-height: 400px;
@@ -756,6 +783,14 @@
                         <button id="refreshQuestionsBtn" class="control-btn secondary">🔄 REFRESH QUESTIONS</button>
                     </div>
                 </div>
+
+                <!-- Questions Inbox Panel -->
+                <div class="dashboard-panel">
+                    <div class="panel-header">
+                        <h3>💬 Questions <span id="qaBadge" class="qa-badge">0</span></h3>
+                    </div>
+                    <div id="questionsInbox"></div>
+                </div>
             </div>
 
             <!-- Scoring Panel (shown after grading) -->
@@ -941,13 +976,60 @@
                 try { updatePlayerList(); } catch (_) {}
             });
 
-            // Private player question to host
+            // Q&A Inbox data and rendering
+            let hostQuestions = [];
+
+            function renderQuestionsInbox() {
+                const inbox = document.getElementById('questionsInbox');
+                if (!inbox) return;
+                inbox.innerHTML = '';
+                const unanswered = hostQuestions.filter(q => !q.answered);
+                const badge = document.getElementById('qaBadge');
+                if (badge) badge.textContent = unanswered.length;
+
+                hostQuestions
+                    .sort((a,b)=>a.answered - b.answered || a.at - b.at)
+                    .forEach(q => {
+                        const div = document.createElement('div');
+                        div.className = 'qa-item';
+                        div.innerHTML = `
+                            <div class="qa-meta">From <strong>${q.playerName}</strong> • ${new Date(q.at).toLocaleTimeString()}</div>
+                            <div class="qa-question">${q.question}</div>
+                            <div class="qa-reply-row">
+                                <input id="reply_${q.id}" type="text" placeholder="Type reply..." ${q.answered ? 'disabled' : ''} />
+                                <button class="control-btn secondary" ${q.answered ? 'disabled' : ''} data-qid="${q.id}">Reply</button>
+                            </div>
+                        `;
+                        inbox.appendChild(div);
+                    });
+
+                // Bind reply buttons
+                inbox.querySelectorAll('button[data-qid]').forEach(btn => {
+                    btn.onclick = () => {
+                        const id = btn.getAttribute('data-qid');
+                        replyToQuestion(id);
+                    };
+                });
+            }
+
+            function replyToQuestion(id) {
+                const q = hostQuestions.find(x => String(x.id) === String(id));
+                if (!q) return;
+                const input = document.getElementById(`reply_${id}`);
+                const text = (input?.value || '').trim();
+                if (!text) return;
+                socket.emit('hostAnswer', { gameCode: currentGame?.gameCode, targetSocketId: q.playerSocketId, targetPlayerName: q.playerName, answer: text });
+                q.answered = true;
+                renderQuestionsInbox();
+            }
+
+            // Private player question to host (enqueue in inbox)
             socket.on('playerQuestion', (payload) => {
                 try {
                     if (!payload || !payload.playerName || !payload.question) return;
-                    const reply = prompt(`Question from ${payload.playerName}:\n\n${payload.question}\n\nReply to ${payload.playerName}:`);
-                    if (!reply) return;
-                    socket.emit('hostAnswer', { gameCode: currentGame?.gameCode, targetSocketId: payload.playerSocketId, targetPlayerName: payload.playerName, answer: reply });
+                    const id = `${payload.playerSocketId || payload.playerName}-${payload.at || Date.now()}`;
+                    hostQuestions.push({ id, ...payload, answered: false });
+                    renderQuestionsInbox();
                 } catch (_) {}
             });
 
