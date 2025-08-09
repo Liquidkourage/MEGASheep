@@ -807,7 +807,17 @@
                 console.warn('💬 [player] Failed to persist lastAskedQuestion', e);
             }
             console.log('💬 [player] Emitting playerQuestion:', q);
-            try { socket.emit('playerQuestion', { question: q }); } catch (e) { console.warn('💬 [player] Failed to emit playerQuestion', e); }
+            try {
+                const payload = { question: q };
+                try {
+                    const gc = (window.gameCode) || (sessionStorage.getItem('gameCode'));
+                    const pn = (window.playerName) || (sessionStorage.getItem('playerName'));
+                    if (gc) payload.gameCode = gc;
+                    if (pn) payload.playerName = pn;
+                } catch (_) {}
+                console.log('💬 [player] playerQuestion payload (game.html):', payload);
+                socket.emit('playerQuestion', payload);
+            } catch (e) { console.warn('💬 [player] Failed to emit playerQuestion', e); }
             const statusEl = document.getElementById('answerStatus');
             statusEl.innerHTML = `💬 Sent to host: ${q}`;
             statusEl.className = 'answer-status info';

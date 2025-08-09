@@ -351,7 +351,15 @@ function setupEventListeners() {
             }
             console.log('💬 [player] Emitting playerQuestion:', q);
             try {
-                socket.emit('playerQuestion', { question: q });
+                const payload = { question: q };
+                try {
+                    const gc = (window.gameCode) || (typeof gameState !== 'undefined' && gameState && gameState.gameCode) || (sessionStorage.getItem('gameCode'));
+                    const pn = (window.playerName) || (sessionStorage.getItem('playerName'));
+                    if (gc) payload.gameCode = gc;
+                    if (pn) payload.playerName = pn;
+                } catch (_) {}
+                console.log('💬 [player] playerQuestion payload:', payload);
+                socket.emit('playerQuestion', payload);
             } catch (e) {
                 console.warn('💬 [player] Failed to emit playerQuestion', e);
             }
