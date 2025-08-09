@@ -1858,7 +1858,7 @@
                 // If this is the Send Back bucket, request edits from players
                 if (bucketName === '✏️ Send Back (Refine)') {
                     try {
-                        const names = (draggedElement.dataset.playerNames || '').split(',').map(n => n.trim()).filter(Boolean);
+                        let names = (draggedElement.dataset.playerNames || '').split(',').map(n => n.trim()).filter(Boolean);
                         const reason = prompt('Reason to send back (optional):', 'Please be more specific');
                         // Fallback: if no names were embedded on the chip, derive from current answer groups by text
                         if (!names || names.length === 0) {
@@ -1869,6 +1869,10 @@
                                     names = group.players.slice();
                                 }
                             } catch (_) {}
+                        }
+                        if (!names || names.length === 0) {
+                            console.warn('✏️ Could not resolve player names for send-back; no event emitted');
+                            return;
                         }
                         console.log('✏️ Sending back for refinement:', { names, reason, gameCode: currentGame?.gameCode });
                         names.forEach(name => {
