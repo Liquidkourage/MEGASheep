@@ -1862,8 +1862,13 @@
                         const reason = prompt('Reason to send back (optional):', 'Please be more specific');
                         console.log('✏️ Sending back for refinement:', { names, reason, gameCode: currentGame?.gameCode });
                         names.forEach(name => {
-                            const socketId = getSocketIdByPlayerName(name);
-                            // Prefer socket id, fallback to name resolution on server
+                            // Try to resolve socketId if helper exists; otherwise rely on server name resolution
+                            let socketId;
+                            try {
+                                if (typeof getSocketIdByPlayerName === 'function') {
+                                    socketId = getSocketIdByPlayerName(name);
+                                }
+                            } catch (_) {}
                             socket.emit('hostRequestEdit', { gameCode: currentGame.gameCode, playerSocketId: socketId || undefined, playerName: name, reason });
                         });
                     } catch (err) { console.warn('Failed to send back request', err); }
