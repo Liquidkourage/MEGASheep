@@ -1896,6 +1896,17 @@
                                 }
                             } catch (_) {}
                         }
+                        // Locally remove these players from the corresponding answer group to prevent reappearance
+                        try {
+                            const draggedText = (draggedElement?.dataset?.answerText || '').toLowerCase().trim();
+                            if (currentGame && Array.isArray(currentGame.currentAnswerGroups)) {
+                                currentGame.currentAnswerGroups = currentGame.currentAnswerGroups.map(g => {
+                                    if ((g.answer || '').toLowerCase().trim() !== draggedText) return g;
+                                    const remaining = (g.players || []).filter(p => !names.includes(p));
+                                    return { ...g, players: remaining, count: remaining.length };
+                                }).filter(g => Array.isArray(g.players) ? g.players.length > 0 : (g.count || 0) > 0);
+                            }
+                        } catch (_) {}
                         if (!names || names.length === 0) {
                             console.warn('✏️ Could not resolve player names for send-back; no event emitted');
                             return;

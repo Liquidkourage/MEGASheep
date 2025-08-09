@@ -1804,8 +1804,8 @@ io.on('connection', (socket) => {
         answersReceived: game.answers.size,
         totalPlayers: game.players.size
       });
-      // If already in grading, push a lightweight game state update so grading UI reflects removed answer
-      try { io.to(gameCode).emit('gameStateUpdate', { gameState: game.getGameState() }); } catch (_) {}
+      // Push full game state update so grading UI reflects removed answer and pendingEdits
+      try { io.to(gameCode).emit('gameStateUpdate', game.getGameState()); } catch (_) {}
     }
 
     console.log(`✏️ [server] hostRequestEdit → target=${playerName||targetSocketId} sid=${targetSocketId} reason="${reason}" original="${original}"`);
