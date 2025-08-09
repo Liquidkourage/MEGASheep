@@ -1703,10 +1703,22 @@
                 });
             }
             
-            // Populate uncategorized answers (non-matching)
-            const uncategorizedAnswers = (currentGame.currentAnswerGroups || []).filter(group => 
-                !answersToRemove.includes(group.answer)
-            );
+            // Build a set of players already placed in non-uncategorized buckets to preserve manual placements
+            const placedPlayersLower = new Set();
+            try {
+                const nonUncatPlayerEls = Array.from(document.querySelectorAll('.answer-bucket:not(.uncategorized-bucket) .answer-players'));
+                nonUncatPlayerEls.forEach(el => {
+                    const names = (el.textContent || '').split(',').map(s => s.trim()).filter(Boolean);
+                    names.forEach(n => placedPlayersLower.add(n.toLowerCase()));
+                });
+            } catch (_) {}
+
+            // Populate uncategorized answers (non-matching), excluding players already placed elsewhere
+            const uncategorizedAnswers = (currentGame.currentAnswerGroups || []).map(group => {
+                const keepPlayers = (group.players || []).filter(p => !placedPlayersLower.has(String(p).toLowerCase()));
+                if (keepPlayers.length === 0) return null;
+                return { ...group, players: keepPlayers, count: keepPlayers.length };
+            }).filter(group => group && !answersToRemove.includes(group.answer));
             
             // Calculate confidence scores for uncategorized answers
             const questionData = currentGame.currentQuestionData;
