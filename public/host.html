@@ -938,6 +938,7 @@
                 // Close the single-user grading modal if open
                 try { closeGradingSingleModal(); } catch (_) {}
                 showScoringPanel(data);
+                try { updatePlayerList(); } catch (_) {}
             });
 
             // When all players answered, server emits questionComplete (grading phase)

@@ -288,6 +288,15 @@
                 updateGameState(data);
                 startQuestion(data);
                 showScreen('questionScreen');
+                // Clear any lingering edit prompts for the new question
+                try {
+                    const statusEl = document.getElementById('answerStatus');
+                    statusEl.innerHTML = '';
+                    statusEl.className = 'answer-status';
+                    const input = document.getElementById('answerInput');
+                    const btn = document.getElementById('submitBtn');
+                    input.disabled = false; btn.disabled = false; input.value = '';
+                } catch (_) {}
             });
             
             socket.on('questionComplete', (data) => {

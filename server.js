@@ -773,8 +773,9 @@ class Game {
             this.currentQuestion++;
             this.answers.clear();
             
-            // Reset question scoring state for the new question
+            // Reset question scoring state for the new question (also mark previous question as not scored)
             this.resetQuestionScoring();
+            this.currentQuestionScored = false;
 
             // Clear any pending clarification flags for the new question
             if (this.answersNeedingEdit) {
