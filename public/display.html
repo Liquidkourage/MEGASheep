@@ -1149,12 +1149,11 @@
                             </div>
                         ` : `
                             <div class="display-status" style="margin-bottom: 8px;">
-                                <div class="loading-spinner" style="margin: 0 auto 8px auto;"></div>
-                                <p>Waiting for host to connect this display…</p>
+                                <div class="loading-spinner" style="margin: 0 auto;"></div>
                             </div>
                             <div class="qr-code-section">
                                 <div style="font-size:3.2rem;font-weight:900;letter-spacing:0.28em;margin:10px 0;color:#fff;">${((window.displayPairingCode || '----').split('').join(' '))}</div>
-                                <p class="game-url" style="color:#ccc;">Host: use code <strong>${window.displayPairingCode || '----'}</strong> to connect to this display</p>
+                                <p class="game-url" style="color:#ccc;">Host: use this code to connect this display in the host console</p>
                             </div>
                         `}
                     </div>
