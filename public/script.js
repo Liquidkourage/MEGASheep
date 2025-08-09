@@ -1708,6 +1708,11 @@ function handleNextQuestion(gameStateData) {
     startTimer();
     // Clear any lingering clarification prompt/state from previous question
     try {
+        // Remove inline edit notice banner if present
+        const editNotice = document.getElementById('editRequestNotice');
+        if (editNotice && editNotice.parentNode) {
+            editNotice.parentNode.removeChild(editNotice);
+        }
         const status = document.getElementById('answerStatus');
         if (status) { status.innerHTML = ''; status.className = 'answer-status'; }
         const input = document.getElementById('answerInput');

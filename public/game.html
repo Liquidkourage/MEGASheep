@@ -290,6 +290,8 @@
                 showScreen('questionScreen');
                 // Clear any lingering edit prompts for the new question
                 try {
+                        const existing = document.getElementById('editRequestNotice');
+                        if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
                     const statusEl = document.getElementById('answerStatus');
                     statusEl.innerHTML = '';
                     statusEl.className = 'answer-status';
