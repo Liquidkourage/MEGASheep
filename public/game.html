@@ -95,6 +95,7 @@
                     <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Type a private message to host…" style="flex:1; min-height:38px; padding:10px 12px;"></div>
                     <button id="askHostBtn" class="btn btn-secondary" type="button" style="white-space:nowrap;">Send to host</button>
                 </div>
+                <div id="dmHistory" style="margin-top:6px; font-size:13px; color: #cfd8dc;"></div>
                 
                 <!-- My Answer Display -->
                 <div id="myAnswerDisplay" class="my-answer-display" style="display: none;">
@@ -609,70 +610,85 @@
         function showGradingWait(gameState) {
             console.log('🎯 showGradingWait called - updating player interface');
             const resultsContent = document.querySelector('#resultsScreen .results-content');
-            
-            // Get the player's submitted answer if available
             const submittedAnswer = window.lastSubmittedAnswer || 'No answer submitted';
-            console.log('🔍 Debug: submittedAnswer =', submittedAnswer);
-            console.log('🔍 Debug: window.lastSubmittedAnswer =', window.lastSubmittedAnswer);
-            console.log('🔍 Debug: All window properties containing "answer":', Object.keys(window).filter(key => key.toLowerCase().includes('answer')));
-            
+            const me = (gameState && gameState.players || []).find(p => p.name === playerName) || {};
+            const currentScore = me.score || 0;
             resultsContent.innerHTML = `
-                <h2>⏳ Waiting for Host Grading</h2>
-                
-                <!-- My Submitted Answer -->
-                <div class="my-answer-display">
-                    <h3>My Answer:</h3>
-                    <div class="my-answer-text">${submittedAnswer}</div>
-                    <div class="my-answer-status">Submitted ✓</div>
+                <div class="hero-card" style="background: rgba(0,123,255,0.10); border:1px solid rgba(0,123,255,0.30); border-radius:12px; padding:16px; margin-bottom:14px;">
+                    <div style="font-weight:600; color:#cfe8ff; font-size:13px; letter-spacing:.3px;">Your Answer</div>
+                    <div style="font-size:20px; color:#fff; margin:6px 0 10px 0; word-break:break-word;">${submittedAnswer}</div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="loading-spinner"></div>
+                        <div style="color:#90caf9;">Waiting for grading…</div>
+                        <div style="margin-left:auto; font-weight:700; color:#fff;">Score: ${currentScore}</div>
+                    </div>
                 </div>
-                
-                <!-- Scoring System Explanation -->
-                <div class="scoring-system-box">
-                    <h3>Scoring System:</h3>
-                    <p>Points = Total Responses ÷ Responses with same answer (rounded up)</p>
-                    <p><strong>Rarer answers earn more points!</strong></p>
-                </div>
-                
-                <!-- Answers & Points Section -->
-                <h3>Answers & Points:</h3>
-                
-                <!-- Centered Waiting Message -->
-                <div class="waiting-message" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: 20px auto; max-width: 600px; background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 10px; padding: 20px; min-height: 200px;">
-                    <div class="loading-spinner"></div>
-                    <p style="text-align: center; margin: 5px 0;">Host is reviewing and<br>grading answers...<br>Results will appear shortly!</p>
-                </div>
-                
-                <div class="score-update">
-                    <h3>Your Current Score: <span id="currentScore">0</span></h3>
-                </div>
-                
-                <!-- View Current Scores Button -->
-                <button class="btn btn-secondary" onclick="showCurrentScores()">VIEW CURRENT SCORES</button>
+                <details style="background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px 12px;">
+                    <summary style="cursor:pointer; color:#cfd8dc;">How scoring works</summary>
+                    <div style="margin-top:8px; color:#b0bec5; font-size:14px;">Points = Total responses ÷ Responses with the same answer (rounded up). Rarer answers earn more points.</div>
+                </details>
             `;
             console.log('✅ showGradingWait completed - new interface should be visible');
         }
 
         function showResults(gameState) {
-            const answerGroupsDiv = document.getElementById('answerGroups');
-            answerGroupsDiv.innerHTML = '';
-            
-            if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
-                gameState.currentAnswerGroups.forEach(group => {
-                    const groupDiv = document.createElement('div');
-                    groupDiv.className = 'answer-group';
-                    groupDiv.innerHTML = `
-                        <div class="answer-text">"${group.answer}"</div>
-                        <div class="answer-stats">
-                            <span class="answer-count">${group.count} ${group.count === 1 ? 'person' : 'people'}</span>
-                            <span class="answer-points">+${group.points} points each</span>
-                        </div>
-                        <div class="answer-players">${group.players.join(', ')}</div>
-                    `;
-                    answerGroupsDiv.appendChild(groupDiv);
-                });
+            const container = document.querySelector('#resultsScreen .results-content');
+            const groups = Array.isArray(gameState.currentAnswerGroups) ? gameState.currentAnswerGroups : [];
+            const me = (gameState.players || []).find(p => p.name === playerName) || { score: 0 };
+            let myGroup = groups.find(g => Array.isArray(g.players) && g.players.includes(playerName));
+            const myAnswer = myGroup ? myGroup.answer : (window.lastSubmittedAnswer || '—');
+            const myPoints = myGroup ? (myGroup.points || 0) : 0;
+            const myCount = myGroup ? (myGroup.count || (myGroup.players?.length || 1)) : 1;
+            container.innerHTML = '';
+
+            // Hero card with your result
+            const hero = document.createElement('div');
+            hero.className = 'hero-card';
+            hero.style.cssText = 'background: rgba(46,204,113,0.10); border:1px solid rgba(46,204,113,0.30); border-radius:12px; padding:16px; margin-bottom:14px;';
+            hero.innerHTML = `
+                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                    <div style="font-weight:600; color:#c8e6c9; font-size:13px; letter-spacing:.3px;">Your Answer</div>
+                    <div style="margin-left:auto; font-weight:700; color:#fff;">Score: ${me.score || 0}</div>
+                </div>
+                <div style="font-size:20px; color:#fff; margin:6px 0 2px 0; word-break:break-word;">${myAnswer}</div>
+                <div style="display:flex; gap:10px; align-items:center; color:#a5d6a7;">
+                    <div style="font-size:18px; font-weight:800; color:#fff;">+${myPoints}</div>
+                    <div>this question</div>
+                    <div style="margin-left:auto; color:#cfd8dc;">${myCount > 1 ? (myCount + ' players matched') : 'Unique answer!'}</div>
+                </div>
+            `;
+            container.appendChild(hero);
+
+            // Collapsible: How others answered
+            const details = document.createElement('details');
+            details.style.cssText = 'background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px 12px;';
+            details.open = false;
+            const summary = document.createElement('summary');
+            summary.textContent = 'How others answered';
+            summary.style.cursor = 'pointer';
+            details.appendChild(summary);
+
+            const list = document.createElement('div');
+            list.style.marginTop = '8px';
+            if (groups.length === 0) {
+                list.innerHTML = '<div style="color:#b0bec5;">No answers were submitted for this question.</div>';
             } else {
-                answerGroupsDiv.innerHTML = '<p>No answers submitted for this question.</p>';
+                groups.forEach(g => {
+                    const row = document.createElement('div');
+                    row.className = 'answer-group';
+                    row.innerHTML = `
+                        <div class="answer-text">"${g.answer}"</div>
+                        <div class="answer-stats">
+                            <span class="answer-count">${g.count} ${g.count === 1 ? 'person' : 'people'}</span>
+                            <span class="answer-points">+${g.points} points each</span>
+                        </div>
+                        <div class="answer-players">${(g.players || []).join(', ')}</div>
+                    `;
+                    list.appendChild(row);
+                });
             }
+            details.appendChild(list);
+            container.appendChild(details);
         }
         
         function showFinalResults(gameState) {

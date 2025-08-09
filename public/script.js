@@ -344,6 +344,17 @@ function setupEventListeners() {
             if (isMultiBoxEditable) askHostInput.innerText = val;
             else askHostInput.value = val;
         };
+        const appendDmHistory = (who, text, suffix) => {
+            try {
+                const box = document.getElementById('dmHistory');
+                if (!box) return;
+                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                const line = document.createElement('div');
+                line.textContent = `(${ts}) ${who}: ${text}${suffix || ''}`;
+                box.appendChild(line);
+                while (box.children.length > 3) box.removeChild(box.firstChild);
+            } catch (_) {}
+        };
         const setPlaceholderIfEmpty = () => {
             if (!askHostInput) return;
             if (isMultiBoxEditable && !(askHostInput.innerText || '').trim()) {
@@ -363,11 +374,12 @@ function setupEventListeners() {
             try {
                 socket.once('playerQuestionAck', (ack) => {
                     console.log('💬 [player] playerQuestionAck (once):', ack);
-            const statusEl = document.getElementById('answerStatus');
-            if (statusEl) {
-                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                statusEl.textContent = ack && ack.ok ? `(${ts}) 💬 You: ${q} ✓` : `(${ts}) ⚠️ Not delivered: ${q} (${(ack && (ack.reason||ack.message))||'unknown'})`;
-            }
+                    const statusEl = document.getElementById('answerStatus');
+                    if (statusEl) {
+                        const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                        statusEl.textContent = ack && ack.ok ? `(${ts}) 💬 You: ${q} ✓` : `(${ts}) ⚠️ Not delivered: ${q} (${(ack && (ack.reason||ack.message))||'unknown'})`;
+                    }
+                    appendDmHistory('You', q, ack && ack.ok ? ' ✓' : ' (not delivered)');
                 });
             } catch (_) {}
             try {
@@ -436,6 +448,7 @@ function setupEventListeners() {
                     } else if (statusEl) {
                         statusEl.textContent = `(${ts}) 💬 Host: ${msg}`;
                     }
+                    appendDmHistory('Host', msg);
                 } catch (_) {}
             });
         } catch (_) {}
