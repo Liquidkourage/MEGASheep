@@ -232,6 +232,7 @@ class Game {
         this.currentQuestionScored = false; // Track if current question has been scored
         this.roundAnswerGroups = []; // Accumulate all answer groups for the current round
         this.answersNeedingEdit = new Map(); // socketId -> { reason, requestedAt, originalAnswer }
+        this.seenPlayerNames = new Set(); // Track any name that has ever joined this game
     }
 
     addPlayer(socketId, playerName) {
@@ -262,9 +263,10 @@ class Game {
             id: socketId,
       name: playerName,
       score: 0,
-      answers: []
+            answers: []
     });
         this.scores.set(socketId, 0);
+        this.seenPlayerNames.add(playerName);
         
         console.log(`👤 Player ${playerName} added to game ${this.gameCode}`);
     }
@@ -1604,7 +1606,7 @@ io.on('connection', (socket) => {
         console.log(`🏠 Host ${game.hostId} reconnected to game ${gameCode}`);
     });
 
-    // Join game
+    // Join game (new join only allowed during 'waiting')
     socket.on('joinGame', (data) => {
         console.log('🔍 joinGame event received:', data);
         console.log('🔍 joinGame: socket.id:', socket.id);
@@ -1629,9 +1631,13 @@ io.on('connection', (socket) => {
         console.log(`🔍 joinGame: Game players:`, Array.from(game.players.values()));
         
         if (game.gameState !== 'waiting') {
-            console.log(`❌ joinGame: Game ${gameCode} has already started`);
-            socket.emit('gameError', { message: 'Game has already started. Cannot join.' });
-            return;
+            // Allow reconnect for a previously seen player name
+            const isReturningPlayer = game.seenPlayerNames && game.seenPlayerNames.has(playerName);
+            if (!isReturningPlayer) {
+                console.log(`❌ joinGame: Game ${gameCode} started; rejecting new player ${playerName}`);
+                socket.emit('gameError', { message: 'Game has already started. Cannot join.' });
+                return;
+            }
         }
         
         try {
@@ -1648,11 +1654,26 @@ io.on('connection', (socket) => {
             
             // Only add to player list if not the host
             if (playerName !== game.hostId) {
-                console.log(`🔍 joinGame: Adding ${playerName} to game ${gameCode}`);
-                game.addPlayer(socket.id, playerName);
-                
-                // Notify everyone in the game room about the new player
-                io.to(gameCode).emit('playerJoined', game.getGameState());
+                const alreadyInGame = Array.from(game.players.values()).some(p => p.name === playerName);
+                if (!alreadyInGame) {
+                    console.log(`🔍 joinGame: Adding ${playerName} to game ${gameCode}`);
+                    game.addPlayer(socket.id, playerName);
+                    // If game already started, do not disturb state; just update clients
+                    io.to(gameCode).emit('playerJoined', game.getGameState());
+                } else {
+                    // Rebind returning player to new socket
+                    console.log(`🔍 joinGame: Rebinding returning player ${playerName} to socket ${socket.id}`);
+                    // Remove any old socket entry for this name
+                    for (const [sid, p] of game.players.entries()) {
+                        if (p.name === playerName && sid !== socket.id) {
+                            game.players.delete(sid);
+                            game.scores.delete(sid);
+                        }
+                    }
+                    game.players.set(socket.id, { id: socket.id, name: playerName, score: 0, answers: [] });
+                    if (!game.scores.has(socket.id)) game.scores.set(socket.id, 0);
+                    io.to(gameCode).emit('playerJoined', game.getGameState());
+                }
             } else {
                 console.log('🏠 Host', playerName, 'joined room for game', gameCode);
             }
