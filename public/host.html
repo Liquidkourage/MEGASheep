@@ -711,6 +711,7 @@
                         <a href="/" target="_blank" class="action-btn">👤 Player Join Page</a>
                         <a href="/display" target="_blank" class="action-btn">📺 Display Screen</a>
                         <a href="/grading" target="_blank" class="action-btn">📝 Grading Console</a>
+                        <button class="action-btn" id="alwaysEndGameBtn" title="End the current game immediately">🛑 End Game</button>
                     </div>
                 </div>
             </div>
@@ -944,6 +945,23 @@
                 console.error('Socket error:', error);
             });
         }
+
+        // Always-on End Game button
+        document.addEventListener('DOMContentLoaded', () => {
+            const endBtn = document.getElementById('alwaysEndGameBtn');
+            if (endBtn) {
+                endBtn.addEventListener('click', () => {
+                    try {
+                        if (!currentGame || !currentGame.gameCode) {
+                            alert('No active game to end.');
+                            return;
+                        }
+                        if (!confirm('End the current game for all players?')) return;
+                        socket.emit('endGame', { gameCode: currentGame.gameCode });
+                    } catch (e) { console.warn('Failed to emit endGame', e); }
+                });
+            }
+        });
 
         // Update connection status
         function updateConnectionStatus(connected) {
