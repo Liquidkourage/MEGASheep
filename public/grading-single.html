@@ -971,6 +971,22 @@
                                 }
                             } catch(_) {}
                             updateBucketAnswerList(bucket, group);
+                            // If this exact answer text already exists as another item, merge names and remove duplicate item
+                            try {
+                                const items = Array.from(bucket.querySelectorAll('.answer-item'));
+                                const sameText = items.filter(it => (it.dataset.answerText || '').toLowerCase().trim() === (group?.answer || '').toLowerCase().trim());
+                                if (sameText.length > 1) {
+                                    // Use the first as canonical, merge player names
+                                    const canonical = sameText[0].querySelector('.answer-players');
+                                    const canonicalNames = new Set((canonical?.textContent || '').split(',').map(s=>s.trim()).filter(Boolean));
+                                    sameText.slice(1).forEach(dup => {
+                                        const namesEl = dup.querySelector('.answer-players');
+                                        (namesEl?.textContent || '').split(',').map(s=>s.trim()).filter(Boolean).forEach(n=>canonicalNames.add(n));
+                                        dup.remove();
+                                    });
+                                    if (canonical) canonical.textContent = Array.from(canonicalNames).join(', ');
+                                }
+                            } catch(_) {}
                             updateCountBadges();
                         } else {
                             // Move/update in Uncategorized only if not already categorized manually
