@@ -295,6 +295,23 @@
                 console.log('📝 data.gameState =', data.gameState);
                 console.log('📝 data.gameState === "grading" =', data.gameState === 'grading');
                 updateGameState(data);
+                // If this player has a pending clarification, surface that immediately
+                try {
+                    const me = (data && Array.isArray(data.pendingEdits)) ? data.pendingEdits.find(p => p.playerName === playerName) : null;
+                    if (me) {
+                        console.log('✏️ Pending edit persists into grading for this player');
+                        const statusEl = document.getElementById('answerStatus');
+                        statusEl.innerHTML = `✏️ Edit requested by host: ${me.reason || 'Please be more specific'}`;
+                        statusEl.className = 'answer-status warning';
+                        const input = document.getElementById('answerInput');
+                        const btn = document.getElementById('submitBtn');
+                        input.disabled = false; btn.disabled = false;
+                        if (me.originalAnswer && !input.value) input.value = me.originalAnswer;
+                        showScreen('questionScreen');
+                        input.focus();
+                        return;
+                    }
+                } catch (_) {}
                 if (data.gameState === 'grading') {
                     console.log('🎯 Calling showGradingWait with data:', data);
                     showGradingWait(data);

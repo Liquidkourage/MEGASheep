@@ -824,6 +824,23 @@
                     document.getElementById('gameSelection').style.display = 'none';
                     document.getElementById('noGamesMessage').style.display = 'none';
                     document.getElementById('gradingInterface').style.display = 'block';
+                    try {
+                        if (Array.isArray(data.pendingEdits) && data.pendingEdits.length > 0) {
+                            const notice = document.getElementById('pendingEditsNotice') || (function(){
+                                const n = document.createElement('div');
+                                n.id = 'pendingEditsNotice';
+                                n.style.cssText = 'margin:8px 0;padding:8px 12px;border:1px solid rgba(241,196,15,.4);background:rgba(241,196,15,.12);border-radius:8px;color:#b9770e;';
+                                n.innerHTML = '<strong>Pending clarifications:</strong> <span id="pendingEditsList"></span>';
+                                document.querySelector('#gradingInterface')?.prepend(n);
+                                return n;
+                            })();
+                            const listEl = document.getElementById('pendingEditsList');
+                            if (listEl) listEl.textContent = data.pendingEdits.map(p=>`${p.playerName} ("${p.originalAnswer}")`).join(', ');
+                        } else {
+                            const n = document.getElementById('pendingEditsNotice');
+                            if (n && n.parentNode) n.parentNode.removeChild(n);
+                        }
+                    } catch (_) {}
                     updateGradingInterface();
                 } else {
                     // If no game found, fall back to showing available games
