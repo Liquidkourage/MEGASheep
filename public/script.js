@@ -135,6 +135,66 @@ function initializeSocket() {
     socket.on('answerUpdate', handleAnswerUpdate);
     socket.on('timerUpdate', handleTimerUpdate);
     socket.on('gradingComplete', handleGradingComplete);
+
+    // Host requested a more specific answer (Send Back)
+    socket.on('requireAnswerEdit', (data) => {
+        try {
+            const reason = (data && data.reason) ? data.reason : 'Please be more specific';
+            console.log('✏️ Script.js: requireAnswerEdit received:', data);
+
+            // Ensure player UI is visible
+            if (typeof screens !== 'undefined' && screens.game) {
+                showScreen('game');
+            }
+
+            // Ensure the player answer form is visible for players
+            const form = document.getElementById('playerAnswerForm');
+            if (form) form.style.display = isHost ? 'none' : 'block';
+
+            const input = document.getElementById('answerInput');
+            const btn = document.getElementById('submitAnswerBtn');
+            if (input) input.disabled = false;
+            if (btn) btn.disabled = false;
+
+            // Prefill with original answer if provided
+            if (input && data && data.originalAnswer && !input.value) {
+                input.value = data.originalAnswer;
+            }
+
+            // Show an inline notice above the input
+            let notice = document.getElementById('editRequestNotice');
+            if (!notice && form) {
+                notice = document.createElement('div');
+                notice.id = 'editRequestNotice';
+                notice.style.margin = '8px 0';
+                notice.style.padding = '8px 10px';
+                notice.style.borderRadius = '6px';
+                notice.style.background = 'rgba(241, 196, 15, 0.15)';
+                notice.style.border = '1px solid rgba(241, 196, 15, 0.4)';
+                notice.style.color = '#b9770e';
+                form.parentNode.insertBefore(notice, form);
+            }
+            if (notice) {
+                notice.textContent = `✏️ Edit requested by host: ${reason}`;
+                // brief pulse
+                notice.style.animation = 'none';
+                // force reflow
+                // eslint-disable-next-line no-unused-expressions
+                notice.offsetHeight;
+                notice.style.animation = 'pulse 0.6s';
+            }
+
+            // Focus input
+            if (input) input.focus();
+
+            // Haptic feedback (mobile)
+            if (navigator && navigator.vibrate) {
+                navigator.vibrate(120);
+            }
+        } catch (e) {
+            console.warn('Script.js: Failed to present edit request', e);
+        }
+    });
 }
 
 // Event listeners setup
