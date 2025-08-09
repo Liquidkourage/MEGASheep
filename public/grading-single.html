@@ -901,12 +901,20 @@
                 console.log('📝 Event data playerName:', data.playerName);
                 console.log('📝 Event data answer:', data.answer);
                 
-                // Ignore live answers from players currently pending clarification
+                // Treat this submission as clearing any pending clarification for this player
                 try {
-                    const pending = (currentGame?.pendingEdits || []).map(p => String(p.playerName || '').toLowerCase());
-                    if (pending.includes(String(data.playerName || '').toLowerCase())) {
-                        console.log('✏️ Ignoring answer from pending-clarification player:', data.playerName);
-                        return;
+                    if (currentGame && Array.isArray(currentGame.pendingEdits)) {
+                        const before = currentGame.pendingEdits.length;
+                        currentGame.pendingEdits = currentGame.pendingEdits.filter(p => String(p.playerName || '').toLowerCase() !== String(data.playerName || '').toLowerCase());
+                        if (currentGame.pendingEdits.length !== before) {
+                            const n = document.getElementById('pendingEditsNotice');
+                            const listEl = document.getElementById('pendingEditsList');
+                            if (currentGame.pendingEdits.length === 0) {
+                                if (n && n.parentNode) n.parentNode.removeChild(n);
+                            } else if (listEl) {
+                                listEl.textContent = currentGame.pendingEdits.map(p=>`${p.playerName} ("${p.originalAnswer}")`).join(', ');
+                            }
+                        }
                     }
                 } catch (_) {}
 
@@ -949,6 +957,19 @@
                                 bucket.id = bucketId;
                                 document.getElementById('correctAnswers').appendChild(bucket);
                             }
+                            // Remove this player from uncategorized DOM if present
+                            try {
+                                const unc = document.getElementById('uncategorizedAnswers');
+                                if (unc) {
+                                    Array.from(unc.querySelectorAll('.answer-players')).forEach(el => {
+                                        const names = (el.textContent || '').split(',').map(s=>s.trim().toLowerCase());
+                                        if (names.includes(String(affectedName).toLowerCase())) {
+                                            const item = el.closest('.answer-item');
+                                            if (item) item.remove();
+                                        }
+                                    });
+                                }
+                            } catch(_) {}
                             updateBucketAnswerList(bucket, group);
                         } else {
                             // Move/update in Uncategorized only if not already categorized manually
