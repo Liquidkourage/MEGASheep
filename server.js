@@ -64,7 +64,7 @@ function startPythonSemanticService() {
             console.log(`🐍 Python Service: ${output.trim()}`);
             
             // Check if service is ready
-            if (output.includes('Running on http://127.0.0.1:5005')) {
+            if (output.includes('Running on') || output.includes('Press CTRL+C to quit')) {
                 console.log('✅ Python semantic matcher service is ready!');
                 semanticServiceReady = true;
             }
@@ -81,11 +81,7 @@ function startPythonSemanticService() {
             console.log(`🐍 Python semantic service exited with code ${code}`);
             semanticServiceReady = false;
             
-            // Restart after a delay if it wasn't intentionally stopped
-            if (code !== 0) {
-                console.log('🔄 Restarting Python semantic service in 5 seconds...');
-                setTimeout(startPythonSemanticService, 5000);
-            }
+            // Do not restart automatically; rely on env flag to control usage
         });
         
         // Handle process errors
@@ -108,8 +104,12 @@ function stopPythonSemanticService() {
     }
 }
 
-// Start Python service when server starts
-startPythonSemanticService();
+// Optional: Start Python service only if explicitly enabled
+if (process.env.ENABLE_PY_SEMANTIC === 'true') {
+  startPythonSemanticService();
+} else {
+  console.log('🧠 Python semantic service disabled (ENABLE_PY_SEMANTIC != true). Using JS fallback.');
+}
 
 // Cleanup on server shutdown
 process.on('SIGINT', () => {
