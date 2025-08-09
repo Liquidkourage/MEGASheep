@@ -658,11 +658,8 @@
         }
         /* Header and typography adjustments */
         .display-header {
-            position: fixed;
-            top: 16px;
-            left: 50%;
-            transform: translateX(-50%);
             text-align: center;
+            margin-top: 24px;
             z-index: 1001;
         }
         .display-title {
@@ -684,7 +681,17 @@
             margin: 20px auto 0 auto;
             padding: 0 24px;
         }
-        .display-content { padding-top: 180px !important; }
+        .display-content {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 16px;
+            padding-top: 100px !important;
+            box-sizing: border-box;
+        }
     </style>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
