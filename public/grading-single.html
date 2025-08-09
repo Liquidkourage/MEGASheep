@@ -2522,19 +2522,8 @@
             
             console.log(`🧹 Cleared ${keysToRemove.length} previous grading states`);
             
-            // CRITICAL: Also clear the current question's state to start completely fresh
-            const currentStateKey = `grading_state_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`;
-            const currentState = localStorage.getItem(currentStateKey);
-            if (currentState) {
-                localStorage.removeItem(currentStateKey);
-                console.log(`🗑️ ALSO cleared current question state for fresh start: ${currentStateKey}`);
-            }
-            
-            // Set a flag to prevent restoration for this question load
-            window.skipStateRestoration = true;
-            setTimeout(() => {
-                window.skipStateRestoration = false;
-            }, 2000);
+            // Do NOT clear current question's state; we want to preserve manual placements across clarify/reloads
+            // Also avoid blocking restoration so the UI can rebuild from saved state quickly
         }
         
         // Restore grading state from localStorage
