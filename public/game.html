@@ -403,6 +403,14 @@
                     const btn = document.getElementById('submitBtn');
                     input.disabled = false;
                     btn.disabled = false;
+                    // Prefill with original answer if provided
+                    if (data && data.originalAnswer && !input.value) {
+                        input.value = data.originalAnswer;
+                    }
+                    // Ensure the question screen is visible (works even during grading)
+                    if (!document.getElementById('questionScreen').classList.contains('active')) {
+                        showScreen('questionScreen');
+                    }
                     input.focus();
                 } catch (e) {
                     console.warn('Failed to present edit request', e);
