@@ -359,6 +359,25 @@ function setupEventListeners() {
             if (statusEl) { statusEl.textContent = `💬 Sent to host: ${q}`; }
         });
     }
+
+    // Delivery confirmation / failure
+    if (typeof socket !== 'undefined') {
+        try {
+            socket.on('playerQuestionAck', (ack) => {
+                console.log('💬 [player] playerQuestionAck received:', ack);
+                const statusEl = document.getElementById('answerStatus');
+                if (!statusEl) return;
+                if (ack && ack.ok) {
+                    statusEl.textContent = `${statusEl.textContent || '💬 Sent to host'} ✓`;
+                } else {
+                    statusEl.textContent = `⚠️ Host not connected. Your question wasn\'t delivered.`;
+                }
+            });
+            socket.on('hostAnswer', (data) => {
+                console.log('💬 [player] hostAnswer received:', data);
+            });
+        } catch (_) {}
+    }
     
     const answerInput = document.getElementById('answerInput');
     if (answerInput) answerInput.addEventListener('keypress', (e) => {

@@ -345,6 +345,7 @@
 
             // Private host answer for this player
             socket.on('hostAnswer', (data) => {
+                console.log('💬 [player] hostAnswer received (game.html):', data);
                 try {
                     const msg = data && data.answer ? data.answer : '';
                     if (!msg) return;
@@ -810,6 +811,11 @@
             const statusEl = document.getElementById('answerStatus');
             statusEl.innerHTML = `💬 Sent to host: ${q}`;
             statusEl.className = 'answer-status info';
+        });
+
+        // Show ack logs in game.html too
+        socket.on('playerQuestionAck', function(ack) {
+            console.log('💬 [player] playerQuestionAck (game.html):', ack);
         });
 
         // Retry submission
