@@ -328,18 +328,37 @@ function setupEventListeners() {
     const submitAnswerBtn = document.getElementById('submitAnswerBtn');
     if (submitAnswerBtn) submitAnswerBtn.addEventListener('click', submitAnswer);
     const askHostBtn = document.getElementById('askHostBtn');
-    if (askHostBtn) askHostBtn.addEventListener('click', () => {
-        const q = prompt('Question for host (only host sees this):');
-        if (!q) return;
-        console.log('💬 [player] Emitting playerQuestion:', q);
-        try {
-            socket.emit('playerQuestion', { question: q });
-        } catch (e) {
-            console.warn('💬 [player] Failed to emit playerQuestion', e);
-        }
-        const statusEl = document.getElementById('answerStatus');
-        if (statusEl) { statusEl.textContent = `💬 Sent to host: ${q}`; }
-    });
+    if (askHostBtn) {
+        console.log('💬 [player] Ask Host button found; attaching handler');
+        askHostBtn.addEventListener('click', () => {
+            console.log('💬 [player] Ask Host button clicked');
+            console.log('💬 [player] Opening Ask Host prompt/modal');
+            const q = prompt('Question for host (only host sees this):');
+            if (q === null) {
+                console.log('💬 [player] Ask Host prompt closed without input (Cancel)');
+                return;
+            }
+            console.log('💬 [player] Ask Host prompt text entered:', q);
+            console.log('💬 [player] Ask Host modal send clicked');
+            try {
+                window.lastAskedQuestion = q;
+                sessionStorage.setItem('lastAskedQuestion', q);
+                console.log('💬 [player] Stored question to window.lastAskedQuestion and sessionStorage');
+                console.log('💬 [player] Stored (window):', window.lastAskedQuestion);
+                console.log('💬 [player] Stored (session):', sessionStorage.getItem('lastAskedQuestion'));
+            } catch (e) {
+                console.warn('💬 [player] Failed to persist lastAskedQuestion', e);
+            }
+            console.log('💬 [player] Emitting playerQuestion:', q);
+            try {
+                socket.emit('playerQuestion', { question: q });
+            } catch (e) {
+                console.warn('💬 [player] Failed to emit playerQuestion', e);
+            }
+            const statusEl = document.getElementById('answerStatus');
+            if (statusEl) { statusEl.textContent = `💬 Sent to host: ${q}`; }
+        });
+    }
     
     const answerInput = document.getElementById('answerInput');
     if (answerInput) answerInput.addEventListener('keypress', (e) => {

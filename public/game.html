@@ -787,8 +787,24 @@
 
         // Ask host a private question
         document.getElementById('askHostBtn').addEventListener('click', function() {
+            console.log('💬 [player] Ask Host button clicked (game.html)');
+            console.log('💬 [player] Opening Ask Host prompt/modal');
             const q = prompt('Question for host (only host sees this):');
-            if (!q) return;
+            if (q === null) {
+                console.log('💬 [player] Ask Host prompt closed without input (Cancel)');
+                return;
+            }
+            console.log('💬 [player] Ask Host prompt text entered:', q);
+            console.log('💬 [player] Ask Host modal send clicked');
+            try {
+                window.lastAskedQuestion = q;
+                sessionStorage.setItem('lastAskedQuestion', q);
+                console.log('💬 [player] Stored question to window.lastAskedQuestion and sessionStorage');
+                console.log('💬 [player] Stored (window):', window.lastAskedQuestion);
+                console.log('💬 [player] Stored (session):', sessionStorage.getItem('lastAskedQuestion'));
+            } catch (e) {
+                console.warn('💬 [player] Failed to persist lastAskedQuestion', e);
+            }
             console.log('💬 [player] Emitting playerQuestion:', q);
             try { socket.emit('playerQuestion', { question: q }); } catch (e) { console.warn('💬 [player] Failed to emit playerQuestion', e); }
             const statusEl = document.getElementById('answerStatus');
