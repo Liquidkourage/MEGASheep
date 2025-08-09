@@ -44,21 +44,23 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Only show join game screen if we're on the main page (not grading page)
     if (typeof screens !== 'undefined' && screens.joinGame) {
-        // If a game code is present in the URL, prefill and show join screen
+        // If a game code is present in the URL, prefill and lock the code field
         try {
             const params = new URLSearchParams(window.location.search);
             const codeParam = params.get('game') || params.get('code') || params.get('gameCode');
+            showScreen('joinGame');
+            const gameCodeInput = document.getElementById('gameCode');
             if (codeParam && /^\d{4}$/.test(codeParam)) {
-                showScreen('joinGame');
-                const gameCodeInput = document.getElementById('gameCode');
                 if (gameCodeInput) {
                     gameCodeInput.value = codeParam;
+                    gameCodeInput.readOnly = true;
+                    gameCodeInput.setAttribute('aria-readonly', 'true');
+                    gameCodeInput.style.opacity = '0.7';
+                    gameCodeInput.style.pointerEvents = 'none';
+                    gameCodeInput.title = 'Game code provided by link';
                 }
-                // Focus name field to speed up joining
                 const playerNameInput = document.getElementById('playerName');
                 if (playerNameInput) playerNameInput.focus();
-            } else {
-                showScreen('joinGame');
             }
         } catch (_) {
             showScreen('joinGame');
