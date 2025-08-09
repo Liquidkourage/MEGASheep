@@ -1981,7 +1981,7 @@ io.on('connection', (socket) => {
       requestedAt: Date.now(),
       originalAnswer: original
     });
-    io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific' });
+    io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });
   });
             } else {
                 console.log(`❌ No host socket found for game ${gameCode}`);
