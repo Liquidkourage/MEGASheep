@@ -1926,7 +1926,7 @@ function handleTimerUpdate(data) {
     // Update timer immediately for responsive display
     timeLeft = data.timeLeft;
     updateTimerDisplay();
-    console.log(`⏰ Client received timer update: ${timeLeft} seconds`);
+            // console.log(`⏰ Client received timer update: ${timeLeft} seconds`);
 }
 
 function handleError(data) {
