@@ -1869,6 +1869,7 @@
                                     socketId = getSocketIdByPlayerName(name);
                                 }
                             } catch (_) {}
+                            console.log('✏️ Emitting hostRequestEdit', { gameCode: currentGame?.gameCode, playerSocketId: socketId, playerName: name, reason });
                             socket.emit('hostRequestEdit', { gameCode: currentGame.gameCode, playerSocketId: socketId || undefined, playerName: name, reason });
                         });
                     } catch (err) { console.warn('Failed to send back request', err); }

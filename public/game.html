@@ -408,6 +408,8 @@
                     if (data && data.originalAnswer && !input.value) {
                         input.value = data.originalAnswer;
                     }
+                    // Visibly jiggle the form to draw attention
+                    try { statusEl.style.animation = 'none'; statusEl.offsetHeight; statusEl.style.animation = 'pulse 0.6s'; } catch (_) {}
                     // Ensure the question screen is visible (works even during grading)
                     if (!document.getElementById('questionScreen').classList.contains('active')) {
                         console.log('✏️ Switching to questionScreen for clarification');

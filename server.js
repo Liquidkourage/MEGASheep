@@ -1972,7 +1972,9 @@ io.on('connection', (socket) => {
     let targetSocketId = playerSocketId;
     if (!targetSocketId && playerName) {
       for (const [sid, p] of game.players.entries()) {
-        if ((p.name || '').trim() === playerName.trim()) { targetSocketId = sid; break; }
+        const a = (p.name || '').trim().toLowerCase();
+        const b = (playerName || '').trim().toLowerCase();
+        if (a === b) { targetSocketId = sid; break; }
       }
     }
     if (!targetSocketId || !game.players.has(targetSocketId)) return;
@@ -1982,6 +1984,7 @@ io.on('connection', (socket) => {
       requestedAt: Date.now(),
       originalAnswer: original
     });
+    console.log(`✏️ [server] hostRequestEdit → target=${playerName||targetSocketId} sid=${targetSocketId} reason="${reason}" original="${original}"`);
     io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });
   });
             } else {
