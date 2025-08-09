@@ -971,6 +971,7 @@
                                 }
                             } catch(_) {}
                             updateBucketAnswerList(bucket, group);
+                            updateCountBadges();
                         } else {
                             // Move/update in Uncategorized only if not already categorized manually
                             // If the player is currently listed in any correct/wrong bucket DOM, skip auto-move
@@ -998,10 +999,10 @@
                                     });
                                     const newItem = createAnswerItem({ answer: group?.answer || data.answer, players:[affectedName], semanticConfidence: group?.semanticConfidence, semanticMatch: group?.semanticMatch }, 0);
                                     unc.appendChild(newItem);
+                                    updateCountBadges();
                                 }
                             }
                         }
-                        updateCountBadges();
                     } catch (e) { console.warn('Failed partial DOM update for new answer', e); }
                 } else {
                     console.log('⚠️ Cannot update: no current game or answer groups');
@@ -2333,23 +2334,18 @@
             const uncategorizedAnswersCount = document.querySelectorAll('#uncategorizedAnswers .answer-item').length;
             document.getElementById('uncategorizedAnswersCount').textContent = uncategorizedAnswersCount;
             
-            // Update correct answer bucket counts
+            // Update correct answer bucket counts by unique players across all items
             document.querySelectorAll('#correctAnswers .answer-bucket').forEach(bucket => {
                 const countBadge = bucket.querySelector('.answer-count-badge');
                 if (countBadge) {
-                    // Calculate total player count for this bucket
-                    let totalPlayerCount = 0;
-                    const answerItems = bucket.querySelectorAll('.answer-item');
-                    
-                    answerItems.forEach(item => {
-                        const itemCountBadge = item.querySelector('.answer-count-badge');
-                        if (itemCountBadge) {
-                            const itemCount = parseInt(itemCountBadge.textContent) || 0;
-                            totalPlayerCount += itemCount;
-                        }
+                    // Calculate total unique player count for this bucket
+                    const uniquePlayers = new Set();
+                    const playerEls = bucket.querySelectorAll('.answer-players');
+                    playerEls.forEach(el => {
+                        const names = (el.textContent || '').split(',').map(s=>s.trim()).filter(Boolean);
+                        names.forEach(n => uniquePlayers.add(n));
                     });
-                    
-                    countBadge.textContent = totalPlayerCount;
+                    countBadge.textContent = uniquePlayers.size;
                 }
             });
         }
