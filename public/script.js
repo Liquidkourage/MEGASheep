@@ -329,10 +329,26 @@ function setupEventListeners() {
     if (submitAnswerBtn) submitAnswerBtn.addEventListener('click', submitAnswer);
     const askHostBtn = document.getElementById('askHostBtn');
     const askHostInput = document.getElementById('askHostInput');
+    const statusBox = document.getElementById('answerStatus');
     if (askHostBtn) {
         console.log('💬 [player] Send to Host button found; attaching handler');
+        const readBoxText = () => {
+            if (statusBox && statusBox.isContentEditable) {
+                return (statusBox.textContent || '').trim();
+            }
+            if (askHostInput && typeof askHostInput.value === 'string') return askHostInput.value.trim();
+            return '';
+        };
+        const setBoxText = (text) => {
+            if (statusBox && statusBox.isContentEditable) { statusBox.textContent = text; return; }
+            if (askHostInput) askHostInput.value = text;
+        };
+        const setButtonState = (label, disabled) => {
+            askHostBtn.textContent = label;
+            askHostBtn.disabled = !!disabled;
+        };
         const sendMessage = () => {
-            const q = (askHostInput && typeof askHostInput.value === 'string') ? askHostInput.value.trim() : '';
+            const q = readBoxText();
             if (!q) return;
             console.log('💬 [player] Send-to-host clicked, text:', q);
             try {
@@ -342,11 +358,9 @@ function setupEventListeners() {
             try {
                 socket.once('playerQuestionAck', (ack) => {
                     console.log('💬 [player] playerQuestionAck (once):', ack);
-            const statusEl = document.getElementById('answerStatus');
-            if (statusEl) {
-                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                statusEl.textContent = ack && ack.ok ? `(${ts}) 💬 You: ${q} ✓` : `(${ts}) ⚠️ Not delivered: ${q} (${(ack && (ack.reason||ack.message))||'unknown'})`;
-            }
+                    if (ack && ack.ok) setButtonState('Awaiting response…', true);
+                    else setButtonState('Send to host', false);
+                });
                 });
             } catch (_) {}
             try {
@@ -368,15 +382,12 @@ function setupEventListeners() {
             } catch (e) {
                 console.warn('💬 [player] Failed to emit playerQuestion', e);
             }
-            const statusEl = document.getElementById('answerStatus');
-            if (statusEl) {
-                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                statusEl.textContent = `(${ts}) 💬 You: ${q} …`;
-            }
-            if (askHostInput) askHostInput.value = '';
+            const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            setBoxText(`(${ts}) 💬 You: ${q}`);
         };
         askHostBtn.addEventListener('click', sendMessage);
         if (askHostInput) askHostInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+        if (statusBox && statusBox.isContentEditable) statusBox.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }});
         // Ensure comm row visible for players
         const commRow = document.getElementById('playerCommRow');
         if (commRow && !isHost) commRow.style.display = 'flex';
@@ -387,17 +398,17 @@ function setupEventListeners() {
         try {
             socket.on('playerQuestionAck', (ack) => {
                 console.log('💬 [player] playerQuestionAck received:', ack);
-                const statusEl = document.getElementById('answerStatus');
-                if (!statusEl) return;
-                if (ack && ack.ok) {
-                    statusEl.textContent = `${statusEl.textContent || '💬 Sent to host'} ✓`;
-                } else {
-                    const reason = (ack && ack.reason) || (ack && ack.message) || 'unknown';
-                    statusEl.textContent = `⚠️ Not delivered (${reason}).`;
-                }
+                if (!(ack && ack.ok)) setButtonState('Send to host', false);
             });
             socket.on('hostAnswer', (data) => {
                 console.log('💬 [player] hostAnswer received:', data);
+                try {
+                    const msg = data && data.answer ? data.answer : '';
+                    if (!msg) return;
+                    const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    setBoxText(`(${ts}) 💬 Host: ${msg}`);
+                    setButtonState('Send to host', false);
+                } catch (_) {}
             });
         } catch (_) {}
     }

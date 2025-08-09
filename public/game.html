@@ -90,9 +90,9 @@
                         <button type="submit" class="btn btn-primary" id="submitBtn">Submit Answer</button>
                     </div>
                 </form>
-                <!-- Multi-purpose communication input+display -->
+                <!-- Multi-purpose communication input+display (contenteditable) -->
                 <div id="playerCommRow" style="margin-top:8px; gap:8px; align-items:center; display:flex;">
-                    <input type="text" id="askHostInput" placeholder="Type a private message to host…" maxlength="200" style="flex:1;">
+                    <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" style="flex:1; min-height:38px; padding:10px 12px; border:1px solid rgba(255,255,255,.25); border-radius:8px; background:rgba(255,255,255,0.06);"></div>
                     <button id="askHostBtn" class="btn btn-secondary" type="button" style="white-space:nowrap;">Send to host</button>
                 </div>
                 
