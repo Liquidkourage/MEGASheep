@@ -86,7 +86,10 @@
                         <label for="answerInput">Your Answer:</label>
                         <input type="text" id="answerInput" placeholder="Type your answer here..." maxlength="100" required>
                     </div>
-                    <button type="submit" class="btn btn-primary" id="submitBtn">Submit Answer</button>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">Submit Answer</button>
+                        <button type="button" class="btn btn-secondary" id="askHostBtn">Ask host</button>
+                    </div>
                 </form>
                 
                 <!-- My Answer Display -->
@@ -338,6 +341,17 @@
                 updateGameState(data);
                 showResults(data);
                 showScreen('resultsScreen');
+            });
+
+            // Private host answer for this player
+            socket.on('hostAnswer', (data) => {
+                try {
+                    const msg = data && data.answer ? data.answer : '';
+                    if (!msg) return;
+                    const statusEl = document.getElementById('answerStatus');
+                    statusEl.innerHTML = `💬 Host: ${msg}`;
+                    statusEl.className = 'answer-status info';
+                } catch (_) {}
             });
             
             socket.on('gameFinished', (data) => {
@@ -769,6 +783,16 @@
                     document.getElementById('answerRetryContainer').style.display = 'block';
                 }
             }, 2500);
+        });
+
+        // Ask host a private question
+        document.getElementById('askHostBtn').addEventListener('click', function() {
+            const q = prompt('Question for host (only host sees this):');
+            if (!q) return;
+            socket.emit('playerQuestion', { question: q });
+            const statusEl = document.getElementById('answerStatus');
+            statusEl.innerHTML = '💬 Sent question to host';
+            statusEl.className = 'answer-status info';
         });
 
         // Retry submission

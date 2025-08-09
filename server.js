@@ -2073,6 +2073,72 @@ io.on('connection', (socket) => {
                     playerName: playerName,
                     answer: answer
                 });
+
+  // Player → Host: ask a private question
+  socket.on('playerQuestion', (data) => {
+    try {
+      if (!data || typeof data.question !== 'string') return;
+      const question = data.question.trim();
+      const playerInfo = connectedPlayers.get(socket.id);
+      if (!playerInfo || !playerInfo.gameCode || question.length === 0) return;
+      const gameCode = playerInfo.gameCode;
+      const playerName = playerInfo.playerName || 'Unknown';
+
+      // Find host socket for this game
+      const hostEntry = Array.from(connectedPlayers.entries())
+        .find(([_, info]) => info.gameCode === gameCode && info.isHost);
+      if (!hostEntry) {
+        try { socket.emit('playerQuestionAck', { ok: false, message: 'Host not connected' }); } catch (_) {}
+        return;
+      }
+      const hostSocketId = hostEntry[0];
+      io.to(hostSocketId).emit('playerQuestion', {
+        gameCode,
+        playerName,
+        playerSocketId: socket.id,
+        question,
+        at: Date.now()
+      });
+      try { socket.emit('playerQuestionAck', { ok: true }); } catch (_) {}
+    } catch (e) {
+      console.warn('playerQuestion handling failed', e);
+    }
+  });
+
+  // Host → Player: answer a private question
+  socket.on('hostAnswer', (data) => {
+    try {
+      if (!data || typeof data.answer !== 'string') return;
+      const answer = data.answer.trim();
+      const { gameCode, targetSocketId, targetPlayerName } = data;
+      if (!gameCode || answer.length === 0) return;
+
+      const hostInfo = connectedPlayers.get(socket.id);
+      if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) return;
+
+      const game = activeGames.get(gameCode);
+      if (!game) return;
+
+      let targetSid = targetSocketId;
+      if (!targetSid && targetPlayerName) {
+        // Resolve by player name (case-insensitive)
+        const lower = String(targetPlayerName).toLowerCase();
+        for (const [sid, p] of game.players.entries()) {
+          if (String(p.name || '').toLowerCase() === lower) { targetSid = sid; break; }
+        }
+      }
+      if (!targetSid) return;
+
+      io.to(targetSid).emit('hostAnswer', {
+        gameCode,
+        answer,
+        at: Date.now()
+      });
+      try { socket.emit('hostAnswerAck', { ok: true }); } catch (_) {}
+    } catch (e) {
+      console.warn('hostAnswer handling failed', e);
+    }
+  });
             } else {
                 console.log(`❌ [server] No host socket found for game ${gameCode}`);
             }

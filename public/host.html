@@ -941,6 +941,16 @@
                 try { updatePlayerList(); } catch (_) {}
             });
 
+            // Private player question to host
+            socket.on('playerQuestion', (payload) => {
+                try {
+                    if (!payload || !payload.playerName || !payload.question) return;
+                    const reply = prompt(`Question from ${payload.playerName}:\n\n${payload.question}\n\nReply to ${payload.playerName}:`);
+                    if (!reply) return;
+                    socket.emit('hostAnswer', { gameCode: currentGame?.gameCode, targetSocketId: payload.playerSocketId, targetPlayerName: payload.playerName, answer: reply });
+                } catch (_) {}
+            });
+
             // When all players answered, server emits questionComplete (grading phase)
             socket.on('questionComplete', (data) => {
                 try {
