@@ -2146,62 +2146,56 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // Store categorized answers if provided
-        if (categorizedAnswers) {
-            // Sort correctAnswerBuckets alphabetically before storing
-            if (categorizedAnswers.correctAnswerBuckets) {
-                categorizedAnswers.correctAnswerBuckets.sort((a, b) => {
+        try {
+            // Normalize categorized answers structure defensively
+            const normalized = {
+                correctAnswerBuckets: Array.isArray(categorizedAnswers?.correctAnswerBuckets) ? [...categorizedAnswers.correctAnswerBuckets] : [],
+                wrong: Array.isArray(categorizedAnswers?.wrong) ? [...categorizedAnswers.wrong] : [],
+                uncategorized: Array.isArray(categorizedAnswers?.uncategorized) ? [...categorizedAnswers.uncategorized] : []
+            };
+
+            // Sort correct buckets for stable order
+            if (normalized.correctAnswerBuckets) {
+                normalized.correctAnswerBuckets.sort((a, b) => {
                     const nameA = a.name || a.id || '';
                     const nameB = b.name || b.id || '';
                     return nameA.localeCompare(nameB);
                 });
             }
-            
-            game.categorizationData = categorizedAnswers;
-            
-            // Update currentAnswerGroups with categorization information
+
+            game.categorizationData = normalized;
+
+            // Update current groups with categories if any groups exist
             console.log(`📊 Updating currentAnswerGroups with categorization data`);
             console.log(`📊 Before update - currentAnswerGroups length:`, game.currentAnswerGroups?.length || 0);
-            console.log(`🔍 ABOUT TO CALL updateAnswerGroupsWithCategorization`);
-            game.updateAnswerGroupsWithCategorization(categorizedAnswers);
-            console.log(`🔍 FINISHED CALLING updateAnswerGroupsWithCategorization`);
-            console.log(`📊 After update - currentAnswerGroups length:`, game.currentAnswerGroups?.length || 0);
-            
-            // Debug: Show what categories were set
-            if (game.currentAnswerGroups) {
-                console.log(`📊 Updated answer groups with categories:`);
-                game.currentAnswerGroups.forEach((group, index) => {
-                    console.log(`  ${index + 1}. "${group.answer}" - Category: "${group.category}"`);
-                });
+            if (game.currentAnswerGroups && game.currentAnswerGroups.length > 0) {
+                game.updateAnswerGroupsWithCategorization(normalized);
+                console.log(`📊 After update - currentAnswerGroups length:`, game.currentAnswerGroups?.length || 0);
             }
-            
-            // Reset current question points before recalculating
+
+            // Reset points and recalc scores from answers with categorization applied
             game.pointsForCurrentQuestion.clear();
-            
-            // Recalculate scores based on the categorization data
             console.log(`📊 Recalculating scores based on categorization data`);
             game.calculateScores();
+
+            // Apply points once
+            game.applyCurrentQuestionPoints();
+
+            // Move to scoring phase
+            game.gameState = 'scoring';
+
+            const gameStateToSend = game.getGameState();
+            io.to(gameCode).emit('gradingComplete', gameStateToSend);
+            console.log(`📝 Host completed grading for game ${gameCode}`);
+        } catch (err) {
+            console.error('❌ completeGrading failed, forcing transition to scoring:', err);
+            try {
+                // Best-effort fallback: ensure state progresses
+                game.applyCurrentQuestionPoints();
+                game.gameState = 'scoring';
+                io.to(gameCode).emit('gradingComplete', game.getGameState());
+            } catch (_) {}
         }
-        
-        // Apply the current question points to cumulative scores (only once)
-        game.applyCurrentQuestionPoints();
-        
-        // Move to scoring phase to show results
-        game.gameState = 'scoring';
-        
-        // Debug: Log what we're sending to clients
-        const gameStateToSend = game.getGameState();
-        console.log(`🔍 Sending currentAnswerGroups to clients:`, JSON.stringify(gameStateToSend.currentAnswerGroups, null, 2));
-        
-        // Debug: Check if categories are present in the sent data
-        console.log(`🔍 Checking categories in sent data:`);
-        gameStateToSend.currentAnswerGroups.forEach((group, index) => {
-            console.log(`  ${index + 1}. "${group.answer}" - Category: "${group.category || 'MISSING'}"`);
-        });
-        
-        io.to(gameCode).emit('gradingComplete', gameStateToSend);
-        
-        console.log(`📝 Host completed grading for game ${gameCode}`);
     });
 
     // Next question (only after grading is complete)
