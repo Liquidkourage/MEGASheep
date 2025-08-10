@@ -42,13 +42,13 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSocket();
     setupEventListeners();
     
-    // Only show join game screen if we're on the main page (not grading page)
-    if (typeof screens !== 'undefined' && screens.joinGame) {
+    // Only show welcome screen if we're on the main page (not grading page)
+    if (typeof screens !== 'undefined' && screens.welcome) {
         // If a game code is present in the URL, prefill and lock the code field
         try {
             const params = new URLSearchParams(window.location.search);
             const codeParam = params.get('game') || params.get('code') || params.get('gameCode');
-            showScreen('joinGame');
+            showScreen('welcome');
             const gameCodeInput = document.getElementById('gameCode');
             if (codeParam && /^\d{4}$/.test(codeParam)) {
                 if (gameCodeInput) {
@@ -63,10 +63,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (playerNameInput) playerNameInput.focus();
             }
         } catch (_) {
-            showScreen('joinGame');
+            showScreen('welcome');
         }
         
-        // Auto-focus game code input when join game screen is shown
+        // Auto-focus game code input when welcome screen is shown
         setTimeout(() => {
             const gameCodeInput = document.getElementById('gameCode');
             if (gameCodeInput) {
@@ -235,8 +235,7 @@ function setupEventListeners() {
     const createGameBtn = document.getElementById('createGameBtn');
     if (createGameBtn) createGameBtn.addEventListener('click', () => showScreen('createGame'));
     
-    const joinGameBtn = document.getElementById('joinGameBtn');
-    if (joinGameBtn) joinGameBtn.addEventListener('click', () => showScreen('joinGame'));
+    // joinGameBtn no longer exists - joinGameSubmitBtn is now directly on welcome screen
     
     // Join game screen (default)
     const joinGameSubmitBtn = document.getElementById('joinGameSubmitBtn');
@@ -247,7 +246,7 @@ function setupEventListeners() {
     if (createGameSubmitBtn) createGameSubmitBtn.addEventListener('click', createGame);
     
     const backToJoinBtn = document.getElementById('backToJoinBtn');
-    if (backToJoinBtn) backToJoinBtn.addEventListener('click', () => showScreen('joinGame'));
+    if (backToJoinBtn) backToJoinBtn.addEventListener('click', () => showScreen('welcome'));
     
     // Lobby screen
     const startGameBtn = document.getElementById('startGameBtn');
@@ -571,7 +570,7 @@ function setupEventListeners() {
     if (playAgainBtn) playAgainBtn.addEventListener('click', playAgain);
     
     const newGameBtn = document.getElementById('newGameBtn');
-    if (newGameBtn) newGameBtn.addEventListener('click', () => showScreen('joinGame'));
+    if (newGameBtn) newGameBtn.addEventListener('click', () => showScreen('welcome'));
     
     // Virtual test button
     const virtualTestBtn = document.getElementById('virtualTestBtn');
@@ -752,9 +751,9 @@ function leaveGame() {
         testModeIndicator.remove();
     }
     
-    // Only show join game screen if screens object exists
-    if (typeof screens !== 'undefined' && screens.joinGame) {
-        showScreen('joinGame');
+    // Only show welcome screen if screens object exists
+    if (typeof screens !== 'undefined' && screens.welcome) {
+        showScreen('welcome');
     }
 }
 
@@ -1716,7 +1715,7 @@ function playAgain() {
         // Reset game state for new game
         resetGameState();
     } else {
-        showScreen('joinGame');
+        showScreen('welcome');
     }
 }
 
