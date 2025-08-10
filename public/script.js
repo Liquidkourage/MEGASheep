@@ -1854,6 +1854,7 @@ function handleNextQuestion(gameStateData) {
         if (input) { input.disabled = false; input.value = ''; }
         if (btn) { btn.disabled = false; }
         window.lastSubmittedAnswer = '';
+        localStorage.removeItem('lastSubmittedAnswer');
     } catch (_) {}
     
     // Show End Question button for new question
