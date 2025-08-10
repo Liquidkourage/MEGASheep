@@ -232,8 +232,7 @@ function initializeSocket() {
 // Event listeners setup
 function setupEventListeners() {
     // Welcome screen
-    const createGameBtn = document.getElementById('createGameBtn');
-    if (createGameBtn) createGameBtn.addEventListener('click', () => showScreen('createGame'));
+    // createGameBtn removed - hosting is only available via /host route
     
     // joinGameBtn no longer exists - joinGameSubmitBtn is now directly on welcome screen
     
