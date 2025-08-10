@@ -2433,6 +2433,14 @@ function updateGamePlayersList() {
             gamePlayersList.appendChild(currentPlayerCard);
         }
         
+        // Add VS badge between cards
+        if (currentPlayer && otherPlayers.length > 0) {
+            const vsBadge = document.createElement('div');
+            vsBadge.className = 'vs-badge';
+            vsBadge.innerHTML = 'VS.';
+            gamePlayersList.appendChild(vsBadge);
+        }
+        
         // Show summary card for other players
         if (otherPlayers.length > 0) {
             const summaryCard = document.createElement('div');
