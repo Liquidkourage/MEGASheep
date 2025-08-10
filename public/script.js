@@ -10,6 +10,7 @@ let timeLeft = 30;
 let gameStartTime = null;
 let gameDurationTimer = null;
 let autoResumeAttempted = false;
+let autoResumeInProgress = false;
 
 // Lightweight identity persistence for player auto-resume
 function savePlayerIdentity(gameCode, playerName) {
@@ -26,7 +27,10 @@ function getSavedIdentity() {
     try {
         const savedGameCode = localStorage.getItem('player.gameCode');
         const savedPlayerName = localStorage.getItem('player.name');
-        if (savedGameCode && savedPlayerName) {
+        // Validate format: gameCode must be 4 digits, playerName non-empty
+        const isValidCode = typeof savedGameCode === 'string' && /^\d{4}$/.test(savedGameCode);
+        const isValidName = typeof savedPlayerName === 'string' && savedPlayerName.trim().length > 0;
+        if (isValidCode && isValidName) {
             return { gameCode: savedGameCode, playerName: savedPlayerName };
         }
     } catch (_) {}
@@ -38,6 +42,7 @@ function attemptAutoResume() {
     const ident = getSavedIdentity();
     if (!ident) return false;
     autoResumeAttempted = true;
+    autoResumeInProgress = true;
 
     // Emit join when connected (or immediately if already connected)
     const emitJoin = () => {
@@ -136,9 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
             }, 100);
-        } else {
-            // Optionally show a minimal reconnecting notice
-            try { showToast('Reconnecting to your game...', 'info'); } catch (_) {}
         }
     }
     
@@ -1795,6 +1797,11 @@ function handleGameJoined(data) {
     console.log('🎮 Script.js: Client-side serialization test - players after JSON roundtrip:', testDeserialization.gameState?.players?.length || 0);
     
     gameState = data.gameState;
+    // Joining succeeded; any reconnect toast should only be shown now if we actually resumed
+    if (autoResumeInProgress) {
+        try { showToast('Rejoined your game', 'success'); } catch (_) {}
+        autoResumeInProgress = false;
+    }
     // Persist identity in case server normalized code/name
     try { savePlayerIdentity(data.gameCode || gameState.gameCode, currentPlayerName || localStorage.getItem('player.name')); } catch (_) {}
 
@@ -2055,7 +2062,16 @@ function handleTimerUpdate(data) {
 }
 
 function handleError(data) {
-    showError(data.message);
+    // Only show generic error; if it is a join failure during auto-resume, clear in-progress flag
+    try {
+        const msg = data && data.message ? data.message : 'An error occurred';
+        if (autoResumeInProgress && /already started|not found|cannot join|invalid|missing/i.test(msg)) {
+            autoResumeInProgress = false;
+        }
+        showError(msg);
+    } catch (_) {
+        showError('An error occurred');
+    }
 }
 
 function handleGameStateUpdate(data) {
