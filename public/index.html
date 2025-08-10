@@ -264,10 +264,8 @@
                     <button id="submitAnswerBtn" class="btn btn-primary">Submit Answer</button>
                 </div>
                 <!-- Multi-purpose communication: answerStatus doubles as input/display -->
-                <div id="playerCommRow" style="display:none;margin-top:8px; gap:8px; align-items:center; display:flex;">
-                    <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Type a private message to host…" style="flex:1; min-height:38px; padding:10px 12px;"></div>
-                    <button id="askHostBtn" class="btn btn-secondary" type="button" style="white-space:nowrap;">Send to host</button>
-                </div>
+                <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Type a private message to host…" style="display:none; margin-top:8px; min-height:38px; padding:10px 12px;"></div>
+                <button id="askHostBtn" class="btn btn-secondary" type="button" style="display:none; margin-top:8px; white-space:nowrap;">Send to host</button>
                 
                 <!-- Host Controls (hidden for players) -->
                 <div id="hostControls" class="host-controls" style="display: none;">

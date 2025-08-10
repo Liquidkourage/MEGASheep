@@ -412,9 +412,13 @@ function setupEventListeners() {
         };
         askHostBtn.addEventListener('click', sendMessage);
         if (askHostInput) askHostInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }});
-        // Ensure comm row visible for players
-        const commRow = document.getElementById('playerCommRow');
-        if (commRow && !isHost) commRow.style.display = 'flex';
+        // Ensure comm elements visible for players
+        const answerStatus = document.getElementById('answerStatus');
+        const askHostBtn = document.getElementById('askHostBtn');
+        if (!isHost) {
+            if (answerStatus) answerStatus.style.display = 'block';
+            if (askHostBtn) askHostBtn.style.display = 'inline-block';
+        }
         // Placeholder styling for contenteditable
         if (isMultiBoxEditable) {
             multiBox.addEventListener('input', setPlaceholderIfEmpty);
