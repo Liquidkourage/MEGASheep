@@ -18,6 +18,9 @@ body {
     background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000033 100%);
     min-height: 100vh;
     color: #ffffff;
+    /* Prevent layout shifts from toasts */
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .container {
@@ -1430,6 +1433,14 @@ body {
     transition: transform 0.3s ease-out;
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    /* Ensure no layout impact */
+    pointer-events: auto;
+    contain: layout style paint;
+    will-change: transform;
+    /* Prevent any document flow changes */
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 .toast-notification.show {
