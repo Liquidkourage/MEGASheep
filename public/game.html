@@ -355,11 +355,10 @@
                     const msg = data && data.answer ? data.answer : '';
                     if (!msg) return;
                     const statusEl = document.getElementById('answerStatus');
-                    const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                     if (statusEl && statusEl.getAttribute('contenteditable') === 'true') {
-                        statusEl.innerText = `(${ts}) 💬 Host: ${msg}`;
+                        statusEl.innerText = `💬 Host: ${msg}`;
                     } else if (statusEl) {
-                        statusEl.innerHTML = `(${ts}) 💬 Host: ${msg}`;
+                        statusEl.innerHTML = `💬 Host: ${msg}`;
                         statusEl.className = 'answer-status info';
                     }
                 } catch (_) {}
@@ -833,8 +832,7 @@
                 } catch(e){ console.warn('💬 [player] Failed to emit playerQuestion', e); }
                 const statusEl = document.getElementById('answerStatus');
                 if (statusEl) {
-                    const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                    statusEl.innerHTML = `(${ts}) 💬 You: ${q} …`;
+                    statusEl.innerHTML = `💬 You: ${q} …`;
                     statusEl.className = 'answer-status info';
                 }
                 if (input) input.value = '';

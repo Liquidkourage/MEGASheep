@@ -348,9 +348,8 @@ function setupEventListeners() {
             try {
                 const box = document.getElementById('dmHistory');
                 if (!box) return;
-                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                 const line = document.createElement('div');
-                line.textContent = `(${ts}) ${who}: ${text}${suffix || ''}`;
+                line.textContent = `${who}: ${text}${suffix || ''}`;
                 box.appendChild(line);
                 while (box.children.length > 3) box.removeChild(box.firstChild);
             } catch (_) {}
@@ -376,8 +375,7 @@ function setupEventListeners() {
                     console.log('💬 [player] playerQuestionAck (once):', ack);
                     const statusEl = document.getElementById('answerStatus');
                     if (statusEl) {
-                        const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                        statusEl.textContent = ack && ack.ok ? `(${ts}) 💬 You: ${q} ✓` : `(${ts}) ⚠️ Not delivered: ${q} (${(ack && (ack.reason||ack.message))||'unknown'})`;
+                        statusEl.textContent = ack && ack.ok ? `💬 You: ${q} ✓` : `⚠️ Not delivered: ${q} (${(ack && (ack.reason||ack.message))||'unknown'})`;
                     }
                     appendDmHistory('You', q, ack && ack.ok ? ' ✓' : ' (not delivered)');
                 });
@@ -403,9 +401,8 @@ function setupEventListeners() {
             }
             const statusEl = document.getElementById('answerStatus');
             if (statusEl) {
-                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                if (isMultiBoxEditable) statusEl.innerText = `(${ts}) 💬 You: ${q} …`;
-                else statusEl.textContent = `(${ts}) 💬 You: ${q} …`;
+                if (isMultiBoxEditable) statusEl.innerText = `💬 You: ${q} …`;
+                else statusEl.textContent = `💬 You: ${q} …`;
             }
             setText('');
             setPlaceholderIfEmpty();
@@ -442,11 +439,10 @@ function setupEventListeners() {
                     const msg = data && data.answer ? data.answer : '';
                     if (!msg) return;
                     const statusEl = document.getElementById('answerStatus');
-                    const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                     if (statusEl && statusEl.getAttribute('contenteditable') === 'true') {
-                        statusEl.innerText = `(${ts}) 💬 Host: ${msg}`;
+                        statusEl.innerText = `💬 Host: ${msg}`;
                     } else if (statusEl) {
-                        statusEl.textContent = `(${ts}) 💬 Host: ${msg}`;
+                        statusEl.textContent = `💬 Host: ${msg}`;
                     }
                     appendDmHistory('Host', msg);
                 } catch (_) {}
