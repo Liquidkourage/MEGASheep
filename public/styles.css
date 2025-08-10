@@ -1188,7 +1188,7 @@ body {
 .answer-text {
     font-size: 1.2rem;
     font-weight: bold;
-    color: #ffffff;
+    color: #f5f7fa; /* High-contrast text */
     padding: 10px;
     background: rgba(0, 0, 0, 0.3);
     border-radius: 8px;

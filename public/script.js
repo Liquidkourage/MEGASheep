@@ -2344,7 +2344,9 @@ function displayQuestionResults() {
 
 // Helper function to create personal result section
 function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints) {
-    const displayAnswer = playerAnswer && playerAnswer.trim() !== '' ? playerAnswer : 'No Answer Submitted';
+    const sanitize = (s) => String(s || '').replace(/[&<>"']/g, (c)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+    const displayAnswerRaw = playerAnswer && playerAnswer.trim() !== '' ? playerAnswer : 'No Answer Submitted';
+    const displayAnswer = sanitize(displayAnswerRaw);
     const isCorrect = playerAnswerGroup && playerAnswerGroup.points > 0;
     const statusIcon = isCorrect ? '✅' : '❌';
     const statusClass = isCorrect ? 'correct' : 'incorrect';
@@ -2396,8 +2398,8 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
     `;
 }
 
-// Helper function to create all answers section
-function createAllAnswersSection(answerGroups) {
+    // Helper function to create all answers section
+    function createAllAnswersSection(answerGroups) {
     if (!answerGroups || answerGroups.length === 0) {
         return '<div class="no-answers">No answers available</div>';
     }
@@ -2417,7 +2419,7 @@ function createAllAnswersSection(answerGroups) {
         `;
         
         correctAnswers.forEach(group => {
-            html += createAnswerItem(group, true);
+            html += createResultAnswerItem(group, true);
         });
         
         html += '</div></div>';
@@ -2432,7 +2434,7 @@ function createAllAnswersSection(answerGroups) {
         `;
         
         incorrectAnswers.forEach(group => {
-            html += createAnswerItem(group, false);
+            html += createResultAnswerItem(group, false);
         });
         
         html += '</div></div>';
@@ -2442,8 +2444,8 @@ function createAllAnswersSection(answerGroups) {
     return html;
 }
 
-// Helper function to create individual answer item
-function createAnswerItem(group, isCorrect) {
+    // Helper function to create individual answer item (HTML string)
+    function createResultAnswerItem(group, isCorrect) {
     const statusIcon = isCorrect ? '✅' : '❌';
     const statusClass = isCorrect ? 'correct' : 'incorrect';
     const computedCount = (typeof group.count === 'number') ? group.count : (Array.isArray(group.players) ? group.players.length : 0);
