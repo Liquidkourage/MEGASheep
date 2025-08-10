@@ -1752,14 +1752,6 @@ function handleGameJoined(data) {
     gameState = data.gameState;
     showScreen('lobby');
     updateLobbyDisplay();
-    
-    // Show Ask Host elements for players
-    if (!isHost) {
-        const answerStatus = document.getElementById('answerStatus');
-        const askHostBtn = document.getElementById('askHostBtn');
-        if (answerStatus) answerStatus.style.display = 'block';
-        if (askHostBtn) askHostBtn.style.display = 'inline-block';
-    }
 }
 
 function handlePlayerJoined(gameStateData) {
@@ -1811,6 +1803,14 @@ function handleGameStarted(gameStateData) {
     showScreen('game');
     displayCurrentQuestion();
     startTimer();
+    
+    // Show Ask Host elements for players during active questions
+    if (!isHost) {
+        const answerStatus = document.getElementById('answerStatus');
+        const askHostBtn = document.getElementById('askHostBtn');
+        if (answerStatus) answerStatus.style.display = 'block';
+        if (askHostBtn) askHostBtn.style.display = 'inline-block';
+    }
 }
 
 function handleTestGameStarted(gameStateData) {
@@ -1875,6 +1875,14 @@ function handleNextQuestion(gameStateData) {
     if (endQuestionBtn && isHost) {
         endQuestionBtn.style.display = 'inline-block';
     }
+    
+    // Show Ask Host elements for players during active questions
+    if (!isHost) {
+        const answerStatus = document.getElementById('answerStatus');
+        const askHostBtn = document.getElementById('askHostBtn');
+        if (answerStatus) answerStatus.style.display = 'block';
+        if (askHostBtn) askHostBtn.style.display = 'inline-block';
+    }
 }
 
 function handleQuestionComplete(gameStateData) {
@@ -1888,6 +1896,14 @@ function handleQuestionComplete(gameStateData) {
     const endQuestionBtn = document.getElementById('endQuestionBtn');
     if (endQuestionBtn) {
         endQuestionBtn.style.display = 'none';
+    }
+    
+    // Hide Ask Host elements when question ends
+    if (!isHost) {
+        const answerStatus = document.getElementById('answerStatus');
+        const askHostBtn = document.getElementById('askHostBtn');
+        if (answerStatus) answerStatus.style.display = 'none';
+        if (askHostBtn) askHostBtn.style.display = 'none';
     }
     
     showScreen('scoring');
