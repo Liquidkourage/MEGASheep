@@ -1070,6 +1070,13 @@ body {
     color: #cccccc;
 }
 
+/* Ensure consistent spacing for player answer form */
+#playerAnswerForm {
+    gap: 8px !important;
+    align-items: center;
+    margin-top: 30px;
+}
+
 /* Host controls */
 .host-controls {
     text-align: center;
