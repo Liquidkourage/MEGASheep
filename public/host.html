@@ -739,6 +739,10 @@
             <h2>🐑 MEGASheep Host Console</h2>
             <p>Create a new game to get started</p>
             <div class="create-game-form">
+                <div style="margin-bottom: 15px;">
+                    <label for="hostName" style="display: block; margin-bottom: 5px; color: #cccccc;">Your Name (optional):</label>
+                    <input type="text" id="hostName" placeholder="Enter your name or leave blank for 'Host'" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; font-size: 16px;">
+                </div>
                 <button id="createGameBtn" class="control-btn">Create New Game</button>
             </div>
         </div>
@@ -1332,12 +1336,13 @@
             try {
                 // Create game via API
                 creatingNewGame = true;
+                const hostName = document.getElementById('hostName').value.trim() || 'Host';
                 const response = await fetch('/api/create-game', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({})
+                    body: JSON.stringify({ hostName })
                 });
                 
                 const data = await response.json();
