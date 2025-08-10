@@ -2232,26 +2232,21 @@ function updateLobbyDisplay() {
                 console.log('🎮 Script.js: Added host card for:', host.name);
             }
             
-            // Add VS badge between cards
-            if (host && otherPlayers.length > 0) {
-                const vsBadge = document.createElement('div');
-                vsBadge.className = 'vs-badge';
-                vsBadge.innerHTML = 'VS.';
-                playersList.appendChild(vsBadge);
-                console.log('🎮 Script.js: Added VS badge');
-            }
-            
-            // Show summary card for other players
+            // Render individual cards for other players (show everyone)
             if (otherPlayers.length > 0) {
-                const summaryCard = document.createElement('div');
-                summaryCard.className = 'player-card summary';
-                summaryCard.innerHTML = `
-                    <div class="player-label">The Flock</div>
-                    <div class="player-name">${otherPlayers.length} Players</div>
-                    <div class="player-count">👥</div>
-                `;
-                playersList.appendChild(summaryCard);
-                console.log('🎮 Script.js: Added summary card for', otherPlayers.length, 'other players');
+                otherPlayers.forEach(player => {
+                    const card = document.createElement('div');
+                    const isVirtual = !!player.isVirtual;
+                    card.className = `player-card${isVirtual ? ' virtual' : ''}`;
+                    card.dataset.playerId = player.id;
+                    card.title = isVirtual ? 'Virtual player' : 'Player';
+                    card.innerHTML = `
+                        <div class="player-name">${player.name}</div>
+                        <div class="player-badge">${isVirtual ? '🤖' : '👤'}</div>
+                    `;
+                    playersList.appendChild(card);
+                });
+                console.log('🎮 Script.js: Rendered', otherPlayers.length, 'other player cards');
             }
         }
     } else {
