@@ -1752,6 +1752,14 @@ function handleGameJoined(data) {
     gameState = data.gameState;
     showScreen('lobby');
     updateLobbyDisplay();
+    
+    // Show Ask Host elements for players
+    if (!isHost) {
+        const answerStatus = document.getElementById('answerStatus');
+        const askHostBtn = document.getElementById('askHostBtn');
+        if (answerStatus) answerStatus.style.display = 'block';
+        if (askHostBtn) askHostBtn.style.display = 'inline-block';
+    }
 }
 
 function handlePlayerJoined(gameStateData) {
