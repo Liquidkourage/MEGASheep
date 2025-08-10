@@ -1899,10 +1899,18 @@ function handleRoundComplete(gameStateData) {
 
 function handleGradingComplete(gameStateData) {
     console.log('✅ Grading complete event received:', new Date().toISOString());
+    console.log('✅ Game state data:', gameStateData);
+    console.log('✅ Current game state:', gameStateData?.gameState);
     gameState = gameStateData;
     
+    // Show the scoring screen first
+    console.log('✅ Showing scoring screen');
+    showScreen('scoring');
+    
     // Show results to everyone now that grading is complete
+    console.log('✅ Calling displayQuestionResults()');
     displayQuestionResults();
+    console.log('✅ displayQuestionResults() completed');
 }
 
 function handleGameFinished(gameStateData) {
@@ -2195,10 +2203,17 @@ function displayCurrentQuestion() {
 }
 
 function displayQuestionResults() {
+    console.log('📊 displayQuestionResults() called');
+    console.log('📊 Current game state:', gameState);
+    console.log('📊 Current answer groups:', gameState?.currentAnswerGroups);
+    
     // Update the scoring title to show "Question Results"
     const scoringTitle = document.getElementById('scoringTitle');
     if (scoringTitle) {
         scoringTitle.textContent = 'Question Results';
+        console.log('📊 Updated scoring title');
+    } else {
+        console.log('📊 Scoring title element not found');
     }
     
     // Display the same content as round results but with "Question Results" title
