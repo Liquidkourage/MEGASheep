@@ -322,7 +322,7 @@ function setupEventListeners() {
     });
     
     // Game screen
-    const submitAnswerBtn = document.getElementById('submitAnswerBtn');
+    const submitAnswerBtn = document.getElementById('submitBtn');
     if (submitAnswerBtn) submitAnswerBtn.addEventListener('click', submitAnswer);
     const askHostBtn = document.getElementById('askHostBtn');
     // Use hostMessageInput for sending messages to host
@@ -744,7 +744,7 @@ function submitAnswer() {
     socket.emit('submitAnswer', { gameCode: gameState.gameCode, answer });
     answerInput.value = '';
     
-    const submitAnswerBtn = document.getElementById('submitAnswerBtn');
+            const submitAnswerBtn = document.getElementById('submitBtn');
     if (submitAnswerBtn) {
         submitAnswerBtn.disabled = true;
     }
@@ -2151,7 +2151,7 @@ function displayCurrentQuestion() {
         // Reset answer form
         document.getElementById('answerInput').value = '';
         document.getElementById('answerInput').disabled = false;
-        document.getElementById('submitAnswerBtn').disabled = false;
+        document.getElementById('submitBtn').disabled = false;
     }
     
     // Update players list
