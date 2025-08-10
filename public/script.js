@@ -2530,9 +2530,9 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
                 </div>
             </div>
             
-            <div class="personal-answer">
-                <div class="answer-label">Your Answer:</div>
-                <div class="answer-text">"${displayAnswer}" ${youBadge}</div>
+            <div class="personal-answer" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <div class="answer-label" style="margin:0;">Your Answer:</div>
+                <div class="answer-text" style="padding:6px 10px;">"${displayAnswer}" ${youBadge}</div>
             </div>
             
             <div class="personal-stats">
