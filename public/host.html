@@ -739,10 +739,6 @@
             <h2>🐑 MEGASheep Host Console</h2>
             <p>Create a new game to get started</p>
             <div class="create-game-form">
-                <div style="margin-bottom: 15px;">
-                    <label for="hostName" style="display: block; margin-bottom: 5px; color: #cccccc;">Your Name (optional):</label>
-                    <input type="text" id="hostName" placeholder="Enter your name or leave blank for 'Host'" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; font-size: 16px;">
-                </div>
                 <button id="createGameBtn" class="control-btn">Create New Game</button>
             </div>
         </div>
@@ -807,7 +803,10 @@
                         <button id="startGameBtn" class="control-btn success">START GAME</button>
                         <button id="endGameMainBtn" class="control-btn warning">🛑 END GAME</button>
                         <button id="gradingBtn" class="control-btn secondary">📝 GRADING INTERFACE</button>
-                        <button id="virtualTestBtn" class="control-btn warning">🎭 VIRTUAL TEST</button>
+                        <button id="multiGradingBtn" class="control-btn success">👥 MULTI-USER GRADING</button>
+                        <button id="testGameBtn" class="control-btn warning">▶️ TEST GAME</button>
+                        <button id="virtualTestBtn" class="control-btn warning">🎭 VIRTUAL TEST (100 players)</button>
+                        <button id="refreshQuestionsBtn" class="control-btn secondary">🔄 REFRESH QUESTIONS</button>
                     </div>
                 </div>
 
@@ -1336,13 +1335,12 @@
             try {
                 // Create game via API
                 creatingNewGame = true;
-                const hostName = document.getElementById('hostName').value.trim() || 'Host';
                 const response = await fetch('/api/create-game', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ hostName })
+                    body: JSON.stringify({})
                 });
                 
                 const data = await response.json();
@@ -1388,6 +1386,15 @@
         document.getElementById('testGameBtn').addEventListener('click', () => {
             // Open test game in new tab
             window.open('/game', '_blank');
+        });
+
+        document.getElementById('virtualTestBtn').addEventListener('click', () => {
+            // Start virtual player simulation
+            if (typeof startVirtualPlayerSimulation === 'function') {
+                startVirtualPlayerSimulation();
+            } else {
+                alert('Virtual player simulation not available');
+            }
         });
 
         document.getElementById('refreshQuestionsBtn').addEventListener('click', () => {
@@ -1598,6 +1605,30 @@
                 }
             }
         });
+
+        // Virtual Player Simulation Function
+        function startVirtualPlayerSimulation() {
+            if (!currentGame || !currentGame.gameCode) {
+                alert('No active game. Please create a game first.');
+                return;
+            }
+
+            const playerCount = prompt('How many virtual players? (1-100):', '10');
+            if (!playerCount || isNaN(playerCount) || playerCount < 1 || playerCount > 100) {
+                alert('Please enter a number between 1 and 100.');
+                return;
+            }
+
+            console.log(`🎭 Starting virtual player simulation with ${playerCount} players`);
+            
+            // Emit the virtual player simulation event
+            socket.emit('startVirtualPlayerSimulation', {
+                gameCode: currentGame.gameCode,
+                playerCount: parseInt(playerCount)
+            });
+
+            alert(`Starting virtual player simulation with ${playerCount} players. Check the display and player interfaces to see the virtual players in action!`);
+        }
     </script>
 </body>
 </html> 

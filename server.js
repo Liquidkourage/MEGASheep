@@ -1920,6 +1920,54 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Start virtual player simulation
+    socket.on('startVirtualPlayerSimulation', (data) => {
+        console.log('🎭 startVirtualPlayerSimulation event received:', data);
+        const { gameCode, playerCount } = data;
+        
+        if (!gameCode || !playerCount || playerCount < 1 || playerCount > 100) {
+            console.log('⚠️ startVirtualPlayerSimulation: Invalid parameters');
+            return;
+        }
+        
+        const game = activeGames.get(gameCode);
+        if (!game) {
+            console.log(`❌ Game ${gameCode} not found for virtual player simulation`);
+            return;
+        }
+        
+        if (game.gameState !== 'waiting') {
+            console.log('⚠️ Cannot add virtual players to game that has already started');
+            return;
+        }
+        
+        console.log(`🎭 Starting virtual player simulation with ${playerCount} players for game ${gameCode}`);
+        
+        // Generate virtual players
+        for (let i = 1; i <= playerCount; i++) {
+            const playerId = `virtual_${Date.now()}_${i}`;
+            const playerName = `Virtual Player ${i}`;
+            
+            try {
+                game.addVirtualPlayer(playerId, playerName);
+                
+                // Notify everyone in the game room about the new virtual player
+                io.to(gameCode).emit('virtualPlayerJoined', {
+                    playerId: playerId,
+                    playerName: playerName,
+                    gameState: game.getGameState()
+                });
+                
+                console.log(`🎭 Added virtual player ${playerName} (${playerId}) to game ${gameCode}`);
+                
+            } catch (error) {
+                console.error(`❌ Error adding virtual player ${playerName}:`, error.message);
+            }
+        }
+        
+        console.log(`🎭 Virtual player simulation complete. Added ${playerCount} players to game ${gameCode}`);
+    });
+
     // Test room membership
     socket.on('testRoomMembership', (data) => {
         const { gameCode } = data;
