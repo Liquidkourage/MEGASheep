@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>MEGASheep - Game</title>
-    <link rel="stylesheet" href="styles.css?v=1.0.2">
+                        <link rel="stylesheet" href="styles.css?v=1.0.3">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* Player interface enhancements */
@@ -132,23 +132,23 @@
                 </div>
                 
                 <!-- Answer input field -->
-                <div class="form-group" style="width:100%; margin-bottom:8px;">
+                <div class="form-group" style="width:100%; margin-bottom:8px !important;">
                     <label for="answerInput">Your Answer:</label>
                     <input type="text" id="answerInput" placeholder="Type your answer here..." maxlength="100" required>
                 </div>
                 
                 <!-- Submit answer button -->
-                <div style="margin-bottom:8px;">
+                <div style="margin-bottom:8px !important;">
                     <button type="button" class="btn btn-primary" id="submitBtn" style="width:100%;">Submit Answer</button>
                 </div>
                 
                 <!-- Host communication field -->
-                <div style="margin-bottom:8px;">
+                <div style="margin-bottom:8px !important;">
                     <input type="text" id="hostMessageInput" placeholder="Type a private message to host…" maxlength="200" style="width:100%; min-height:56px; padding:12px; border:1px solid rgba(255,255,255,0.25); border-radius:10px; background:rgba(255,255,255,0.08); color:#fff; font-size:var(--fs-base);">
                 </div>
                 
                 <!-- Send to host button -->
-                <div style="margin-bottom:8px;">
+                <div style="margin-bottom:8px !important;">
                     <button id="askHostBtn" class="btn btn-secondary" type="button" style="width:100%;">Send to host</button>
                 </div>
                 <div id="dmHistory" style="margin-top:6px; font-size:13px; color: #cfd8dc;"></div>
