@@ -875,6 +875,13 @@
                     loadActiveGames();
                 }
             });
+
+            // Re-sync hooks to ensure hydration when opened by URL
+            try {
+                socket.on('gameStarted', () => setTimeout(requestGameStateIfPossible, 100));
+                socket.on('nextQuestion', () => setTimeout(requestGameStateIfPossible, 100));
+                socket.on('questionComplete', () => setTimeout(requestGameStateIfPossible, 50));
+            } catch (_) {}
             
             socket.on('error', (error) => {
                 console.error('Socket error:', error);
@@ -1097,6 +1104,35 @@
 
 
         }
+
+        // --- Added: Auto-hydration from URL and manual Re-sync ---
+        function getQueryParam(name) {
+            try { const url = new URL(window.location.href); return url.searchParams.get(name); } catch (_) { return null; }
+        }
+        function requestGameStateIfPossible() {
+            try {
+                const gc = getQueryParam('gameCode');
+                if (!gc || !socket) return;
+                console.log('🔄 Re-sync: requesting game state for', gc);
+                socket.emit('host-reconnect', { gameCode: gc });
+                socket.emit('joinGameRoom', { gameCode: gc });
+                socket.emit('getGameState', { gameCode: gc });
+            } catch (e) { console.warn('Re-sync request failed', e); }
+        }
+        function addResyncButton(){
+            try {
+                const header = document.querySelector('.grading-header');
+                if (!header || header.querySelector('#resyncBtn')) return;
+                const btn = document.createElement('button');
+                btn.id = 'resyncBtn';
+                btn.className = 'btn btn-secondary';
+                btn.textContent = '🔄 Re-sync';
+                btn.style.marginLeft = '10px';
+                btn.onclick = requestGameStateIfPossible;
+                header.appendChild(btn);
+            } catch (_) {}
+        }
+        window.addEventListener('load', () => { addResyncButton(); setTimeout(requestGameStateIfPossible, 150); });
 
         function connectToHostGame(gameCode) {
             console.log('🔗 Connecting to host game:', gameCode);
