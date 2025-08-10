@@ -2224,52 +2224,71 @@ function displayQuestionResults() {
         console.log('📊 Scoring title element not found');
     }
     
-    // Display the same content as round results but with "Question Results" title
+    // Get player's submitted answer
+    const playerAnswer = window.lastSubmittedAnswer || '';
+    const currentPlayerName = sessionStorage.getItem('playerName') || 'You';
+    
+    // Find player's answer group and ranking
+    let playerAnswerGroup = null;
+    let playerRank = 0;
+    let totalPlayers = 0;
+    let playerPoints = 0;
+    
+    if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
+        // Calculate total players
+        totalPlayers = gameState.currentAnswerGroups.reduce((sum, group) => sum + group.count, 0);
+        
+        // Find player's answer group
+        playerAnswerGroup = gameState.currentAnswerGroups.find(group => 
+            group.answer.toLowerCase() === playerAnswer.toLowerCase()
+        );
+        
+        // Calculate player's ranking for this question
+        if (playerAnswerGroup) {
+            playerPoints = playerAnswerGroup.points;
+            // Count how many players scored higher than this player
+            const higherScoringGroups = gameState.currentAnswerGroups.filter(group => 
+                group.points > playerAnswerGroup.points
+            );
+            playerRank = higherScoringGroups.reduce((sum, group) => sum + group.count, 0) + 1;
+        }
+    }
+    
+    // Display answers with enhanced layout
     const answersList = document.getElementById('answersList');
     const scoresList = document.getElementById('scoresList');
     
-    // Display answers with Google Sheets scoring
+    // Clear previous content
     answersList.innerHTML = '';
     
-    if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
-        // Use server-provided answer groups with new scoring info
-        gameState.currentAnswerGroups.forEach(group => {
-            const answerItem = document.createElement('div');
-            answerItem.className = 'answer-item';
-            
-            // Determine if this is a wrong/uncategorized answer (0 points)
-            const isWrongOrUncategorized = group.points === 0;
-            const statusIcon = isWrongOrUncategorized ? '❌' : '✅';
-            const statusClass = isWrongOrUncategorized ? 'wrong-answer' : 'correct-answer';
-            
-            answerItem.innerHTML = `
-                <div class="answer-info ${statusClass}">
-                    <span class="answer-status">${statusIcon}</span>
-                    <span class="answer-text">"${group.answer}"</span>
-                    <span class="answer-formula">${group.totalResponses} ÷ ${group.count} = ${group.points} pts</span>
-                </div>
-                <div class="answer-stats">
-                    <span class="answer-count">${group.count} player${group.count > 1 ? 's' : ''}</span>
-                    <span class="answer-points">${group.points} points each</span>
-                </div>
-            `;
-            answersList.appendChild(answerItem);
-        });
+    // Create two-column layout for desktop, single column for mobile
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+        // Mobile: Single column layout
+        answersList.style.display = 'block';
+        answersList.innerHTML = `
+            <div class="question-results-mobile">
+                ${createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints)}
+                ${createAllAnswersSection(gameState.currentAnswerGroups)}
+            </div>
+        `;
     } else {
-        // Fallback to old method
-        const answerGroups = groupAnswers(gameState.answers || {});
-        answerGroups.forEach(group => {
-            const answerItem = document.createElement('div');
-            answerItem.className = 'answer-item';
-            answerItem.innerHTML = `
-                <span>${group.answer}</span>
-                <span class="answer-count">${group.count} player${group.count > 1 ? 's' : ''}</span>
-            `;
-            answersList.appendChild(answerItem);
-        });
+        // Desktop: Two-column layout
+        answersList.style.display = 'grid';
+        answersList.style.gridTemplateColumns = '1fr 1fr';
+        answersList.style.gap = '20px';
+        answersList.innerHTML = `
+            <div class="personal-result-section">
+                ${createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints)}
+            </div>
+            <div class="all-answers-section">
+                ${createAllAnswersSection(gameState.currentAnswerGroups)}
+            </div>
+        `;
     }
     
-    // Display scores
+    // Display scores (unchanged)
     scoresList.innerHTML = '';
     if (gameState.players) {
         gameState.players
@@ -2303,6 +2322,132 @@ function displayQuestionResults() {
         nextQuestionBtn.style.display = 'none';
         endGameBtn.style.display = 'none';
     }
+}
+
+// Helper function to create personal result section
+function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints) {
+    const displayAnswer = playerAnswer && playerAnswer.trim() !== '' ? playerAnswer : 'No Answer Submitted';
+    const isCorrect = playerAnswerGroup && playerAnswerGroup.points > 0;
+    const statusIcon = isCorrect ? '✅' : '❌';
+    const statusClass = isCorrect ? 'correct' : 'incorrect';
+    const statusText = isCorrect ? 'Correct!' : 'Incorrect';
+    
+    let rankText = '';
+    if (playerRank > 0 && totalPlayers > 0) {
+        rankText = `You ranked #${playerRank} out of ${totalPlayers} players`;
+    }
+    
+    let pointsText = '';
+    if (playerPoints > 0) {
+        pointsText = `+${playerPoints} points`;
+    } else if (playerAnswer && playerAnswer.trim() !== '') {
+        pointsText = '+0 points';
+    }
+    
+    let uniquenessText = '';
+    if (playerAnswerGroup && playerAnswerGroup.count === 1) {
+        uniquenessText = 'You were the only one with this answer!';
+    } else if (playerAnswerGroup && playerAnswerGroup.count > 1) {
+        uniquenessText = `${playerAnswerGroup.count} players had this answer`;
+    }
+    
+    return `
+        <div class="personal-result-card ${statusClass}">
+            <div class="personal-result-header">
+                <h3>Your Result</h3>
+                <div class="result-status ${statusClass}">
+                    <span class="status-icon">${statusIcon}</span>
+                    <span class="status-text">${statusText}</span>
+                </div>
+            </div>
+            
+            <div class="personal-answer">
+                <div class="answer-label">Your Answer:</div>
+                <div class="answer-text">"${displayAnswer}"</div>
+            </div>
+            
+            <div class="personal-stats">
+                ${rankText ? `<div class="stat-item"><span class="stat-label">Rank:</span> <span class="stat-value">${rankText}</span></div>` : ''}
+                ${pointsText ? `<div class="stat-item"><span class="stat-label">Points:</span> <span class="stat-value points">${pointsText}</span></div>` : ''}
+                ${uniquenessText ? `<div class="stat-item"><span class="stat-label">Uniqueness:</span> <span class="stat-value">${uniquenessText}</span></div>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+// Helper function to create all answers section
+function createAllAnswersSection(answerGroups) {
+    if (!answerGroups || answerGroups.length === 0) {
+        return '<div class="no-answers">No answers available</div>';
+    }
+    
+    // Categorize answers
+    const correctAnswers = answerGroups.filter(group => group.points > 0);
+    const incorrectAnswers = answerGroups.filter(group => group.points === 0);
+    
+    let html = '<div class="all-answers-container">';
+    
+    // Correct answers section
+    if (correctAnswers.length > 0) {
+        html += `
+            <div class="answer-category correct">
+                <h4>✅ Correct Answers</h4>
+                <div class="answer-category-content">
+        `;
+        
+        correctAnswers.forEach(group => {
+            html += createAnswerItem(group, true);
+        });
+        
+        html += '</div></div>';
+    }
+    
+    // Incorrect answers section
+    if (incorrectAnswers.length > 0) {
+        html += `
+            <div class="answer-category incorrect">
+                <h4>❌ Incorrect Answers</h4>
+                <div class="answer-category-content">
+        `;
+        
+        incorrectAnswers.forEach(group => {
+            html += createAnswerItem(group, false);
+        });
+        
+        html += '</div></div>';
+    }
+    
+    html += '</div>';
+    return html;
+}
+
+// Helper function to create individual answer item
+function createAnswerItem(group, isCorrect) {
+    const statusIcon = isCorrect ? '✅' : '❌';
+    const statusClass = isCorrect ? 'correct' : 'incorrect';
+    const uniquenessText = group.count === 1 ? 'Unique answer!' : `${group.count} players`;
+    
+    return `
+        <div class="answer-item ${statusClass}" onclick="showAnswerDetails('${group.answer}', ${group.count}, ${group.points}, ${group.totalResponses})">
+            <div class="answer-header">
+                <span class="answer-status">${statusIcon}</span>
+                <span class="answer-text">"${group.answer}"</span>
+            </div>
+            <div class="answer-details">
+                <div class="answer-formula">${group.totalResponses} ÷ ${group.count} = ${group.points} pts</div>
+                <div class="answer-count">${uniquenessText}</div>
+            </div>
+            <div class="answer-points">${group.points} points each</div>
+        </div>
+    `;
+}
+
+// Function to show answer details (for click interaction)
+function showAnswerDetails(answer, count, points, totalResponses) {
+    const uniquenessText = count === 1 ? 'This was a unique answer!' : `${count} players gave this answer`;
+    const pointsText = points > 0 ? `Each player earned ${points} points` : 'No points awarded';
+    
+    showToast(`${answer}: ${uniquenessText}. ${pointsText}`, 'info');
 }
 
 function displayRoundResults() {
