@@ -994,7 +994,34 @@ body {
     line-height: 1.4;
 }
 
-/* REMOVED: .answer-form CSS rules that were causing layout conflicts */
+.answer-form {
+    display: flex;
+    gap: 15px;
+    max-width: 600px;
+    margin: 0 auto;
+    flex-wrap: wrap;
+}
+
+.answer-form input {
+    flex: 1;
+    min-width: 300px;
+    padding: 15px;
+    border: 2px solid #8ba3d0;
+    border-radius: 10px;
+    font-size: 1rem;
+    background: rgba(0, 0, 0, 0.5);
+    color: #ffffff;
+}
+
+.answer-form input:focus {
+    outline: none;
+    border-color: #ffffff;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.answer-form input::placeholder {
+    color: #cccccc;
+}
 
 /* Host controls */
 .host-controls {
@@ -1269,7 +1296,13 @@ body {
         text-align: center;
     }
     
-    /* REMOVED: .answer-form mobile CSS rules that were causing layout conflicts */
+    .answer-form {
+        flex-direction: column;
+    }
+    
+    .answer-form input {
+        min-width: auto;
+    }
     
     .players-grid {
         grid-template-columns: 1fr;
@@ -6322,7 +6355,13 @@ body {
     display: block;
 }
 
-/* REMOVED: .answer-form CSS rules that were causing layout conflicts */
+.answer-form {
+    display: flex;
+    gap: 15px;
+    max-width: 600px;
+    margin: 0 auto;
+    flex-wrap: wrap;
+}
 
 .my-answer-display {
     max-width: 600px;

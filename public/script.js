@@ -161,7 +161,10 @@ function initializeSocket() {
         try {
             const msg = data && data.answer ? data.answer : '';
             if (!msg) return;
-            // Status updates now go to dmHistory instead of answerStatus
+            const statusEl = document.getElementById('answerStatus');
+            if (statusEl) {
+                statusEl.textContent = `💬 Host: ${msg}`;
+            }
         } catch (_) {}
     });
 
@@ -322,20 +325,24 @@ function setupEventListeners() {
     });
     
     // Game screen
-    const submitAnswerBtn = document.getElementById('submitBtn');
+    const submitAnswerBtn = document.getElementById('submitAnswerBtn');
     if (submitAnswerBtn) submitAnswerBtn.addEventListener('click', submitAnswer);
     const askHostBtn = document.getElementById('askHostBtn');
-    // Use hostMessageInput for sending messages to host
-    const askHostInput = document.getElementById('hostMessageInput');
+    // Use answerStatus as the multi-purpose input/display if contenteditable
+    let multiBox = document.getElementById('answerStatus');
+    const isMultiBoxEditable = !!(multiBox && multiBox.getAttribute && multiBox.getAttribute('contenteditable') === 'true');
+    const askHostInput = isMultiBoxEditable ? multiBox : document.getElementById('askHostInput');
     if (askHostBtn) {
         console.log('💬 [player] Send to Host button found; attaching handler');
         const getText = () => {
             if (!askHostInput) return '';
+            if (isMultiBoxEditable) return (askHostInput.innerText || '').trim();
             return (askHostInput.value || '').trim();
         };
         const setText = (val) => {
             if (!askHostInput) return;
-            askHostInput.value = val;
+            if (isMultiBoxEditable) askHostInput.innerText = val;
+            else askHostInput.value = val;
         };
         const appendDmHistory = (who, text, suffix) => {
             try {
@@ -349,7 +356,12 @@ function setupEventListeners() {
             } catch (_) {}
         };
         const setPlaceholderIfEmpty = () => {
-            // No longer needed for input field - placeholder is handled by HTML
+            if (!askHostInput) return;
+            if (isMultiBoxEditable && !(askHostInput.innerText || '').trim()) {
+                askHostInput.setAttribute('data-empty', 'true');
+            } else if (isMultiBoxEditable) {
+                askHostInput.removeAttribute('data-empty');
+            }
         };
         const sendMessage = () => {
             const q = getText();
@@ -362,7 +374,11 @@ function setupEventListeners() {
             try {
                 socket.once('playerQuestionAck', (ack) => {
                     console.log('💬 [player] playerQuestionAck (once):', ack);
-                                // Status updates now go to dmHistory instead of answerStatus
+                    const statusEl = document.getElementById('answerStatus');
+                    if (statusEl) {
+                        const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                        statusEl.textContent = ack && ack.ok ? `(${ts}) 💬 You: ${q} ✓` : `(${ts}) ⚠️ Not delivered: ${q} (${(ack && (ack.reason||ack.message))||'unknown'})`;
+                    }
                     appendDmHistory('You', q, ack && ack.ok ? ' ✓' : ' (not delivered)');
                 });
             } catch (_) {}
@@ -385,7 +401,12 @@ function setupEventListeners() {
             } catch (e) {
                 console.warn('💬 [player] Failed to emit playerQuestion', e);
             }
-            // Status updates now go to dmHistory instead of answerStatus
+            const statusEl = document.getElementById('answerStatus');
+            if (statusEl) {
+                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                if (isMultiBoxEditable) statusEl.innerText = `(${ts}) 💬 You: ${q} …`;
+                else statusEl.textContent = `(${ts}) 💬 You: ${q} …`;
+            }
             setText('');
             setPlaceholderIfEmpty();
         };
@@ -394,6 +415,11 @@ function setupEventListeners() {
         // Ensure comm row visible for players
         const commRow = document.getElementById('playerCommRow');
         if (commRow && !isHost) commRow.style.display = 'flex';
+        // Placeholder styling for contenteditable
+        if (isMultiBoxEditable) {
+            multiBox.addEventListener('input', setPlaceholderIfEmpty);
+            setPlaceholderIfEmpty();
+        }
     }
 
     // Delivery confirmation / failure
@@ -415,6 +441,13 @@ function setupEventListeners() {
                 try {
                     const msg = data && data.answer ? data.answer : '';
                     if (!msg) return;
+                    const statusEl = document.getElementById('answerStatus');
+                    const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    if (statusEl && statusEl.getAttribute('contenteditable') === 'true') {
+                        statusEl.innerText = `(${ts}) 💬 Host: ${msg}`;
+                    } else if (statusEl) {
+                        statusEl.textContent = `(${ts}) 💬 Host: ${msg}`;
+                    }
                     appendDmHistory('Host', msg);
                 } catch (_) {}
             });
@@ -744,7 +777,7 @@ function submitAnswer() {
     socket.emit('submitAnswer', { gameCode: gameState.gameCode, answer });
     answerInput.value = '';
     
-            const submitAnswerBtn = document.getElementById('submitBtn');
+    const submitAnswerBtn = document.getElementById('submitAnswerBtn');
     if (submitAnswerBtn) {
         submitAnswerBtn.disabled = true;
     }
@@ -1818,8 +1851,8 @@ function handleNextQuestion(gameStateData) {
         if (editNotice && editNotice.parentNode) {
             editNotice.parentNode.removeChild(editNotice);
         }
-        const hostMessageInput = document.getElementById('hostMessageInput');
-        if (hostMessageInput) { hostMessageInput.value = ''; }
+        const status = document.getElementById('answerStatus');
+        if (status) { status.innerHTML = ''; status.className = 'answer-status'; }
         const input = document.getElementById('answerInput');
         const btn = document.getElementById('submitAnswerBtn');
         if (input) { input.disabled = false; input.value = ''; }
@@ -2151,7 +2184,7 @@ function displayCurrentQuestion() {
         // Reset answer form
         document.getElementById('answerInput').value = '';
         document.getElementById('answerInput').disabled = false;
-        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitAnswerBtn').disabled = false;
     }
     
     // Update players list

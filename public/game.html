@@ -2,22 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Game</title>
-                        <link rel="stylesheet" href="styles.css?v=1.0.3">
+    <link rel="stylesheet" href="styles.css?v=1.0.1">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* Player interface enhancements */
-        :root {
-          padding-top: env(safe-area-inset-top);
-          padding-bottom: env(safe-area-inset-bottom);
-          --gap-sm: 8px;
-          --gap-md: 12px;
-          --fs-small: clamp(12px, 2.8vw, 14px);
-          --fs-base: clamp(14px, 3.6vw, 16px);
-          --fs-title: clamp(18px, 4.6vw, 22px);
-        }
-        * { -webkit-tap-highlight-color: rgba(0,0,0,0); }
         .connection-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
         .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
         .dot.ok { background: #2ecc71; box-shadow: 0 0 6px rgba(46, 204, 113, 0.6); }
@@ -28,46 +18,6 @@
         .answer-progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #28a745, #20c997); transition: width 0.3s ease; }
         .btn-inline { background: transparent; border: 1px solid rgba(255,255,255,0.25); padding: 4px 8px; border-radius: 6px; color: inherit; cursor: pointer; font-size: 12px; }
         .btn-inline:hover { background: rgba(255,255,255,0.08); }
-
-        /* Mobile touch targets & fonts */
-        button, .btn, .btn-inline { min-height: 44px; font-size: var(--fs-base); }
-        input, textarea, [contenteditable="true"] { font-size: var(--fs-base); }
-        /* Make both inputs visually identical and full-width */
-        #answerInput, #hostMessageInput { width: 100%; min-height: 56px; padding: 12px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.25); border-radius: 10px; background: rgba(255,255,255,0.08); color: #fff; font-size: var(--fs-base); }
-        #answerInput::placeholder, #hostMessageInput::placeholder { color: #b0bec5; opacity: .9; }
-        .answer-form .form-group { width: 100%; }
-        #askHostBtn { min-width: 132px; }
-
-        /* Sticky header for personal info on small screens */
-        .game-status { position: sticky; top: env(safe-area-inset-top); z-index: 5; background: rgba(0,0,0,0.35); backdrop-filter: blur(6px); padding: 10px 8px; border-radius: 10px; }
-
-        /* DM history small text */
-        #dmHistory div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        /* Compact playing layout */
-        #timer { font-size: clamp(20px, 5.5vw, 28px); }
-        /* Ensure question clamps and expands on tap */
-        #questionText { font-size: clamp(18px, 4.6vw, 22px); line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
-        #questionText.expanded { display: block; -webkit-line-clamp: unset; max-height: none; }
-        .players-answered { font-size: 12px; color: #cfd8dc; margin-top: 6px; }
-        .answer-progress { height: 6px; margin-top: 6px; }
-        /* Removed playerCommRow flex styling - now using vertical layout */
-        .screen-content > * { margin-bottom: var(--gap-md); }
-
-        /* Hero answer clamp */
-        .hero-answer { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
-        .hero-card { margin-bottom: 12px; }
-
-        /* Compact mode for short screens */
-        @media (max-height: 700px) {
-          :root { --gap-sm: 6px; --gap-md: 10px; }
-          #questionText { -webkit-line-clamp: 3; }
-          #dmHistory { max-height: 18px; overflow: hidden; }
-        }
-
-        @media (max-width: 420px) {
-          /* Vertical layout already applied - no changes needed */
-        }
     </style>
 </head>
 <body>
@@ -131,25 +81,19 @@
                     </div>
                 </div>
                 
-                <!-- Answer input field -->
-                <div class="form-group" style="width:100%; margin-bottom:8px !important;">
-                    <label for="answerInput">Your Answer:</label>
-                    <input type="text" id="answerInput" placeholder="Type your answer here..." maxlength="100" required>
-                </div>
-                
-                <!-- Submit answer button -->
-                <div style="margin-bottom:8px !important;">
-                    <button type="button" class="btn btn-primary" id="submitBtn" style="width:100%;">Submit Answer</button>
-                </div>
-                
-                <!-- Host communication field -->
-                <div style="margin-bottom:8px !important;">
-                    <input type="text" id="hostMessageInput" placeholder="Type a private message to host…" maxlength="200" style="width:100%; min-height:56px; padding:12px; border:1px solid rgba(255,255,255,0.25); border-radius:10px; background:rgba(255,255,255,0.08); color:#fff; font-size:var(--fs-base);">
-                </div>
-                
-                <!-- Send to host button -->
-                <div style="margin-bottom:8px !important;">
-                    <button id="askHostBtn" class="btn btn-secondary" type="button" style="width:100%;">Send to host</button>
+                <form id="answerForm" class="answer-form">
+                    <div class="form-group">
+                        <label for="answerInput">Your Answer:</label>
+                        <input type="text" id="answerInput" placeholder="Type your answer here..." maxlength="100" required>
+                    </div>
+                     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">Submit Answer</button>
+                    </div>
+                </form>
+                <!-- Multi-purpose communication: answerStatus doubles as input/display -->
+                <div id="playerCommRow" style="margin-top:8px; gap:8px; align-items:center; display:flex;">
+                    <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Type a private message to host…" style="flex:1; min-height:38px; padding:10px 12px;"></div>
+                    <button id="askHostBtn" class="btn btn-secondary" type="button" style="white-space:nowrap;">Send to host</button>
                 </div>
                 <div id="dmHistory" style="margin-top:6px; font-size:13px; color: #cfd8dc;"></div>
                 
@@ -492,6 +436,8 @@
             });
             
             socket.on('answerSubmitted', () => {
+                document.getElementById('answerStatus').innerHTML = '✅ Answer submitted successfully!';
+                document.getElementById('answerStatus').className = 'answer-status success';
                 document.getElementById('submitBtn').disabled = true;
                 document.getElementById('answerInput').disabled = true;
                 awaitingAnswerAck = false;
@@ -504,6 +450,9 @@
                 try {
                     const reason = (data && data.reason) ? data.reason : 'Please refine your answer';
                     console.log('✏️ requireAnswerEdit received:', data);
+                    const statusEl = document.getElementById('answerStatus');
+                    statusEl.innerHTML = `✏️ Edit requested by host: ${reason}`;
+                    statusEl.className = 'answer-status warning';
                     const input = document.getElementById('answerInput');
                     const btn = document.getElementById('submitBtn');
                     input.disabled = false;
@@ -512,6 +461,8 @@
                     if (data && data.originalAnswer && !input.value) {
                         input.value = data.originalAnswer;
                     }
+                    // Visibly jiggle the form to draw attention
+                    try { statusEl.style.animation = 'none'; statusEl.offsetHeight; statusEl.style.animation = 'pulse 0.6s'; } catch (_) {}
                     // Ensure the question screen is visible (works even during grading)
                     if (!document.getElementById('questionScreen').classList.contains('active')) {
                         console.log('✏️ Switching to questionScreen for clarification');
@@ -606,9 +557,7 @@
             }
             
             const question = gameState.questions[gameState.currentQuestion];
-            const qEl = document.getElementById('questionText');
-            qEl.textContent = question.prompt;
-            qEl.classList.remove('expanded');
+            document.getElementById('questionText').textContent = question.prompt;
             
             // Calculate round and question within round
             const questionNumber = gameState.currentQuestion + 1;
@@ -622,23 +571,14 @@
             document.getElementById('answerInput').value = '';
             document.getElementById('answerInput').disabled = false;
             document.getElementById('submitBtn').disabled = false;
-            // Clear host message input
-            const hostMessageInput = document.getElementById('hostMessageInput');
-            if (hostMessageInput) hostMessageInput.value = '';
+            document.getElementById('answerStatus').innerHTML = '';
+            document.getElementById('answerStatus').className = 'answer-status';
             
             // Hide "My answer" display
             document.getElementById('myAnswerDisplay').style.display = 'none';
             
-            // Focus on input and ensure visible above mobile keyboard
-            const ans = document.getElementById('answerInput');
-            ans.focus({ preventScroll: false });
-            try {
-                setTimeout(() => {
-                    const offsetTop = window.visualViewport ? window.visualViewport.offsetTop : 0;
-                    const y = ans.getBoundingClientRect().top + window.pageYOffset - offsetTop - 80;
-                    window.scrollTo({ top: y, behavior: 'smooth' });
-                }, 50);
-            } catch(_) {}
+            // Focus on input
+            document.getElementById('answerInput').focus();
             
             // Reset answer count
             updateAnswerCount(0, gameState.players.length);
@@ -651,7 +591,9 @@
             // Add visual urgency
             if (timeLeft <= 10) {
                 timerElement.classList.add('urgent');
-                if ((timeLeft === 5 || timeLeft === 3) && navigator.vibrate) { navigator.vibrate(80); }
+                if (timeLeft === 10 && navigator.vibrate) {
+                    navigator.vibrate(150);
+                }
             } else {
                 timerElement.classList.remove('urgent');
             }
@@ -672,9 +614,9 @@
             const me = (gameState && gameState.players || []).find(p => p.name === playerName) || {};
             const currentScore = me.score || 0;
             resultsContent.innerHTML = `
-                <div class="hero-card" style="background: rgba(0,123,255,0.10); border:1px solid rgba(0,123,255,0.30); border-radius:12px; padding:16px; margin-bottom:12px;">
+                <div class="hero-card" style="background: rgba(0,123,255,0.10); border:1px solid rgba(0,123,255,0.30); border-radius:12px; padding:16px; margin-bottom:14px;">
                     <div style="font-weight:600; color:#cfe8ff; font-size:13px; letter-spacing:.3px;">Your Answer</div>
-                    <div class="hero-answer" style="font-size:20px; color:#fff; margin:6px 0 8px 0;">${submittedAnswer}</div>
+                    <div style="font-size:20px; color:#fff; margin:6px 0 10px 0; word-break:break-word;">${submittedAnswer}</div>
                     <div style="display:flex; align-items:center; gap:10px;">
                         <div class="loading-spinner"></div>
                         <div style="color:#90caf9;">Waiting for grading…</div>
@@ -702,13 +644,13 @@
             // Hero card with your result
             const hero = document.createElement('div');
             hero.className = 'hero-card';
-            hero.style.cssText = 'background: rgba(46,204,113,0.10); border:1px solid rgba(46,204,113,0.30); border-radius:12px; padding:16px; margin-bottom:12px;';
+            hero.style.cssText = 'background: rgba(46,204,113,0.10); border:1px solid rgba(46,204,113,0.30); border-radius:12px; padding:16px; margin-bottom:14px;';
             hero.innerHTML = `
                 <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                     <div style="font-weight:600; color:#c8e6c9; font-size:13px; letter-spacing:.3px;">Your Answer</div>
                     <div style="margin-left:auto; font-weight:700; color:#fff;">Score: ${me.score || 0}</div>
                 </div>
-                <div class=\"hero-answer\" style=\"font-size:20px; color:#fff; margin:6px 0 2px 0;\">${myAnswer}</div>
+                <div style="font-size:20px; color:#fff; margin:6px 0 2px 0; word-break:break-word;">${myAnswer}</div>
                 <div style="display:flex; gap:10px; align-items:center; color:#a5d6a7;">
                     <div style="font-size:18px; font-weight:800; color:#fff;">+${myPoints}</div>
                     <div>this question</div>
@@ -823,9 +765,83 @@
             }
         }
         
-        // Answer submission is now handled by script.js
+        // Answer form submission
+        document.getElementById('answerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const answer = document.getElementById('answerInput').value.trim();
+            if (!answer) {
+                return;
+            }
+            
+            console.log('📤 Submitting answer:', answer);
+            socket.emit('submitAnswer', { gameCode, answer });
+            
+            // Show "My answer" display
+            document.getElementById('myAnswerText').textContent = answer;
+            document.getElementById('myAnswerDisplay').style.display = 'block';
+            
+            // Disable form
+            document.getElementById('answerInput').disabled = true;
+            document.getElementById('submitBtn').disabled = true;
+            document.getElementById('answerStatus').innerHTML = '⏳ Submitting answer...';
+            document.getElementById('answerStatus').className = 'answer-status pending';
+            
+            // Store the answer for later display
+            window.lastSubmittedAnswer = answer;
+            console.log('💾 Stored answer in window.lastSubmittedAnswer:', answer);
 
-        // Send-to-host functionality is now handled by script.js
+            // Persist to session (same-session refresh resilience)
+            try {
+                const qIndex = (gameState && typeof gameState.currentQuestion === 'number') ? gameState.currentQuestion : null;
+                if (qIndex !== null && gameCode) {
+                    sessionStorage.setItem(`lastAnswer-${gameCode}-${qIndex}`, answer);
+                }
+            } catch (_) {}
+
+            // If no ack arrives soon, allow retry
+            awaitingAnswerAck = true;
+            clearTimeout(answerAckTimerId);
+            answerAckTimerId = setTimeout(() => {
+                if (awaitingAnswerAck) {
+                    document.getElementById('answerStatus').innerHTML = '⚠️ Still sending… network is slow. You can retry.';
+                    document.getElementById('answerStatus').className = 'answer-status pending';
+                    document.getElementById('answerRetryContainer').style.display = 'block';
+                }
+            }, 2500);
+        });
+
+        // Send-to-host (inline input)
+        (function(){
+            const btn = document.getElementById('askHostBtn');
+            const input = document.getElementById('askHostInput');
+            const send = function(){
+                const q = (input && typeof input.value === 'string') ? input.value.trim() : '';
+                if (!q) return;
+                console.log('💬 [player] Send-to-host clicked (game.html), text:', q);
+                try { window.lastAskedQuestion = q; sessionStorage.setItem('lastAskedQuestion', q); } catch(_){}
+                try { socket.once('playerQuestionAck', function(ack){ console.log('💬 [player] playerQuestionAck (once, game.html):', ack); }); } catch(_){}
+                try {
+                    const payload = { question: q };
+                    try {
+                        let gc = sessionStorage.getItem('gameCode') || null;
+                        let pn = sessionStorage.getItem('playerName') || null;
+                        if (gc) payload.gameCode = gc; if (pn) payload.playerName = pn;
+                    } catch(_){}
+                    console.log('💬 [player] playerQuestion payload (game.html):', payload);
+                    socket.emit('playerQuestion', payload);
+                } catch(e){ console.warn('💬 [player] Failed to emit playerQuestion', e); }
+                const statusEl = document.getElementById('answerStatus');
+                if (statusEl) {
+                    const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                    statusEl.innerHTML = `(${ts}) 💬 You: ${q} …`;
+                    statusEl.className = 'answer-status info';
+                }
+                if (input) input.value = '';
+            };
+            if (btn) btn.addEventListener('click', send);
+            if (input) input.addEventListener('keypress', function(e){ if (e.key === 'Enter') send(); });
+        })();
 
         // Show ack logs in game.html too
         socket.on('playerQuestionAck', function(ack) {
@@ -836,12 +852,14 @@
         document.getElementById('retrySubmitBtn').addEventListener('click', function() {
             if (!window.lastSubmittedAnswer) return;
             console.log('🔁 Retrying answer submission');
+            document.getElementById('answerStatus').innerHTML = '⏳ Resubmitting…';
             document.getElementById('answerRetryContainer').style.display = 'none';
             awaitingAnswerAck = true;
             clearTimeout(answerAckTimerId);
             socket.emit('submitAnswer', { gameCode, answer: window.lastSubmittedAnswer });
             answerAckTimerId = setTimeout(() => {
                 if (awaitingAnswerAck) {
+                    document.getElementById('answerStatus').innerHTML = '⚠️ Still sending… will keep trying.';
                     document.getElementById('answerRetryContainer').style.display = 'block';
                 }
             }, 2500);
@@ -951,20 +969,6 @@
                 console.error('Carousel initialization failed:', error);
                 // Continue with game initialization even if carousel fails
             });
-            // Try to keep screen awake during questions
-            try {
-                if ('wakeLock' in navigator) {
-                    let wakeLock = null;
-                    const requestWakeLock = async () => { try { wakeLock = await navigator.wakeLock.request('screen'); } catch (_) {} };
-                    requestWakeLock();
-                    document.addEventListener('visibilitychange', () => { if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock(); });
-                }
-            } catch (_) {}
-            // Tap to expand/collapse long question
-            try {
-                const qEl = document.getElementById('questionText');
-                qEl.addEventListener('click', () => qEl.classList.toggle('expanded'));
-            } catch (_) {}
             // Guard against losing unsent answer
             window.addEventListener('beforeunload', (e) => {
                 const onQuestion = document.getElementById('questionScreen').classList.contains('active');
