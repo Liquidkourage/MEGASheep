@@ -3252,8 +3252,10 @@ function showWaitingForGrading() {
     const answersList = document.getElementById('answersList');
     if (answersList) {
         // Get the submitted answer from window storage
-        const submittedAnswer = window.lastSubmittedAnswer || localStorage.getItem('lastSubmittedAnswer') || 'No answer submitted';
+        const submittedAnswer = window.lastSubmittedAnswer || localStorage.getItem('lastSubmittedAnswer') || '';
+        const displayAnswer = submittedAnswer && submittedAnswer.trim() !== '' ? submittedAnswer : 'No Answer Received';
         console.log('🎯 Retrieved submitted answer:', submittedAnswer);
+        console.log('🎯 Display answer:', displayAnswer);
         
         // Override grid layout for centering
         answersList.style.display = 'flex';
@@ -3265,7 +3267,7 @@ function showWaitingForGrading() {
         answersList.innerHTML = `
             <!-- My Submitted Answer -->
             <div style="background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center; width: 100%; max-width: 500px;">
-                <div style="background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 5px; color: #ffffff; font-size: 18px; font-weight: bold;">${submittedAnswer}</div>
+                <div style="background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 5px; color: #ffffff; font-size: 18px; font-weight: bold;">${displayAnswer}</div>
             </div>
             
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%; max-width: 500px; background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 10px; padding: 30px;">
