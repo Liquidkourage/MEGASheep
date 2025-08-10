@@ -394,10 +394,8 @@ function setupEventListeners() {
         // Clear messaging box when clicked
         if (askHostInput) {
             askHostInput.addEventListener('click', () => {
-                if (askHostInput.innerText === 'Type a private message to host...') {
-                    askHostInput.innerText = '';
-                    setPlaceholderIfEmpty();
-                }
+                askHostInput.innerText = '';
+                setPlaceholderIfEmpty();
             });
         }
         
