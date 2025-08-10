@@ -2051,37 +2051,16 @@ function updateLobbyDisplay() {
             `;
             playersList.appendChild(waitingMessage);
         } else {
-            // Efficient update: only add new players that aren't already displayed
-            const existingPlayerIds = Array.from(playersList.querySelectorAll('.player-card')).map(card => card.dataset.playerId);
-            
-            gameState.players.forEach(player => {
-                // Only add if this player isn't already displayed
-                if (!existingPlayerIds.includes(player.id)) {
-                    const playerCard = document.createElement('div');
-                    playerCard.className = `player-card ${player.id === socket.id ? 'host' : ''}`;
-                    playerCard.dataset.playerId = player.id;
-                    
-                    // Add click handler for host to select players
-                    if (isHost && player.id !== socket.id) {
-                        playerCard.style.cursor = 'pointer';
-                        playerCard.addEventListener('click', () => {
-                            // Remove selection from other cards
-                            document.querySelectorAll('.player-card').forEach(card => {
-                                card.classList.remove('selected');
-                            });
-                            playerCard.classList.add('selected');
-                            selectedPlayerId = player.id;
-                        });
-                    }
-                    
-                    playerCard.innerHTML = `
-                        <div class="player-name">${player.name}</div>
-                        ${isHost && player.id !== socket.id ? '<div class="player-actions-hint">Click to manage</div>' : ''}
-                    `;
-                    playersList.appendChild(playerCard);
-                    console.log('🎮 Script.js: Added player card for:', player.name);
-                }
-            });
+            // Show simple player count for all devices (no individual player cards)
+            playersList.innerHTML = '';
+            const countCard = document.createElement('div');
+            countCard.className = 'player-count-card';
+            countCard.innerHTML = `
+                <div class="player-count-number">${gameState.players.length}</div>
+                <div class="player-count-label">Players</div>
+            `;
+            playersList.appendChild(countCard);
+            console.log('🎮 Script.js: Showing player count:', gameState.players.length);
         }
     } else {
         console.log('🎮 Script.js: playersList element not found');
