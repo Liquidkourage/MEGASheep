@@ -2225,8 +2225,8 @@ function displayQuestionResults() {
     }
     
     // Get player's submitted answer
-    const playerAnswer = window.lastSubmittedAnswer || '';
-    const currentPlayerName = sessionStorage.getItem('playerName') || 'You';
+    const playerAnswer = window.lastSubmittedAnswer || localStorage.getItem('lastSubmittedAnswer') || '';
+    const currentPlayerName = sessionStorage.getItem('playerName') || '';
     
     // Find player's answer group and ranking
     let playerAnswerGroup = null;
@@ -2235,22 +2235,40 @@ function displayQuestionResults() {
     let playerPoints = 0;
     
     if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
-        // Calculate total players
-        totalPlayers = gameState.currentAnswerGroups.reduce((sum, group) => sum + group.count, 0);
-        
-        // Find player's answer group
+        // Calculate total players (fallback to players list length if count missing)
+        totalPlayers = gameState.currentAnswerGroups.reduce((sum, group) => {
+            const cnt = (typeof group.count === 'number')
+                ? group.count
+                : (Array.isArray(group.players) ? group.players.length : 0);
+            return sum + cnt;
+        }, 0);
+
+        // Prefer matching by membership (player name) to support categorized buckets
+        const lowerName = (currentPlayerName || '').toLowerCase();
         playerAnswerGroup = gameState.currentAnswerGroups.find(group => 
-            group.answer.toLowerCase() === playerAnswer.toLowerCase()
+            Array.isArray(group.players) && group.players.some(p => String(p).toLowerCase() === lowerName)
         );
-        
+
+        // Fallback: match by submitted answer text
+        if (!playerAnswerGroup && playerAnswer) {
+            playerAnswerGroup = gameState.currentAnswerGroups.find(group => 
+                (group.answer || '').toLowerCase() === playerAnswer.toLowerCase()
+            );
+        }
+
         // Calculate player's ranking for this question
         if (playerAnswerGroup) {
-            playerPoints = playerAnswerGroup.points;
+            playerPoints = playerAnswerGroup.points || 0;
             // Count how many players scored higher than this player
             const higherScoringGroups = gameState.currentAnswerGroups.filter(group => 
-                group.points > playerAnswerGroup.points
+                (group.points || 0) > (playerAnswerGroup.points || 0)
             );
-            playerRank = higherScoringGroups.reduce((sum, group) => sum + group.count, 0) + 1;
+            playerRank = higherScoringGroups.reduce((sum, group) => {
+                const cnt = (typeof group.count === 'number')
+                    ? group.count
+                    : (Array.isArray(group.players) ? group.players.length : 0);
+                return sum + cnt;
+            }, 0) + 1;
         }
     }
     
@@ -2345,10 +2363,13 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
     }
     
     let uniquenessText = '';
-    if (playerAnswerGroup && playerAnswerGroup.count === 1) {
+    const groupCount = playerAnswerGroup
+        ? (typeof playerAnswerGroup.count === 'number' ? playerAnswerGroup.count : (Array.isArray(playerAnswerGroup.players) ? playerAnswerGroup.players.length : 0))
+        : 0;
+    if (playerAnswerGroup && groupCount === 1) {
         uniquenessText = 'You were the only one with this answer!';
-    } else if (playerAnswerGroup && playerAnswerGroup.count > 1) {
-        uniquenessText = `${playerAnswerGroup.count} players had this answer`;
+    } else if (playerAnswerGroup && groupCount > 1) {
+        uniquenessText = `${groupCount} players had this answer`;
     }
     
     return `
@@ -2425,16 +2446,17 @@ function createAllAnswersSection(answerGroups) {
 function createAnswerItem(group, isCorrect) {
     const statusIcon = isCorrect ? '✅' : '❌';
     const statusClass = isCorrect ? 'correct' : 'incorrect';
-    const uniquenessText = group.count === 1 ? 'Unique answer!' : `${group.count} players`;
+    const computedCount = (typeof group.count === 'number') ? group.count : (Array.isArray(group.players) ? group.players.length : 0);
+    const uniquenessText = computedCount === 1 ? 'Unique answer!' : `${computedCount} players`;
     
     return `
-        <div class="answer-item ${statusClass}" onclick="showAnswerDetails('${group.answer}', ${group.count}, ${group.points}, ${group.totalResponses})">
+        <div class="answer-item ${statusClass}" onclick="showAnswerDetails('${group.answer}', ${computedCount}, ${group.points}, ${group.totalResponses})">
             <div class="answer-header">
                 <span class="answer-status">${statusIcon}</span>
                 <span class="answer-text">"${group.answer}"</span>
             </div>
             <div class="answer-details">
-                <div class="answer-formula">${group.totalResponses} ÷ ${group.count} = ${group.points} pts</div>
+                <div class="answer-formula">${group.totalResponses} ÷ ${computedCount} = ${group.points} pts</div>
                 <div class="answer-count">${uniquenessText}</div>
             </div>
             <div class="answer-points">${group.points} points each</div>
