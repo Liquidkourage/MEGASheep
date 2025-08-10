@@ -1776,6 +1776,7 @@ function handlePlayerJoined(gameStateData) {
 }
 
 function handleGameStarted(gameStateData) {
+    console.log('🎮 handleGameStarted called with data:', gameStateData);
     gameState = gameStateData;
     questions = gameStateData.questions || [];
     currentQuestionIndex = 0;
@@ -1790,9 +1791,13 @@ function handleGameStarted(gameStateData) {
         console.log('🗄️ Stored', questions.length, 'questions from database for grading interface');
     }
     
+    console.log('🎮 About to show game screen');
     showScreen('game');
+    console.log('🎮 About to display current question');
     displayCurrentQuestion();
+    console.log('🎮 About to start timer');
     startTimer();
+    console.log('🎮 handleGameStarted completed');
 }
 
 function handleTestGameStarted(gameStateData) {
