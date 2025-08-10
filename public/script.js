@@ -3252,8 +3252,8 @@ function showWaitingForGrading() {
     // Hide answer results until grading is complete
     const answersList = document.getElementById('answersList');
     if (answersList) {
-        // Get the submitted answer from window storage
-        const submittedAnswer = window.lastSubmittedAnswer || localStorage.getItem('lastSubmittedAnswer') || '';
+        // Get the submitted answer from window storage (only use window, not localStorage for current question)
+        const submittedAnswer = window.lastSubmittedAnswer || '';
         const displayAnswer = submittedAnswer && submittedAnswer.trim() !== '' ? submittedAnswer : 'No Answer Received';
         console.log('🎯 Retrieved submitted answer:', submittedAnswer);
         console.log('🎯 Display answer:', displayAnswer);
