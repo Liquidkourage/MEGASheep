@@ -1854,8 +1854,11 @@ function handleNextQuestion(gameStateData) {
         const btn = document.getElementById('submitAnswerBtn');
         if (input) { input.disabled = false; input.value = ''; }
         if (btn) { btn.disabled = false; }
-        window.lastSubmittedAnswer = '';
-        localStorage.removeItem('lastSubmittedAnswer');
+        // Only clear the answer if we're actually moving to a new question, not during grading
+        if (gameState.gameState === 'playing') {
+            window.lastSubmittedAnswer = '';
+            localStorage.removeItem('lastSubmittedAnswer');
+        }
     } catch (_) {}
     
     // Show End Question button for new question
