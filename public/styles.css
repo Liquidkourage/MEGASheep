@@ -6676,3 +6676,21 @@ body {
     font-size: 1.3rem;
     font-weight: 600;
 }
+
+/* Mobile responsive adjustments for player communication area */
+@media (max-width: 768px) {
+    #playerCommRow {
+        display: block !important;
+        gap: 0 !important;
+    }
+    
+    #playerCommRow #answerStatus {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    
+    #playerCommRow #askHostBtn {
+        width: 100%;
+        margin-top: 0;
+    }
+}
