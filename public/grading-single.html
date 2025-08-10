@@ -661,7 +661,6 @@
                 <h3 class="grading-title">📝 Categorize Answers</h3>
             </div>
             <div class="grading-controls-top">
-                <button id="endQuestionBtn" class="control-btn warning">End Question Early</button>
                 <button id="applyCategorizationBtn" class="control-btn success">Complete Grading</button>
                 <button id="nextQuestionBtn" class="control-btn primary" style="display: none;">Next Question</button>
             </div>
@@ -1273,13 +1272,6 @@
             currentGame = game;
             document.getElementById('gameSelection').style.display = 'none';
             document.getElementById('gradingInterface').style.display = 'block';
-            
-            // Show/hide End Question button based on game state
-            const endQuestionBtn = document.getElementById('endQuestionBtn');
-            if (endQuestionBtn) {
-                endQuestionBtn.style.display = (game.gameState === 'playing') ? 'inline-block' : 'none';
-            }
-            
             updateGradingInterface().catch(error => {
                 console.error('Error updating grading interface:', error);
             });
@@ -2295,26 +2287,6 @@
             }
         }
 
-        function endQuestionEarly() {
-            if (!currentGame) {
-                console.error('❌ No current game to end question early');
-                return;
-            }
-
-            console.log('⏹️ Ending question early for game:', currentGame.gameCode);
-            
-            // Emit endQuestion event to server
-            socket.emit('endQuestion', {
-                gameCode: currentGame.gameCode
-            });
-
-            // Show feedback
-            showTemporaryMessage('⏹️ Question ended. Grading can now begin.', 'info');
-            
-            // Hide the End Question button after clicking
-            document.getElementById('endQuestionBtn').style.display = 'none';
-        }
-
         function nextQuestion() {
             if (!currentGame) {
                 console.error('❌ No current game to proceed to next question');
@@ -2456,7 +2428,6 @@
 
         // Event listeners
                     document.getElementById('applyCategorizationBtn').addEventListener('click', applyCategorization);
-        document.getElementById('endQuestionBtn').addEventListener('click', endQuestionEarly);
             document.getElementById('nextQuestionBtn').addEventListener('click', nextQuestion);
 
         // Update confidence display for moved elements
