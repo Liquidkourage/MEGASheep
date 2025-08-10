@@ -659,6 +659,7 @@
         <div id="gradingInterface" class="grading-interface" style="display: none;">
             <div class="grading-header-controls">
                 <h3 class="grading-title">📝 Categorize Answers</h3>
+                <button id="resyncBtn" class="control-btn secondary" onclick="resyncGameData()">🔄 Re-sync</button>
             </div>
             <div class="grading-controls-top">
                 <button id="applyCategorizationBtn" class="control-btn success">Complete Grading</button>
@@ -875,13 +876,6 @@
                     loadActiveGames();
                 }
             });
-
-            // Re-sync hooks to ensure hydration when opened by URL
-            try {
-                socket.on('gameStarted', () => setTimeout(requestGameStateIfPossible, 100));
-                socket.on('nextQuestion', () => setTimeout(requestGameStateIfPossible, 100));
-                socket.on('questionComplete', () => setTimeout(requestGameStateIfPossible, 50));
-            } catch (_) {}
             
             socket.on('error', (error) => {
                 console.error('Socket error:', error);
@@ -1104,35 +1098,6 @@
 
 
         }
-
-        // --- Added: Auto-hydration from URL and manual Re-sync ---
-        function getQueryParam(name) {
-            try { const url = new URL(window.location.href); return url.searchParams.get(name); } catch (_) { return null; }
-        }
-        function requestGameStateIfPossible() {
-            try {
-                const gc = getQueryParam('gameCode');
-                if (!gc || !socket) return;
-                console.log('🔄 Re-sync: requesting game state for', gc);
-                socket.emit('host-reconnect', { gameCode: gc });
-                socket.emit('joinGameRoom', { gameCode: gc });
-                socket.emit('getGameState', { gameCode: gc });
-            } catch (e) { console.warn('Re-sync request failed', e); }
-        }
-        function addResyncButton(){
-            try {
-                const header = document.querySelector('.grading-header');
-                if (!header || header.querySelector('#resyncBtn')) return;
-                const btn = document.createElement('button');
-                btn.id = 'resyncBtn';
-                btn.className = 'btn btn-secondary';
-                btn.textContent = '🔄 Re-sync';
-                btn.style.marginLeft = '10px';
-                btn.onclick = requestGameStateIfPossible;
-                header.appendChild(btn);
-            } catch (_) {}
-        }
-        window.addEventListener('load', () => { addResyncButton(); setTimeout(requestGameStateIfPossible, 150); });
 
         function connectToHostGame(gameCode) {
             console.log('🔗 Connecting to host game:', gameCode);
@@ -2879,7 +2844,156 @@
             }, 10000);
         });
 
+        // Re-sync function to refresh game data
+        async function resyncGameData() {
+            console.log('🔄 Re-syncing game data...');
+            
+            if (!currentGame || !currentGame.gameCode) {
+                console.error('❌ No current game to re-sync');
+                showToast('No active game to re-sync', 'error');
+                return;
+            }
 
+            try {
+                // Show loading state
+                const resyncBtn = document.getElementById('resyncBtn');
+                const originalText = resyncBtn.textContent;
+                resyncBtn.textContent = '🔄 Syncing...';
+                resyncBtn.disabled = true;
+
+                // Re-request game data from server
+                socket.emit('getGameState', currentGame.gameCode);
+                
+                // Also try to get active games as a fallback
+                socket.emit('getActiveGames');
+                
+                console.log('🔗 Emitting getActiveGames as fallback');
+                
+                // Wait a bit for server response
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Re-populate the interface
+                if (currentGame && currentGame.currentQuestionData) {
+                    await populateGradingInterface();
+                    showToast('Game data re-synced successfully!', 'success');
+                } else {
+                    showToast('Failed to re-sync game data', 'error');
+                }
+
+            } catch (error) {
+                console.error('❌ Re-sync failed:', error);
+                showToast('Re-sync failed: ' + error.message, 'error');
+            } finally {
+                // Restore button state
+                const resyncBtn = document.getElementById('resyncBtn');
+                resyncBtn.textContent = originalText;
+                resyncBtn.disabled = false;
+            }
+        }
+
+        // Enhanced fallback logic for missing data
+        function applyFallbackLogic() {
+            console.log('🛡️ Applying fallback logic for missing data...');
+            
+            if (!currentGame) {
+                console.warn('⚠️ No current game, cannot apply fallbacks');
+                return;
+            }
+
+            // Fallback 1: If currentAnswerGroups is missing, try to reconstruct from other sources
+            if (!currentGame.currentAnswerGroups || currentGame.currentAnswerGroups.length === 0) {
+                console.log('🔄 Fallback: Reconstructing answer groups...');
+                
+                // Try to get from localStorage as last resort
+                const savedState = localStorage.getItem(`gradingState_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`);
+                if (savedState) {
+                    try {
+                        const parsed = JSON.parse(savedState);
+                        if (parsed.answerGroups && parsed.answerGroups.length > 0) {
+                            currentGame.currentAnswerGroups = parsed.answerGroups;
+                            console.log('✅ Restored answer groups from localStorage');
+                        }
+                    } catch (e) {
+                        console.error('❌ Failed to parse saved state:', e);
+                    }
+                }
+            }
+
+            // Fallback 2: If question data is missing, try to get from URL or localStorage
+            if (!currentGame.currentQuestionData) {
+                console.log('🔄 Fallback: Reconstructing question data...');
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const questionIndex = urlParams.get('question') || currentGame.currentQuestionIndex || 0;
+                
+                // Try to get from localStorage
+                const savedState = localStorage.getItem(`gradingState_${currentGame.gameCode}_${questionIndex}`);
+                if (savedState) {
+                    try {
+                        const parsed = JSON.parse(savedState);
+                        if (parsed.questionData) {
+                            currentGame.currentQuestionData = parsed.questionData;
+                            console.log('✅ Restored question data from localStorage');
+                        }
+                    } catch (e) {
+                        console.error('❌ Failed to parse saved question data:', e);
+                    }
+                }
+            }
+
+            // Fallback 3: If game state is completely missing, try to reconnect
+            if (!currentGame.gameCode) {
+                console.log('🔄 Fallback: Attempting to reconnect...');
+                socket.emit('getActiveGames');
+            }
+        }
+
+        // Enhanced error handling for missing data
+        function handleMissingData() {
+            console.log('🔍 Checking for missing data...');
+            
+            const hasAnswerGroups = currentGame && currentGame.currentAnswerGroups && currentGame.currentAnswerGroups.length > 0;
+            const hasQuestionData = currentGame && currentGame.currentQuestionData;
+            
+            if (!hasAnswerGroups || !hasQuestionData) {
+                console.warn('⚠️ Missing critical data, applying fallbacks...');
+                applyFallbackLogic();
+                
+                // Show user-friendly message
+                const message = !hasAnswerGroups && !hasQuestionData ? 
+                    'Missing game data. Click Re-sync to refresh.' :
+                    !hasAnswerGroups ? 'Missing answer data. Click Re-sync to refresh.' :
+                    'Missing question data. Click Re-sync to refresh.';
+                
+                showToast(message, 'warning');
+            }
+        }
+
+        // Enhanced populateGradingInterface with fallback support
+        const originalPopulateGradingInterface = populateGradingInterface;
+        populateGradingInterface = async function() {
+            try {
+                // Check for missing data before proceeding
+                handleMissingData();
+                
+                // Call original function
+                await originalPopulateGradingInterface();
+                
+            } catch (error) {
+                console.error('❌ populateGradingInterface failed:', error);
+                
+                // Apply fallback logic
+                applyFallbackLogic();
+                
+                // Try again with fallback data
+                try {
+                    await originalPopulateGradingInterface();
+                } catch (fallbackError) {
+                    console.error('❌ Even fallback failed:', fallbackError);
+                    showToast('Failed to load grading interface. Please re-sync.', 'error');
+                }
+            }
+        };
     </script>
 </body>
 </html> 
