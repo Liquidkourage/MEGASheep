@@ -9,6 +9,52 @@ let timer = null;
 let timeLeft = 30;
 let gameStartTime = null;
 let gameDurationTimer = null;
+let autoResumeAttempted = false;
+
+// Lightweight identity persistence for player auto-resume
+function savePlayerIdentity(gameCode, playerName) {
+    try {
+        if (gameCode) localStorage.setItem('player.gameCode', String(gameCode));
+        if (playerName) {
+            localStorage.setItem('player.name', String(playerName));
+            sessionStorage.setItem('playerName', String(playerName));
+        }
+    } catch (_) {}
+}
+
+function getSavedIdentity() {
+    try {
+        const savedGameCode = localStorage.getItem('player.gameCode');
+        const savedPlayerName = localStorage.getItem('player.name');
+        if (savedGameCode && savedPlayerName) {
+            return { gameCode: savedGameCode, playerName: savedPlayerName };
+        }
+    } catch (_) {}
+    return null;
+}
+
+function attemptAutoResume() {
+    if (autoResumeAttempted) return false;
+    const ident = getSavedIdentity();
+    if (!ident) return false;
+    autoResumeAttempted = true;
+
+    // Emit join when connected (or immediately if already connected)
+    const emitJoin = () => {
+        try {
+            console.log('🔄 Auto-resume: attempting silent rejoin', ident);
+            socket.emit('joinGame', { gameCode: ident.gameCode, playerName: ident.playerName });
+        } catch (e) {
+            console.warn('Auto-resume emit failed:', e);
+        }
+    };
+    if (socket && socket.connected) {
+        emitJoin();
+    } else if (socket) {
+        socket.once('connect', emitJoin);
+    }
+    return true;
+}
 
 // Answer categorization state
 let answerCategorization = {
@@ -42,52 +88,58 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSocket();
     setupEventListeners();
     
-    // Only show join game screen if we're on the main page (not grading page)
+    // Only on main player page, try auto-resume before showing join UI
     if (typeof screens !== 'undefined' && screens.joinGame) {
-        // If a game code is present in the URL, prefill and lock the code field
-        try {
-            const params = new URLSearchParams(window.location.search);
-            const codeParam = params.get('game') || params.get('code') || params.get('gameCode');
-            showScreen('joinGame');
-            const gameCodeInput = document.getElementById('gameCode');
-            if (codeParam && /^\d{4}$/.test(codeParam)) {
-                if (gameCodeInput) {
-                    gameCodeInput.value = codeParam;
-                    gameCodeInput.readOnly = true;
-                    gameCodeInput.setAttribute('aria-readonly', 'true');
-                    gameCodeInput.style.opacity = '0.7';
-                    gameCodeInput.style.pointerEvents = 'none';
-                    gameCodeInput.title = 'Game code provided by link';
-                }
-                const playerNameInput = document.getElementById('playerName');
-                if (playerNameInput) playerNameInput.focus();
-            }
-        } catch (_) {
-            showScreen('joinGame');
-        }
-        
-        // Auto-focus game code input when join game screen is shown
-        setTimeout(() => {
-            const gameCodeInput = document.getElementById('gameCode');
-            if (gameCodeInput) {
-                gameCodeInput.focus();
-                
-                // Auto-format game code input (numbers only, uppercase)
-                gameCodeInput.addEventListener('input', (e) => {
-                    e.target.value = e.target.value.replace(/[^0-9]/g, '').toUpperCase();
-                });
-                
-                // Auto-advance to name field when 4 digits entered
-                gameCodeInput.addEventListener('input', (e) => {
-                    if (e.target.value.length === 4) {
-                        const playerNameInput = document.getElementById('playerName');
-                        if (playerNameInput) {
-                            playerNameInput.focus();
-                        }
+        const resumed = attemptAutoResume();
+        if (!resumed) {
+            // If a game code is present in the URL, prefill and lock the code field
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const codeParam = params.get('game') || params.get('code') || params.get('gameCode');
+                showScreen('joinGame');
+                const gameCodeInput = document.getElementById('gameCode');
+                if (codeParam && /^\d{4}$/.test(codeParam)) {
+                    if (gameCodeInput) {
+                        gameCodeInput.value = codeParam;
+                        gameCodeInput.readOnly = true;
+                        gameCodeInput.setAttribute('aria-readonly', 'true');
+                        gameCodeInput.style.opacity = '0.7';
+                        gameCodeInput.style.pointerEvents = 'none';
+                        gameCodeInput.title = 'Game code provided by link';
                     }
-                });
+                    const playerNameInput = document.getElementById('playerName');
+                    if (playerNameInput) playerNameInput.focus();
+                }
+            } catch (_) {
+                showScreen('joinGame');
             }
-        }, 100);
+            
+            // Auto-focus game code input when join game screen is shown
+            setTimeout(() => {
+                const gameCodeInput = document.getElementById('gameCode');
+                if (gameCodeInput) {
+                    gameCodeInput.focus();
+                    
+                    // Auto-format game code input (numbers only, uppercase)
+                    gameCodeInput.addEventListener('input', (e) => {
+                        e.target.value = e.target.value.replace(/[^0-9]/g, '').toUpperCase();
+                    });
+                    
+                    // Auto-advance to name field when 4 digits entered
+                    gameCodeInput.addEventListener('input', (e) => {
+                        if (e.target.value.length === 4) {
+                            const playerNameInput = document.getElementById('playerName');
+                            if (playerNameInput) {
+                                playerNameInput.focus();
+                            }
+                        }
+                    });
+                }
+            }, 100);
+        } else {
+            // Optionally show a minimal reconnecting notice
+            try { showToast('Reconnecting to your game...', 'info'); } catch (_) {}
+        }
     }
     
     // Add debug function to global scope for testing
@@ -663,6 +715,8 @@ async function joinGame() {
             isHost = false;
             gameState.gameCode = result.gameCode;
             gameState.playerName = playerName;
+            // Persist identity for auto-resume
+            savePlayerIdentity(result.gameCode, playerName);
             
             console.log('🎮 Script.js: API call successful, emitting joinGame socket event');
             console.log('🎮 Script.js: Socket connected before emit:', socket.connected);
@@ -1740,6 +1794,35 @@ function handleGameJoined(data) {
     console.log('🎮 Script.js: Client-side serialization test - players after JSON roundtrip:', testDeserialization.gameState?.players?.length || 0);
     
     gameState = data.gameState;
+    // Persist identity in case server normalized code/name
+    try { savePlayerIdentity(data.gameCode || gameState.gameCode, currentPlayerName || localStorage.getItem('player.name')); } catch (_) {}
+
+    // Route player to appropriate screen based on server state
+    const phase = gameState.gameState;
+    if (phase === 'waiting') {
+        showScreen('lobby');
+        updateLobbyDisplay();
+        return;
+    }
+    if (phase === 'playing') {
+        // Ensure questions and index are set before rendering
+        questions = gameState.questions || questions || [];
+        currentQuestionIndex = gameState.currentQuestion || 0;
+        showScreen('game');
+        displayCurrentQuestion();
+        return;
+    }
+    if (phase === 'grading') {
+        showScreen('scoring');
+        showWaitingForGrading();
+        return;
+    }
+    if (phase === 'finished') {
+        clearTimer();
+        showScreen('gameOver');
+        return;
+    }
+    // Fallback: lobby
     showScreen('lobby');
     updateLobbyDisplay();
 }
