@@ -2051,16 +2051,32 @@ function updateLobbyDisplay() {
             `;
             playersList.appendChild(waitingMessage);
         } else {
-            // Show simple player count for all devices (no individual player cards)
+            // Show current user's name + count of other players
             playersList.innerHTML = '';
             const countCard = document.createElement('div');
             countCard.className = 'player-count-card';
-            countCard.innerHTML = `
-                <div class="player-count-number">${gameState.players.length}</div>
-                <div class="player-count-label">Players</div>
-            `;
+            
+            // Find current user
+            const currentUser = gameState.players.find(player => player.id === socket.id);
+            const otherPlayersCount = gameState.players.length - 1; // Exclude current user
+            
+            if (currentUser) {
+                const userLabel = isHost ? ' (Host)' : '';
+                countCard.innerHTML = `
+                    <div class="player-count-user">${currentUser.name}${userLabel}</div>
+                    <div class="player-count-number">+ ${otherPlayersCount}</div>
+                    <div class="player-count-label">Players</div>
+                `;
+            } else {
+                // Fallback if current user not found
+                countCard.innerHTML = `
+                    <div class="player-count-number">${gameState.players.length}</div>
+                    <div class="player-count-label">Players</div>
+                `;
+            }
+            
             playersList.appendChild(countCard);
-            console.log('🎮 Script.js: Showing player count:', gameState.players.length);
+            console.log('🎮 Script.js: Showing user + player count:', currentUser?.name, '+', otherPlayersCount, 'players');
         }
     } else {
         console.log('🎮 Script.js: playersList element not found');
