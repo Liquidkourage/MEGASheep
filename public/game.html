@@ -51,10 +51,7 @@
         #questionText.expanded { display: block; -webkit-line-clamp: unset; max-height: none; }
         .players-answered { font-size: 12px; color: #cfd8dc; margin-top: 6px; }
         .answer-progress { height: 6px; margin-top: 6px; }
-        #playerCommRow { margin-top: 8px; gap: 8px; align-items: stretch; flex-wrap: wrap; }
-        /* Prefer a 60/40 split so input never collapses */
-        #playerCommRow > input { flex: 1 0 60%; min-width: 60%; }
-        #playerCommRow > #askHostBtn { flex: 1 0 38%; min-width: 38%; padding: 8px 12px; }
+        /* Removed playerCommRow flex styling - now using vertical layout */
         .screen-content > * { margin-bottom: var(--gap-md); }
 
         /* Hero answer clamp */
@@ -69,9 +66,7 @@
         }
 
         @media (max-width: 420px) {
-          #playerCommRow { flex-direction: column; }
-          #playerCommRow > input,
-          #playerCommRow > #askHostBtn { min-width: 100%; flex: 1 0 100%; }
+          /* Vertical layout already applied - no changes needed */
         }
     </style>
 </head>
