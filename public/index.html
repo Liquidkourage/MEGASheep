@@ -9,26 +9,21 @@
 </head>
 <body>
     <div class="container">
-        <!-- Welcome Screen (Join Game) -->
+        <!-- Welcome Screen -->
         <div id="welcomeScreen" class="screen active">
             <div class="welcome-content">
                 <h1 class="title">🐑 MEGASheep Trivia</h1>
-                <p class="subtitle">A Pointless little trivia game</p>
-                <p class="credit">By Liquid Kourage Entertainment</p>
+                <p class="subtitle">The ultimate multiplayer trivia experience</p>
                 
-                <div class="form-group">
-                    <label for="gameCode">Game Code:</label>
-                    <input type="text" id="gameCode" placeholder="Enter 4-digit game code" maxlength="4" pattern="[0-9]{4}" required autocomplete="off">
-                </div>
-                <div class="form-group">
-                    <label for="playerName">Your Name:</label>
-                    <input type="text" id="playerName" placeholder="Enter your name" required>
-                </div>
                 <div class="button-group">
-                    <button id="joinGameSubmitBtn" class="btn btn-primary">Join Game</button>
+                    <button id="createGameBtn" class="btn btn-primary">🎮 Host Game</button>
+                    <button id="joinGameBtn" class="btn btn-secondary">📱 Join Game</button>
                 </div>
                 
-
+                <div class="welcome-instructions">
+                    <p><strong>🎮 Host Game:</strong> Create a new trivia game and get a 4-digit code to share</p>
+                    <p><strong>📱 Join Game:</strong> Enter a 4-digit code to join an existing game</p>
+                </div>
             </div>
         </div>
 
@@ -42,6 +37,23 @@
                 </div>
                 <button id="createGameSubmitBtn" class="btn btn-primary">Create Game</button>
                 <button id="backToWelcomeBtn" class="btn btn-secondary">Back</button>
+            </div>
+        </div>
+
+        <!-- Join Game Screen -->
+        <div id="joinGameScreen" class="screen">
+            <div class="screen-content">
+                <h2>Join Game</h2>
+                <div class="form-group">
+                    <label for="gameCode">Game Code:</label>
+                    <input type="text" id="gameCode" placeholder="Enter 4-digit game code" maxlength="4" pattern="[0-9]{4}" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="playerName">Your Name:</label>
+                    <input type="text" id="playerName" placeholder="Enter your name" required>
+                </div>
+                <button id="joinGameSubmitBtn" class="btn btn-primary">Join Game</button>
+                <button id="backToWelcomeBtn2" class="btn btn-secondary">Back</button>
             </div>
         </div>
 
@@ -252,8 +264,10 @@
                     <button id="submitAnswerBtn" class="btn btn-primary">Submit Answer</button>
                 </div>
                 <!-- Multi-purpose communication: answerStatus doubles as input/display -->
-                <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Type a private message to host…" style="display:none; margin-top:8px; min-height:38px; padding:10px 12px;"></div>
-                <button id="askHostBtn" class="btn btn-secondary" type="button" style="display:none; margin-top:8px; white-space:nowrap;">Send to host</button>
+                <div id="playerCommRow" style="display:none;margin-top:8px; gap:8px; align-items:center; display:flex;">
+                    <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Type a private message to host…" style="flex:1; min-height:38px; padding:10px 12px;"></div>
+                    <button id="askHostBtn" class="btn btn-secondary" type="button" style="white-space:nowrap;">Send to host</button>
+                </div>
                 
                 <!-- Host Controls (hidden for players) -->
                 <div id="hostControls" class="host-controls" style="display: none;">

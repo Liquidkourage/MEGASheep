@@ -42,13 +42,13 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSocket();
     setupEventListeners();
     
-    // Only show welcome screen if we're on the main page (not grading page)
-    if (typeof screens !== 'undefined' && screens.welcome) {
+    // Only show join game screen if we're on the main page (not grading page)
+    if (typeof screens !== 'undefined' && screens.joinGame) {
         // If a game code is present in the URL, prefill and lock the code field
         try {
             const params = new URLSearchParams(window.location.search);
             const codeParam = params.get('game') || params.get('code') || params.get('gameCode');
-            showScreen('welcome');
+            showScreen('joinGame');
             const gameCodeInput = document.getElementById('gameCode');
             if (codeParam && /^\d{4}$/.test(codeParam)) {
                 if (gameCodeInput) {
@@ -63,10 +63,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (playerNameInput) playerNameInput.focus();
             }
         } catch (_) {
-            showScreen('welcome');
+            showScreen('joinGame');
         }
         
-        // Auto-focus game code input when welcome screen is shown
+        // Auto-focus game code input when join game screen is shown
         setTimeout(() => {
             const gameCodeInput = document.getElementById('gameCode');
             if (gameCodeInput) {
@@ -232,9 +232,11 @@ function initializeSocket() {
 // Event listeners setup
 function setupEventListeners() {
     // Welcome screen
-    // createGameBtn removed - hosting is only available via /host route
+    const createGameBtn = document.getElementById('createGameBtn');
+    if (createGameBtn) createGameBtn.addEventListener('click', () => showScreen('createGame'));
     
-    // joinGameBtn no longer exists - joinGameSubmitBtn is now directly on welcome screen
+    const joinGameBtn = document.getElementById('joinGameBtn');
+    if (joinGameBtn) joinGameBtn.addEventListener('click', () => showScreen('joinGame'));
     
     // Join game screen (default)
     const joinGameSubmitBtn = document.getElementById('joinGameSubmitBtn');
@@ -245,7 +247,7 @@ function setupEventListeners() {
     if (createGameSubmitBtn) createGameSubmitBtn.addEventListener('click', createGame);
     
     const backToJoinBtn = document.getElementById('backToJoinBtn');
-    if (backToJoinBtn) backToJoinBtn.addEventListener('click', () => showScreen('welcome'));
+    if (backToJoinBtn) backToJoinBtn.addEventListener('click', () => showScreen('joinGame'));
     
     // Lobby screen
     const startGameBtn = document.getElementById('startGameBtn');
@@ -325,6 +327,99 @@ function setupEventListeners() {
     // Game screen
     const submitAnswerBtn = document.getElementById('submitAnswerBtn');
     if (submitAnswerBtn) submitAnswerBtn.addEventListener('click', submitAnswer);
+    const askHostBtn = document.getElementById('askHostBtn');
+    // Use answerStatus as the multi-purpose input/display if contenteditable
+    let multiBox = document.getElementById('answerStatus');
+    const isMultiBoxEditable = !!(multiBox && multiBox.getAttribute && multiBox.getAttribute('contenteditable') === 'true');
+    const askHostInput = isMultiBoxEditable ? multiBox : document.getElementById('askHostInput');
+    if (askHostBtn) {
+        console.log('💬 [player] Send to Host button found; attaching handler');
+        const getText = () => {
+            if (!askHostInput) return '';
+            if (isMultiBoxEditable) return (askHostInput.innerText || '').trim();
+            return (askHostInput.value || '').trim();
+        };
+        const setText = (val) => {
+            if (!askHostInput) return;
+            if (isMultiBoxEditable) askHostInput.innerText = val;
+            else askHostInput.value = val;
+        };
+        const appendDmHistory = (who, text, suffix) => {
+            try {
+                const box = document.getElementById('dmHistory');
+                if (!box) return;
+                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                const line = document.createElement('div');
+                line.textContent = `(${ts}) ${who}: ${text}${suffix || ''}`;
+                box.appendChild(line);
+                while (box.children.length > 3) box.removeChild(box.firstChild);
+            } catch (_) {}
+        };
+        const setPlaceholderIfEmpty = () => {
+            if (!askHostInput) return;
+            if (isMultiBoxEditable && !(askHostInput.innerText || '').trim()) {
+                askHostInput.setAttribute('data-empty', 'true');
+            } else if (isMultiBoxEditable) {
+                askHostInput.removeAttribute('data-empty');
+            }
+        };
+        const sendMessage = () => {
+            const q = getText();
+            if (!q) return;
+            console.log('💬 [player] Send-to-host clicked, text:', q);
+            try {
+                window.lastAskedQuestion = q;
+                sessionStorage.setItem('lastAskedQuestion', q);
+            } catch (_) {}
+            try {
+                socket.once('playerQuestionAck', (ack) => {
+                    console.log('💬 [player] playerQuestionAck (once):', ack);
+                    const statusEl = document.getElementById('answerStatus');
+                    if (statusEl) {
+                        const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                        statusEl.textContent = ack && ack.ok ? `(${ts}) 💬 You: ${q} ✓` : `(${ts}) ⚠️ Not delivered: ${q} (${(ack && (ack.reason||ack.message))||'unknown'})`;
+                    }
+                    appendDmHistory('You', q, ack && ack.ok ? ' ✓' : ' (not delivered)');
+                });
+            } catch (_) {}
+            try {
+                const payload = { question: q };
+                try {
+                    let resolvedGameCode = sessionStorage.getItem('gameCode') || null;
+                    let resolvedPlayerName = sessionStorage.getItem('playerName') || null;
+                    const gcInput = document.getElementById('gameCode');
+                    if (!resolvedGameCode && gcInput && typeof gcInput.value === 'string' && gcInput.value.trim()) resolvedGameCode = gcInput.value.trim();
+                    const pnInput = document.getElementById('playerName');
+                    if (!resolvedPlayerName && pnInput && typeof pnInput.value === 'string' && pnInput.value.trim()) resolvedPlayerName = pnInput.value.trim();
+                    if (!resolvedGameCode && typeof window.gameCode === 'string') resolvedGameCode = window.gameCode.trim();
+                    if (!resolvedPlayerName && typeof window.playerName === 'string') resolvedPlayerName = window.playerName.trim();
+                    if (resolvedGameCode) payload.gameCode = resolvedGameCode;
+                    if (resolvedPlayerName) payload.playerName = resolvedPlayerName;
+                } catch (_) {}
+                console.log('💬 [player] playerQuestion payload:', payload);
+                socket.emit('playerQuestion', payload);
+            } catch (e) {
+                console.warn('💬 [player] Failed to emit playerQuestion', e);
+            }
+            const statusEl = document.getElementById('answerStatus');
+            if (statusEl) {
+                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                if (isMultiBoxEditable) statusEl.innerText = `(${ts}) 💬 You: ${q} …`;
+                else statusEl.textContent = `(${ts}) 💬 You: ${q} …`;
+            }
+            setText('');
+            setPlaceholderIfEmpty();
+        };
+        askHostBtn.addEventListener('click', sendMessage);
+        if (askHostInput) askHostInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }});
+        // Ensure comm row visible for players
+        const commRow = document.getElementById('playerCommRow');
+        if (commRow && !isHost) commRow.style.display = 'flex';
+        // Placeholder styling for contenteditable
+        if (isMultiBoxEditable) {
+            multiBox.addEventListener('input', setPlaceholderIfEmpty);
+            setPlaceholderIfEmpty();
+        }
     }
 
     // Delivery confirmation / failure
@@ -472,7 +567,7 @@ function setupEventListeners() {
     if (playAgainBtn) playAgainBtn.addEventListener('click', playAgain);
     
     const newGameBtn = document.getElementById('newGameBtn');
-    if (newGameBtn) newGameBtn.addEventListener('click', () => showScreen('welcome'));
+    if (newGameBtn) newGameBtn.addEventListener('click', () => showScreen('joinGame'));
     
     // Virtual test button
     const virtualTestBtn = document.getElementById('virtualTestBtn');
@@ -481,121 +576,6 @@ function setupEventListeners() {
             console.log('🎭 Virtual test button clicked');
             startFullGameSimulation();
         });
-    }
-}
-
-// Function to set up Ask Host functionality
-function setupAskHostFunctionality() {
-    const askHostBtn = document.getElementById('askHostBtn');
-    // Use answerStatus as the multi-purpose input/display if contenteditable
-    let multiBox = document.getElementById('answerStatus');
-    const isMultiBoxEditable = !!(multiBox && multiBox.getAttribute && multiBox.getAttribute('contenteditable') === 'true');
-    const askHostInput = isMultiBoxEditable ? multiBox : document.getElementById('askHostInput');
-    
-    if (askHostBtn) {
-        console.log('💬 [player] Send to Host button found; attaching handler');
-        
-        const getText = () => {
-            if (!askHostInput) return '';
-            if (isMultiBoxEditable) return (askHostInput.innerText || '').trim();
-            return (askHostInput.value || '').trim();
-        };
-        
-        const setText = (val) => {
-            if (!askHostInput) return;
-            if (isMultiBoxEditable) askHostInput.innerText = val;
-            else askHostInput.value = val;
-        };
-        
-        const appendDmHistory = (who, text, suffix) => {
-            try {
-                const box = document.getElementById('dmHistory');
-                if (!box) return;
-                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                const line = document.createElement('div');
-                line.textContent = `(${ts}) ${who}: ${text}${suffix || ''}`;
-                box.appendChild(line);
-                while (box.children.length > 3) box.removeChild(box.firstChild);
-            } catch (_) {}
-        };
-        
-        const setPlaceholderIfEmpty = () => {
-            if (!askHostInput) return;
-            if (isMultiBoxEditable && !(askHostInput.innerText || '').trim()) {
-                askHostInput.setAttribute('data-empty', 'true');
-            } else if (isMultiBoxEditable) {
-                askHostInput.removeAttribute('data-empty');
-            }
-        };
-        
-        const sendMessage = () => {
-            const q = getText();
-            if (!q) return;
-            console.log('💬 [player] Send-to-host clicked, text:', q);
-            try {
-                window.lastAskedQuestion = q;
-                sessionStorage.setItem('lastAskedQuestion', q);
-            } catch (_) {}
-            try {
-                socket.once('playerQuestionAck', (ack) => {
-                    console.log('💬 [player] playerQuestionAck (once):', ack);
-                    const statusEl = document.getElementById('answerStatus');
-                    if (statusEl) {
-                        const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                        statusEl.textContent = ack && ack.ok ? `(${ts}) 💬 You: ${q} ✓` : `(${ts}) ⚠️ Not delivered: ${q} (${(ack && (ack.reason||ack.message))||'unknown'})`;
-                    }
-                    appendDmHistory('You', q, ack && ack.ok ? ' ✓' : ' (not delivered)');
-                });
-            } catch (_) {}
-            try {
-                const payload = { question: q };
-                try {
-                    let resolvedGameCode = sessionStorage.getItem('gameCode') || null;
-                    let resolvedPlayerName = sessionStorage.getItem('playerName') || null;
-                    const gcInput = document.getElementById('gameCode');
-                    if (!resolvedGameCode && gcInput && typeof gcInput.value === 'string' && gcInput.value.trim()) resolvedGameCode = gcInput.value.trim();
-                    const pnInput = document.getElementById('playerName');
-                    if (!resolvedPlayerName && pnInput && typeof pnInput.value === 'string' && pnInput.value.trim()) resolvedPlayerName = pnInput.value.trim();
-                    if (!resolvedGameCode && typeof window.gameCode === 'string') resolvedGameCode = window.gameCode.trim();
-                    if (!resolvedPlayerName && typeof window.playerName === 'string') resolvedPlayerName = window.playerName.trim();
-                    if (resolvedGameCode) payload.gameCode = resolvedGameCode;
-                    if (resolvedPlayerName) payload.playerName = resolvedPlayerName;
-                } catch (_) {}
-                console.log('💬 [player] playerQuestion payload:', payload);
-                socket.emit('playerQuestion', payload);
-            } catch (e) {
-                console.warn('💬 [player] Failed to emit playerQuestion', e);
-            }
-            const statusEl = document.getElementById('answerStatus');
-            if (statusEl) {
-                const ts = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                if (isMultiBoxEditable) statusEl.innerText = `(${ts}) 💬 You: ${q} …`;
-                else statusEl.textContent = `(${ts}) 💬 You: ${q} …`;
-            }
-            setText('');
-            setPlaceholderIfEmpty();
-        };
-        
-        // Remove any existing event listeners to prevent duplicates
-        askHostBtn.removeEventListener('click', sendMessage);
-        askHostBtn.addEventListener('click', sendMessage);
-        
-        if (askHostInput) {
-            askHostInput.removeEventListener('keypress', sendMessage);
-            askHostInput.addEventListener('keypress', (e) => { 
-                if (e.key === 'Enter') { 
-                    e.preventDefault(); 
-                    sendMessage(); 
-                }
-            });
-        }
-        
-        // Placeholder styling for contenteditable
-        if (isMultiBoxEditable) {
-            multiBox.removeEventListener('input', setPlaceholderIfEmpty);
-            multiBox.addEventListener('input', setPlaceholderIfEmpty);
-            setPlaceholderIfEmpty();
-        }
     }
 }
 
@@ -768,9 +748,9 @@ function leaveGame() {
         testModeIndicator.remove();
     }
     
-    // Only show welcome screen if screens object exists
-    if (typeof screens !== 'undefined' && screens.welcome) {
-        showScreen('welcome');
+    // Only show join game screen if screens object exists
+    if (typeof screens !== 'undefined' && screens.joinGame) {
+        showScreen('joinGame');
     }
 }
 
@@ -1732,7 +1712,7 @@ function playAgain() {
         // Reset game state for new game
         resetGameState();
     } else {
-        showScreen('welcome');
+        showScreen('joinGame');
     }
 }
 
@@ -1821,16 +1801,6 @@ function handleGameStarted(gameStateData) {
     showScreen('game');
     displayCurrentQuestion();
     startTimer();
-    
-    // Show Ask Host elements for players during active questions
-    if (!isHost) {
-        const answerStatus = document.getElementById('answerStatus');
-        const askHostBtn = document.getElementById('askHostBtn');
-        if (answerStatus) answerStatus.style.display = 'block';
-        if (askHostBtn) askHostBtn.style.display = 'inline-block';
-        // Set up the Ask Host functionality
-        setupAskHostFunctionality();
-    }
 }
 
 function handleTestGameStarted(gameStateData) {
@@ -1895,16 +1865,6 @@ function handleNextQuestion(gameStateData) {
     if (endQuestionBtn && isHost) {
         endQuestionBtn.style.display = 'inline-block';
     }
-    
-    // Show Ask Host elements for players during active questions
-    if (!isHost) {
-        const answerStatus = document.getElementById('answerStatus');
-        const askHostBtn = document.getElementById('askHostBtn');
-        if (answerStatus) answerStatus.style.display = 'block';
-        if (askHostBtn) askHostBtn.style.display = 'inline-block';
-        // Set up the Ask Host functionality
-        setupAskHostFunctionality();
-    }
 }
 
 function handleQuestionComplete(gameStateData) {
@@ -1918,14 +1878,6 @@ function handleQuestionComplete(gameStateData) {
     const endQuestionBtn = document.getElementById('endQuestionBtn');
     if (endQuestionBtn) {
         endQuestionBtn.style.display = 'none';
-    }
-    
-    // Hide Ask Host elements when question ends
-    if (!isHost) {
-        const answerStatus = document.getElementById('answerStatus');
-        const askHostBtn = document.getElementById('askHostBtn');
-        if (answerStatus) answerStatus.style.display = 'none';
-        if (askHostBtn) askHostBtn.style.display = 'none';
     }
     
     showScreen('scoring');
