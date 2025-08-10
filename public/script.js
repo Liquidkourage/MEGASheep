@@ -2051,32 +2051,37 @@ function updateLobbyDisplay() {
             `;
             playersList.appendChild(waitingMessage);
         } else {
-            // Show current user's name + count of other players
+            // Clear existing players and rebuild with new logic
             playersList.innerHTML = '';
-            const countCard = document.createElement('div');
-            countCard.className = 'player-count-card';
             
-            // Find current user
-            const currentUser = gameState.players.find(player => player.id === socket.id);
-            const otherPlayersCount = gameState.players.length - 1; // Exclude current user
+            // Separate host from other players
+            const host = gameState.players.find(player => player.id === socket.id);
+            const otherPlayers = gameState.players.filter(player => player.id !== socket.id);
             
-            if (currentUser) {
-                const userLabel = isHost ? ' (Host)' : '';
-                countCard.innerHTML = `
-                    <div class="player-count-user">${currentUser.name}${userLabel}</div>
-                    <div class="player-count-number">+ ${otherPlayersCount}</div>
-                    <div class="player-count-label">Players</div>
+            // Always show host card first (with crown)
+            if (host) {
+                const hostCard = document.createElement('div');
+                hostCard.className = 'player-card host';
+                hostCard.dataset.playerId = host.id;
+                hostCard.innerHTML = `
+                    <div class="player-name">${host.name}</div>
+                    <div class="player-crown">👑</div>
                 `;
-            } else {
-                // Fallback if current user not found
-                countCard.innerHTML = `
-                    <div class="player-count-number">${gameState.players.length}</div>
-                    <div class="player-count-label">Players</div>
-                `;
+                playersList.appendChild(hostCard);
+                console.log('🎮 Script.js: Added host card for:', host.name);
             }
             
-            playersList.appendChild(countCard);
-            console.log('🎮 Script.js: Showing user + player count:', currentUser?.name, '+', otherPlayersCount, 'players');
+            // Show summary card for other players
+            if (otherPlayers.length > 0) {
+                const summaryCard = document.createElement('div');
+                summaryCard.className = 'player-card summary';
+                summaryCard.innerHTML = `
+                    <div class="player-name">${otherPlayers.length} Players</div>
+                    <div class="player-count">👥</div>
+                `;
+                playersList.appendChild(summaryCard);
+                console.log('🎮 Script.js: Added summary card for', otherPlayers.length, 'other players');
+            }
         }
     } else {
         console.log('🎮 Script.js: playersList element not found');
