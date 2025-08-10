@@ -394,8 +394,6 @@ function setupEventListeners() {
         // Ensure comm row visible for players
         const commRow = document.getElementById('playerCommRow');
         if (commRow && !isHost) commRow.style.display = 'flex';
-
-        }
     }
 
     // Delivery confirmation / failure
