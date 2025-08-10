@@ -4486,50 +4486,17 @@ function scheduleVirtualQuestionFlow() {
     } catch (e) { console.warn('Virtual question flow error', e); }
 }
 
-function startVirtualPlayerSimulation() {
-    console.log('🎭 Starting virtual player simulation...');
+function startVirtualPlayerSimulation(playerCount = 50) {
+    console.log('🎭 Starting virtual player simulation via server...', { playerCount });
+    isVirtualTestingMode = true;
     virtualPlayers = [];
     questionCount = 0;
-    isVirtualTestingMode = true;
-    
-    // Clear any existing intervals
-    if (virtualPlayerInterval) clearInterval(virtualPlayerInterval);
-    if (virtualResponseInterval) clearInterval(virtualResponseInterval);
-    
-    // Start adding virtual players over 30 seconds
-    const joinInterval = 500; // Add a player every 500ms (60 players / 30 seconds)
-    let playerIndex = 0;
-    
-    virtualPlayerInterval = setInterval(() => {
-        if (playerIndex < 60) {
-            const playerName = virtualPlayerNames[playerIndex];
-            const virtualPlayer = {
-                id: `virtual_${playerIndex}`,
-                name: playerName,
-                score: 0,
-                isVirtual: true,
-                responses: []
-            };
-            
-            virtualPlayers.push(virtualPlayer);
-            
-            // Add to gameState if it exists
-            if (gameState && gameState.players) {
-                gameState.players.push(virtualPlayer);
-            }
-            
-            console.log(`👤 Virtual player joined: ${playerName}`);
-            playerIndex++;
-            
-            // Update display if we're in a lobby
-            if (gameState && gameState.gameState === 'lobby') {
-                updateLobbyDisplay();
-            }
-        } else {
-            clearInterval(virtualPlayerInterval);
-            console.log('✅ All virtual players have joined');
-        }
-    }, joinInterval);
+    if (!socket || !gameState?.gameCode) {
+        console.warn('⚠️ Cannot start virtual simulation: missing socket or gameCode');
+        return;
+    }
+    // Ask the server to add virtual players to the real game
+    socket.emit('startVirtualPlayerSimulation', { gameCode: gameState.gameCode, playerCount });
 }
 
 function generateVirtualResponses(question) {
@@ -4537,7 +4504,7 @@ function generateVirtualResponses(question) {
     
     if (!gameState || !gameState.players) return;
     
-    const virtualPlayers = gameState.players.filter(p => p.isVirtual);
+    const virtualPlayers = (gameState.players || []).filter(p => p.isVirtual);
     const responses = [];
     
     // Define response patterns for this question (normalized)
@@ -4580,13 +4547,14 @@ function generateVirtualResponses(question) {
                 if (!gameState.responses) gameState.responses = [];
                 gameState.responses.push(response);
                 
-                // Emit to server if socket is available
-                if (socket) {
-                    socket.emit('submitAnswer', {
-                        answer: response.answer,
+                // Emit to server as virtual answer (server handles mapping by playerId)
+                if (socket && gameState?.gameCode) {
+                    socket.emit('virtualAnswerSubmitted', {
+                        gameCode: gameState.gameCode,
                         playerId: response.playerId,
                         playerName: response.playerName,
-                        isVirtual: true
+                        answer: response.answer,
+                        isCorrect: response.isCorrect
                     });
                 }
             }
