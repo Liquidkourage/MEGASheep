@@ -193,28 +193,8 @@ function initializeSocket() {
                 input.value = data.originalAnswer;
             }
 
-            // Show an inline notice above the input
-            let notice = document.getElementById('editRequestNotice');
-            if (!notice && form) {
-                notice = document.createElement('div');
-                notice.id = 'editRequestNotice';
-                notice.style.margin = '8px 0';
-                notice.style.padding = '8px 10px';
-                notice.style.borderRadius = '6px';
-                notice.style.background = 'rgba(241, 196, 15, 0.15)';
-                notice.style.border = '1px solid rgba(241, 196, 15, 0.4)';
-                notice.style.color = '#b9770e';
-                form.parentNode.insertBefore(notice, form);
-            }
-            if (notice) {
-                notice.textContent = `✏️ Edit requested by host: ${reason}`;
-                // brief pulse
-                notice.style.animation = 'none';
-                // force reflow
-                // eslint-disable-next-line no-unused-expressions
-                notice.offsetHeight;
-                notice.style.animation = 'pulse 0.6s';
-            }
+            // Show a toast notification for edit request
+            showToast(`✏️ Edit requested by host: ${reason}`, 'warning');
 
             // Focus input
             if (input) input.focus();

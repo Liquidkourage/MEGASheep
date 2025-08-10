@@ -449,9 +449,10 @@
                 try {
                     const reason = (data && data.reason) ? data.reason : 'Please refine your answer';
                     console.log('✏️ requireAnswerEdit received:', data);
-                    const statusEl = document.getElementById('answerStatus');
-                    statusEl.innerHTML = `✏️ Edit requested by host: ${reason}`;
-                    statusEl.className = 'answer-status warning';
+                    
+                    // Show toast notification instead of inline message
+                    showToast(`✏️ Edit requested by host: ${reason}`, 'warning');
+                    
                     const input = document.getElementById('answerInput');
                     const btn = document.getElementById('submitBtn');
                     input.disabled = false;
@@ -460,8 +461,6 @@
                     if (data && data.originalAnswer && !input.value) {
                         input.value = data.originalAnswer;
                     }
-                    // Visibly jiggle the form to draw attention
-                    try { statusEl.style.animation = 'none'; statusEl.offsetHeight; statusEl.style.animation = 'pulse 0.6s'; } catch (_) {}
                     // Ensure the question screen is visible (works even during grading)
                     if (!document.getElementById('questionScreen').classList.contains('active')) {
                         console.log('✏️ Switching to questionScreen for clarification');
@@ -985,6 +984,42 @@
                 console.error('Carousel refresh failed:', error);
             });
         }, 5 * 60 * 1000);
+
+        // Toast notification function
+        function showToast(message, type = 'info') {
+            // Remove existing toasts
+            const existingToasts = document.querySelectorAll('.toast-notification');
+            existingToasts.forEach(toast => toast.remove());
+            
+            const toast = document.createElement('div');
+            toast.className = `toast-notification toast-${type}`;
+            toast.innerHTML = `
+                <div class="toast-content">
+                    <span class="toast-message">${message}</span>
+                    <button class="toast-close" onclick="this.parentElement.parentElement.remove()">×</button>
+                </div>
+            `;
+            
+            // Add to body for overlay positioning
+            document.body.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+            
+            // Auto-remove after 4 seconds
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.classList.remove('show');
+                    setTimeout(() => {
+                        if (toast.parentNode) {
+                            toast.remove();
+                        }
+                    }, 300);
+                }
+            }, 4000);
+        }
     </script>
 </body>
 </html> 
