@@ -904,14 +904,14 @@ body {
 
 .player-card {
     background: rgba(0, 0, 0, 0.6);
-    padding: 2px 6px;
+    padding: 1px 4px;
     border-radius: 4px;
     text-align: center;
     border: 1px solid #8ba3d0;
     transition: all 0.3s ease;
     color: #ffffff;
     min-height: auto;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
 }
 
 .player-card.host {
@@ -942,14 +942,14 @@ body {
 
 .player-card.summary .player-count {
     display: block;
-    margin-top: 2px;
-    font-size: 1.2rem;
+    margin-top: 1px;
+    font-size: 1.0rem;
 }
 
 .player-label {
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     opacity: 0.8;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
     font-weight: normal;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -959,14 +959,14 @@ body {
     background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
     color: white;
     font-weight: bold;
-    font-size: 1.2rem;
+    font-size: 1.0rem;
     text-align: center;
-    padding: 8px 16px;
-    border-radius: 20px;
-    margin: 10px auto;
+    padding: 6px 12px;
+    border-radius: 16px;
+    margin: 6px auto;
     width: fit-content;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
     letter-spacing: 1px;
 }
 
@@ -974,21 +974,21 @@ body {
     font-weight: 600;
     margin-bottom: 0px;
     padding: 0px;
-    font-size: 0.85rem;
-    line-height: 1.2;
-}
-
-.player-score {
     font-size: 0.75rem;
-    opacity: 0.7;
-    margin-top: 0px;
     line-height: 1.1;
 }
 
+.player-score {
+    font-size: 0.65rem;
+    opacity: 0.7;
+    margin-top: 0px;
+    line-height: 1.0;
+}
+
 .player-rank {
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     opacity: 0.8;
-    margin-top: 2px;
+    margin-top: 1px;
     font-weight: bold;
     color: #ffd700;
 }
