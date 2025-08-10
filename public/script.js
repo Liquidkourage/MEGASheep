@@ -2064,6 +2064,7 @@ function updateLobbyDisplay() {
                 hostCard.className = 'player-card host';
                 hostCard.dataset.playerId = host.id;
                 hostCard.innerHTML = `
+                    <div class="player-label">You</div>
                     <div class="player-name">${host.name}</div>
                     <div class="player-crown">👑</div>
                 `;
@@ -2076,6 +2077,7 @@ function updateLobbyDisplay() {
                 const summaryCard = document.createElement('div');
                 summaryCard.className = 'player-card summary';
                 summaryCard.innerHTML = `
+                    <div class="player-label">The Flock</div>
                     <div class="player-name">${otherPlayers.length} Players</div>
                     <div class="player-count">👥</div>
                 `;

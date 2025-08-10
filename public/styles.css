@@ -946,6 +946,15 @@ body {
     font-size: 1.2rem;
 }
 
+.player-label {
+    font-size: 0.7rem;
+    opacity: 0.8;
+    margin-bottom: 2px;
+    font-weight: normal;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 .player-name {
     font-weight: 600;
     margin-bottom: 0px;
