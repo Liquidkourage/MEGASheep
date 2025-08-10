@@ -2952,6 +2952,22 @@ function renderCorrectAnswerBuckets() {
         `;
         
         container.appendChild(bucketElement);
+
+        // Populate any pre-categorized answers for this bucket
+        try {
+            if (Array.isArray(bucket.answers) && bucket.answers.length > 0) {
+                const itemsContainer = bucketElement.querySelector('.answer-items');
+                bucket.answers.forEach(group => {
+                    const item = createAnswerItem({
+                        answer: group.answer,
+                        count: typeof group.count === 'number' ? group.count : (Array.isArray(group.players) ? group.players.length : 1),
+                        points: group.points || 0,
+                        players: group.players || []
+                    });
+                    itemsContainer.appendChild(item);
+                });
+            }
+        } catch (e) { console.warn('Failed to populate pre-categorized answers', e); }
     });
     
     console.log('✅ Rendered', answerCategorization.correctAnswerBuckets.length, 'correct answer buckets');
@@ -2986,9 +3002,8 @@ function autoCategorizeMatchingAnswers() {
     });
     
     // Remove auto-categorized answers from the main list
-    gameState.currentAnswerGroups = gameState.currentAnswerGroups.filter(group => 
-        !answersToRemove.includes(group.answer)
-    );
+    // IMPORTANT: Do not remove from currentAnswerGroups yet; the host UI depends on it to render uncategorized list
+    // We'll keep the group present so it can still be shown in Uncategorized until the host applies categorization.
 }
 
 function populateUncategorizedAnswers() {
@@ -3006,7 +3021,15 @@ function populateUncategorizedAnswers() {
     console.log('📝 Answer groups length:', gameState.currentAnswerGroups?.length || 0);
     
     if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
+        // Determine which answers are already in a correct bucket to avoid duplicating them in Uncategorized
+        const categorizedSet = new Set();
+        try {
+            (answerCategorization.correctAnswerBuckets || []).forEach(b => (b.answers || []).forEach(a => categorizedSet.add((a.answer || '').toLowerCase().trim())));
+        } catch (_) {}
+        const isCategorized = (ans) => categorizedSet.has(String(ans || '').toLowerCase().trim());
+
         gameState.currentAnswerGroups.forEach(group => {
+            if (isCategorized(group.answer)) return;
             const answerItem = createAnswerItem(group);
             answerCategorization.buckets.uncategorized.push(group);
             uncategorizedContainer.appendChild(answerItem);
@@ -3052,7 +3075,7 @@ function createAnswerItem(answerGroup) {
 
 function setupDragAndDrop() {
     // Setup drop zones
-    const dropZones = document.querySelectorAll('.answer-items, .custom-bucket');
+    const dropZones = document.querySelectorAll('#hostAnswerCategorization .answer-items, #gradingAnswerCategorization .answer-items, .custom-bucket');
     
     dropZones.forEach(zone => {
         zone.addEventListener('dragover', handleDragOver);
