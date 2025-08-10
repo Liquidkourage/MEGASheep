@@ -1903,6 +1903,8 @@ function handleGameStarted(gameStateData) {
     console.log('🎮 About to start timer');
     startTimer();
     console.log('🎮 handleGameStarted completed');
+    // Auto-generate virtual responses if testing
+    scheduleVirtualQuestionFlow();
 }
 
 function handleTestGameStarted(gameStateData) {
@@ -1946,6 +1948,8 @@ function handleNextQuestion(gameStateData) {
     showScreen('game');
     displayCurrentQuestion();
     startTimer();
+    // Auto-generate virtual responses for next question if testing
+    scheduleVirtualQuestionFlow();
     // Clear any lingering clarification prompt/state from previous question
     try {
         // Remove inline edit notice banner if present
@@ -4456,6 +4460,32 @@ let virtualResponseInterval = null;
 let questionCount = 0;
 let isVirtualTestingMode = false;
 
+// Normalize a question object from server/demo formats
+function getAnswerSetsFromQuestion(question) {
+    const correct = (question?.correct_answers) || (question?.correctAnswers) || [];
+    const fallbackWrong = ['idk', 'unknown', 'pass', 'no idea'];
+    const wrong = (question?.incorrect_answers) || (question?.incorrectAnswers) || fallbackWrong;
+    return { correctAnswers: correct, incorrectAnswers: wrong };
+}
+
+function scheduleVirtualQuestionFlow() {
+    if (!isVirtualTestingMode || !isHost) return;
+    try {
+        const q = (questions && questions.length)
+            ? (questions[currentQuestionIndex] || questions[0])
+            : (gameState?.questions?.[gameState.currentQuestion] || gameState?.currentQuestion || null);
+        if (!q) return;
+        setTimeout(() => { try { generateVirtualResponses(q); } catch (_) {} }, 500);
+        setTimeout(() => {
+            try {
+                if (gameState?.gameCode && socket) {
+                    socket.emit('endQuestion', { gameCode: gameState.gameCode });
+                }
+            } catch (_) {}
+        }, 6500);
+    } catch (e) { console.warn('Virtual question flow error', e); }
+}
+
 function startVirtualPlayerSimulation() {
     console.log('🎭 Starting virtual player simulation...');
     virtualPlayers = [];
@@ -4510,9 +4540,10 @@ function generateVirtualResponses(question) {
     const virtualPlayers = gameState.players.filter(p => p.isVirtual);
     const responses = [];
     
-    // Define response patterns for this question
-    const correctAnswers = question.correctAnswers || ['correct answer'];
-    const incorrectAnswers = question.incorrectAnswers || ['wrong answer', 'incorrect response'];
+    // Define response patterns for this question (normalized)
+    const sets = getAnswerSetsFromQuestion(question);
+    const correctAnswers = sets.correctAnswers.length ? sets.correctAnswers : ['correct answer'];
+    const incorrectAnswers = sets.incorrectAnswers.length ? sets.incorrectAnswers : ['wrong answer'];
     
     virtualPlayers.forEach((player, index) => {
         // Determine response type based on player index
@@ -4639,19 +4670,8 @@ function startFullGameSimulation() {
         return;
     }
     
-    // Initialize game state if not already set
-    if (!gameState) {
-        gameState = {
-            gameState: 'lobby',
-            players: [],
-            currentQuestion: {
-                text: "What is the capital of France?",
-                correctAnswers: ['Paris', 'paris', 'PARIS'],
-                incorrectAnswers: ['London', 'Berlin', 'Madrid', 'Rome']
-            },
-            responses: []
-        };
-    }
+    // Flag testing mode
+    isVirtualTestingMode = true;
     
     // Start virtual player simulation
     startVirtualPlayerSimulation();
