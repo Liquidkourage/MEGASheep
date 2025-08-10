@@ -1193,7 +1193,12 @@ body {
     background: rgba(0, 0, 0, 0.3);
     border-radius: 8px;
     border-left: 4px solid rgba(0, 123, 255, 0.5);
+    white-space: normal;
+    word-break: break-word;
 }
+
+/* Ensure personal result answer is always visible */
+.personal-result-card .answer-text { color: #f8fbff !important; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
 
 .personal-stats {
     display: flex;
@@ -1353,6 +1358,22 @@ body {
     font-weight: bold;
     color: #ffffff;
     font-size: 1.1rem;
+}
+
+/* Force visibility in results list */
+.answer-category .answer-item .answer-text { color: #ffffff !important; }
+.answer-category .answer-item .answer-formula { color: #cfd8dc; }
+
+/* Badges and helper labels */
+.you-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #0b1020;
+    background: #8ba3d0;
+    border-radius: 999px;
 }
 
 .answer-details {

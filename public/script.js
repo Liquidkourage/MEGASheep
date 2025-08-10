@@ -2519,6 +2519,7 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
         uniquenessText = `${groupCount} players had this answer`;
     }
     
+    const youBadge = currentPlayerName ? `<span class="you-badge">YOU</span>` : '';
     return `
         <div class="personal-result-card ${statusClass}">
             <div class="personal-result-header">
@@ -2531,7 +2532,7 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
             
             <div class="personal-answer">
                 <div class="answer-label">Your Answer:</div>
-                <div class="answer-text">"${displayAnswer}"</div>
+                <div class="answer-text">"${displayAnswer}" ${youBadge}</div>
             </div>
             
             <div class="personal-stats">
@@ -2601,6 +2602,15 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
         html += '</div></div>';
     }
     
+    // Add a compact legend at the bottom for clarity
+    html += `
+        <div class="answer-legend" style="opacity:.85; font-size:.85rem; color:#cfd8dc; display:flex; gap:12px; flex-wrap:wrap; margin-top:6px;">
+            <span>🏆 = correct</span>
+            <span>💭 = other answers</span>
+            <span># = rank</span>
+            <span>formula: total ÷ count = points</span>
+        </div>
+    `;
     html += '</div>';
     return html;
 }
