@@ -2410,15 +2410,47 @@ function updateGamePlayersList() {
     gamePlayersList.innerHTML = '';
     
     if (gameState.players) {
-        gameState.players.forEach(player => {
-            const playerCard = document.createElement('div');
-            playerCard.className = `player-card ${player.id === socket.id ? 'host' : ''}`;
-            playerCard.innerHTML = `
-                <div class="player-name">${player.name}</div>
-                <div class="player-score">Score: ${gameState.scores[player.id] || 0}</div>
+        // Separate current player from others
+        const currentPlayer = gameState.players.find(player => player.id === socket.id);
+        const otherPlayers = gameState.players.filter(player => player.id !== socket.id);
+        
+        // Always show current player card first
+        if (currentPlayer) {
+            const currentPlayerCard = document.createElement('div');
+            currentPlayerCard.className = 'player-card host';
+            
+            // Calculate rank for current player
+            const sortedPlayers = [...gameState.players].sort((a, b) => 
+                (gameState.scores[b.id] || 0) - (gameState.scores[a.id] || 0)
+            );
+            const rank = sortedPlayers.findIndex(p => p.id === currentPlayer.id) + 1;
+            
+            currentPlayerCard.innerHTML = `
+                <div class="player-name">${currentPlayer.name}</div>
+                <div class="player-score">Score: ${gameState.scores[currentPlayer.id] || 0}</div>
+                <div class="player-rank">Rank: ${rank}</div>
             `;
-            gamePlayersList.appendChild(playerCard);
-        });
+            gamePlayersList.appendChild(currentPlayerCard);
+        }
+        
+        // Show summary card for other players
+        if (otherPlayers.length > 0) {
+            const summaryCard = document.createElement('div');
+            summaryCard.className = 'player-card summary';
+            
+            // Calculate flock statistics
+            const otherScores = otherPlayers.map(p => gameState.scores[p.id] || 0);
+            const averageScore = Math.round(otherScores.reduce((sum, score) => sum + score, 0) / otherScores.length);
+            const highScore = Math.max(...otherScores);
+            
+            summaryCard.innerHTML = `
+                <div class="player-label">The Flock</div>
+                <div class="player-name">${otherPlayers.length} Players</div>
+                <div class="player-score">Avg: ${averageScore} | High: ${highScore}</div>
+                <div class="player-count">👥</div>
+            `;
+            gamePlayersList.appendChild(summaryCard);
+        }
     }
 }
 

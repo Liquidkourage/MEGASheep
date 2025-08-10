@@ -985,6 +985,14 @@ body {
     line-height: 1.1;
 }
 
+.player-rank {
+    font-size: 0.7rem;
+    opacity: 0.8;
+    margin-top: 2px;
+    font-weight: bold;
+    color: #ffd700;
+}
+
 .player-actions-hint {
     font-size: 0.8rem;
     color: rgba(255, 255, 255, 0.6);
