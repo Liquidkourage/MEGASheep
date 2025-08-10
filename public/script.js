@@ -771,7 +771,9 @@ function submitAnswer() {
     console.log('💾 Stored submitted answer:', answer);
     
     socket.emit('submitAnswer', { gameCode: gameState.gameCode, answer });
-    answerInput.value = '';
+    
+    // Populate the answer textbox with the submitted answer instead of clearing it
+    answerInput.value = answer;
     
     const submitAnswerBtn = document.getElementById('submitAnswerBtn');
     if (submitAnswerBtn) {
@@ -1917,7 +1919,7 @@ function handleGameFinished(gameStateData) {
 }
 
 function handleAnswerSubmitted() {
-    showSuccess('Answer submitted!');
+    showToast('✅ Answer submitted!', 'success');
 }
 
 function handleAnswerUpdate(data) {
@@ -2587,6 +2589,41 @@ function showSuccess(message) {
             }
         }, 3000);
     }
+}
+
+function showToast(message, type = 'info') {
+    // Remove existing toasts
+    const existingToasts = document.querySelectorAll('.toast-notification');
+    existingToasts.forEach(toast => toast.remove());
+    
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <span class="toast-message">${message}</span>
+            <button class="toast-close" onclick="this.parentElement.parentElement.remove()">×</button>
+        </div>
+    `;
+    
+    // Add to body for overlay positioning
+    document.body.appendChild(toast);
+    
+    // Trigger animation
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    // Auto-remove after 4 seconds
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 300);
+        }
+    }, 4000);
 }
 
 // Scores modal functions
