@@ -325,14 +325,15 @@ function setupEventListeners() {
             else askHostInput.value = val;
         };
         const appendDmHistory = (who, text, suffix) => {
-            try {
-                const box = document.getElementById('dmHistory');
-                if (!box) return;
-                const line = document.createElement('div');
-                line.textContent = `${who}: ${text}${suffix || ''}`;
-                box.appendChild(line);
-                while (box.children.length > 3) box.removeChild(box.firstChild);
-            } catch (_) {}
+            // Disabled chat history to prevent screen overflow
+            // try {
+            //     const box = document.getElementById('dmHistory');
+            //     if (!box) return;
+            //     const line = document.createElement('div');
+            //     line.textContent = `${who}: ${text}${suffix || ''}`;
+            //     box.appendChild(line);
+            //     while (box.children.length > 3) box.removeChild(box.firstChild);
+            // } catch (_) {}
         };
         const setPlaceholderIfEmpty = () => {
             if (!askHostInput) return;
@@ -389,6 +390,17 @@ function setupEventListeners() {
         };
         askHostBtn.addEventListener('click', sendMessage);
         if (askHostInput) askHostInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }});
+        
+        // Clear messaging box when clicked
+        if (askHostInput) {
+            askHostInput.addEventListener('click', () => {
+                if (askHostInput.innerText === 'Type a private message to host...') {
+                    askHostInput.innerText = '';
+                    setPlaceholderIfEmpty();
+                }
+            });
+        }
+        
         // Ensure comm row visible for players
         const commRow = document.getElementById('playerCommRow');
         if (commRow && !isHost) commRow.style.display = 'flex';

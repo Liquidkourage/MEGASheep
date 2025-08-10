@@ -1077,6 +1077,11 @@ body {
     margin-top: 30px;
 }
 
+/* Hide chat history to prevent screen overflow */
+#dmHistory {
+    display: none !important;
+}
+
 /* Host controls */
 .host-controls {
     text-align: center;
