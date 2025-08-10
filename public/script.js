@@ -418,6 +418,10 @@ function setupEventListeners() {
                 try {
                     const msg = data && data.answer ? data.answer : '';
                     if (!msg) return;
+                    
+                    // Show toast notification for host response
+                    showToast(`💬 Host responded: ${msg}`, 'info');
+                    
                     const statusEl = document.getElementById('answerStatus');
                     if (statusEl && statusEl.getAttribute('contenteditable') === 'true') {
                         statusEl.innerText = `💬 Host: ${msg}`;
