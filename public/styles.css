@@ -1004,7 +1004,7 @@ body {
 .game-header {
     background: linear-gradient(135deg, #000000 0%, #8ba3d0 100%);
     color: white;
-    padding: 20px;
+    padding: 12px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -1019,9 +1019,9 @@ body {
 
 .timer {
     background: rgba(255, 255, 255, 0.2);
-    padding: 10px 20px;
-    border-radius: 25px;
-    font-size: 1.5rem;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 1.3rem;
     font-weight: bold;
     min-width: 60px;
     text-align: center;
@@ -4594,6 +4594,8 @@ body {
     background: rgba(255,255,255,0.2);
     color: white;
     border: 2px solid rgba(255,255,255,0.3);
+    padding: 6px 12px;
+    font-size: 0.75rem;
 }
 
 .btn-secondary:hover {
