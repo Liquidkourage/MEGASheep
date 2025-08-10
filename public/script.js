@@ -207,6 +207,7 @@ function initializeSocket() {
     socket.on('answerUpdate', handleAnswerUpdate);
     socket.on('timerUpdate', handleTimerUpdate);
     socket.on('gradingComplete', handleGradingComplete);
+    socket.on('gameStateUpdate', handleGameStateUpdate);
 
     // Private host answer for this player
     socket.on('hostAnswer', (data) => {
@@ -1808,8 +1809,22 @@ function handleGameJoined(data) {
         // Ensure questions and index are set before rendering
         questions = gameState.questions || questions || [];
         currentQuestionIndex = gameState.currentQuestion || 0;
+        
+        // Ensure player form is properly set up
+        const playerForm = document.getElementById('playerAnswerForm');
+        const answerInput = document.getElementById('answerInput');
+        const submitBtn = document.getElementById('submitAnswerBtn');
+        
+        if (playerForm) playerForm.style.display = 'flex';
+        if (answerInput) {
+            answerInput.value = '';
+            answerInput.disabled = false;
+        }
+        if (submitBtn) submitBtn.disabled = false;
+        
         showScreen('game');
         displayCurrentQuestion();
+        startTimer(); // Start timer if game is active
         return;
     }
     if (phase === 'grading') {
@@ -2041,6 +2056,37 @@ function handleTimerUpdate(data) {
 
 function handleError(data) {
     showError(data.message);
+}
+
+function handleGameStateUpdate(data) {
+    console.log('🔄 Game state update received:', data);
+    if (data && data.gameState) {
+        gameState = data.gameState;
+        
+        // Update questions if provided
+        if (data.gameState.questions) {
+            questions = data.gameState.questions;
+        }
+        
+        // Update current question index if provided
+        if (typeof data.gameState.currentQuestion === 'number') {
+            currentQuestionIndex = data.gameState.currentQuestion;
+        }
+        
+        // Route to appropriate screen based on new state
+        const phase = gameState.gameState;
+        if (phase === 'playing') {
+            showScreen('game');
+            displayCurrentQuestion();
+            startTimer();
+        } else if (phase === 'grading') {
+            showScreen('scoring');
+            showWaitingForGrading();
+        } else if (phase === 'finished') {
+            clearTimer();
+            showScreen('gameOver');
+        }
+    }
 }
 
 // Display functions
