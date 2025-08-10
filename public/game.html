@@ -823,48 +823,7 @@
             }
         }
         
-        // Answer form submission
-        document.getElementById('answerForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const answer = document.getElementById('answerInput').value.trim();
-            if (!answer) {
-                return;
-            }
-            
-            console.log('📤 Submitting answer:', answer);
-            socket.emit('submitAnswer', { gameCode, answer });
-            
-            // Show "My answer" display
-            document.getElementById('myAnswerText').textContent = answer;
-            document.getElementById('myAnswerDisplay').style.display = 'block';
-            
-            // Disable form
-            document.getElementById('answerInput').disabled = true;
-            document.getElementById('submitBtn').disabled = true;
-            // Answer submission status is now handled by the form state
-            
-            // Store the answer for later display
-            window.lastSubmittedAnswer = answer;
-            console.log('💾 Stored answer in window.lastSubmittedAnswer:', answer);
-
-            // Persist to session (same-session refresh resilience)
-            try {
-                const qIndex = (gameState && typeof gameState.currentQuestion === 'number') ? gameState.currentQuestion : null;
-                if (qIndex !== null && gameCode) {
-                    sessionStorage.setItem(`lastAnswer-${gameCode}-${qIndex}`, answer);
-                }
-            } catch (_) {}
-
-            // If no ack arrives soon, allow retry
-            awaitingAnswerAck = true;
-            clearTimeout(answerAckTimerId);
-            answerAckTimerId = setTimeout(() => {
-                if (awaitingAnswerAck) {
-                    document.getElementById('answerRetryContainer').style.display = 'block';
-                }
-            }, 2500);
-        });
+        // Answer submission is now handled by script.js
 
         // Send-to-host functionality is now handled by script.js
 
