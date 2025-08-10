@@ -2064,12 +2064,20 @@ function updateLobbyDisplay() {
                 hostCard.className = 'player-card host';
                 hostCard.dataset.playerId = host.id;
                 hostCard.innerHTML = `
-                    <div class="player-label">You</div>
                     <div class="player-name">${host.name}</div>
                     <div class="player-crown">👑</div>
                 `;
                 playersList.appendChild(hostCard);
                 console.log('🎮 Script.js: Added host card for:', host.name);
+            }
+            
+            // Add VS badge between cards
+            if (host && otherPlayers.length > 0) {
+                const vsBadge = document.createElement('div');
+                vsBadge.className = 'vs-badge';
+                vsBadge.innerHTML = 'VS.';
+                playersList.appendChild(vsBadge);
+                console.log('🎮 Script.js: Added VS badge');
             }
             
             // Show summary card for other players
