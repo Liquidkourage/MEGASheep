@@ -597,6 +597,12 @@ function setupEventListeners() {
     if (gradingAutoCategorizeBtn) gradingAutoCategorizeBtn.addEventListener('click', () => autoCategorizeAnswers('grading'));
     
     // Scores modal
+    // Ensure the FAB opens the modal even if results render binding hasn't run yet
+    const scoresFabInit = document.getElementById('scoresFab');
+    if (scoresFabInit) {
+        try { scoresFabInit.removeEventListener('click', showScoresModal); } catch(_) {}
+        scoresFabInit.addEventListener('click', showScoresModal);
+    }
     const closeScoresModalBtn = document.getElementById('closeScoresModal');
     if (closeScoresModalBtn) closeScoresModalBtn.addEventListener('click', closeScoresModal);
     window.addEventListener('click', (event) => {
