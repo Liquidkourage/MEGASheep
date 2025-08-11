@@ -1119,6 +1119,15 @@
                         timestamp: Date.now(),
                         serverRoundData: last || null
                     });
+                    // Immediately update primary control to Start Next Round
+                    try {
+                        const startBtn = document.getElementById('startGameBtn');
+                        if (startBtn) {
+                            startBtn.textContent = 'START NEXT ROUND';
+                            startBtn.className = 'control-btn success';
+                            startBtn.disabled = false;
+                        }
+                    } catch (_) {}
                 } catch (_) {}
             });
 
@@ -1477,8 +1486,11 @@
             if (!currentGame) return;
             if (gameState === 'waiting') {
                 socket.emit('startGame', { gameCode: currentGame.gameCode });
-            } else if (gameState === 'scoring' || gameState === 'roundComplete') {
+            } else if (gameState === 'scoring') {
                 socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
+            } else if (gameState === 'roundComplete') {
+                // When label shows END ROUND or START NEXT ROUND, proceed to next round
+                socket.emit('continueToNextRound', { gameCode: currentGame.gameCode });
             }
         });
 
