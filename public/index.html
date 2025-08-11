@@ -11,7 +11,18 @@
     <div class="container">
         <!-- Welcome Screen removed: root should only show Join Game for players -->
 
-        <!-- Create Game Screen removed from root; hosting at /host -->
+        <!-- Create Game Screen -->
+        <div id="createGameScreen" class="screen">
+            <div class="screen-content">
+                <h2>Create New Game</h2>
+                <div class="form-group">
+                    <label for="hostName">Your Name:</label>
+                    <input type="text" id="hostName" placeholder="Enter your name" required>
+                </div>
+                <button id="createGameSubmitBtn" class="btn btn-primary">Create Game</button>
+                <button id="backToWelcomeBtn" class="btn btn-secondary">Back</button>
+            </div>
+        </div>
 
         <!-- Join Game Screen (default active) -->
         <div id="joinGameScreen" class="screen active">
@@ -46,7 +57,10 @@
                                 <span class="status-indicator active">●</span>
                                 <span class="status-text">Game Active</span>
                             </div>
-                            <div class="host-actions" style="display:none;"></div>
+                            <div class="host-actions">
+                                <button onclick="openGradingModal()" class="btn btn-primary">📝 Grading Interface</button>
+                                <a href="/grading" class="btn btn-success">👥 Multi-User Grading</a>
+                            </div>
                         </div>
                         
                         <!-- Game Statistics -->
@@ -441,16 +455,16 @@
             </div>
         </div>
 
-        <!-- Game Over Screen -->
+        <!-- Overall Leaderboard Screen -->
         <div id="gameOverScreen" class="screen">
             <div class="screen-content">
-                <h2>Game Over!</h2>
+                <h2 id="overallTitle">Overall Leaderboard</h2>
                 <div class="final-scores">
-                    <h3>Final Scores:</h3>
+                    <h3 id="overallSubtitle">After <span id="overallQuestionsCount">0</span> questions:</h3>
                     <div id="finalScoresList" class="scores-grid"></div>
                 </div>
                 
-                <div class="winner-announcement">
+                <div class="winner-announcement" style="display:none;">
                     <h3 id="winnerText"></h3>
                 </div>
 

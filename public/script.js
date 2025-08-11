@@ -2898,8 +2898,20 @@ function displayRoundResults() {
 function displayFinalResults() {
     const finalScoresList = document.getElementById('finalScoresList');
     const winnerText = document.getElementById('winnerText');
+    const overallTitle = document.getElementById('overallTitle');
+    const overallSubtitle = document.getElementById('overallSubtitle');
+    const overallCount = document.getElementById('overallQuestionsCount');
     
-    // Display final scores
+    // Set titles for overall leaderboard
+    if (overallTitle) overallTitle.textContent = 'Overall Leaderboard';
+    if (overallSubtitle && overallCount) {
+        try {
+            const totalQs = Array.isArray(gameState.questions) ? gameState.questions.length : (gameState.questionCount || 0);
+            overallCount.textContent = String(totalQs || 0);
+        } catch (_) { overallCount.textContent = '0'; }
+    }
+
+    // Display scores
     finalScoresList.innerHTML = '';
     if (gameState.players) {
         const sortedPlayers = gameState.players
@@ -2909,17 +2921,11 @@ function displayFinalResults() {
             const scoreItem = document.createElement('div');
             scoreItem.className = 'score-item';
             scoreItem.innerHTML = `
-                <span>${index + 1}. ${player.name}</span>
-                <span>${gameState.scores[player.id] || 0} points</span>
+                <span>#${index + 1} ${player.name}</span>
+                <span>${gameState.scores[player.id] || 0} pts</span>
             `;
             finalScoresList.appendChild(scoreItem);
         });
-        
-        // Announce winner
-        if (sortedPlayers.length > 0) {
-            const winner = sortedPlayers[0];
-            winnerText.textContent = `🏆 ${winner.name} wins with ${gameState.scores[winner.id] || 0} points!`;
-        }
     }
     
 
