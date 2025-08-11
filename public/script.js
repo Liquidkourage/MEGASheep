@@ -2577,7 +2577,7 @@ function displayQuestionResults() {
             const countB = (typeof b.count === 'number') ? b.count : (Array.isArray(b.players) ? b.players.length : 0);
             return countB - countA;
         });
-        html += `<div class="answer-category incorrect"><div class="category-header"><h4>💭 Other Answers</h4><span class="category-count">${incorrectAnswers.length}</span></div><div class="answer-category-content compact-grid">`;
+        html += `<div class="answer-category incorrect"><div class="category-header"><h4>❌ Incorrect Answers</h4><span class="category-count">${incorrectAnswers.length}</span></div><div class="answer-category-content compact-grid">`;
         sortedIncorrectAnswers.forEach((group, index) => { html += createCompactResultItem(group, false, index + 1); });
         html += '</div></div>';
     }
@@ -2588,7 +2588,8 @@ function displayQuestionResults() {
 
     // Ultra-compact item for mobile
     function createCompactResultItem(group, isCorrect, rank = null) {
-        return `<div class="compact-answer"><span class="rank">${rank ? '#'+rank : ''}</span><span class="text">${group.answer}</span><span class="points-pill">${group.points} pts</span></div>`;
+        const pointsChip = isCorrect ? `<span class="points-pill">${group.points} pts</span>` : '';
+        return `<div class="compact-answer"><span class="rank">${rank ? '#'+rank : ''}</span><span class="text">${group.answer}</span>${pointsChip}</div>`;
     }
 
 // Function to show answer details (for click interaction)
