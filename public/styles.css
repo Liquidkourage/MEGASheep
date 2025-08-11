@@ -1726,7 +1726,7 @@ body {
 
 .answer-info {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     width: 100%;
     gap: 10px;
@@ -1756,6 +1756,10 @@ body {
     background: rgba(0, 123, 255, 0.1);
     padding: 4px 8px;
     border-radius: 4px;
+}
+
+.answer-formula, .answer-count, .answer-points {
+    flex: 0 0 auto; /* do not take extra width */
 }
 
 .answer-stats {
