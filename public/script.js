@@ -2608,9 +2608,9 @@ function displayRoundResults() {
     // Nuke any inline styles from the waiting-state and hard-apply size preferences
     try {
         answersList.removeAttribute('style');
-        // Strongly enforce min/max on this div
         answersList.style.setProperty('min-height', '0', 'important');
-        answersList.style.setProperty('max-height', '2000px', 'important');
+        answersList.style.setProperty('max-height', 'none', 'important');
+        answersList.style.setProperty('overflow', 'visible', 'important');
         answersList.style.setProperty('display', 'block', 'important');
     } catch (_) {}
     

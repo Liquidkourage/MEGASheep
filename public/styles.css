@@ -1614,7 +1614,9 @@ body {
 /* Scoring screen styles */
 .answers-display, .scores-display {
     margin-bottom: 30px;
-    min-height: calc(100vh - 220px);
+    min-height: 0; /* avoid forcing extra height that creates inner scroll */
+    max-height: none;
+    overflow: visible; /* ensure parent handles scrolling */
 }
 
 .answers-display h3, .scores-display h3 {
