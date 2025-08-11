@@ -1508,7 +1508,15 @@
                 socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
             } else if (gameState === 'roundComplete') {
                 // End of round → begin next round
-                socket.emit('continueToNextRound', { gameCode: currentGame.gameCode });
+                const totalRounds = Math.ceil((currentGame?.questions?.length || 0) / (currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5));
+                const currentRound = Math.ceil(((currentGame?.currentQuestion || 0) + 1) / (currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5));
+                if (currentRound >= totalRounds) {
+                    // Disable at end of final round
+                    const btn = document.getElementById('startGameBtn');
+                    if (btn) { btn.disabled = true; btn.textContent = 'END OF GAME'; btn.className = 'control-btn secondary'; }
+                } else {
+                    socket.emit('continueToNextRound', { gameCode: currentGame.gameCode });
+                }
             } else if (gameState === 'playing') {
                 // Already in a question; ignore to avoid server error
                 console.log('Start button clicked during playing; ignoring to prevent premature nextQuestion');
