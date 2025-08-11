@@ -2246,17 +2246,21 @@ function updateLobbyDisplay() {
                 console.log('🎮 Script.js: Added VS badge');
             }
             
-            // Show summary card for other players
+            // Render all other players as individual cards (CPU and live)
             if (otherPlayers.length > 0) {
-                const summaryCard = document.createElement('div');
-                summaryCard.className = 'player-card summary';
-                summaryCard.innerHTML = `
-                    <div class="player-label">The Flock</div>
-                    <div class="player-name">${otherPlayers.length} Players</div>
-                    <div class="player-count">👥</div>
-                `;
-                playersList.appendChild(summaryCard);
-                console.log('🎮 Script.js: Added summary card for', otherPlayers.length, 'other players');
+                otherPlayers.forEach(p => {
+                    const playerCard = document.createElement('div');
+                    playerCard.className = 'player-card';
+                    playerCard.dataset.playerId = p.id;
+                    const displayName = p.name || `${p.firstName || ''} ${p.lastName || ''}`.trim() || 'Player';
+                    playerCard.innerHTML = `
+                        <div class="player-name">${displayName}</div>
+                        <div class="player-score">Score: ${p.score ?? 0}</div>
+                        ${p.isVirtual ? '<div class="player-label">CPU</div>' : ''}
+                    `;
+                    playersList.appendChild(playerCard);
+                });
+                console.log('🎮 Script.js: Rendered', otherPlayers.length, 'other players');
             }
         }
     } else {
