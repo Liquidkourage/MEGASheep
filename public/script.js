@@ -2523,7 +2523,7 @@ function displayQuestionResults() {
     const likeMindedPeers = Array.isArray(playerAnswerGroup?.players)
         ? playerAnswerGroup.players.filter(p => String(p).toLowerCase() !== selfNameLower)
         : [];
-    const likeMindedSheep = likeMindedPeers.length > 0 ? likeMindedPeers.join(', ') : 'Just you';
+    const likeMindedSheep = likeMindedPeers.length > 0 ? likeMindedPeers.join(', ') : 'Only ewe!';
     
     const youBadge = '';
     return `

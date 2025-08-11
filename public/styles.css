@@ -1115,8 +1115,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    max-height: 100vh;
-    overflow-y: auto;
+    min-height: calc(100vh - 140px);
 }
 
 .personal-result-card {
