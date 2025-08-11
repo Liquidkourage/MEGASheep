@@ -2538,7 +2538,7 @@ function displayQuestionResults() {
             
             <div class="personal-answer" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <div class="answer-label" style="margin:0;">Your Answer:</div>
-                <div class="answer-text my-answer" style="padding:6px 10px;">"${displayAnswer}" ${youBadge}</div>
+                <div class="answer-text my-answer">${displayAnswer}</div>
             </div>
             
             <div class="personal-stats">
@@ -2614,7 +2614,7 @@ function displayRoundResults() {
     // Nuke any inline styles from the waiting-state and expand to viewport
     try {
         answersList.removeAttribute('style');
-        answersList.style.minHeight = 'calc(100vh - 160px)';
+        answersList.style.minHeight = '600px';
     } catch (_) {}
     
     if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {

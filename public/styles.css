@@ -1204,8 +1204,9 @@ body {
     background: linear-gradient(135deg, rgba(139,163,208,0.25), rgba(0,123,255,0.15));
     border-left-color: #8ba3d0;
     box-shadow: 0 0 0 2px rgba(139,163,208,0.2) inset;
-    padding: 10px 12px !important;
-    line-height: 1.35;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Ensure personal result answer is always visible */
@@ -1466,7 +1467,7 @@ body {
     }
     
     .answer-text { font-size: 1rem; }
-    .answer-text.my-answer { height: 1.3em; }
+    .answer-text.my-answer { height: 1.3em; padding: 0 !important; line-height: 1.3em; }
     
     .answer-item {
         padding: 12px;
