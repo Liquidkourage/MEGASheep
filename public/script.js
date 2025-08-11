@@ -2496,8 +2496,8 @@ function displayQuestionResults() {
     }
 }
 
-// Helper function to create personal result section
-function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints) {
+    // Helper function to create personal result section
+    function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints) {
     const sanitize = (s) => String(s || '').replace(/[&<>"']/g, (c)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
     const displayAnswerRaw = playerAnswer && playerAnswer.trim() !== '' ? playerAnswer : 'No Answer Submitted';
     const displayAnswer = sanitize(displayAnswerRaw);
@@ -2541,7 +2541,7 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
             
             <div class="personal-answer" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <div class="answer-label" style="margin:0;">Your Answer:</div>
-                <div class="answer-text" style="padding:6px 10px;">"${displayAnswer}" ${youBadge}</div>
+                <div class="answer-text my-answer" style="padding:6px 10px;">"${displayAnswer}" ${youBadge}</div>
             </div>
             
             <div class="personal-stats">
@@ -2565,49 +2565,23 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
     
     let html = '<div class="all-answers-container">';
     
-    // Correct answers section with enhanced design
+    // Correct answers section with ultra-compact layout (mobile-friendly)
     if (correctAnswers.length > 0) {
-        html += `
-            <div class="answer-category correct">
-                <div class="category-header">
-                    <h4>🏆 Correct Answers</h4>
-                    <span class="category-count">${correctAnswers.length} answer${correctAnswers.length !== 1 ? 's' : ''}</span>
-                </div>
-                <div class="answer-category-content">
-        `;
-        
-        // Sort correct answers by points (highest first)
         const sortedCorrectAnswers = [...correctAnswers].sort((a, b) => b.points - a.points);
-        
-        sortedCorrectAnswers.forEach((group, index) => {
-            html += createResultAnswerItem(group, true, index + 1);
-        });
-        
+        html += `<div class="answer-category correct"><div class="category-header"><h4>🏆 Correct Answers</h4><span class="category-count">${correctAnswers.length}</span></div><div class="answer-category-content compact-grid">`;
+        sortedCorrectAnswers.forEach((group, index) => { html += createCompactResultItem(group, true, index + 1); });
         html += '</div></div>';
     }
     
-    // Incorrect answers section with enhanced design
+    // Other answers section, also compact
     if (incorrectAnswers.length > 0) {
-        html += `
-            <div class="answer-category incorrect">
-                <div class="category-header">
-                    <h4>💭 Other Answers</h4>
-                    <span class="category-count">${incorrectAnswers.length} answer${incorrectAnswers.length !== 1 ? 's' : ''}</span>
-                </div>
-                <div class="answer-category-content">
-        `;
-        
-        // Sort incorrect answers by count (most popular first)
         const sortedIncorrectAnswers = [...incorrectAnswers].sort((a, b) => {
             const countA = (typeof a.count === 'number') ? a.count : (Array.isArray(a.players) ? a.players.length : 0);
             const countB = (typeof b.count === 'number') ? b.count : (Array.isArray(b.players) ? b.players.length : 0);
             return countB - countA;
         });
-        
-        sortedIncorrectAnswers.forEach((group, index) => {
-            html += createResultAnswerItem(group, false, index + 1);
-        });
-        
+        html += `<div class="answer-category incorrect"><div class="category-header"><h4>💭 Other Answers</h4><span class="category-count">${incorrectAnswers.length}</span></div><div class="answer-category-content compact-grid">`;
+        sortedIncorrectAnswers.forEach((group, index) => { html += createCompactResultItem(group, false, index + 1); });
         html += '</div></div>';
     }
     
@@ -2624,31 +2598,13 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
     return html;
 }
 
-    // Helper function to create individual answer item (HTML string)
-    function createResultAnswerItem(group, isCorrect, rank = null) {
-    const statusIcon = isCorrect ? '🏆' : '💭';
-    const statusClass = isCorrect ? 'correct' : 'incorrect';
-    const computedCount = (typeof group.count === 'number') ? group.count : (Array.isArray(group.players) ? group.players.length : 0);
-    const uniquenessText = computedCount === 1 ? 'Unique!' : `${computedCount} players`;
-    const rankBadge = rank ? `<div class="answer-rank-badge">#${rank}</div>` : '';
-    
-    return `
-        <div class="answer-item ${statusClass}" onclick="showAnswerDetails('${group.answer}', ${computedCount}, ${group.points}, ${group.totalResponses})">
-            ${rankBadge}
-            <div class="answer-content">
-                <div class="answer-header">
-                    <span class="answer-status">${statusIcon}</span>
-                    <span class="answer-text">"${group.answer}"</span>
-                </div>
-                <div class="answer-details">
-                    <div class="answer-formula">${group.totalResponses} ÷ ${computedCount} = ${group.points} pts</div>
-                    <div class="answer-count">${uniquenessText}</div>
-                </div>
-                <div class="answer-points">${group.points} points each</div>
-            </div>
-        </div>
-    `;
-}
+    // Ultra-compact item for mobile
+    function createCompactResultItem(group, isCorrect, rank = null) {
+        const statusIcon = isCorrect ? '🏆' : '💭';
+        const computedCount = (typeof group.count === 'number') ? group.count : (Array.isArray(group.players) ? group.players.length : 0);
+        const formula = `${group.totalResponses} ÷ ${computedCount} = ${group.points}`;
+        return `<div class="compact-answer"><span class="rank">${rank ? '#'+rank : ''}</span><span class="icon">${statusIcon}</span><span class="text">${group.answer}</span><span class="meta">${formula}</span></div>`;
+    }
 
 // Function to show answer details (for click interaction)
 function showAnswerDetails(answer, count, points, totalResponses) {

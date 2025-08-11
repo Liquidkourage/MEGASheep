@@ -1197,6 +1197,13 @@ body {
     word-break: break-word;
 }
 
+/* Special highlight for the player's own answer on results */
+.answer-text.my-answer {
+    background: linear-gradient(135deg, rgba(139,163,208,0.25), rgba(0,123,255,0.15));
+    border-left-color: #8ba3d0;
+    box-shadow: 0 0 0 2px rgba(139,163,208,0.2) inset;
+}
+
 /* Ensure personal result answer is always visible */
 .personal-result-card .answer-text { color: #f8fbff !important; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); }
 
@@ -1291,6 +1298,46 @@ body {
     display: flex;
     flex-direction: column;
     gap: 15px;
+}
+
+/* Compact grid for mobile-sized answer lists */
+.compact-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.compact-answer {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    background: rgba(0,0,0,0.25);
+}
+
+.compact-answer .rank {
+    color: #8ba3d0;
+    font-weight: 700;
+}
+
+.compact-answer .icon { opacity: 0.9; }
+
+.compact-answer .text {
+    color: #fff;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.compact-answer .meta {
+    color: #cfd8dc;
+    font-size: 0.85rem;
+    font-family: monospace;
+    opacity: 0.9;
 }
 
 .answer-item {
