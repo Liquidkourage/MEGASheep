@@ -20,9 +20,9 @@
 .podium-player-name.silver { color: #c0c0c0; font-size: 2.0rem; }
 .podium-player-name.bronze { color: #cd7f32; font-size: 1.9rem; }
 /* Offset name heights to match podium blocks visually */
-.name-gold { transform: translateY(-24px); }
+.name-gold { transform: translateY(-76px); }
 .name-silver { transform: translateY(-6px); }
-.name-bronze { transform: translateY(8px); }
+.name-bronze { transform: translateY(24px); }
 
 .podium-block {
   width: 100%;
@@ -65,7 +65,7 @@
   width: 100%;
   max-width: 1200px;
   margin-top: 6px;
-  max-height: 40vh;
+  max-height: 60vh;
   overflow: hidden;
 }
 /* Floating scores button in results header */
