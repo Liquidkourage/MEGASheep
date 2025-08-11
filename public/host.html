@@ -1110,6 +1110,7 @@
             socket.on('roundComplete', (data) => {
                 try {
                     currentGame = data;
+                    gameState = 'roundComplete';
                     window._roundHistoryClient = window._roundHistoryClient || [];
                     const last = Array.isArray(currentGame?.roundHistory) && currentGame.roundHistory.length > 0
                         ? currentGame.roundHistory[currentGame.roundHistory.length - 1]
@@ -1127,6 +1128,8 @@
                             startBtn.className = 'control-btn success';
                             startBtn.disabled = false;
                         }
+                        // Refresh control state in case other UI relies on it
+                        try { updateGameControls(); } catch (_) {}
                     } catch (_) {}
                 } catch (_) {}
             });
@@ -1487,10 +1490,11 @@
             if (gameState === 'waiting') {
                 socket.emit('startGame', { gameCode: currentGame.gameCode });
             } else if (gameState === 'scoring') {
+                // Treat as standard next question
                 socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
             } else if (gameState === 'roundComplete') {
-                // When label shows END ROUND or START NEXT ROUND, proceed to next round
-                socket.emit('continueToNextRound', { gameCode: currentGame.gameCode });
+                // Treat as standard next question across round boundary
+                socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
             }
         });
 
