@@ -65,7 +65,7 @@
   width: 100%;
   max-width: 1200px;
   margin-top: 6px;
-  max-height: 60vh;
+  max-height: 64vh;
   overflow: hidden;
 }
 /* Floating scores button in results header */
@@ -3233,9 +3233,10 @@ body {
 }
 
 .round-leaderboard-header {
-    text-align: center;
-    margin-bottom: 20px;
-    flex-shrink: 0;
+  text-align: center;
+  margin: 0 0 12px 0; /* reduce bottom margin to avoid overlapping the gold name */
+  padding-top: 6px;   /* add small top space so header shadow doesn't clip */
+  flex-shrink: 0;
 }
 
 .round-leaderboard-header h1 {
