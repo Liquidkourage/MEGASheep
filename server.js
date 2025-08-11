@@ -2475,7 +2475,11 @@ io.on('connection', (socket) => {
     if (game.gameState !== 'roundComplete') {
       game.gameState = 'roundComplete';
     }
-    io.to(gameCode).emit('roundComplete', game.getGameState());
+    const state = game.getGameState();
+    // Public display
+    io.to(gameCode).emit('roundComplete', state);
+    // Players: request them to show their round results screen as well
+    io.to(gameCode).emit('playerShowRoundResults', state);
   });
 
     // Show overall leaderboard (from round complete screen after round 2+)
@@ -2506,11 +2510,13 @@ io.on('connection', (socket) => {
         console.log(`📊 Host showing overall leaderboard for game ${gameCode}`);
         game.gameState = 'overallLeaderboard'; // Set new state instead of 'finished'
         
-        // Emit to display
-        io.to(gameCode).emit('showOverallLeaderboard', game.getGameState());
+        // Emit to display and players
+        const state = game.getGameState();
+        io.to(gameCode).emit('showOverallLeaderboard', state);
+        io.to(gameCode).emit('playerShowOverallLeaderboard', state);
         
         // Emit to host to update button state
-        socket.emit('gameStateUpdate', { gameState: game.getGameState() });
+        socket.emit('gameStateUpdate', { gameState: state });
     });
 
     // End question (host can end current question early)

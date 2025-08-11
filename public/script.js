@@ -314,6 +314,25 @@ function initializeSocket() {
         console.error('❌ Connection error:', error);
         showError('Failed to connect to server');
     });
+
+    // Host-triggered: show round results on player UI
+    socket.on('playerShowRoundResults', (state) => {
+        try {
+            if (!state) return;
+            gameState = state;
+            showScreen('scoring');
+            displayRoundResults();
+        } catch (_) {}
+    });
+
+    socket.on('playerShowOverallLeaderboard', (state) => {
+        try {
+            if (!state) return;
+            gameState = state;
+            showScreen('gameOver');
+            displayFinalResults();
+        } catch (_) {}
+    });
     
     // Socket event listeners
     socket.on('gameCreated', handleGameCreated);
