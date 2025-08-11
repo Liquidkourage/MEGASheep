@@ -2511,12 +2511,7 @@ function displayQuestionResults() {
         rankText = `You ranked #${playerRank} out of ${totalPlayers} players`;
     }
     
-    let pointsText = '';
-    if (playerPoints > 0) {
-        pointsText = `+${playerPoints} points`;
-    } else if (playerAnswer && playerAnswer.trim() !== '') {
-        pointsText = '+0 points';
-    }
+    const pointsNumber = Math.max(0, Number(playerPoints || 0));
     
     // Like-minded Sheep list (players who gave the same answer)
     const selfNameLower = (sessionStorage.getItem('playerName') || '').toLowerCase();
@@ -2543,7 +2538,7 @@ function displayQuestionResults() {
             
             <div class="personal-stats">
                 ${rankText ? `<div class="stat-item"><span class="stat-label">Rank:</span> <span class="stat-value">${rankText}</span></div>` : ''}
-                ${pointsText ? `<div class="stat-item"><span class="stat-label">Points:</span> <span class="stat-value points">${pointsText}</span></div>` : ''}
+                <div class="stat-item"><span class="stat-label">Points:</span> <span class="points-chip">${pointsNumber}</span></div>
                 <div class="stat-item"><span class="stat-label">Like-minded Sheep:</span> <span class="stat-value">${likeMindedSheep}</span></div>
             </div>
         </div>
@@ -2611,9 +2606,10 @@ function displayRoundResults() {
     
     // Display answers with Google Sheets scoring
     answersList.innerHTML = '';
-    // Nuke any inline styles from the waiting-state and expand to viewport
+    // Nuke any inline styles from the waiting-state and remove max-height constraints
     try {
         answersList.removeAttribute('style');
+        answersList.style.removeProperty('max-height');
         answersList.style.minHeight = '600px';
     } catch (_) {}
     
