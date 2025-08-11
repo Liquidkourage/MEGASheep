@@ -4480,7 +4480,7 @@ function scheduleVirtualQuestionFlow() {
             ? (questions[currentQuestionIndex] || questions[0])
             : (gameState?.questions?.[gameState.currentQuestion] || gameState?.currentQuestion || null);
         if (!q) return;
-        setTimeout(() => { try { generateVirtualResponses(q); } catch (_) {} }, 500);
+        setTimeout(() => { try { generateVirtualResponses(q); } catch (_) {} }, 1000);
         setTimeout(() => {
             try {
                 if (gameState?.gameCode && socket) {
@@ -4502,6 +4502,18 @@ function startVirtualPlayerSimulation(playerCount = 50) {
     }
     // Ask the server to add virtual players to the real game
     socket.emit('startVirtualPlayerSimulation', { gameCode: gameState.gameCode, playerCount });
+    // Also stream joins individually to ensure visible increments even if batch add is fast
+    const joinPerSecond = 2;
+    const total = playerCount;
+    let added = 0;
+    const joinTimer = setInterval(() => {
+        if (added >= total) return clearInterval(joinTimer);
+        const idx = added % virtualPlayerNames.length;
+        const playerName = virtualPlayerNames[idx] + ' ' + (Math.floor(added/virtualPlayerNames.length)+1);
+        const playerId = `virtual_${Date.now()}_${added}`;
+        socket.emit('virtualPlayerJoined', { gameCode: gameState.gameCode, playerId, playerName });
+        added += 1;
+    }, 1000 / joinPerSecond);
 }
 
 function generateVirtualResponses(question) {

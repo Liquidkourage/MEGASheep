@@ -1896,10 +1896,7 @@ io.on('connection', (socket) => {
             return;
         }
         
-        if (game.gameState !== 'waiting') {
-            console.log('⚠️ Cannot add virtual player to game that has already started');
-            return;
-        }
+        // Allow adding virtual players in any state for testing
         
         try {
             // Add virtual player directly to game without socket ID
@@ -1936,10 +1933,7 @@ io.on('connection', (socket) => {
             return;
         }
         
-        if (game.gameState !== 'waiting') {
-            console.log('⚠️ Cannot add virtual players to game that has already started');
-            return;
-        }
+        // Allow adding virtual players in any state for testing
         
         console.log(`🎭 Starting virtual player simulation with ${playerCount} players for game ${gameCode}`);
         
