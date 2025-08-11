@@ -697,6 +697,8 @@ function setupEventListeners() {
     // History modal (host read-only)
     const openHistoryModalBtn = document.getElementById('openHistoryModalBtn');
     if (openHistoryModalBtn) openHistoryModalBtn.addEventListener('click', openHistoryModal);
+    const openHistoryModalBtn2 = document.getElementById('openHistoryModalBtn2');
+    if (openHistoryModalBtn2) openHistoryModalBtn2.addEventListener('click', openHistoryModal);
     const closeHistoryModalBtn = document.getElementById('closeHistoryModal');
     if (closeHistoryModalBtn) closeHistoryModalBtn.addEventListener('click', closeHistoryModal);
     window.addEventListener('click', (event) => {
