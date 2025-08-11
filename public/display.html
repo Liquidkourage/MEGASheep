@@ -2159,7 +2159,7 @@
             `;
             
             // Start auto-scroll for the leaderboard
-            startAutoScroll('roundLeaderboardContent');
+            startAutoScroll('roundLeaderboardContent', gameState.players.length);
         }
         
         function generatePodium(sortedPlayers) {

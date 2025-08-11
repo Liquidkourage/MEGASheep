@@ -2,7 +2,7 @@
 .podium {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: auto 140px;
+  grid-template-rows: auto 220px;
   grid-template-areas:
     'name2 name1 name3'
     'block2 block1 block3';
@@ -23,7 +23,7 @@
 .podium-block {
   width: 100%;
   max-width: 360px;
-  height: 140px;
+  height: 220px;
   border-radius: 10px;
   display: grid;
   grid-template-rows: 1fr auto;
@@ -39,19 +39,19 @@
   background: linear-gradient(180deg, rgba(255,215,0,0.22), rgba(255,215,0,0.08));
   border: 1px solid rgba(255,215,0,0.35);
   box-shadow: 0 12px 30px rgba(255,215,0,0.2);
-  transform: translateY(-14px);
+  transform: translateY(-60px);
 }
 .block-silver {
   background: linear-gradient(180deg, rgba(192,192,192,0.22), rgba(192,192,192,0.08));
   border: 1px solid rgba(192,192,192,0.35);
   box-shadow: 0 10px 26px rgba(192,192,192,0.18);
-  transform: translateY(-2px);
+  transform: translateY(10px);
 }
 .block-bronze {
   background: linear-gradient(180deg, rgba(205,127,50,0.22), rgba(205,127,50,0.08));
   border: 1px solid rgba(205,127,50,0.35);
   box-shadow: 0 10px 26px rgba(205,127,50,0.18);
-  transform: translateY(6px);
+  transform: translateY(40px);
 }
 .podium-message { margin: 12px 0 24px; font-size: 1.4rem; text-align: center; opacity: 0.98; font-weight: 700; }
 /* Floating scores button in results header */

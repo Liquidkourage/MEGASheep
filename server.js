@@ -2556,26 +2556,39 @@ io.on('connection', (socket) => {
 
         // Build a synthetic state based on current players with mock scores if needed
         const players = Array.from(game.players.values());
-        const samplePlayers = players.length > 0 ? players : [
-            { name: 'Ewe-nited', score: 120 },
-            { name: 'Baa-Raiser', score: 110 },
-            { name: 'Shear Genius', score: 105 },
-            { name: 'Wool Winner', score: 95 },
-            { name: 'Lambchop', score: 90 }
-        ];
+        let samplePlayers;
+        if (players.length >= 50) {
+            samplePlayers = players;
+        } else if (players.length > 0) {
+            // Use current players then fill to 50 with mock players
+            samplePlayers = [...players];
+            const needed = 50 - players.length;
+            for (let i = 0; i < needed; i++) {
+                const idx = i + 1;
+                samplePlayers.push({ name: `Fuzzy Friend ${idx}`, score: Math.max(0, 85 - i) + Math.floor(Math.random()*40) });
+            }
+        } else {
+            // Full mock set of 50 players
+            samplePlayers = Array.from({ length: 50 }, (_, i) => ({
+                name: `Fuzzy Friend ${i+1}`,
+                score: 150 - i - Math.floor(Math.random() * 10)
+            }));
+            // Replace top three with themed names
+            samplePlayers[0].name = 'Ewe-nited'; samplePlayers[0].score = 180;
+            samplePlayers[1].name = 'Baa-Raiser'; samplePlayers[1].score = 165;
+            samplePlayers[2].name = 'Shear Genius'; samplePlayers[2].score = 160;
+        }
 
         // Ensure descending scores
         samplePlayers.sort((a,b)=> (b.score||0)-(a.score||0));
 
         const state = {
             ...game.getGameState(),
-            gameState: 'finished',
+            gameState: 'overallLeaderboard',
             players: samplePlayers
         };
 
-        // Emit to public display using existing finished flow
-        io.to(gameCode).emit('displayGameState', state);
-        // Also emit the explicit overall leaderboard event to render podium if needed
+        // Emit explicit overall leaderboard event to render podium/message
         io.to(gameCode).emit('showOverallLeaderboard', state);
     });
 
