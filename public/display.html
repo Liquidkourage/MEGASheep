@@ -2800,13 +2800,16 @@
             // Create a set of submitted answer texts (normalized)
             const submittedTexts = new Set();
             submittedAnswers.forEach(group => {
-                submittedTexts.add(group.answer.toLowerCase().trim());
+                // Prefer bucketId to avoid display-name mismatches (e.g., correct_un -> "un")
+                const key = (group.bucketId || group.answer).toString().toLowerCase().trim();
+                submittedTexts.add(key.startsWith('correct_') ? key : key);
             });
             
             // Separate correct answers that weren't submitted
             correctAnswers.forEach(correctAnswer => {
                 const normalized = correctAnswer.toLowerCase().trim();
-                if (!submittedTexts.has(normalized)) {
+                const bucketKey = normalized.startsWith('correct_') ? normalized : `correct_${normalized.replace(/\s+/g,'_')}`;
+                if (!submittedTexts.has(bucketKey) && !submittedTexts.has(normalized)) {
                     correctNotGiven.push(correctAnswer);
                 }
             });
