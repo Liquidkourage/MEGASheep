@@ -2151,16 +2151,18 @@
                     
                     <div class="round-leaderboard-content" id="roundLeaderboardContent">
                         ${podiumHtml}
-                        <div class="podium-message">🐑 Thank you for playing! Congratulations to our top performers — the bellwethers of the flock.</div>
-                        <div class="auto-scroll-content">
-                            ${generateOverallLeaderboardDisplay(sortedPlayers.slice(3), roundHistory, 3)}
+                        <div class="podium-message">🐑 Thank you for playing!<br/>Congratulations to our top performers — the bellwethers of the flock.</div>
+                        <div class="overall-list-container" id="overallListContainer">
+                            <div class="auto-scroll-content">
+                                ${generateOverallLeaderboardDisplay(sortedPlayers.slice(3), roundHistory, 3)}
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
             
             // Start auto-scroll for the leaderboard
-            startAutoScroll('roundLeaderboardContent', gameState.players.length);
+            startAutoScroll('overallListContainer', gameState.players.length);
         }
         
         function generatePodium(sortedPlayers) {
@@ -2168,9 +2170,9 @@
             const [first, second, third] = [sortedPlayers[0], sortedPlayers[1], sortedPlayers[2]];
             return `
                 <div class="podium" role="group" aria-label="Top three podium">
-                    ${second ? `<div class=\"podium-player-name silver\" style=\"grid-area:name2\">${second.name}</div>` : '<div style="grid-area:name2"></div>'}
-                    ${first ? `<div class=\"podium-player-name gold\" style=\"grid-area:name1\">${first.name}</div>` : '<div style="grid-area:name1"></div>'}
-                    ${third ? `<div class=\"podium-player-name bronze\" style=\"grid-area:name3\">${third.name}</div>` : '<div style="grid-area:name3"></div>'}
+                    ${second ? `<div class=\"podium-player-name silver name-silver\" style=\"grid-area:name2\">${second.name}</div>` : '<div style="grid-area:name2"></div>'}
+                    ${first ? `<div class=\"podium-player-name gold name-gold\" style=\"grid-area:name1\">${first.name}</div>` : '<div style="grid-area:name1"></div>'}
+                    ${third ? `<div class=\"podium-player-name bronze name-bronze\" style=\"grid-area:name3\">${third.name}</div>` : '<div style="grid-area:name3"></div>'}
 
                     <div class="podium-block block-silver" style="grid-area:block2">
                         <div class="podium-number">#2</div>

@@ -2,7 +2,7 @@
 .podium {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: auto 220px;
+  grid-template-rows: 80px 220px;
   grid-template-areas:
     'name2 name1 name3'
     'block2 block1 block3';
@@ -16,9 +16,13 @@
   letter-spacing: 0.4px;
   text-shadow: 0 2px 18px rgba(0,0,0,0.45);
 }
-.podium-player-name.gold { color: #ffd700; font-size: 2.2rem; }
-.podium-player-name.silver { color: #c0c0c0; font-size: 1.8rem; }
-.podium-player-name.bronze { color: #cd7f32; font-size: 1.7rem; }
+.podium-player-name.gold { color: #ffd700; font-size: 2.4rem; }
+.podium-player-name.silver { color: #c0c0c0; font-size: 2.0rem; }
+.podium-player-name.bronze { color: #cd7f32; font-size: 1.9rem; }
+/* Offset name heights to match podium blocks visually */
+.name-gold { transform: translateY(-24px); }
+.name-silver { transform: translateY(-6px); }
+.name-bronze { transform: translateY(8px); }
 
 .podium-block {
   width: 100%;
@@ -53,7 +57,17 @@
   box-shadow: 0 10px 26px rgba(205,127,50,0.18);
   transform: translateY(40px);
 }
-.podium-message { margin: 12px 0 24px; font-size: 1.4rem; text-align: center; opacity: 0.98; font-weight: 700; }
+.podium-message { margin: 18px 0 28px; font-size: 1.4rem; text-align: center; opacity: 0.98; font-weight: 700; line-height: 1.35; }
+
+/* Constrain the overall leaderboard list below the podium */
+.overall-list-container {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  margin-top: 6px;
+  max-height: 40vh;
+  overflow: hidden;
+}
 /* Floating scores button in results header */
 .scores-fab {
   position: absolute;
