@@ -2544,6 +2544,41 @@ io.on('connection', (socket) => {
         socket.emit('gameStateUpdate', { gameState: state });
     });
 
+    // TEMP: Show End Game demo on display with synthetic data
+    socket.on('showEndGameDemo', (data) => {
+        if (!data) return;
+        const { gameCode } = data;
+        if (!gameCode) return;
+        const playerInfo = connectedPlayers.get(socket.id);
+        if (!playerInfo || !playerInfo.isHost) return;
+        const game = activeGames.get(gameCode);
+        if (!game) return;
+
+        // Build a synthetic state based on current players with mock scores if needed
+        const players = Array.from(game.players.values());
+        const samplePlayers = players.length > 0 ? players : [
+            { name: 'Ewe-nited', score: 120 },
+            { name: 'Baa-Raiser', score: 110 },
+            { name: 'Shear Genius', score: 105 },
+            { name: 'Wool Winner', score: 95 },
+            { name: 'Lambchop', score: 90 }
+        ];
+
+        // Ensure descending scores
+        samplePlayers.sort((a,b)=> (b.score||0)-(a.score||0));
+
+        const state = {
+            ...game.getGameState(),
+            gameState: 'finished',
+            players: samplePlayers
+        };
+
+        // Emit to public display using existing finished flow
+        io.to(gameCode).emit('displayGameState', state);
+        // Also emit the explicit overall leaderboard event to render podium if needed
+        io.to(gameCode).emit('showOverallLeaderboard', state);
+    });
+
     // End question (host can end current question early)
     socket.on('endQuestion', async (data) => {
         if (!data) {

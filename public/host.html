@@ -844,6 +844,7 @@
                         <button id="showRoundLbBtn" class="control-btn secondary">📊 SHOW ROUND LEADERBOARD</button>
                         <button id="showOverallLbBtn" class="control-btn secondary">🏆 SHOW OVERALL LEADERBOARD</button>
                         <button id="historyBtn" class="control-btn secondary">📚 HISTORY</button>
+                        <button id="showEndDemoBtn" class="control-btn secondary">🎉 SHOW END DEMO</button>
                     </div>
                 </div>
 
@@ -1556,6 +1557,11 @@
         if (showOverallLbBtn) showOverallLbBtn.addEventListener('click', () => {
             if (!currentGame) return;
             socket.emit('showOverallLeaderboard', { gameCode: currentGame.gameCode });
+        });
+        const showEndDemoBtn = document.getElementById('showEndDemoBtn');
+        if (showEndDemoBtn) showEndDemoBtn.addEventListener('click', () => {
+            if (!currentGame) return;
+            socket.emit('showEndGameDemo', { gameCode: currentGame.gameCode });
         });
 
         // Grading modal functions

@@ -1,3 +1,28 @@
+/* Podium layout for end-of-game top 3 */
+.podium {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  align-items: end;
+  justify-items: center;
+  margin: 16px 0 12px;
+}
+.podium-spot {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  width: 100%;
+  max-width: 280px;
+  text-align: center;
+  padding: 12px 10px;
+}
+.podium-spot.rank-1 { transform: translateY(-10px); box-shadow: 0 8px 24px rgba(255,215,0,0.15); }
+.podium-spot.rank-2 { transform: translateY(0); }
+.podium-spot.rank-3 { transform: translateY(5px); }
+.podium-rank { font-size: 1.2rem; font-weight: 800; margin-bottom: 6px; }
+.podium-name { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+.podium-score { font-size: 0.95rem; opacity: 0.9; }
+.podium-message { margin: 10px 0 18px; font-size: 1.05rem; text-align: center; opacity: 0.95; }
 /* Floating scores button in results header */
 .scores-fab {
   position: absolute;

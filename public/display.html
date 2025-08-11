@@ -2136,6 +2136,7 @@
             else if (playerCount <= 10) columnClass = 'five-columns';
             else columnClass = 'six-columns';
             
+            const podiumHtml = generatePodium(sortedPlayers);
             document.getElementById('displayScreen').innerHTML = `
                 <div class="round-leaderboard-container ${columnClass}">
                     <div class="round-leaderboard-header">
@@ -2144,7 +2145,9 @@
                     </div>
                     
                     <div class="round-leaderboard-content" id="roundLeaderboardContent">
-                        ${generateOverallLeaderboardDisplay(sortedPlayers, roundHistory)}
+                        ${podiumHtml}
+                        <div class="podium-message">🐑 Thank you for playing! Congratulations to our top performers — true leaders of the flock.</div>
+                        ${generateOverallLeaderboardDisplay(sortedPlayers.slice(3), roundHistory)}
                     </div>
                 </div>
             `;
@@ -2153,17 +2156,36 @@
             startAutoScroll('roundLeaderboardContent');
         }
         
-        function generateOverallLeaderboardDisplay(sortedPlayers, roundHistory) {
+        function generatePodium(sortedPlayers) {
+            if (!sortedPlayers || sortedPlayers.length === 0) return '';
+            const [first, second, third] = [sortedPlayers[0], sortedPlayers[1], sortedPlayers[2]];
+            return `
+                <div class="podium">
+                    <div class="podium-spot rank-2">
+                        ${second ? `<div class="podium-rank">#2</div><div class="podium-name">${second.name}</div><div class="podium-score">${second.score} pts</div>` : ''}
+                    </div>
+                    <div class="podium-spot rank-1">
+                        ${first ? `<div class="podium-rank">#1</div><div class="podium-name">${first.name}</div><div class="podium-score">${first.score} pts</div>` : ''}
+                    </div>
+                    <div class="podium-spot rank-3">
+                        ${third ? `<div class="podium-rank">#3</div><div class="podium-name">${third.name}</div><div class="podium-score">${third.score} pts</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateOverallLeaderboardDisplay(sortedPlayers, roundHistory, startIndex = 0) {
             let html = '';
             
             sortedPlayers.forEach((player, playerIndex) => {
-                const rankClass = playerIndex < 3 ? `rank-${playerIndex + 1}` : '';
+                const absoluteIndex = startIndex + playerIndex;
+                const rankClass = absoluteIndex < 3 ? `rank-${absoluteIndex + 1}` : '';
                 const playerRounds = generatePlayerRoundsDisplay(player, roundHistory);
                 
                 html += `
                     <div class="player-card ${rankClass}">
                         <div class="player-header">
-                            <div class="player-rank">#${playerIndex + 1}</div>
+                            <div class="player-rank">#${absoluteIndex + 1}</div>
                             <div class="player-name">${player.name}</div>
                             <div class="player-total-score">${player.score} pts</div>
                         </div>
