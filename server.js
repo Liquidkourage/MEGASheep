@@ -825,6 +825,10 @@ class Game {
             this.roundAnswerGroups.push(...this.currentAnswerGroups);
             console.log(`📊 Added ${this.currentAnswerGroups.length} answer groups to round history. Total: ${this.roundAnswerGroups.length}`);
         }
+        // Ensure we applied points for the current question before changing state
+        if (!this.currentQuestionScored) {
+            try { this.applyCurrentQuestionPoints(); } catch (_) {}
+        }
         
         // Check if we're starting a new round
         const currentRound = Math.ceil((this.currentQuestion + 1) / this.settings.questionsPerRound);
@@ -867,8 +871,13 @@ class Game {
 
     completeRound() {
         console.log(`🎯 completeRound() called for game ${this.gameCode}`);
+        // Ensure latest question points are applied to cumulative totals
+        if (!this.currentQuestionScored) {
+            try { this.applyCurrentQuestionPoints(); } catch (_) {}
+        }
         
-        const currentRound = Math.ceil(this.currentQuestion / this.settings.questionsPerRound);
+        // Derive round from the just-finished question index (0-based -> +1)
+        const currentRound = Math.ceil((this.currentQuestion + 1) / this.settings.questionsPerRound);
         const roundStartQuestion = (currentRound - 1) * this.settings.questionsPerRound + 1;
         const roundEndQuestion = Math.min(currentRound * this.settings.questionsPerRound, this.questions.length);
         
