@@ -2518,15 +2518,10 @@ function displayQuestionResults() {
         pointsText = '+0 points';
     }
     
-    let uniquenessText = '';
-    const groupCount = playerAnswerGroup
-        ? (typeof playerAnswerGroup.count === 'number' ? playerAnswerGroup.count : (Array.isArray(playerAnswerGroup.players) ? playerAnswerGroup.players.length : 0))
-        : 0;
-    if (playerAnswerGroup && groupCount === 1) {
-        uniquenessText = 'You were the only one with this answer!';
-    } else if (playerAnswerGroup && groupCount > 1) {
-        uniquenessText = `${groupCount} players had this answer`;
-    }
+    // Like-minded Sheep list (players who gave the same answer)
+    const likeMindedSheep = Array.isArray(playerAnswerGroup?.players) && playerAnswerGroup.players.length > 0
+        ? playerAnswerGroup.players.join(', ')
+        : 'Just you';
     
     const youBadge = '';
     return `
@@ -2547,7 +2542,7 @@ function displayQuestionResults() {
             <div class="personal-stats">
                 ${rankText ? `<div class="stat-item"><span class="stat-label">Rank:</span> <span class="stat-value">${rankText}</span></div>` : ''}
                 ${pointsText ? `<div class="stat-item"><span class="stat-label">Points:</span> <span class="stat-value points">${pointsText}</span></div>` : ''}
-                ${uniquenessText ? `<div class="stat-item"><span class="stat-label">Uniqueness:</span> <span class="stat-value">${uniquenessText}</span></div>` : ''}
+                <div class="stat-item"><span class="stat-label">Like-minded Sheep:</span> <span class="stat-value">${likeMindedSheep}</span></div>
             </div>
         </div>
     `;
@@ -2591,9 +2586,7 @@ function displayQuestionResults() {
 
     // Ultra-compact item for mobile
     function createCompactResultItem(group, isCorrect, rank = null) {
-        const computedCount = (typeof group.count === 'number') ? group.count : (Array.isArray(group.players) ? group.players.length : 0);
-        const meta = `${computedCount} player${computedCount === 1 ? '' : 's'} • ${group.points} pts`;
-        return `<div class="compact-answer"><span class="rank">${rank ? '#'+rank : ''}</span><span class="text">${group.answer}</span><span class="meta">${meta}</span></div>`;
+        return `<div class="compact-answer"><span class="rank">${rank ? '#'+rank : ''}</span><span class="text">${group.answer}</span><span class="points-pill">${group.points} pts</span></div>`;
     }
 
 // Function to show answer details (for click interaction)

@@ -1313,7 +1313,7 @@ body {
 
 .compact-answer {
     display: grid;
-    grid-template-columns: auto auto 1fr auto;
+    grid-template-columns: auto 1fr auto;
     align-items: center;
     gap: 8px;
     padding: 8px 10px;
@@ -1337,11 +1337,14 @@ body {
     white-space: nowrap;
 }
 
-.compact-answer .meta {
-    color: #cfd8dc;
+.points-pill {
+    background: linear-gradient(135deg, rgba(139,163,208,0.35), rgba(0,123,255,0.25));
+    color: #0b1020;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 800;
     font-size: 0.85rem;
-    font-family: monospace;
-    opacity: 0.9;
+    border: 1px solid rgba(139,163,208,0.5);
 }
 
 .answer-item {
