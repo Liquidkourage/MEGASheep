@@ -409,6 +409,36 @@
             margin-top: 5px;
         }
 
+        /* History modal layout fixes: keep answer text horizontal and allow natural wrapping */
+        #historyModal .scoring-content { display: block; }
+        #historyModal .answer-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+        }
+        #historyModal .answer-text {
+            flex: 1 1 auto;
+            white-space: normal !important;
+            word-break: normal !important;
+            overflow-wrap: break-word;
+            line-height: 1.25;
+            margin: 0;
+        }
+        #historyModal .answer-points {
+            flex: 0 0 auto;
+            white-space: nowrap;
+            background: rgba(40,167,69,0.15);
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(40,167,69,0.35);
+        }
+
         /* Host Controls Panel */
         .host-controls {
             display: grid;
