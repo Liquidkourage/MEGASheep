@@ -2298,6 +2298,7 @@
             // Use round-specific scores from roundData instead of cumulative scores
             const players = [...roundData.players].sort((a, b) => b.score - a.score);
             const answerGroups = roundData.answerGroups || [];
+            const perPlayer = roundData.playerAnswersByName || {};
             
             console.log('Round data:', roundData);
             console.log('Players:', players);
@@ -2307,33 +2308,18 @@
             const playersWithAnswers = players.map(player => {
                 let roundAnswers = [];
                 
-                // Try multiple sources for player answers
-                if (roundData.playerAnswers && roundData.playerAnswers[player.id]) {
-                    roundAnswers = roundData.playerAnswers[player.id];
-                } else if (gameState.answers && gameState.answers[player.id]) {
-                    // Fallback to current game state answers
-                    roundAnswers = Array.isArray(gameState.answers[player.id]) 
-                        ? gameState.answers[player.id] 
-                        : [gameState.answers[player.id]];
+                // Use authoritative per-player round answers from server if available
+                if (perPlayer[player.name] && Array.isArray(perPlayer[player.name])) {
+                    roundAnswers = perPlayer[player.name].map(a => a.answer);
                 } else {
-                    // Generate player-specific answers based on answer groups and player data
+                    // Fallback: derive from groups
                     const playerSpecificAnswers = [];
-                    
-                    // Find answers that this specific player gave
                     answerGroups.forEach(group => {
                         if (group.players && group.players.includes(player.name)) {
                             playerSpecificAnswers.push(group.answer);
                         }
                     });
-                    
-                    // If we found player-specific answers, use them
-                    if (playerSpecificAnswers.length >= 5) {
-                        roundAnswers = playerSpecificAnswers.slice(0, 5);
-                    } else {
-                        // Mix of player-specific answers and varied samples
-                        const sampleAnswers = ['dog', 'horse', 'rabbit', 'rooster', 'tiger'];
-                        roundAnswers = [...playerSpecificAnswers, ...sampleAnswers].slice(0, 5);
-                    }
+                    roundAnswers = playerSpecificAnswers;
                 }
                 
                 // Ensure exactly 5 answers for consistent display
@@ -2500,7 +2486,10 @@
                     `;
                 });
             } else {
-                // For multi-player games, match player answers with answer groups
+                // For multi-player games, match player answers with authoritative per-player entries if present
+                const perPlayer = roundData.playerAnswersByName || {};
+                const thisPlayersEntries = (perPlayer && perPlayer[roundData && roundData.currentPlayerName]) ? perPlayer[roundData.currentPlayerName] : null;
+                
                 playerAnswers.forEach((answer, index) => {
                     let points = 0;
                     let isCorrect = false;

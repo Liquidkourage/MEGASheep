@@ -905,6 +905,23 @@ class Game {
             })),
             answerGroups: this.roundAnswerGroups || []
         };
+
+        // Build per-player answers for the round using the accumulated roundAnswerGroups
+        try {
+            const playerAnswersByName = {};
+            (this.roundAnswerGroups || []).forEach(group => {
+                const entry = {
+                    answer: group.answer,
+                    points: group.points || 0,
+                    bucketId: group.bucketId || null
+                };
+                (group.players || []).forEach(playerName => {
+                    if (!playerAnswersByName[playerName]) playerAnswersByName[playerName] = [];
+                    playerAnswersByName[playerName].push(entry);
+                });
+            });
+            roundData.playerAnswersByName = playerAnswersByName;
+        } catch (_) {}
         
         console.log(`🎯 Round ${currentRound} completed for game ${this.gameCode}. Answer groups in round: ${this.roundAnswerGroups.length}`);
         console.log(`📊 Round data:`, JSON.stringify(roundData, null, 2));
