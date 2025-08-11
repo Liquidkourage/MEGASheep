@@ -937,8 +937,8 @@ class Game {
         
         this.roundHistory.push(roundData);
         
-        // Check if this is the final round (round 5)
-        const totalRounds = Math.ceil(this.questions.length / this.settings.questionsPerRound);
+        // Check if this is the final round (hard stop at 5 rounds)
+        const totalRounds = Math.min(5, Math.ceil(this.questions.length / this.settings.questionsPerRound));
         
         if (currentRound >= totalRounds) {
             // This is the final round, show overall leaderboard
@@ -971,7 +971,7 @@ class Game {
     }
 
     continueToNextRound() {
-        const totalRounds = Math.ceil(this.questions.length / this.settings.questionsPerRound);
+        const totalRounds = Math.min(5, Math.ceil(this.questions.length / this.settings.questionsPerRound));
         const currentRound = Math.ceil((this.currentQuestion + 1) / this.settings.questionsPerRound);
         if (currentRound >= totalRounds) {
             // Do not advance past final round
@@ -2444,6 +2444,14 @@ io.on('connection', (socket) => {
         
         if (game.gameState !== 'scoring' && game.gameState !== 'roundComplete') {
             socket.emit('gameError', { message: 'Must complete grading before proceeding' });
+            return;
+        }
+        // Server-side hard stop: do not advance beyond 5 rounds
+        const totalRounds = Math.min(5, Math.ceil(game.questions.length / game.settings.questionsPerRound));
+        const currentRound = Math.ceil((game.currentQuestion + 1) / game.settings.questionsPerRound);
+        if (currentRound >= totalRounds && game.gameState === 'roundComplete') {
+            game.gameState = 'overallLeaderboard';
+            io.to(gameCode).emit('showOverallLeaderboard', game.getGameState());
             return;
         }
         
