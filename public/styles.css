@@ -942,8 +942,6 @@ body {
     min-height: auto;
     margin-bottom: 2px;
 }
-.player-card.virtual { border-color: rgba(139,163,208,0.6); background: rgba(139,163,208,0.12); }
-.player-card .player-badge { font-size: 0.9rem; opacity: 0.9; }
 
 .player-card.host {
     border-color: #ffffff;
