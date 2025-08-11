@@ -39,72 +39,44 @@ async function loadQuestionsFromFile(filename) {
         }
         
         const content = fs.readFileSync(filename, 'utf8');
-        const lines = content.split('\n');
+        const lines = content.split(/\r?\n/);
         
         const questions = [];
         let currentQuestion = null;
         let currentRound = 1;
         let currentOrder = 1;
         
-        for (const line of lines) {
-            const parsedLine = parseQuestionLine(line);
-            if (!parsedLine) continue; // Skip empty lines and comments
-            
-            // Check if this looks like a question (longer, contains question words, or ends with punctuation)
-            const isLikelyQuestion = parsedLine.length > 30 || 
-                                   parsedLine.includes('?') ||
-                                   parsedLine.includes('that') ||
-                                   parsedLine.includes('which') ||
-                                   parsedLine.includes('what') ||
-                                   parsedLine.includes('name') ||
-                                   parsedLine.includes('word') ||
-                                   parsedLine.includes('film') ||
-                                   parsedLine.includes('movie') ||
-                                   parsedLine.includes('poem') ||
-                                   parsedLine.includes('letter');
-            
-            // Check if this looks like an answer (shorter, single word or phrase, no question words)
-            const isLikelyAnswer = parsedLine.length < 30 && 
-                                 !parsedLine.includes('?') &&
-                                 !parsedLine.includes('that') &&
-                                 !parsedLine.includes('which') &&
-                                 !parsedLine.includes('what') &&
-                                 !parsedLine.includes('name') &&
-                                 !parsedLine.includes('word') &&
-                                 !parsedLine.includes('film') &&
-                                 !parsedLine.includes('movie') &&
-                                 !parsedLine.includes('poem') &&
-                                 !parsedLine.includes('letter');
-            
-            if (isLikelyQuestion && currentQuestion) {
-                // This is a new question, save the previous one
-                if (currentQuestion.prompt && currentQuestion.correct_answers.length > 0) {
+        for (const rawLine of lines) {
+            const trimmed = rawLine.trim();
+
+            // Blank line or comment -> end of current question block
+            if (trimmed === '' || trimmed.startsWith('#')) {
+                if (currentQuestion && currentQuestion.prompt && currentQuestion.correct_answers.length > 0) {
                     questions.push({
                         ...currentQuestion,
                         round: currentRound,
                         question_order: currentOrder
                     });
                     currentOrder++;
+                    currentQuestion = null;
                 }
-                
-                // Start new question
-                currentQuestion = {
-                    prompt: parsedLine,
-                    correct_answers: []
-                };
-            } else if (currentQuestion && isLikelyAnswer) {
-                // This is an answer for the current question
-                currentQuestion.correct_answers.push(parsedLine);
-            } else if (!currentQuestion) {
-                // First question
-                currentQuestion = {
-                    prompt: parsedLine,
-                    correct_answers: []
-                };
+                continue;
             }
+
+            // Start a new question on the first non-empty line after a separator
+            if (!currentQuestion) {
+                currentQuestion = {
+                    prompt: trimmed,
+                    correct_answers: []
+                };
+                continue;
+            }
+
+            // Subsequent non-empty lines are answers until we hit a blank line
+            currentQuestion.correct_answers.push(trimmed);
         }
         
-        // Don't forget the last question
+        // Capture last question if file doesn't end with a blank line
         if (currentQuestion && currentQuestion.prompt && currentQuestion.correct_answers.length > 0) {
             questions.push({
                 ...currentQuestion,
@@ -160,7 +132,7 @@ async function insertQuestionsToDatabase(questions) {
 
 async function previewQuestions(questions) {
     console.log('\n📋 Preview of questions to be inserted:');
-    console.log('=' .repeat(80));
+    console.log('='.repeat(80));
     
     questions.forEach((q, index) => {
         console.log(`${index + 1}. Round ${q.round}, Order ${q.question_order}: ${q.prompt}`);
@@ -168,7 +140,7 @@ async function previewQuestions(questions) {
         console.log('');
     });
     
-    console.log('=' .repeat(80));
+    console.log('='.repeat(80));
 }
 
 async function main() {
@@ -201,7 +173,7 @@ async function main() {
     }
     
     console.log('🚀 MEGASheep Question Loader');
-    console.log('=' .repeat(30));
+    console.log('='.repeat(30));
     
     // Check Supabase connection
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
