@@ -841,9 +841,7 @@
                         <button id="endGameMainBtn" class="control-btn warning">🛑 END GAME</button>
                         <button id="gradingBtn" class="control-btn secondary">📝 GRADING INTERFACE</button>
                         <button id="multiGradingBtn" class="control-btn success">👥 MULTI-USER GRADING</button>
-                        <button id="testGameBtn" class="control-btn warning">▶️ TEST GAME</button>
                         <button id="virtualTestBtn" class="control-btn warning">🎭 VIRTUAL TEST (100 players)</button>
-                        <button id="refreshQuestionsBtn" class="control-btn secondary">🔄 REFRESH QUESTIONS</button>
                         <button id="historyBtn" class="control-btn secondary">📚 HISTORY</button>
                     </div>
                 </div>
@@ -1523,11 +1521,6 @@
             } catch (e) { console.warn('Failed to emit endGame', e); }
         });
 
-        document.getElementById('testGameBtn').addEventListener('click', () => {
-            // Open test game in new tab
-            window.open('/game', '_blank');
-        });
-
         document.getElementById('virtualTestBtn').addEventListener('click', () => {
             // Start virtual player simulation
             if (typeof startVirtualPlayerSimulation === 'function') {
@@ -1535,11 +1528,6 @@
             } else {
                 alert('Virtual player simulation not available');
             }
-        });
-
-        document.getElementById('refreshQuestionsBtn').addEventListener('click', () => {
-            // Refresh questions from server
-            socket.emit('refresh-questions');
         });
 
         // Grading modal functions
