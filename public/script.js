@@ -2851,11 +2851,16 @@ function displayRoundResults() {
         </div>`;
 
     // Leaderboard top 5
-    const top = rankAfterList.slice(0, 20);
-    const leaderboardRows = top.map((p, index) => {
+    const leaderboardRows = rankAfterList.map((p, index) => {
         const rank = index + 1;
         const mineClass = p.name.toLowerCase() === myName.toLowerCase() ? ' mine' : '';
-        return `<div class="score-item single-line${mineClass}">#${rank} ${p.name} — ${p.total} pts</div>`;
+        return `
+            <div class="score-row${mineClass}">
+                <span class="rank-badge">#${rank}</span>
+                <span class="leader-name">${p.name}</span>
+                <span class="score-chip">${p.total}</span>
+            </div>
+        `;
     }).join('');
     const leaderboardHtml = `<div class="scores-display"><h3>Leaderboard</h3><div class="scores-list">${leaderboardRows}</div></div>`;
 

@@ -589,9 +589,12 @@ body {
 }
 
 /* Compact single-line leaderboard for player end-of-round */
-.scores-list { display: flex; flex-direction: column; gap: 6px; }
-.score-item.single-line { display: block; padding: 6px 10px; border-radius: 6px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.score-item.single-line.mine { background: rgba(0,123,255,0.18); border-color: rgba(0,123,255,0.35); }
+.scores-list { display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow: auto; }
+.score-row { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); }
+.score-row.mine { background: rgba(0,123,255,0.16); border-color: rgba(0,123,255,0.35); }
+.rank-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 48px; padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); font-weight: 800; }
+.leader-name { text-align: center; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.score-chip { display: inline-flex; align-items: center; justify-content: center; padding: 4px 10px; border-radius: 999px; background: linear-gradient(135deg, rgba(139,163,208,0.6), rgba(0,123,255,0.5)); border: 1px solid rgba(139,163,208,0.6); font-weight: 800; }
 
 .scores-modal .score-item {
     background: rgba(255, 255, 255, 0.1);
