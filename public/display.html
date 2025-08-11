@@ -2504,17 +2504,24 @@
                 playerAnswers.forEach((answer, index) => {
                     let points = 0;
                     let isCorrect = false;
+                    const normalizedPlayerAnswer = answer.toString().toLowerCase().trim();
+                    const candidateBucketId = normalizedPlayerAnswer.startsWith('correct_') ? normalizedPlayerAnswer : `correct_${normalizedPlayerAnswer.replace(/\s+/g,'_')}`;
                     
                     // Find the answer group that matches this player's answer
                     const answerGroup = answerGroups.find(group => {
-                        const normalizedGroupAnswer = group.answer.toLowerCase().trim();
-                        const normalizedPlayerAnswer = answer.toLowerCase().trim();
+                        const normalizedGroupAnswer = group.answer.toString().toLowerCase().trim();
+                        const groupBucketId = (group.bucketId || '').toString().toLowerCase().trim();
                         
-                        // Exact match
-                        if (normalizedGroupAnswer === normalizedPlayerAnswer) {
+                        // Prefer bucketId match
+                        if (groupBucketId && groupBucketId === candidateBucketId) {
                             return true;
                         }
                         
+                        // Exact text match
+                        if (normalizedGroupAnswer === normalizedPlayerAnswer) {
+                            return true;
+                        }
+
                         // Partial match: player answer contained in group answer
                         if (normalizedGroupAnswer.includes(normalizedPlayerAnswer)) {
                             return true;
