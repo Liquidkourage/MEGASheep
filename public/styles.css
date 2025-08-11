@@ -4,14 +4,20 @@
   max-height: 2000px !important;
   display: block !important;
 }
-/* Sticky actions at bottom of results */
+/* Sticky actions at bottom of results (fixed to viewport) */
 .sticky-actions {
-    position: sticky;
+    position: fixed;
+    left: 0;
+    right: 0;
     bottom: 0;
-    padding: 10px 0 12px;
-    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.45) 70%);
-    backdrop-filter: blur(2px);
+    padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 70%);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
 }
+
+/* Ensure content above doesn't get hidden behind fixed footer */
+#scoringScreen .screen-content { padding-bottom: 90px; }
 /* Reset and base styles */
 * {
     margin: 0;
@@ -1241,6 +1247,8 @@ body {
 
 /* Force points row to stay on a single line */
 .points-inline {
+    display: inline-flex !important;
+    align-items: center;
     white-space: nowrap;
     gap: 8px;
 }
