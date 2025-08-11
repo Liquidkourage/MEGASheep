@@ -2602,17 +2602,29 @@ function displayRoundResults() {
     
     const answersList = document.getElementById('answersList');
     const scoresList = document.getElementById('scoresList');
-    // Add a floating scores button near the results header (players only)
+    // Ensure floating scores button works (players only)
     try {
-        if (!isHost) {
+        const fab = document.getElementById('scoresFab');
+        if (fab) {
+            if (isHost) {
+                fab.style.display = 'none';
+            } else {
+                fab.style.display = 'inline-flex';
+                if (!fab.dataset.bound) {
+                    fab.addEventListener('click', showScoresModal);
+                    fab.dataset.bound = '1';
+                }
+            }
+        } else if (!isHost) {
+            // Fallback: create if missing
             const content = document.querySelector('#scoringScreen .screen-content');
-            if (content && !document.getElementById('scoresFab')) {
+            if (content) {
                 const btn = document.createElement('button');
                 btn.id = 'scoresFab';
                 btn.className = 'scores-fab';
                 btn.type = 'button';
                 btn.title = 'View Current Scores';
-                btn.textContent = '📊';
+                btn.textContent = 'View Current Scores';
                 btn.addEventListener('click', showScoresModal);
                 content.appendChild(btn);
             }
