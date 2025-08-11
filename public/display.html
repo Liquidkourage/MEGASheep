@@ -2304,37 +2304,33 @@
             console.log('Players:', players);
             console.log('Answer groups:', answerGroups);
             
-            // Try to get round-specific player answers, fallback to recent answers
+            // Build per-player entries (answer + points) from authoritative server data first
             const playersWithAnswers = players.map(player => {
-                let roundAnswers = [];
-                
-                // Use authoritative per-player round answers from server if available
+                let roundEntries = [];
                 if (perPlayer[player.name] && Array.isArray(perPlayer[player.name])) {
-                    roundAnswers = perPlayer[player.name].map(a => a.answer);
+                    roundEntries = perPlayer[player.name].map(a => ({ answer: a.answer, points: Number(a.points||0), bucketId: a.bucketId||null }));
                 } else {
-                    // Fallback: derive from groups
-                    const playerSpecificAnswers = [];
+                    const entries = [];
                     answerGroups.forEach(group => {
                         if (group.players && group.players.includes(player.name)) {
-                            playerSpecificAnswers.push(group.answer);
+                            entries.push({ answer: group.answer, points: Number(group.points||0), bucketId: group.bucketId||null });
                         }
                     });
-                    roundAnswers = playerSpecificAnswers;
+                    roundEntries = entries;
                 }
-                
-                // Ensure exactly 5 answers for consistent display
-                if (roundAnswers.length > 5) {
-                    roundAnswers = roundAnswers.slice(0, 5);
+
+                if (roundEntries.length > 5) {
+                    roundEntries = roundEntries.slice(0, 5);
                 } else {
-                    while (roundAnswers.length < 5) {
-                        roundAnswers.push('---');
+                    while (roundEntries.length < 5) {
+                        roundEntries.push({ answer: '---', points: 0 });
                     }
                 }
-                
+
                 return {
                     ...player,
-                    roundAnswers: roundAnswers,
-                    roundScore: player.score || 0  // Use the round-specific score from roundData
+                    roundAnswers: roundEntries,
+                    roundScore: player.score || 0
                 };
             });
             
@@ -2486,10 +2482,26 @@
                     `;
                 });
             } else {
-                // For multi-player games, match player answers with authoritative per-player entries if present
-                const perPlayer = roundData.playerAnswersByName || {};
-                const thisPlayersEntries = (perPlayer && perPlayer[roundData && roundData.currentPlayerName]) ? perPlayer[roundData.currentPlayerName] : null;
-                
+                // If entries include points (authoritative), render directly; else use legacy matching fallback
+                if (Array.isArray(playerAnswers) && playerAnswers.length && typeof playerAnswers[0] === 'object' && 'points' in playerAnswers[0]) {
+                    playerAnswers.forEach(entry => {
+                        const isCorrect = Number(entry.points||0) > 0;
+                        const statusClass = isCorrect ? 'correct-answer' : 'wrong-answer';
+                        const answer = String(entry.answer || '---');
+                        const points = Number(entry.points || 0);
+                        let textSizeClass = 'medium';
+                        if (answer.length <= 8) textSizeClass = 'short';
+                        else if (answer.length <= 15) textSizeClass = 'medium';
+                        else if (answer.length <= 25) textSizeClass = 'long';
+                        else textSizeClass = 'very-long';
+                        html += `
+                            <div class="answer-card-small ${statusClass}" data-answer-length="${textSizeClass}">
+                                <span class="answer-text-small">${answer}</span>
+                                <span class="answer-points-small">${points}</span>
+                            </div>
+                        `;
+                    });
+                } else {
                 playerAnswers.forEach((answer, index) => {
                     let points = 0;
                     let isCorrect = false;
@@ -2553,6 +2565,7 @@
                         </div>
                     `;
                 });
+                }
             }
             
             html += '</div>';
