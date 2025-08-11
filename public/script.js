@@ -2585,15 +2585,6 @@ function displayQuestionResults() {
         html += '</div></div>';
     }
     
-    // Add a compact legend at the bottom for clarity
-    html += `
-        <div class="answer-legend" style="opacity:.85; font-size:.85rem; color:#cfd8dc; display:flex; gap:12px; flex-wrap:wrap; margin-top:6px;">
-            <span>🏆 = correct</span>
-            <span>💭 = other answers</span>
-            <span># = rank</span>
-            <span>formula: total ÷ count = points</span>
-        </div>
-    `;
     html += '</div>';
     return html;
 }
@@ -2625,6 +2616,14 @@ function displayRoundResults() {
     
     // Display answers with Google Sheets scoring
     answersList.innerHTML = '';
+    // Ensure answers area uses most of the viewport height and removes waiting centering styles
+    try {
+        answersList.style.display = 'block';
+        answersList.style.flexDirection = '';
+        answersList.style.alignItems = '';
+        answersList.style.justifyContent = '';
+        answersList.style.minHeight = 'calc(100vh - 240px)';
+    } catch (_) {}
     
     if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
         // Use server-provided answer groups with new scoring info

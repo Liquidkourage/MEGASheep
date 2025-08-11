@@ -1558,6 +1558,7 @@ body {
 /* Scoring screen styles */
 .answers-display, .scores-display {
     margin-bottom: 30px;
+    min-height: calc(100vh - 220px);
 }
 
 .answers-display h3, .scores-display h3 {
