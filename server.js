@@ -2462,6 +2462,22 @@ io.on('connection', (socket) => {
         game.continueToNextRound();
     });
 
+  // Explicitly show current round leaderboard on public display
+  socket.on('showRoundLeaderboard', (data) => {
+    if (!data) return;
+    const { gameCode } = data;
+    if (!gameCode) return;
+    const playerInfo = connectedPlayers.get(socket.id);
+    if (!playerInfo || !playerInfo.isHost) return;
+    const game = activeGames.get(gameCode);
+    if (!game) return;
+    // Ensure state is at least roundComplete for display context
+    if (game.gameState !== 'roundComplete') {
+      game.gameState = 'roundComplete';
+    }
+    io.to(gameCode).emit('roundComplete', game.getGameState());
+  });
+
     // Show overall leaderboard (from round complete screen after round 2+)
     socket.on('showOverallLeaderboard', (data) => {
         if (!data) {

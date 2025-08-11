@@ -842,6 +842,8 @@
                         <button id="gradingBtn" class="control-btn secondary">📝 GRADING INTERFACE</button>
                         <button id="multiGradingBtn" class="control-btn success">👥 MULTI-USER GRADING</button>
                         <button id="virtualTestBtn" class="control-btn warning">🎭 VIRTUAL TEST (100 players)</button>
+                        <button id="showRoundLbBtn" class="control-btn secondary">📊 SHOW ROUND LEADERBOARD</button>
+                        <button id="showOverallLbBtn" class="control-btn secondary">🏆 SHOW OVERALL LEADERBOARD</button>
                         <button id="historyBtn" class="control-btn secondary">📚 HISTORY</button>
                     </div>
                 </div>
@@ -1499,15 +1501,8 @@
 
         document.getElementById('startGameBtn').addEventListener('click', () => {
             if (!currentGame) return;
-            if (gameState === 'waiting') {
-                socket.emit('startGame', { gameCode: currentGame.gameCode });
-            } else if (gameState === 'scoring') {
-                // Treat as standard next question
-                socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
-            } else if (gameState === 'roundComplete') {
-                // At round boundary, advance to next round properly
-                socket.emit('continueToNextRound', { gameCode: currentGame.gameCode });
-            }
+            // Always advance to next question
+            socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
         });
 
         document.getElementById('endGameMainBtn').addEventListener('click', () => {
@@ -1528,6 +1523,18 @@
             } else {
                 alert('Virtual player simulation not available');
             }
+        });
+
+        // Leaderboard display controls
+        const showRoundLbBtn = document.getElementById('showRoundLbBtn');
+        if (showRoundLbBtn) showRoundLbBtn.addEventListener('click', () => {
+            if (!currentGame) return;
+            socket.emit('showRoundLeaderboard', { gameCode: currentGame.gameCode });
+        });
+        const showOverallLbBtn = document.getElementById('showOverallLbBtn');
+        if (showOverallLbBtn) showOverallLbBtn.addEventListener('click', () => {
+            if (!currentGame) return;
+            socket.emit('showOverallLeaderboard', { gameCode: currentGame.gameCode });
         });
 
         // Grading modal functions
