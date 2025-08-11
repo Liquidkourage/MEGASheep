@@ -22,9 +22,9 @@
 .podium-player-name.silver { color: #c0c0c0; font-size: 2.0rem; }
 .podium-player-name.bronze { color: #cd7f32; font-size: 1.9rem; }
 /* Offset name heights to match podium blocks visually */
-.name-gold { transform: translateY(-76px); }
-.name-silver { transform: translateY(-6px); }
-.name-bronze { transform: translateY(24px); }
+.name-gold { transform: translateY(-57px); }
+.name-silver { transform: translateY(-5px); }
+.name-bronze { transform: translateY(18px); }
 
 .podium-block {
   width: 100%;
