@@ -2606,11 +2606,12 @@ function displayRoundResults() {
     
     // Display answers with Google Sheets scoring
     answersList.innerHTML = '';
-    // Nuke any inline styles from the waiting-state and remove max-height constraints
+    // Nuke any inline styles from the waiting-state and hard-apply size preferences
     try {
         answersList.removeAttribute('style');
-        answersList.style.removeProperty('max-height');
-        answersList.style.minHeight = '600px';
+        // Strongly enforce min/max on this div
+        answersList.style.setProperty('min-height', '0', 'important');
+        answersList.style.setProperty('max-height', '2000px', 'important');
     } catch (_) {}
     
     if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
