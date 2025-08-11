@@ -2616,13 +2616,10 @@ function displayRoundResults() {
     
     // Display answers with Google Sheets scoring
     answersList.innerHTML = '';
-    // Ensure answers area uses most of the viewport height and removes waiting centering styles
+    // Nuke any inline styles from the waiting-state and expand to viewport
     try {
-        answersList.style.display = 'block';
-        answersList.style.flexDirection = '';
-        answersList.style.alignItems = '';
-        answersList.style.justifyContent = '';
-        answersList.style.minHeight = 'calc(100vh - 240px)';
+        answersList.removeAttribute('style');
+        answersList.style.minHeight = 'calc(100vh - 220px)';
     } catch (_) {}
     
     if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
