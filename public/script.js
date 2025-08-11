@@ -4503,13 +4503,15 @@ function startVirtualPlayerSimulation(playerCount = 50) {
     // Ask the server to add virtual players to the real game
     socket.emit('startVirtualPlayerSimulation', { gameCode: gameState.gameCode, playerCount });
     // Also stream joins individually to ensure visible increments even if batch add is fast
-    const joinPerSecond = 2;
+    const joinPerSecond = 2; // visible join cadence
     const total = playerCount;
     let added = 0;
     const joinTimer = setInterval(() => {
         if (added >= total) return clearInterval(joinTimer);
         const idx = added % virtualPlayerNames.length;
-        const playerName = virtualPlayerNames[idx] + ' ' + (Math.floor(added/virtualPlayerNames.length)+1);
+        const full = virtualPlayerNames[idx];
+        const suffix = (Math.floor(added/virtualPlayerNames.length)+1);
+        const playerName = suffix > 1 ? `${full} ${suffix}` : full; // First Last [+ cohort]
         const playerId = `virtual_${Date.now()}_${added}`;
         socket.emit('virtualPlayerJoined', { gameCode: gameState.gameCode, playerId, playerName });
         added += 1;

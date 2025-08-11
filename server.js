@@ -377,9 +377,13 @@ class Game {
             return;
         }
         
+        const [firstName, ...rest] = String(playerName).split(' ');
+        const lastName = rest.join(' ') || 'Player';
         this.players.set(playerId, {
             id: playerId,
             name: playerName,
+            firstName,
+            lastName,
             score: 0,
             answers: [],
             isVirtual: true
@@ -983,6 +987,7 @@ class Game {
         this.answers.set(playerId, answer.trim());
         const player = this.players.get(playerId);
         if (player) {
+            player.answers.push({ answer: answer.trim(), at: Date.now() });
             console.log(`📝 Virtual player ${player.name} submitted answer: "${answer}"`);
         }
         return true;
