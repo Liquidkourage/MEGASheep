@@ -600,6 +600,12 @@ body {
     backdrop-filter: blur(5px);
 }
 
+.scores-modal .score-item.mine {
+    background: linear-gradient(135deg, rgba(139,163,208,0.2) 0%, rgba(0, 123, 255, 0.12) 100%);
+    border-color: rgba(139,163,208,0.45);
+    box-shadow: 0 0 0 2px rgba(139,163,208,0.18) inset;
+}
+
 .scores-modal .score-item:hover {
     background: rgba(255, 255, 255, 0.15);
     transform: translateX(5px);
@@ -1435,6 +1441,21 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* Highlight the player's own answer in the compact list */
+.compact-answer.mine {
+    background: linear-gradient(135deg, rgba(139,163,208,0.2), rgba(0,123,255,0.12));
+    border-color: rgba(139,163,208,0.45);
+    box-shadow: 0 0 0 2px rgba(139,163,208,0.18) inset;
+}
+
+/* Subtle correctness tint for compact items */
+.compact-answer.correct {
+    border-left: 3px solid rgba(46, 204, 113, 0.8);
+}
+.compact-answer.incorrect {
+    border-left: 3px solid rgba(231, 76, 60, 0.8);
 }
 
 .points-pill {

@@ -2447,7 +2447,7 @@ function displayQuestionResults() {
         answersList.innerHTML = `
             <div class="question-results-mobile">
                 ${createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints)}
-                ${createAllAnswersSection(gameState.currentAnswerGroups)}
+                ${createAllAnswersSection(gameState.currentAnswerGroups, playerAnswerGroup, playerAnswer)}
             </div>
         `;
     } else {
@@ -2460,7 +2460,7 @@ function displayQuestionResults() {
                 ${createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints)}
             </div>
             <div class="all-answers-section">
-                ${createAllAnswersSection(gameState.currentAnswerGroups)}
+                ${createAllAnswersSection(gameState.currentAnswerGroups, playerAnswerGroup, playerAnswer)}
             </div>
         `;
     }
@@ -2551,7 +2551,7 @@ function displayQuestionResults() {
 }
 
     // Helper function to create all answers section
-    function createAllAnswersSection(answerGroups) {
+    function createAllAnswersSection(answerGroups, playerAnswerGroup, playerAnswer) {
     if (!answerGroups || answerGroups.length === 0) {
         return '<div class="no-answers">No answers available</div>';
     }
@@ -2562,11 +2562,24 @@ function displayQuestionResults() {
     
     let html = '<div class="all-answers-container">';
     
+    const myNameLower = (sessionStorage.getItem('playerName') || '').toLowerCase();
+    const playerAnswerLower = (playerAnswer || '').toLowerCase();
+    const isGroupMine = (group) => {
+        const hasPlayerList = Array.isArray(group.players) && group.players.length > 0;
+        if (hasPlayerList) {
+            if (group.players.some(p => String(p).toLowerCase() === myNameLower)) return true;
+        }
+        if (playerAnswerLower && typeof group.answer === 'string') {
+            if (String(group.answer).toLowerCase() === playerAnswerLower) return true;
+        }
+        return false;
+    };
+
     // Correct answers section with ultra-compact layout (mobile-friendly)
     if (correctAnswers.length > 0) {
         const sortedCorrectAnswers = [...correctAnswers].sort((a, b) => b.points - a.points);
         html += `<div class="answer-category correct"><div class="category-header"><h4>🏆 Correct Answers</h4><span class="category-count">${correctAnswers.length}</span></div><div class="answer-category-content compact-grid">`;
-        sortedCorrectAnswers.forEach((group, index) => { html += createCompactResultItem(group, true, index + 1); });
+        sortedCorrectAnswers.forEach((group, index) => { const mine = isGroupMine(group); html += createCompactResultItem(group, true, index + 1, mine); });
         html += '</div></div>';
     }
     
@@ -2578,7 +2591,7 @@ function displayQuestionResults() {
             return countB - countA;
         });
         html += `<div class="answer-category incorrect"><div class="category-header"><h4>❌ Incorrect Answers</h4><span class="category-count">${incorrectAnswers.length}</span></div><div class="answer-category-content compact-grid">`;
-        sortedIncorrectAnswers.forEach((group, index) => { html += createCompactResultItem(group, false, index + 1); });
+        sortedIncorrectAnswers.forEach((group, index) => { const mine = isGroupMine(group); html += createCompactResultItem(group, false, index + 1, mine); });
         html += '</div></div>';
     }
     
@@ -2587,9 +2600,11 @@ function displayQuestionResults() {
 }
 
     // Ultra-compact item for mobile
-    function createCompactResultItem(group, isCorrect, rank = null) {
+    function createCompactResultItem(group, isCorrect, rank = null, isMine = false) {
         const pointsChip = isCorrect ? `<span class="points-pill">${group.points} pts</span>` : '';
-        return `<div class="compact-answer"><span class="rank">${rank ? '#'+rank : ''}</span><span class="text">${group.answer}</span>${pointsChip}</div>`;
+        const mineClass = isMine ? ' mine' : '';
+        const correctnessClass = isCorrect ? ' correct' : ' incorrect';
+        return `<div class="compact-answer${mineClass}${correctnessClass}"><span class="rank">${rank ? '#'+rank : ''}</span><span class="text">${group.answer}</span>${pointsChip}</div>`;
     }
 
 // Function to show answer details (for click interaction)
@@ -2637,9 +2652,8 @@ function displayRoundResults() {
         }
     } catch (_) {}
     
-    // Display answers with Google Sheets scoring
+    // Render answers using the same compact layout as Question Results
     answersList.innerHTML = '';
-    // Nuke any inline styles from the waiting-state and hard-apply size preferences
     try {
         answersList.removeAttribute('style');
         answersList.style.setProperty('min-height', '0', 'important');
@@ -2648,45 +2662,56 @@ function displayRoundResults() {
         answersList.style.setProperty('overflow', 'visible', 'important');
         answersList.style.setProperty('display', 'block', 'important');
     } catch (_) {}
-    
-    // Removed temporary player-only footer
 
-    if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
-        // Use server-provided answer groups with new scoring info
-        gameState.currentAnswerGroups.forEach(group => {
-            const answerItem = document.createElement('div');
-            answerItem.className = 'answer-item';
-            
-            // Determine if this is a wrong/uncategorized answer (0 points)
-            const isWrongOrUncategorized = group.points === 0;
-            const statusIcon = isWrongOrUncategorized ? '❌' : '✅';
-            const statusClass = isWrongOrUncategorized ? 'wrong-answer' : 'correct-answer';
-            
-            answerItem.innerHTML = `
-                <div class="answer-info ${statusClass}">
-                    <span class="answer-status">${statusIcon}</span>
-                    <span class="answer-text">"${group.answer}"</span>
-                    <span class="answer-formula">${group.totalResponses} ÷ ${group.count} = ${group.points} pts</span>
-                </div>
-                <div class="answer-stats">
-                    <span class="answer-count">${group.count} player${group.count > 1 ? 's' : ''}</span>
-                    <span class="answer-points">${group.points} points each</span>
-                </div>
-            `;
-            answersList.appendChild(answerItem);
-        });
+    const currentPlayerName = sessionStorage.getItem('playerName') || '';
+    const playerAnswer = window.lastSubmittedAnswer || localStorage.getItem('lastSubmittedAnswer') || '';
+    let playerAnswerGroup = null;
+    let playerPoints = 0;
+    let playerRank = 0;
+    const totalPlayers = Array.isArray(gameState.players) ? gameState.players.length : 0;
+    
+    if (Array.isArray(gameState.currentAnswerGroups) && gameState.currentAnswerGroups.length > 0) {
+        // Find player's group by name in group.players or fallback to answer match
+        const lowerName = (currentPlayerName || '').toLowerCase();
+        playerAnswerGroup = gameState.currentAnswerGroups.find(group => 
+            Array.isArray(group.players) && group.players.some(p => String(p).toLowerCase() === lowerName)
+        );
+        if (!playerAnswerGroup && playerAnswer) {
+            playerAnswerGroup = gameState.currentAnswerGroups.find(group => 
+                (group.answer || '').toLowerCase() === playerAnswer.toLowerCase()
+            );
+        }
+        if (playerAnswerGroup) {
+            playerPoints = playerAnswerGroup.points || 0;
+            const higherScoringGroups = gameState.currentAnswerGroups.filter(group => (group.points || 0) > (playerAnswerGroup.points || 0));
+            playerRank = higherScoringGroups.reduce((sum, group) => {
+                const cnt = (typeof group.count === 'number') ? group.count : (Array.isArray(group.players) ? group.players.length : 0);
+                return sum + cnt;
+            }, 0) + 1;
+        }
+    }
+
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+        answersList.style.display = 'block';
+        answersList.innerHTML = `
+            <div class="question-results-mobile">
+                ${createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints)}
+                ${createAllAnswersSection(gameState.currentAnswerGroups || [], playerAnswerGroup, playerAnswer)}
+            </div>
+        `;
     } else {
-        // Fallback to old method
-        const answerGroups = groupAnswers(gameState.answers || {});
-        answerGroups.forEach(group => {
-            const answerItem = document.createElement('div');
-            answerItem.className = 'answer-item';
-            answerItem.innerHTML = `
-                <span>${group.answer}</span>
-                <span class="answer-count">${group.count} player${group.count > 1 ? 's' : ''}</span>
-            `;
-            answersList.appendChild(answerItem);
-        });
+        answersList.style.display = 'grid';
+        answersList.style.gridTemplateColumns = '1fr 1fr';
+        answersList.style.gap = '20px';
+        answersList.innerHTML = `
+            <div class="personal-result-section">
+                ${createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints)}
+            </div>
+            <div class="all-answers-section">
+                ${createAllAnswersSection(gameState.currentAnswerGroups || [], playerAnswerGroup, playerAnswer)}
+            </div>
+        `;
     }
     
     // Display scores
@@ -2985,11 +3010,13 @@ function showScoresModal() {
     // Populate scores list
     scoresList.innerHTML = '';
     if (gameState.players) {
+        const myNameLower = (sessionStorage.getItem('playerName') || '').toLowerCase();
         gameState.players
             .sort((a, b) => (gameState.scores[b.id] || 0) - (gameState.scores[a.id] || 0))
             .forEach((player, index) => {
                 const scoreItem = document.createElement('div');
-                scoreItem.className = 'score-item';
+                const isMe = String(player.name || '').toLowerCase() === myNameLower;
+                scoreItem.className = 'score-item' + (isMe ? ' mine' : '');
                 
                 // Add rank indicator for top 3
                 let rankIcon = '';
