@@ -2538,7 +2538,7 @@ function displayQuestionResults() {
             
             <div class="personal-stats">
                 ${rankText ? `<div class="stat-item"><span class="stat-label">Rank:</span> <span class="stat-value">${rankText}</span></div>` : ''}
-                <div class="stat-item"><span class="stat-label">Points:</span> <span class="points-chip">${pointsNumber}</span></div>
+                <div class="stat-item points-inline"><span class="stat-label">Points:</span><span class="points-chip">${pointsNumber}</span></div>
                 <div class="stat-item"><span class="stat-label">Like-minded Sheep:</span> <span class="stat-value">${likeMindedSheep}</span></div>
             </div>
         </div>

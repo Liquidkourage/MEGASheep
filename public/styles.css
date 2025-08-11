@@ -1239,6 +1239,13 @@ body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Force points row to stay on a single line */
+.points-inline {
+    white-space: nowrap;
+    gap: 8px;
+}
+.points-inline .stat-label { margin-right: 6px; }
+
 .stat-item:last-child {
     border-bottom: none;
 }
