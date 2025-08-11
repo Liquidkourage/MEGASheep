@@ -2602,6 +2602,22 @@ function displayRoundResults() {
     
     const answersList = document.getElementById('answersList');
     const scoresList = document.getElementById('scoresList');
+    // Add a floating scores button if not already present
+    try {
+        if (!isHost) {
+            const container = document.getElementById('standardAnswersDisplay');
+            if (container && !document.getElementById('scoresFab')) {
+                const btn = document.createElement('button');
+                btn.id = 'scoresFab';
+                btn.className = 'scores-fab';
+                btn.type = 'button';
+                btn.title = 'View Current Scores';
+                btn.textContent = '📊';
+                btn.addEventListener('click', showScoresModal);
+                container.prepend(btn);
+            }
+        }
+    } catch (_) {}
     
     // Display answers with Google Sheets scoring
     answersList.innerHTML = '';
