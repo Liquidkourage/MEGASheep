@@ -2906,8 +2906,9 @@ function displayFinalResults() {
     if (overallTitle) overallTitle.textContent = 'Overall Leaderboard';
     if (overallSubtitle && overallCount) {
         try {
-            const totalQs = Array.isArray(gameState.questions) ? gameState.questions.length : (gameState.questionCount || 0);
-            overallCount.textContent = String(totalQs || 0);
+            // Use the number of questions actually asked: currentQuestion is 0-based index of last asked
+            const asked = (typeof gameState.currentQuestion === 'number') ? (gameState.currentQuestion + 1) : (gameState.questionsPerRound ? gameState.questionsPerRound : 0);
+            overallCount.textContent = String(asked || 0);
         } catch (_) { overallCount.textContent = '0'; }
     }
 

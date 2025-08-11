@@ -971,6 +971,14 @@ class Game {
     }
 
     continueToNextRound() {
+        const totalRounds = Math.ceil(this.questions.length / this.settings.questionsPerRound);
+        const currentRound = Math.ceil((this.currentQuestion + 1) / this.settings.questionsPerRound);
+        if (currentRound >= totalRounds) {
+            // Do not advance past final round
+            this.gameState = 'overallLeaderboard';
+            io.to(this.gameCode).emit('showOverallLeaderboard', this.getGameState());
+            return;
+        }
         if (this.currentQuestion >= this.questions.length) {
             this.gameState = 'finished';
             io.to(this.gameCode).emit('gameFinished', this.getGameState());

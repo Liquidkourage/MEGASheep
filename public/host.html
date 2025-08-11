@@ -1542,32 +1542,12 @@
         const showRoundLbBtn = document.getElementById('showRoundLbBtn');
         if (showRoundLbBtn) showRoundLbBtn.addEventListener('click', () => {
             if (!currentGame) return;
-            const showing = showRoundLbBtn.dataset.showing === '1';
-            if (!showing) {
-                socket.emit('showRoundLeaderboard', { gameCode: currentGame.gameCode });
-                showRoundLbBtn.textContent = '🙈 HIDE ROUND LEADERBOARD';
-                showRoundLbBtn.dataset.showing = '1';
-            } else {
-                // Return displays to normal play screen
-                socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
-                showRoundLbBtn.textContent = '📊 SHOW ROUND LEADERBOARD';
-                showRoundLbBtn.dataset.showing = '0';
-            }
+            socket.emit('showRoundLeaderboard', { gameCode: currentGame.gameCode });
         });
         const showOverallLbBtn = document.getElementById('showOverallLbBtn');
         if (showOverallLbBtn) showOverallLbBtn.addEventListener('click', () => {
             if (!currentGame) return;
-            const showing = showOverallLbBtn.dataset.showing === '1';
-            if (!showing) {
-                socket.emit('showOverallLeaderboard', { gameCode: currentGame.gameCode });
-                showOverallLbBtn.textContent = '🙈 HIDE OVERALL LEADERBOARD';
-                showOverallLbBtn.dataset.showing = '1';
-            } else {
-                // Hide overall leaderboard by resuming round screen
-                socket.emit('showRoundLeaderboard', { gameCode: currentGame.gameCode });
-                showOverallLbBtn.textContent = '🏆 SHOW OVERALL LEADERBOARD';
-                showOverallLbBtn.dataset.showing = '0';
-            }
+            socket.emit('showOverallLeaderboard', { gameCode: currentGame.gameCode });
         });
 
         // Grading modal functions

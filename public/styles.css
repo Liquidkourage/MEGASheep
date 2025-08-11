@@ -1902,6 +1902,14 @@ body {
     margin-bottom: 30px;
 }
 
+/* Fit overall leaderboard list better across widths */
+#finalScoresList.scores-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 8px;
+}
+#finalScoresList .score-item { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .winner-announcement {
     text-align: center;
     margin-bottom: 30px;
