@@ -2616,43 +2616,29 @@ function showAnswerDetails(answer, count, points, totalResponses) {
 }
 
 function displayRoundResults() {
-    // Update the scoring title to show "Round Results"
+    // Round summary (no per-question breakdown)
     const scoringTitle = document.getElementById('scoringTitle');
+    const roundHistory = Array.isArray(gameState.roundHistory) ? gameState.roundHistory : [];
+    const lastRound = roundHistory.length > 0 ? roundHistory[roundHistory.length - 1] : null;
     if (scoringTitle) {
-        scoringTitle.textContent = 'Round Results';
+        const roundNum = lastRound?.roundNumber || Math.ceil(((gameState.currentQuestion || 0) + 1) / (gameState.questionsPerRound || 5));
+        scoringTitle.textContent = `Round ${roundNum} Results`;
     }
-    
+
     const answersList = document.getElementById('answersList');
-    const scoresList = document.getElementById('scoresList');
-    // Ensure floating scores button works (players only)
+    // ensure FAB works for players
     try {
         const fab = document.getElementById('scoresFab');
-        if (fab) {
-            if (isHost) {
-                fab.style.display = 'none';
-            } else {
-                fab.style.display = 'inline-flex';
-                try { fab.removeEventListener('click', showScoresModal); } catch(_) {}
-                fab.addEventListener('click', showScoresModal);
-                fab.dataset.bound = '1';
-            }
-        } else if (!isHost) {
-            // Fallback: create if missing
-            const content = document.querySelector('#scoringScreen .screen-content');
-            if (content) {
-                const btn = document.createElement('button');
-                btn.id = 'scoresFab';
-                btn.className = 'scores-fab';
-                btn.type = 'button';
-                btn.title = 'View Current Scores';
-                btn.textContent = 'View Current Scores';
-                btn.addEventListener('click', showScoresModal);
-                content.appendChild(btn);
-            }
+        if (fab && !isHost) {
+            fab.style.display = 'inline-flex';
+            try { fab.removeEventListener('click', showScoresModal); } catch(_) {}
+            fab.addEventListener('click', showScoresModal);
+            fab.dataset.bound = '1';
+        } else if (fab && isHost) {
+            fab.style.display = 'none';
         }
-    } catch (_) {}
-    
-    // Render answers using the same compact layout as Question Results
+    } catch(_) {}
+
     answersList.innerHTML = '';
     try {
         answersList.removeAttribute('style');
@@ -2663,92 +2649,66 @@ function displayRoundResults() {
         answersList.style.setProperty('display', 'block', 'important');
     } catch (_) {}
 
-    const currentPlayerName = sessionStorage.getItem('playerName') || '';
-    const playerAnswer = window.lastSubmittedAnswer || localStorage.getItem('lastSubmittedAnswer') || '';
-    let playerAnswerGroup = null;
-    let playerPoints = 0;
-    let playerRank = 0;
+    const myName = (sessionStorage.getItem('playerName') || '').trim();
     const totalPlayers = Array.isArray(gameState.players) ? gameState.players.length : 0;
-    
-    if (Array.isArray(gameState.currentAnswerGroups) && gameState.currentAnswerGroups.length > 0) {
-        // Find player's group by name in group.players or fallback to answer match
-        const lowerName = (currentPlayerName || '').toLowerCase();
-        playerAnswerGroup = gameState.currentAnswerGroups.find(group => 
-            Array.isArray(group.players) && group.players.some(p => String(p).toLowerCase() === lowerName)
-        );
-        if (!playerAnswerGroup && playerAnswer) {
-            playerAnswerGroup = gameState.currentAnswerGroups.find(group => 
-                (group.answer || '').toLowerCase() === playerAnswer.toLowerCase()
-            );
-        }
-        if (playerAnswerGroup) {
-            playerPoints = playerAnswerGroup.points || 0;
-            const higherScoringGroups = gameState.currentAnswerGroups.filter(group => (group.points || 0) > (playerAnswerGroup.points || 0));
-            playerRank = higherScoringGroups.reduce((sum, group) => {
-                const cnt = (typeof group.count === 'number') ? group.count : (Array.isArray(group.players) ? group.players.length : 0);
-                return sum + cnt;
-            }, 0) + 1;
-        }
+
+    // Build round delta map
+    const roundScoresByName = new Map();
+    if (lastRound && Array.isArray(lastRound.players)) {
+        lastRound.players.forEach(p => roundScoresByName.set(String(p.name), Number(p.score || 0)));
     }
+
+    const playersAfter = Array.isArray(gameState.players) ? gameState.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        totalAfter: Number((gameState.scores && gameState.scores[p.id]) || 0),
+        roundDelta: Number(roundScoresByName.get(String(p.name)) || 0)
+    })) : [];
+
+    const playersBefore = playersAfter.map(p => ({ name: p.name, totalBefore: Math.max(0, p.totalAfter - p.roundDelta) }));
+    const rankAfterList = [...playersAfter].sort((a,b) => b.totalAfter - a.totalAfter).map((p, idx) => ({ name: p.name, id: p.id, rank: idx + 1, total: p.totalAfter }));
+    const rankBeforeList = [...playersBefore].sort((a,b) => b.totalBefore - a.totalBefore).map((p, idx) => ({ name: p.name, rank: idx + 1, total: p.totalBefore }));
+
+    const myAfter = rankAfterList.find(p => p.name.toLowerCase() === myName.toLowerCase());
+    const myBefore = rankBeforeList.find(p => p.name.toLowerCase() === myName.toLowerCase());
+    const myRoundDelta = Number(roundScoresByName.get(myName) || 0);
+    const myRankAfter = myAfter?.rank || 0;
+    const myRankBefore = myBefore?.rank || 0;
+    const rankChange = (myRankBefore && myRankAfter) ? (myRankBefore - myRankAfter) : 0; // positive = improved
+
+    const upDown = rankChange > 0 ? `⬆️ +${rankChange}` : (rankChange < 0 ? `⬇️ ${rankChange}` : '—');
+    const rankLine = (myRankAfter && totalPlayers) ? `You are now #${myRankAfter} of ${totalPlayers} (${upDown})` : '';
+    const totalAfterText = myAfter ? myAfter.total : 0;
+    const personalSummaryHtml = `
+        <div class="personal-result-card correct">
+            <div class="personal-result-header">
+                <h3>Round Summary</h3>
+            </div>
+            <div class="personal-stats">
+                <div class="stat-item points-inline"><span class="stat-label">Points this round:</span><span class="points-chip">${myRoundDelta}</span></div>
+                <div class="stat-item"><span class="stat-label">Total score:</span> <span class="stat-value">${totalAfterText}</span></div>
+                ${rankLine ? `<div class="stat-item"><span class="stat-label">Rank:</span> <span class="stat-value">${rankLine}</span></div>` : ''}
+            </div>
+        </div>`;
+
+    // Leaderboard top 5
+    const top = rankAfterList.slice(0, 5);
+    const leaderboardRows = top.map((p, index) => {
+        const medal = index === 0 ? '🥇 ' : index === 1 ? '🥈 ' : index === 2 ? '🥉 ' : '';
+        const mineClass = p.name.toLowerCase() === myName.toLowerCase() ? ' mine' : '';
+        return `<div class="score-item${mineClass}"><span class="player-name">${medal}${p.name}</span><span class="player-score">${p.total} points</span></div>`;
+    }).join('');
+    const leaderboardHtml = `<div class="scores-display"><h3>Leaderboard</h3><div class="scores-grid">${leaderboardRows}</div></div>`;
 
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {
         answersList.style.display = 'block';
-        answersList.innerHTML = `
-            <div class="question-results-mobile">
-                ${createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints)}
-                ${createAllAnswersSection(gameState.currentAnswerGroups || [], playerAnswerGroup, playerAnswer)}
-            </div>
-        `;
+        answersList.innerHTML = `<div class="question-results-mobile">${personalSummaryHtml}${leaderboardHtml}</div>`;
     } else {
         answersList.style.display = 'grid';
         answersList.style.gridTemplateColumns = '1fr 1fr';
         answersList.style.gap = '20px';
-        answersList.innerHTML = `
-            <div class="personal-result-section">
-                ${createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints)}
-            </div>
-            <div class="all-answers-section">
-                ${createAllAnswersSection(gameState.currentAnswerGroups || [], playerAnswerGroup, playerAnswer)}
-            </div>
-        `;
-    }
-    
-    // Display scores
-    scoresList.innerHTML = '';
-    if (gameState.players) {
-        gameState.players
-            .sort((a, b) => (gameState.scores[b.id] || 0) - (gameState.scores[a.id] || 0))
-            .forEach(player => {
-                const scoreItem = document.createElement('div');
-                scoreItem.className = 'score-item';
-                scoreItem.innerHTML = `
-                    <span>${player.name}</span>
-                    <span>${gameState.scores[player.id] || 0} points</span>
-                `;
-                scoresList.appendChild(scoreItem);
-            });
-    }
-    
-
-    
-    // Show/hide buttons for host (only show after grading is complete)
-    const nextQuestionBtn = document.getElementById('nextQuestionBtn');
-    const endGameBtn = document.getElementById('endGameBtn');
-    
-    if (isHost && gameState.gameState === 'scoring') {
-        // Only show buttons after grading is complete
-        if (currentQuestionIndex < questions.length - 1) {
-            nextQuestionBtn.style.display = 'inline-block';
-            endGameBtn.style.display = 'none';
-        } else {
-            nextQuestionBtn.style.display = 'none';
-            endGameBtn.style.display = 'inline-block';
-        }
-    } else {
-        // Hide buttons during grading or for players
-        nextQuestionBtn.style.display = 'none';
-        endGameBtn.style.display = 'none';
+        answersList.innerHTML = `<div class="personal-result-section">${personalSummaryHtml}</div><div class="all-answers-section">${leaderboardHtml}</div>`;
     }
 }
 
