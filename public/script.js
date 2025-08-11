@@ -2618,13 +2618,20 @@ function displayRoundResults() {
     // Add a temp footer to validate sticky behavior (player interface only)
     try {
         if (!isHost) {
-            const existing = document.getElementById('playerResultsFixedFooter');
-            if (!existing) {
-                const el = document.createElement('div');
-                el.id = 'playerResultsFixedFooter';
-                el.className = 'player-results-fixed-footer';
-                el.textContent = 'THIS IS A FOOTER';
-                document.body.appendChild(el);
+            // Prefer using inline footer container if present
+            const inlineFooter = document.getElementById('playerOnlyFooter');
+            if (inlineFooter) {
+                inlineFooter.style.display = 'block';
+                inlineFooter.textContent = 'THIS IS A FOOTER';
+            } else {
+                const existing = document.getElementById('playerResultsFixedFooter');
+                if (!existing) {
+                    const el = document.createElement('div');
+                    el.id = 'playerResultsFixedFooter';
+                    el.className = 'player-results-fixed-footer';
+                    el.textContent = 'THIS IS A FOOTER';
+                    document.body.appendChild(el);
+                }
             }
         }
     } catch (_) {}

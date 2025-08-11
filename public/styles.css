@@ -29,6 +29,17 @@
     z-index: 10001;
 }
 
+/* Inline HTML fallback footer element */
+.player-only-footer {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+  text-align: center;
+  color: #fff;
+  background: rgba(0,0,0,0.85);
+  z-index: 10002;
+}
+
 /* Ensure content above doesn't get hidden behind fixed footer */
 #scoringScreen .screen-content { padding-bottom: 90px; position: relative; min-height: 100vh; }
 /* Reset and base styles */
