@@ -389,12 +389,19 @@
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: minmax(180px, auto) 1fr auto; /* answer | players | points */
+            align-items: center;
+            column-gap: 12px;
         }
 
         .answer-text {
             font-weight: bold;
             color: #ffffff;
-            margin-bottom: 5px;
+            margin: 0; /* avoid pushing content down */
+            white-space: normal; /* allow natural wrapping */
+            word-break: keep-all; /* avoid breaking every char */
+            overflow-wrap: break-word; /* wrap on long tokens */
         }
 
         .answer-players {
@@ -406,7 +413,8 @@
             color: #28a745;
             font-weight: bold;
             font-size: 14px;
-            margin-top: 5px;
+            margin: 0;
+            justify-self: end; /* keep at right */
         }
 
         /* History modal layout fixes: keep answer text horizontal and allow natural wrapping */
