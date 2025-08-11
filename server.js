@@ -653,6 +653,7 @@ class Game {
           const correctAnswerName = groupKey.replace('correct_', '').replace(/[_-]/g, ' ');
           
           this.currentAnswerGroups.push({
+            bucketId: groupKey,
             answer: correctAnswerName, // Use the correct answer name, not individual variations
             count: X,
             points: Z,
@@ -680,6 +681,7 @@ class Game {
         }
         
         this.currentAnswerGroups.push({
+          bucketId: groupKey,
           answer: groupKey.replace(/[_-]/g, ' '), // Convert hyphens and underscores to spaces for display
           count: X,
           points: Z, // Use calculated points (0 for wrong, correct points for valid buckets)
