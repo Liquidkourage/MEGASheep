@@ -963,7 +963,6 @@
             });
             
             socket.on('gameCreated', (gameStateData) => {
-                console.log('🎮 Display: Game created', gameStateData);
                 if (gameStateData) {
                     updateDisplayFromGameState(gameStateData);
                 } else {
@@ -972,64 +971,41 @@
             });
             
             socket.on('gameStarted', (gameStateData) => {
-                console.log('Display: Game started');
                 updateDisplayFromGameState(gameStateData);
             });
             
             socket.on('nextQuestion', (gameStateData) => {
-                console.log('Display: Next question');
                 updateDisplayFromGameState(gameStateData);
             });
             
             socket.on('roundComplete', (gameStateData) => {
-                console.log('Display: Round complete event received');
-                console.log('Display: Game state data:', gameStateData);
-                console.log('Display: Game state:', gameStateData.gameState);
                 updateDisplayFromGameState(gameStateData);
             });
             
             socket.on('gradingComplete', (gameStateData) => {
-                console.log('Display: Grading complete');
                 updateDisplayFromGameState(gameStateData);
             });
 
             // Always stay attached to current game; never revert to pairing unless explicitly told
             socket.on('gameFinished', (gameStateData) => {
-                console.log('Display: Game finished event received');
                 updateDisplayFromGameState(gameStateData);
             });
             
             socket.on('gameFinished', (gameStateData) => {
-                console.log('Display: Game finished event received');
-                console.log('Display: gameStateData:', gameStateData);
-                console.log('Display: gameStateData.gameState:', gameStateData?.gameState);
-                console.log('Display: gameStateData.players:', gameStateData?.players);
-                
-                try {
-                    updateDisplayFromGameState(gameStateData);
-                    console.log('Display: updateDisplayFromGameState completed successfully');
-                } catch (error) {
-                    console.error('Display: Error in updateDisplayFromGameState:', error);
-                }
+                try { updateDisplayFromGameState(gameStateData); } catch (_) {}
             });
             
             socket.on('showOverallLeaderboard', (gameStateData) => {
-                console.log('Display: Showing overall leaderboard');
                 showOverallLeaderboardScreen(gameStateData);
             });
             
             socket.on('timerUpdate', (data) => {
-                console.log('Display: Timer update', data.timeLeft);
                 if (gameState && gameState.gameState === 'playing') {
                     updateDisplayTimer(data.timeLeft);
                 }
             });
             
             socket.on('playerJoined', (gameStateData) => {
-                console.log('Display: Player joined');
-                console.log('Display: Received gameStateData:', gameStateData);
-                console.log('Display: Players count:', gameStateData.players?.length || 0);
-                console.log('Display: Latest players:', gameStateData.players?.slice(-3)?.map(p => p.name) || []);
                 updatePlayersOnly(gameStateData);
             });
             
