@@ -2528,7 +2528,7 @@ function displayQuestionResults() {
         uniquenessText = `${groupCount} players had this answer`;
     }
     
-    const youBadge = currentPlayerName ? `<span class="you-badge">YOU</span>` : '';
+    const youBadge = '';
     return `
         <div class="personal-result-card ${statusClass}">
             <div class="personal-result-header">
@@ -2600,10 +2600,9 @@ function displayQuestionResults() {
 
     // Ultra-compact item for mobile
     function createCompactResultItem(group, isCorrect, rank = null) {
-        const statusIcon = isCorrect ? '🏆' : '💭';
         const computedCount = (typeof group.count === 'number') ? group.count : (Array.isArray(group.players) ? group.players.length : 0);
-        const formula = `${group.totalResponses} ÷ ${computedCount} = ${group.points}`;
-        return `<div class="compact-answer"><span class="rank">${rank ? '#'+rank : ''}</span><span class="icon">${statusIcon}</span><span class="text">${group.answer}</span><span class="meta">${formula}</span></div>`;
+        const meta = `${computedCount} player${computedCount === 1 ? '' : 's'} • ${group.points} pts`;
+        return `<div class="compact-answer"><span class="rank">${rank ? '#'+rank : ''}</span><span class="text">${group.answer}</span><span class="meta">${meta}</span></div>`;
     }
 
 // Function to show answer details (for click interaction)

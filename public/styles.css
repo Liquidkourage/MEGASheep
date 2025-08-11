@@ -1115,6 +1115,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    max-height: 100vh;
+    overflow-y: auto;
 }
 
 .personal-result-card {
@@ -1412,16 +1414,7 @@ body {
 .answer-category .answer-item .answer-formula { color: #cfd8dc; }
 
 /* Badges and helper labels */
-.you-badge {
-    display: inline-block;
-    margin-left: 6px;
-    padding: 2px 8px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #0b1020;
-    background: #8ba3d0;
-    border-radius: 999px;
-}
+/* removed YOU badge styling */
 
 .answer-details {
     display: flex;
