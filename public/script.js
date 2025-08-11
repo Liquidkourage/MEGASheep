@@ -2612,8 +2612,23 @@ function displayRoundResults() {
         // Strongly enforce min/max on this div
         answersList.style.setProperty('min-height', '0', 'important');
         answersList.style.setProperty('max-height', '2000px', 'important');
+        answersList.style.setProperty('display', 'block', 'important');
     } catch (_) {}
     
+    // Add a temp footer to validate sticky behavior (player interface only)
+    try {
+        if (!isHost) {
+            const existing = document.getElementById('playerResultsFixedFooter');
+            if (!existing) {
+                const el = document.createElement('div');
+                el.id = 'playerResultsFixedFooter';
+                el.className = 'player-results-fixed-footer';
+                el.textContent = 'THIS IS A FOOTER';
+                document.body.appendChild(el);
+            }
+        }
+    } catch (_) {}
+
     if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
         // Use server-provided answer groups with new scoring info
         gameState.currentAnswerGroups.forEach(group => {

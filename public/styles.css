@@ -18,6 +18,17 @@
     box-sizing: border-box;
 }
 
+/* DEMO sticky footer for verification on results screen */
+.player-results-fixed-footer {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+    text-align: center;
+    color: #fff;
+    background: rgba(0,0,0,0.7);
+    z-index: 10001;
+}
+
 /* Ensure content above doesn't get hidden behind fixed footer */
 #scoringScreen .screen-content { padding-bottom: 90px; position: relative; min-height: 100vh; }
 /* Reset and base styles */
@@ -1249,13 +1260,13 @@ body {
 
 /* Force points row to stay on a single line */
 .points-inline {
-    display: inline-flex !important;
+    display: flex !important;
     align-items: center !important;
-    justify-content: flex-start !important;
+    justify-content: space-between !important; /* chip to the right */
     white-space: nowrap !important;
     gap: 8px;
     flex-wrap: nowrap !important;
-    width: auto !important;
+    width: 100% !important;
 }
 .points-inline .stat-label, .points-inline .points-chip { display: inline-block; }
 @media (max-width: 768px) {
