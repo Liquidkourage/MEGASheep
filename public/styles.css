@@ -1392,6 +1392,7 @@ body {
     font-weight: bold;
     color: #ffffff;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    white-space: nowrap;
 }
 
 .category-count {
@@ -1440,7 +1441,7 @@ body {
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal; /* allow wrap on mobile lists */
 }
 
 /* Highlight the player's own answer in the compact list */
@@ -1728,12 +1729,24 @@ body {
     justify-content: space-between;
     align-items: center;
     width: 100%;
+    gap: 10px;
 }
 
 .answer-text {
     font-size: 1.1rem;
     font-weight: 600;
     color: #ffffff;
+}
+
+/* Ensure answer text does not collapse to per-character wrapping in results lists */
+.answers-grid .answer-info .answer-text,
+#scoringScreen .answer-info .answer-text,
+.scores-display .answer-info .answer-text {
+    flex: 1 1 auto;
+    min-width: 0; /* allow flexbox to distribute remaining space */
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    word-break: normal;
 }
 
 .answer-formula {
