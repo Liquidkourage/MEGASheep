@@ -1058,6 +1058,31 @@
                 try { closeGradingSingleModal(); } catch (_) {}
                 showScoringPanel(data);
                 try { updatePlayerList(); } catch (_) {}
+
+                // Capture finalized per-question snapshot for History (read-only)
+                try {
+                    window._questionHistory = window._questionHistory || [];
+                    const qIndex = Number(currentGame?.currentQuestion ?? data?.currentQuestion ?? 0);
+                    const roundNum = Math.ceil(((qIndex) + 1) / (currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5));
+                    const groups = Array.isArray(currentGame?.currentAnswerGroups) ? JSON.parse(JSON.stringify(currentGame.currentAnswerGroups)) : [];
+                    window._questionHistory.push({ questionIndex: qIndex, roundNumber: roundNum, timestamp: Date.now(), answerGroups: groups });
+                } catch (_) {}
+            });
+
+            // Track per-round summary into client memory for History
+            socket.on('roundComplete', (data) => {
+                try {
+                    currentGame = data;
+                    window._roundHistoryClient = window._roundHistoryClient || [];
+                    const last = Array.isArray(currentGame?.roundHistory) && currentGame.roundHistory.length > 0
+                        ? currentGame.roundHistory[currentGame.roundHistory.length - 1]
+                        : null;
+                    window._roundHistoryClient.push({
+                        roundNumber: last?.roundNumber || Math.ceil((currentGame?.currentQuestion || 0) / (currentGame?.questionsPerRound || 5)),
+                        timestamp: Date.now(),
+                        serverRoundData: last || null
+                    });
+                } catch (_) {}
             });
 
             // Q&A Inbox data and rendering
