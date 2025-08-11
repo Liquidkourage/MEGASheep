@@ -3565,7 +3565,7 @@ body {
 
 /* Removed conflicting general rule - now handled by specific round leaderboard rules */
 
-.answer-text {
+.round-leaderboard-container .answer-text {
     font-weight: 500;
     margin-bottom: 1px;
     line-height: 1.1;
@@ -3580,7 +3580,7 @@ body {
     top: 0;
 }
 
-.answer-points {
+.round-leaderboard-container .answer-points {
     font-size: 0.8rem;
     color: #9bb0d6;
     font-weight: bold;

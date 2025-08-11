@@ -412,9 +412,9 @@
         /* History modal layout fixes: keep answer text horizontal and allow natural wrapping */
         #historyModal .scoring-content { display: block; }
         #historyModal .answer-group {
-            display: flex;
+            display: grid;
+            grid-template-columns: 1fr auto; /* text grows, points auto */
             align-items: center;
-            justify-content: space-between;
             gap: 12px;
             background: rgba(255,255,255,0.06);
             border: 1px solid rgba(255,255,255,0.12);
@@ -423,15 +423,14 @@
             margin-bottom: 10px;
         }
         #historyModal .answer-text {
-            flex: 1 1 auto;
             white-space: normal !important;
-            word-break: normal !important;
-            overflow-wrap: break-word;
+            word-break: break-word !important;
+            overflow-wrap: anywhere;
             line-height: 1.25;
             margin: 0;
         }
         #historyModal .answer-points {
-            flex: 0 0 auto;
+            justify-self: end;
             white-space: nowrap;
             background: rgba(40,167,69,0.15);
             padding: 4px 10px;
