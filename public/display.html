@@ -2127,7 +2127,8 @@
         }
 
         function showOverallLeaderboardScreen(gameStateData) {
-            updateDisplayFromGameState(gameStateData);
+            // Accept provided state directly to avoid feedback loop
+            if (gameStateData) { gameState = gameStateData; }
             
             const roundHistory = gameState.roundHistory || [];
             const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
