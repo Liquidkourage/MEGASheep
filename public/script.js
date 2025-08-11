@@ -220,50 +220,50 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof screens !== 'undefined' && screens.joinGame) {
         const resumed = attemptAutoResume();
         if (!resumed) {
-            // If a game code is present in the URL, prefill and lock the code field
-            try {
-                const params = new URLSearchParams(window.location.search);
-                const codeParam = params.get('game') || params.get('code') || params.get('gameCode');
-                showScreen('joinGame');
-                const gameCodeInput = document.getElementById('gameCode');
-                if (codeParam && /^\d{4}$/.test(codeParam)) {
-                    if (gameCodeInput) {
-                        gameCodeInput.value = codeParam;
-                        gameCodeInput.readOnly = true;
-                        gameCodeInput.setAttribute('aria-readonly', 'true');
-                        gameCodeInput.style.opacity = '0.7';
-                        gameCodeInput.style.pointerEvents = 'none';
-                        gameCodeInput.title = 'Game code provided by link';
-                    }
-                    const playerNameInput = document.getElementById('playerName');
-                    if (playerNameInput) playerNameInput.focus();
-                }
-            } catch (_) {
-                showScreen('joinGame');
-            }
-            
-            // Auto-focus game code input when join game screen is shown
-            setTimeout(() => {
-                const gameCodeInput = document.getElementById('gameCode');
+        // If a game code is present in the URL, prefill and lock the code field
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const codeParam = params.get('game') || params.get('code') || params.get('gameCode');
+            showScreen('joinGame');
+            const gameCodeInput = document.getElementById('gameCode');
+            if (codeParam && /^\d{4}$/.test(codeParam)) {
                 if (gameCodeInput) {
-                    gameCodeInput.focus();
-                    
-                    // Auto-format game code input (numbers only, uppercase)
-                    gameCodeInput.addEventListener('input', (e) => {
-                        e.target.value = e.target.value.replace(/[^0-9]/g, '').toUpperCase();
-                    });
-                    
-                    // Auto-advance to name field when 4 digits entered
-                    gameCodeInput.addEventListener('input', (e) => {
-                        if (e.target.value.length === 4) {
-                            const playerNameInput = document.getElementById('playerName');
-                            if (playerNameInput) {
-                                playerNameInput.focus();
-                            }
-                        }
-                    });
+                    gameCodeInput.value = codeParam;
+                    gameCodeInput.readOnly = true;
+                    gameCodeInput.setAttribute('aria-readonly', 'true');
+                    gameCodeInput.style.opacity = '0.7';
+                    gameCodeInput.style.pointerEvents = 'none';
+                    gameCodeInput.title = 'Game code provided by link';
                 }
-            }, 100);
+                const playerNameInput = document.getElementById('playerName');
+                if (playerNameInput) playerNameInput.focus();
+            }
+        } catch (_) {
+            showScreen('joinGame');
+        }
+        
+        // Auto-focus game code input when join game screen is shown
+        setTimeout(() => {
+            const gameCodeInput = document.getElementById('gameCode');
+            if (gameCodeInput) {
+                gameCodeInput.focus();
+                
+                // Auto-format game code input (numbers only, uppercase)
+                gameCodeInput.addEventListener('input', (e) => {
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '').toUpperCase();
+                });
+                
+                // Auto-advance to name field when 4 digits entered
+                gameCodeInput.addEventListener('input', (e) => {
+                    if (e.target.value.length === 4) {
+                        const playerNameInput = document.getElementById('playerName');
+                        if (playerNameInput) {
+                            playerNameInput.focus();
+                        }
+                    }
+                });
+            }
+        }, 100);
         }
     }
     
@@ -1941,8 +1941,8 @@ function handleGameJoined(data) {
     // Route player to appropriate screen based on server state
     const phase = gameState.gameState;
     if (phase === 'waiting') {
-        showScreen('lobby');
-        updateLobbyDisplay();
+    showScreen('lobby');
+    updateLobbyDisplay();
         return;
     }
     if (phase === 'playing') {
@@ -2564,7 +2564,7 @@ function displayQuestionResults() {
                 (group.answer || '').toLowerCase() === playerAnswer.toLowerCase()
             );
         }
-
+        
         // Calculate player's ranking for this question
         if (playerAnswerGroup) {
             playerPoints = playerAnswerGroup.points || 0;
@@ -2640,6 +2640,13 @@ function displayQuestionResults() {
         if (currentQuestionIndex < questions.length - 1) {
             nextQuestionBtn.style.display = 'inline-block';
             endGameBtn.style.display = 'none';
+            // Rename Next Question -> End Round on every 5th question
+            try {
+                const questionsPerRound = gameState.questionsPerRound || 5;
+                const questionNumber = currentQuestionIndex + 1;
+                const isEndOfRound = (questionNumber % questionsPerRound === 0);
+                nextQuestionBtn.textContent = isEndOfRound ? 'End Round' : 'Next Question';
+            } catch (_) {}
         } else {
             nextQuestionBtn.style.display = 'none';
             endGameBtn.style.display = 'inline-block';
@@ -2651,8 +2658,8 @@ function displayQuestionResults() {
     }
 }
 
-    // Helper function to create personal result section
-    function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints) {
+// Helper function to create personal result section
+function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints) {
     const sanitize = (s) => String(s || '').replace(/[&<>"']/g, (c)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
     const displayAnswerRaw = playerAnswer && playerAnswer.trim() !== '' ? playerAnswer : 'No Answer Submitted';
     const displayAnswer = sanitize(displayAnswerRaw);
@@ -2700,7 +2707,7 @@ function displayQuestionResults() {
     `;
 }
 
-    // Helper function to create all answers section
+// Helper function to create all answers section
     function createAllAnswersSection(answerGroups, playerAnswerGroup, playerAnswer) {
     if (!answerGroups || answerGroups.length === 0) {
         return '<div class="no-answers">No answers available</div>';
@@ -2755,7 +2762,7 @@ function displayQuestionResults() {
         const mineClass = isMine ? ' mine' : '';
         const correctnessClass = isCorrect ? ' correct' : ' incorrect';
         return `<div class="compact-answer${mineClass}${correctnessClass}"><span class="rank">${rank ? '#'+rank : ''}</span><span class="text">${group.answer}</span>${pointsChip}</div>`;
-    }
+}
 
 // Function to show answer details (for click interaction)
 function showAnswerDetails(answer, count, points, totalResponses) {
@@ -2774,7 +2781,7 @@ function displayRoundResults() {
         const roundNum = lastRound?.roundNumber || Math.ceil(((gameState.currentQuestion || 0) + 1) / (gameState.questionsPerRound || 5));
         scoringTitle.textContent = `Round ${roundNum} Results`;
     }
-
+    
     const answersList = document.getElementById('answersList');
     // ensure FAB works for players
     try {
@@ -2854,7 +2861,7 @@ function displayRoundResults() {
     if (isMobile) {
         answersList.style.display = 'block';
         answersList.innerHTML = `<div class="question-results-mobile">${personalSummaryHtml}${leaderboardHtml}</div>`;
-    } else {
+        } else {
         answersList.style.display = 'grid';
         answersList.style.gridTemplateColumns = '1fr 1fr';
         answersList.style.gap = '20px';
