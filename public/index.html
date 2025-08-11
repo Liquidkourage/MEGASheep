@@ -11,18 +11,7 @@
     <div class="container">
         <!-- Welcome Screen removed: root should only show Join Game for players -->
 
-        <!-- Create Game Screen -->
-        <div id="createGameScreen" class="screen">
-            <div class="screen-content">
-                <h2>Create New Game</h2>
-                <div class="form-group">
-                    <label for="hostName">Your Name:</label>
-                    <input type="text" id="hostName" placeholder="Enter your name" required>
-                </div>
-                <button id="createGameSubmitBtn" class="btn btn-primary">Create Game</button>
-                <button id="backToWelcomeBtn" class="btn btn-secondary">Back</button>
-            </div>
-        </div>
+        <!-- Create Game Screen removed from root; hosting at /host -->
 
         <!-- Join Game Screen (default active) -->
         <div id="joinGameScreen" class="screen active">
@@ -57,10 +46,7 @@
                                 <span class="status-indicator active">●</span>
                                 <span class="status-text">Game Active</span>
                             </div>
-                            <div class="host-actions">
-                                <button onclick="openGradingModal()" class="btn btn-primary">📝 Grading Interface</button>
-                                <a href="/grading" class="btn btn-success">👥 Multi-User Grading</a>
-                            </div>
+                            <div class="host-actions" style="display:none;"></div>
                         </div>
                         
                         <!-- Game Statistics -->

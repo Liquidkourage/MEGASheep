@@ -203,7 +203,8 @@ let dragSource = null;
 // DOM elements
 const screens = {
     welcome: document.getElementById('welcomeScreen'),
-    createGame: document.getElementById('createGameScreen'),
+    // Hard-disable createGame screen from root route; host uses /host
+    createGame: null,
     joinGame: document.getElementById('joinGameScreen'),
     lobby: document.getElementById('lobbyScreen'),
     game: document.getElementById('gameScreen'),
@@ -224,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const params = new URLSearchParams(window.location.search);
             const codeParam = params.get('game') || params.get('code') || params.get('gameCode');
-            showScreen('joinGame');
+                showScreen('joinGame');
             const gameCodeInput = document.getElementById('gameCode');
             if (codeParam && /^\d{4}$/.test(codeParam)) {
                 if (gameCodeInput) {
@@ -239,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (playerNameInput) playerNameInput.focus();
             }
         } catch (_) {
-            showScreen('joinGame');
+                showScreen('joinGame');
         }
         
         // Auto-focus game code input when join game screen is shown
@@ -401,8 +402,12 @@ function setupEventListeners() {
     if (joinGameSubmitBtn) joinGameSubmitBtn.addEventListener('click', joinGame);
     
     // Create game screen
+    // On root, prevent creating games; host uses /host
     const createGameSubmitBtn = document.getElementById('createGameSubmitBtn');
-    if (createGameSubmitBtn) createGameSubmitBtn.addEventListener('click', createGame);
+    if (createGameSubmitBtn) {
+        createGameSubmitBtn.disabled = true;
+        createGameSubmitBtn.style.display = 'none';
+    }
     
     const backToJoinBtn = document.getElementById('backToJoinBtn');
     if (backToJoinBtn) backToJoinBtn.addEventListener('click', () => showScreen('joinGame'));
