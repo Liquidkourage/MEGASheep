@@ -1111,6 +1111,15 @@
                 try {
                     currentGame = data;
                     gameState = 'roundComplete';
+                    // Force label to START NEXT ROUND here as well
+                    try {
+                        const startBtn = document.getElementById('startGameBtn');
+                        if (startBtn) {
+                            startBtn.textContent = 'START NEXT ROUND';
+                            startBtn.className = 'control-btn success';
+                            startBtn.disabled = false;
+                        }
+                    } catch(_) {}
                     window._roundHistoryClient = window._roundHistoryClient || [];
                     const last = Array.isArray(currentGame?.roundHistory) && currentGame.roundHistory.length > 0
                         ? currentGame.roundHistory[currentGame.roundHistory.length - 1]
@@ -1337,18 +1346,23 @@
                 startBtn.className = 'control-btn secondary';
                 startBtn.disabled = true;
                 if (endBtnMain) endBtnMain.disabled = false;
-            } else if (gameState === 'scoring' || gameState === 'roundComplete') {
-                // On end-of-round boundary, label should read END ROUND
+            } else if (gameState === 'scoring') {
+                // While scoring, show END ROUND on boundary, otherwise NEXT QUESTION
                 try {
                     const qpr = Number(currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5);
-                    // If we are in scoring: currentQuestion points to the just-finished question index
                     const currentIdx = Number(currentGame?.currentQuestion || 0);
-                    const questionNumber = currentIdx + 1; // 1-based
+                    const questionNumber = currentIdx + 1;
                     const isEndOfRound = (questionNumber % qpr === 0);
                     startBtn.textContent = isEndOfRound ? 'END ROUND' : 'NEXT QUESTION';
                 } catch (_) {
                     startBtn.textContent = 'NEXT QUESTION';
                 }
+                startBtn.className = 'control-btn success';
+                startBtn.disabled = false;
+                if (endBtnMain) endBtnMain.disabled = false;
+            } else if (gameState === 'roundComplete') {
+                // At round-complete, always show START NEXT ROUND
+                startBtn.textContent = 'START NEXT ROUND';
                 startBtn.className = 'control-btn success';
                 startBtn.disabled = false;
                 if (endBtnMain) endBtnMain.disabled = false;
