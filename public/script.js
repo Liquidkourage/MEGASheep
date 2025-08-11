@@ -203,8 +203,7 @@ let dragSource = null;
 // DOM elements
 const screens = {
     welcome: document.getElementById('welcomeScreen'),
-    // Hard-disable createGame screen from root route; host uses /host
-    createGame: null,
+    createGame: document.getElementById('createGameScreen'),
     joinGame: document.getElementById('joinGameScreen'),
     lobby: document.getElementById('lobbyScreen'),
     game: document.getElementById('gameScreen'),
@@ -225,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const params = new URLSearchParams(window.location.search);
             const codeParam = params.get('game') || params.get('code') || params.get('gameCode');
-                showScreen('joinGame');
+            showScreen('joinGame');
             const gameCodeInput = document.getElementById('gameCode');
             if (codeParam && /^\d{4}$/.test(codeParam)) {
                 if (gameCodeInput) {
@@ -240,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (playerNameInput) playerNameInput.focus();
             }
         } catch (_) {
-                showScreen('joinGame');
+            showScreen('joinGame');
         }
         
         // Auto-focus game code input when join game screen is shown
@@ -402,12 +401,8 @@ function setupEventListeners() {
     if (joinGameSubmitBtn) joinGameSubmitBtn.addEventListener('click', joinGame);
     
     // Create game screen
-    // On root, prevent creating games; host uses /host
     const createGameSubmitBtn = document.getElementById('createGameSubmitBtn');
-    if (createGameSubmitBtn) {
-        createGameSubmitBtn.disabled = true;
-        createGameSubmitBtn.style.display = 'none';
-    }
+    if (createGameSubmitBtn) createGameSubmitBtn.addEventListener('click', createGame);
     
     const backToJoinBtn = document.getElementById('backToJoinBtn');
     if (backToJoinBtn) backToJoinBtn.addEventListener('click', () => showScreen('joinGame'));
@@ -2860,10 +2855,10 @@ function displayRoundResults() {
         const rank = index + 1;
         const mineClass = p.name.toLowerCase() === myName.toLowerCase() ? ' mine' : '';
         return `
-            <div class="score-row${mineClass}">
+            <div class="score-item single-line${mineClass}">
                 <span class="rank-badge">#${rank}</span>
-                <span class="leader-name">${p.name}</span>
-                <span class="score-chip">${p.total}</span>
+                <span class="player-name center-name">${p.name}</span>
+                <span class="score-chip">${p.total} pts</span>
             </div>
         `;
     }).join('');
