@@ -1500,8 +1500,22 @@
 
         document.getElementById('startGameBtn').addEventListener('click', () => {
             if (!currentGame) return;
-            // Always advance to next question
-            socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
+            if (gameState === 'waiting') {
+                // Properly start the game from lobby
+                socket.emit('startGame', { gameCode: currentGame.gameCode });
+            } else if (gameState === 'scoring') {
+                // Between questions
+                socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
+            } else if (gameState === 'roundComplete') {
+                // End of round → begin next round
+                socket.emit('continueToNextRound', { gameCode: currentGame.gameCode });
+            } else if (gameState === 'playing') {
+                // Already in a question; ignore to avoid server error
+                console.log('Start button clicked during playing; ignoring to prevent premature nextQuestion');
+            } else {
+                // Fallback: try nextQuestion
+                socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
+            }
         });
 
         document.getElementById('endGameMainBtn').addEventListener('click', () => {
