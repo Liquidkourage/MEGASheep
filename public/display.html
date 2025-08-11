@@ -1108,6 +1108,10 @@
                     console.log('📺 Showing round complete screen');
                     showRoundCompleteScreen();
                     break;
+                case 'overallLeaderboard':
+                    console.log('📺 Showing overall leaderboard screen (podium)');
+                    showOverallLeaderboardScreen(gameState);
+                    break;
                 case 'leaderboard':
                     console.log('📺 Showing leaderboard screen');
                     showLeaderboardScreen();
@@ -2146,8 +2150,10 @@
                     
                     <div class="round-leaderboard-content" id="roundLeaderboardContent">
                         ${podiumHtml}
-                        <div class="podium-message">🐑 Thank you for playing! Congratulations to our top performers — true leaders of the flock.</div>
-                        ${generateOverallLeaderboardDisplay(sortedPlayers.slice(3), roundHistory)}
+                        <div class="podium-message">🐑 Thank you for playing! Congratulations to our top performers — the bellwethers of the flock.</div>
+                        <div class="auto-scroll-content">
+                            ${generateOverallLeaderboardDisplay(sortedPlayers.slice(3), roundHistory, 3)}
+                        </div>
                     </div>
                 </div>
             `;
@@ -2161,14 +2167,23 @@
             const [first, second, third] = [sortedPlayers[0], sortedPlayers[1], sortedPlayers[2]];
             return `
                 <div class="podium">
-                    <div class="podium-spot rank-2">
-                        ${second ? `<div class="podium-rank">#2</div><div class="podium-name">${second.name}</div><div class="podium-score">${second.score} pts</div>` : ''}
+                    <div class="podium-stand stand-2">
+                        <div class="stand-top">
+                            ${second ? `<div class=\"podium-rank silver\">#2</div><div class=\"podium-name\">${second.name}</div><div class=\"podium-score\">${second.score} pts</div>` : ''}
+                        </div>
+                        <div class="stand-base"></div>
                     </div>
-                    <div class="podium-spot rank-1">
-                        ${first ? `<div class="podium-rank">#1</div><div class="podium-name">${first.name}</div><div class="podium-score">${first.score} pts</div>` : ''}
+                    <div class="podium-stand stand-1">
+                        <div class="stand-top">
+                            ${first ? `<div class=\"podium-rank gold\">#1</div><div class=\"podium-name\">${first.name}</div><div class=\"podium-score\">${first.score} pts</div>` : ''}
+                        </div>
+                        <div class="stand-base"></div>
                     </div>
-                    <div class="podium-spot rank-3">
-                        ${third ? `<div class="podium-rank">#3</div><div class="podium-name">${third.name}</div><div class="podium-score">${third.score} pts</div>` : ''}
+                    <div class="podium-stand stand-3">
+                        <div class="stand-top">
+                            ${third ? `<div class=\"podium-rank bronze\">#3</div><div class=\"podium-name\">${third.name}</div><div class=\"podium-score\">${third.score} pts</div>` : ''}
+                        </div>
+                        <div class="stand-base"></div>
                     </div>
                 </div>
             `;
