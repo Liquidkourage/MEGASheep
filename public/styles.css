@@ -2,27 +2,58 @@
 .podium {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px;
+  grid-template-rows: auto 140px;
+  grid-template-areas:
+    'name2 name1 name3'
+    'block2 block1 block3';
+  gap: 10px 28px;
   align-items: end;
   justify-items: center;
-  margin: 16px 0 12px;
+  margin: 8px 0 6px;
 }
-.podium-spot {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 10px;
+.podium-player-name {
+  font-weight: 900;
+  letter-spacing: 0.4px;
+  text-shadow: 0 2px 18px rgba(0,0,0,0.45);
+}
+.podium-player-name.gold { color: #ffd700; font-size: 2.2rem; }
+.podium-player-name.silver { color: #c0c0c0; font-size: 1.8rem; }
+.podium-player-name.bronze { color: #cd7f32; font-size: 1.7rem; }
+
+.podium-block {
   width: 100%;
-  max-width: 280px;
+  max-width: 360px;
+  height: 140px;
+  border-radius: 10px;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  justify-items: center;
   text-align: center;
-  padding: 12px 10px;
+  padding: 8px 10px;
 }
-.podium-spot.rank-1 { transform: translateY(-10px); box-shadow: 0 8px 24px rgba(255,215,0,0.15); }
-.podium-spot.rank-2 { transform: translateY(0); }
-.podium-spot.rank-3 { transform: translateY(5px); }
-.podium-rank { font-size: 1.2rem; font-weight: 800; margin-bottom: 6px; }
-.podium-name { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
-.podium-score { font-size: 0.95rem; opacity: 0.9; }
-.podium-message { margin: 10px 0 18px; font-size: 1.05rem; text-align: center; opacity: 0.95; }
+.podium-number { font-size: 2.2rem; font-weight: 900; opacity: 0.95; }
+.podium-points { font-size: 1.05rem; opacity: 0.9; margin-top: 2px; }
+
+.block-gold {
+  background: linear-gradient(180deg, rgba(255,215,0,0.22), rgba(255,215,0,0.08));
+  border: 1px solid rgba(255,215,0,0.35);
+  box-shadow: 0 12px 30px rgba(255,215,0,0.2);
+  transform: translateY(-14px);
+}
+.block-silver {
+  background: linear-gradient(180deg, rgba(192,192,192,0.22), rgba(192,192,192,0.08));
+  border: 1px solid rgba(192,192,192,0.35);
+  box-shadow: 0 10px 26px rgba(192,192,192,0.18);
+  transform: translateY(-2px);
+}
+.block-bronze {
+  background: linear-gradient(180deg, rgba(205,127,50,0.22), rgba(205,127,50,0.08));
+  border: 1px solid rgba(205,127,50,0.35);
+  box-shadow: 0 10px 26px rgba(205,127,50,0.18);
+  transform: translateY(6px);
+}
+.podium-message { margin: 12px 0 24px; font-size: 1.4rem; text-align: center; opacity: 0.98; font-weight: 700; }
 /* Floating scores button in results header */
 .scores-fab {
   position: absolute;

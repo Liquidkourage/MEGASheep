@@ -2166,24 +2166,22 @@
             if (!sortedPlayers || sortedPlayers.length === 0) return '';
             const [first, second, third] = [sortedPlayers[0], sortedPlayers[1], sortedPlayers[2]];
             return `
-                <div class="podium">
-                    <div class="podium-stand stand-2">
-                        <div class="stand-top">
-                            ${second ? `<div class=\"podium-rank silver\">#2</div><div class=\"podium-name\">${second.name}</div><div class=\"podium-score\">${second.score} pts</div>` : ''}
-                        </div>
-                        <div class="stand-base"></div>
+                <div class="podium" role="group" aria-label="Top three podium">
+                    ${second ? `<div class=\"podium-player-name silver\" style=\"grid-area:name2\">${second.name}</div>` : '<div style="grid-area:name2"></div>'}
+                    ${first ? `<div class=\"podium-player-name gold\" style=\"grid-area:name1\">${first.name}</div>` : '<div style="grid-area:name1"></div>'}
+                    ${third ? `<div class=\"podium-player-name bronze\" style=\"grid-area:name3\">${third.name}</div>` : '<div style="grid-area:name3"></div>'}
+
+                    <div class="podium-block block-silver" style="grid-area:block2">
+                        <div class="podium-number">#2</div>
+                        <div class="podium-points">${second ? `${second.score} pts` : ''}</div>
                     </div>
-                    <div class="podium-stand stand-1">
-                        <div class="stand-top">
-                            ${first ? `<div class=\"podium-rank gold\">#1</div><div class=\"podium-name\">${first.name}</div><div class=\"podium-score\">${first.score} pts</div>` : ''}
-                        </div>
-                        <div class="stand-base"></div>
+                    <div class="podium-block block-gold" style="grid-area:block1">
+                        <div class="podium-number">#1</div>
+                        <div class="podium-points">${first ? `${first.score} pts` : ''}</div>
                     </div>
-                    <div class="podium-stand stand-3">
-                        <div class="stand-top">
-                            ${third ? `<div class=\"podium-rank bronze\">#3</div><div class=\"podium-name\">${third.name}</div><div class=\"podium-score\">${third.score} pts</div>` : ''}
-                        </div>
-                        <div class="stand-base"></div>
+                    <div class="podium-block block-bronze" style="grid-area:block3">
+                        <div class="podium-number">#3</div>
+                        <div class="podium-points">${third ? `${third.score} pts` : ''}</div>
                     </div>
                 </div>
             `;
