@@ -15,7 +15,7 @@
   cursor: pointer;
   z-index: 10;
 }
-#standardAnswersDisplay { position: relative; }
+#scoringScreen .screen-content { position: relative; }
 /* Force answers list to exceed the stubborn 400px inline min-height */
 #answersList.answers-grid {
   min-height: 0 !important;

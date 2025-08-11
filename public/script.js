@@ -2602,11 +2602,11 @@ function displayRoundResults() {
     
     const answersList = document.getElementById('answersList');
     const scoresList = document.getElementById('scoresList');
-    // Add a floating scores button if not already present
+    // Add a floating scores button near the results header (players only)
     try {
         if (!isHost) {
-            const container = document.getElementById('standardAnswersDisplay');
-            if (container && !document.getElementById('scoresFab')) {
+            const content = document.querySelector('#scoringScreen .screen-content');
+            if (content && !document.getElementById('scoresFab')) {
                 const btn = document.createElement('button');
                 btn.id = 'scoresFab';
                 btn.className = 'scores-fab';
@@ -2614,7 +2614,7 @@ function displayRoundResults() {
                 btn.title = 'View Current Scores';
                 btn.textContent = '📊';
                 btn.addEventListener('click', showScoresModal);
-                container.prepend(btn);
+                content.appendChild(btn);
             }
         }
     } catch (_) {}
