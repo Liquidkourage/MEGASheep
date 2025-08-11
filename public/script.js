@@ -2610,10 +2610,9 @@ function displayRoundResults() {
                 fab.style.display = 'none';
             } else {
                 fab.style.display = 'inline-flex';
-                if (!fab.dataset.bound) {
-                    fab.addEventListener('click', showScoresModal);
-                    fab.dataset.bound = '1';
-                }
+                try { fab.removeEventListener('click', showScoresModal); } catch(_) {}
+                fab.addEventListener('click', showScoresModal);
+                fab.dataset.bound = '1';
             }
         } else if (!isHost) {
             // Fallback: create if missing
@@ -2974,6 +2973,7 @@ function showToast(message, type = 'info') {
 function showScoresModal() {
     const scoresModal = document.getElementById('scoresModal');
     const scoresList = document.getElementById('scoresList');
+    if (!scoresModal || !scoresList) return;
     
     // Populate scores list
     scoresList.innerHTML = '';

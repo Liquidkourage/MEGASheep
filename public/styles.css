@@ -13,7 +13,8 @@
   color: #fff;
   border: 1px solid rgba(255,255,255,0.2);
   cursor: pointer;
-  z-index: 10;
+  z-index: 2000;
+  pointer-events: auto;
 }
 #scoringScreen .screen-content { position: relative; }
 /* Force answers list to exceed the stubborn 400px inline min-height */
