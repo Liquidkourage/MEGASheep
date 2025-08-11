@@ -1493,8 +1493,8 @@
                 // Treat as standard next question
                 socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
             } else if (gameState === 'roundComplete') {
-                // Treat as standard next question across round boundary
-                socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
+                // At round boundary, advance to next round properly
+                socket.emit('continueToNextRound', { gameCode: currentGame.gameCode });
             }
         });
 
