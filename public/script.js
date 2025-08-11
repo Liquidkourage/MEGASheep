@@ -535,8 +535,7 @@ function setupEventListeners() {
     if (forceNextBtn) forceNextBtn.addEventListener('click', forceNextQuestion);
     
     // Scoring screen
-    const viewScoresBtn = document.getElementById('viewScoresBtn');
-    if (viewScoresBtn) viewScoresBtn.addEventListener('click', showScoresModal);
+    // View scores button removed
     
     const nextQuestionBtn = document.getElementById('nextQuestionBtn');
     if (nextQuestionBtn) nextQuestionBtn.addEventListener('click', nextQuestion);
