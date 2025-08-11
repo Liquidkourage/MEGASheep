@@ -15,6 +15,8 @@
   font-weight: 900;
   letter-spacing: 0.4px;
   text-shadow: 0 2px 18px rgba(0,0,0,0.45);
+  position: relative;
+  z-index: 5;
 }
 .podium-player-name.gold { color: #ffd700; font-size: 2.4rem; }
 .podium-player-name.silver { color: #c0c0c0; font-size: 2.0rem; }
@@ -67,6 +69,10 @@
   margin-top: 6px;
   max-height: 64vh;
   overflow: hidden;
+}
+/* Ensure the last item can scroll up and rest around ~80% viewport height */
+.overall-list-container .auto-scroll-content {
+  padding-bottom: 24vh;
 }
 /* Floating scores button in results header */
 .scores-fab {
@@ -3237,6 +3243,8 @@ body {
   margin: 0 0 12px 0; /* reduce bottom margin to avoid overlapping the gold name */
   padding-top: 6px;   /* add small top space so header shadow doesn't clip */
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .round-leaderboard-header h1 {
