@@ -2615,26 +2615,7 @@ function displayRoundResults() {
         answersList.style.setProperty('display', 'block', 'important');
     } catch (_) {}
     
-    // Add a temp footer to validate sticky behavior (player interface only)
-    try {
-        if (!isHost) {
-            // Prefer using inline footer container if present
-            const inlineFooter = document.getElementById('playerOnlyFooter');
-            if (inlineFooter) {
-                inlineFooter.style.display = 'block';
-                inlineFooter.textContent = 'THIS IS A FOOTER';
-            } else {
-                const existing = document.getElementById('playerResultsFixedFooter');
-                if (!existing) {
-                    const el = document.createElement('div');
-                    el.id = 'playerResultsFixedFooter';
-                    el.className = 'player-results-fixed-footer';
-                    el.textContent = 'THIS IS A FOOTER';
-                    document.body.appendChild(el);
-                }
-            }
-        }
-    } catch (_) {}
+    // Removed temporary player-only footer
 
     if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
         // Use server-provided answer groups with new scoring info
