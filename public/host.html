@@ -807,6 +807,7 @@
                         <button id="testGameBtn" class="control-btn warning">▶️ TEST GAME</button>
                         <button id="virtualTestBtn" class="control-btn warning">🎭 VIRTUAL TEST (100 players)</button>
                         <button id="refreshQuestionsBtn" class="control-btn secondary">🔄 REFRESH QUESTIONS</button>
+                        <button id="historyBtn" class="control-btn secondary">📚 HISTORY</button>
                     </div>
                 </div>
 
@@ -904,6 +905,36 @@
             </div>
             <div class="modal-body">
                 <iframe id="gradingMultiFrame" src="/grading" width="100%" height="600px" frameborder="0"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Host Read-Only History Modal -->
+    <div id="historyModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📚 Game History</h2>
+                <span class="close" onclick="closeHistoryModal()">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 20px; overflow-y:auto;">
+                <div class="history-tabs" style="display:flex; gap:8px; margin-bottom:12px;">
+                    <button id="tabByPlayerHost" class="control-btn small">By Player</button>
+                    <button id="tabByQuestionHost" class="control-btn small">By Question</button>
+                </div>
+                <div id="historyByPlayerHost" style="display:block;">
+                    <div style="margin-bottom:10px; display:flex; gap:8px; align-items:center;">
+                        <label for="historyPlayerSelectHost">Player:</label>
+                        <select id="historyPlayerSelectHost" style="flex:1; padding:8px; border-radius:6px; background: rgba(0,0,0,0.35); color:#fff; border:1px solid rgba(255,255,255,0.2);"></select>
+                    </div>
+                    <div id="historyPlayerListHost" class="scoring-content"></div>
+                </div>
+                <div id="historyByQuestionHost" style="display:none;">
+                    <div style="margin-bottom:10px; display:flex; gap:8px; align-items:center;">
+                        <label for="historyQuestionSelectHost">Question:</label>
+                        <select id="historyQuestionSelectHost" style="flex:1; padding:8px; border-radius:6px; background: rgba(0,0,0,0.35); color:#fff; border:1px solid rgba(255,255,255,0.2);"></select>
+                    </div>
+                    <div id="historyQuestionListHost" class="scoring-content"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -1154,6 +1185,13 @@
             document.getElementById('playerCount').textContent = currentGame.players.size || 0;
             
             updatePlayerList();
+
+            // Bind History button and tabs
+            const historyBtn = document.getElementById('historyBtn');
+            if (historyBtn && !historyBtn._bound) {
+                historyBtn._bound = true;
+                historyBtn.addEventListener('click', openHistoryModalHost);
+            }
         }
 
         // Update player list
@@ -1455,6 +1493,7 @@
     window.onclick = function(event) {
         const singleModal = document.getElementById('gradingSingleModal');
         const multiModal = document.getElementById('gradingMultiModal');
+            const histModal = document.getElementById('historyModal');
         
         if (event.target === singleModal) {
             closeGradingSingleModal();
@@ -1462,6 +1501,9 @@
         if (event.target === multiModal) {
             closeGradingMultiModal();
         }
+            if (event.target === histModal) {
+                closeHistoryModal();
+            }
     }
 
         // Grading interface buttons
@@ -1605,6 +1647,101 @@
                 }
             }
         });
+
+        // Host History modal logic (read-only)
+        function openHistoryModalHost() {
+            const modal = document.getElementById('historyModal');
+            if (!modal) return;
+            try { populateHistorySelectorsHost(); } catch(_) {}
+            modal.style.display = 'block';
+        }
+        function closeHistoryModal() {
+            const modal = document.getElementById('historyModal');
+            if (modal) modal.style.display = 'none';
+        }
+        function switchHistoryTabHost(which) {
+            const p = document.getElementById('historyByPlayerHost');
+            const q = document.getElementById('historyByQuestionHost');
+            const tp = document.getElementById('tabByPlayerHost');
+            const tq = document.getElementById('tabByQuestionHost');
+            if (!p || !q || !tp || !tq) return;
+            if (which === 'player') { p.style.display='block'; q.style.display='none'; tp.classList.add('active'); tq.classList.remove('active'); }
+            else { p.style.display='none'; q.style.display='block'; tq.classList.add('active'); tp.classList.remove('active'); }
+        }
+        (function bindHistoryTabs(){
+            const tp = document.getElementById('tabByPlayerHost');
+            const tq = document.getElementById('tabByQuestionHost');
+            if (tp && !tp._bound) { tp._bound = true; tp.onclick = ()=>switchHistoryTabHost('player'); }
+            if (tq && !tq._bound) { tq._bound = true; tq.onclick = ()=>switchHistoryTabHost('question'); }
+        })();
+        function populateHistorySelectorsHost() {
+            // Player select
+            const selP = document.getElementById('historyPlayerSelectHost');
+            if (selP) {
+                selP.innerHTML = '';
+                const players = currentGame && currentGame.players ? Array.from(currentGame.players.values ? currentGame.players.values() : Object.values(currentGame.players)) : [];
+                players.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = String(p.name);
+                    opt.textContent = p.name;
+                    selP.appendChild(opt);
+                });
+                selP.onchange = renderHistoryByPlayerHost;
+                renderHistoryByPlayerHost();
+            }
+
+            // Question select (from currentGame.questions)
+            const selQ = document.getElementById('historyQuestionSelectHost');
+            if (selQ) {
+                selQ.innerHTML = '';
+                const qs = Array.isArray(currentGame?.questions) ? currentGame.questions : [];
+                qs.forEach((q, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = String(idx);
+                    opt.textContent = `Q${idx+1}: ${(q?.prompt || q?.question || '').slice(0,50)}`;
+                    selQ.appendChild(opt);
+                });
+                selQ.onchange = renderHistoryByQuestionHost;
+                renderHistoryByQuestionHost();
+            }
+        }
+        function renderHistoryByPlayerHost() {
+            const selP = document.getElementById('historyPlayerSelectHost');
+            const list = document.getElementById('historyPlayerListHost');
+            if (!selP || !list) return;
+            const name = selP.value || '';
+            const qHist = Array.isArray(window._questionHistory) ? window._questionHistory : [];
+            const rows = [];
+            qHist.forEach(snap => {
+                const group = (snap.answerGroups || []).find(g => Array.isArray(g.players) && g.players.some(p => String(p).toLowerCase() === name.toLowerCase()));
+                if (group) rows.push({ q: snap.questionIndex, r: snap.roundNumber, a: group.answer, pts: group.points });
+            });
+            rows.sort((a,b)=>a.q-b.q);
+            list.innerHTML = rows.length === 0 ? '<div class="answer-group">No history yet</div>' : rows.map(r => `
+                <div class="answer-group">
+                    <div class="answer-text">Q${r.q+1} (R${r.r}) — ${r.a}</div>
+                    <div class="answer-points">${r.pts} pts</div>
+                </div>
+            `).join('');
+        }
+        function renderHistoryByQuestionHost() {
+            const selQ = document.getElementById('historyQuestionSelectHost');
+            const list = document.getElementById('historyQuestionListHost');
+            if (!selQ || !list) return;
+            const idx = Number(selQ.value || 0);
+            const qHist = Array.isArray(window._questionHistory) ? window._questionHistory : [];
+            const snap = qHist.find(s => Number(s.questionIndex) === idx);
+            if (!snap) { list.innerHTML = '<div class="answer-group">No data captured for this question yet</div>'; return; }
+            const groups = Array.isArray(snap.answerGroups) ? snap.answerGroups : [];
+            const rows = groups.map(g => ({ a: g.answer, pts: g.points, cnt: Array.isArray(g.players) ? g.players.length : (g.count || 0) }));
+            rows.sort((a,b)=>b.pts-a.pts || b.cnt-a.cnt);
+            list.innerHTML = rows.map(r => `
+                <div class="answer-group">
+                    <div class="answer-text">${r.a} (${r.cnt})</div>
+                    <div class="answer-points">${r.pts} pts</div>
+                </div>
+            `).join('');
+        }
 
         // Virtual Player Simulation Function
         function startVirtualPlayerSimulation() {
