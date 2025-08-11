@@ -1329,9 +1329,10 @@
                 // On end-of-round boundary, label should read END ROUND
                 try {
                     const qpr = Number(currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5);
-                    const currentIdx = Number(currentGame?.currentQuestion || 0); // 0-based index of just-finished question
-                    const nextQuestionInRound = ((currentIdx % qpr) + 1); // mirrors server logic
-                    const isEndOfRound = (nextQuestionInRound === qpr);
+                    // If we are in scoring: currentQuestion points to the just-finished question index
+                    const currentIdx = Number(currentGame?.currentQuestion || 0);
+                    const questionNumber = currentIdx + 1; // 1-based
+                    const isEndOfRound = (questionNumber % qpr === 0);
                     startBtn.textContent = isEndOfRound ? 'END ROUND' : 'NEXT QUESTION';
                 } catch (_) {
                     startBtn.textContent = 'NEXT QUESTION';

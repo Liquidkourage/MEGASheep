@@ -2643,8 +2643,10 @@ function displayQuestionResults() {
             // Rename Next Question -> End Round on every 5th question
             try {
                 const questionsPerRound = gameState.questionsPerRound || 5;
-                const questionNumber = currentQuestionIndex + 1;
-                const isEndOfRound = (questionNumber % questionsPerRound === 0);
+                // We are viewing results for question at currentQuestionIndex; moving next will start next question.
+                // If this one completes the round, label should be End Round.
+                const questionNumberJustFinished = currentQuestionIndex + 1;
+                const isEndOfRound = (questionNumberJustFinished % questionsPerRound === 0);
                 nextQuestionBtn.textContent = isEndOfRound ? 'End Round' : 'Next Question';
             } catch (_) {}
         } else {
@@ -2849,13 +2851,13 @@ function displayRoundResults() {
         </div>`;
 
     // Leaderboard top 5
-    const top = rankAfterList.slice(0, 5);
+    const top = rankAfterList.slice(0, 20);
     const leaderboardRows = top.map((p, index) => {
-        const medal = index === 0 ? '🥇 ' : index === 1 ? '🥈 ' : index === 2 ? '🥉 ' : '';
+        const rank = index + 1;
         const mineClass = p.name.toLowerCase() === myName.toLowerCase() ? ' mine' : '';
-        return `<div class="score-item${mineClass}"><span class="player-name">${medal}${p.name}</span><span class="player-score">${p.total} points</span></div>`;
+        return `<div class="score-item single-line${mineClass}">#${rank} ${p.name} — ${p.total} pts</div>`;
     }).join('');
-    const leaderboardHtml = `<div class="scores-display"><h3>Leaderboard</h3><div class="scores-grid">${leaderboardRows}</div></div>`;
+    const leaderboardHtml = `<div class="scores-display"><h3>Leaderboard</h3><div class="scores-list">${leaderboardRows}</div></div>`;
 
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {

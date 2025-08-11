@@ -588,6 +588,11 @@ body {
     gap: 12px;
 }
 
+/* Compact single-line leaderboard for player end-of-round */
+.scores-list { display: flex; flex-direction: column; gap: 6px; }
+.score-item.single-line { display: block; padding: 6px 10px; border-radius: 6px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.score-item.single-line.mine { background: rgba(0,123,255,0.18); border-color: rgba(0,123,255,0.35); }
+
 .scores-modal .score-item {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
