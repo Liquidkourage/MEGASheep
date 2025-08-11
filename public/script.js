@@ -1,3 +1,126 @@
+// Read-only History modal logic (host only)
+function openHistoryModal() {
+    if (!isHost) return;
+    const modal = document.getElementById('historyModal');
+    if (!modal) return;
+    try {
+        populateHistorySelectors();
+    } catch (_) {}
+    modal.style.display = 'block';
+    setTimeout(() => { modal.style.opacity = '1'; }, 10);
+}
+
+function closeHistoryModal() {
+    const modal = document.getElementById('historyModal');
+    if (!modal) return;
+    modal.style.opacity = '0';
+    setTimeout(() => { modal.style.display = 'none'; }, 200);
+}
+
+function switchHistoryTab(which) {
+    const byPlayer = document.getElementById('historyByPlayer');
+    const byQuestion = document.getElementById('historyByQuestion');
+    const tabP = document.getElementById('tabByPlayer');
+    const tabQ = document.getElementById('tabByQuestion');
+    if (!byPlayer || !byQuestion || !tabP || !tabQ) return;
+    if (which === 'player') {
+        byPlayer.style.display = 'block';
+        byQuestion.style.display = 'none';
+        tabP.classList.add('active');
+        tabQ.classList.remove('active');
+    } else {
+        byPlayer.style.display = 'none';
+        byQuestion.style.display = 'block';
+        tabQ.classList.add('active');
+        tabP.classList.remove('active');
+    }
+}
+
+function populateHistorySelectors() {
+    // Players selector
+    const selPlayer = document.getElementById('historyPlayerSelect');
+    if (selPlayer) {
+        selPlayer.innerHTML = '';
+        const players = Array.isArray(gameState.players) ? gameState.players : [];
+        players.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = String(p.name);
+            opt.textContent = p.name;
+            selPlayer.appendChild(opt);
+        });
+        selPlayer.onchange = renderHistoryByPlayer;
+        renderHistoryByPlayer();
+    }
+
+    // Questions selector (use server-sent questions)
+    const selQuestion = document.getElementById('historyQuestionSelect');
+    if (selQuestion) {
+        selQuestion.innerHTML = '';
+        const qs = Array.isArray(gameState.questions) ? gameState.questions : [];
+        qs.forEach((q, idx) => {
+            const opt = document.createElement('option');
+            opt.value = String(idx);
+            opt.textContent = `Q${idx + 1}: ${q?.question?.slice(0, 50) || 'Question'}`;
+            selQuestion.appendChild(opt);
+        });
+        selQuestion.onchange = renderHistoryByQuestion;
+        renderHistoryByQuestion();
+    }
+}
+
+function renderHistoryByPlayer() {
+    const selPlayer = document.getElementById('historyPlayerSelect');
+    const list = document.getElementById('historyPlayerList');
+    if (!selPlayer || !list) return;
+    const name = selPlayer.value || '';
+
+    // Build from window._questionHistory snapshots and server roundHistory
+    const qHist = Array.isArray(window._questionHistory) ? window._questionHistory : [];
+    const rows = [];
+    qHist.forEach(snap => {
+        // Find this player's group
+        const group = (snap.answerGroups || []).find(g => Array.isArray(g.players) && g.players.some(p => String(p).toLowerCase() === name.toLowerCase()));
+        if (group) {
+            rows.push({
+                questionIndex: snap.questionIndex,
+                roundNumber: snap.roundNumber,
+                answer: group.answer,
+                points: group.points
+            });
+        }
+    });
+    rows.sort((a,b) => a.questionIndex - b.questionIndex);
+
+    list.innerHTML = rows.length === 0 ? '<div class="score-item">No history yet</div>' : rows.map(r => `
+        <div class="score-item">
+            <span class="player-name">Q${(r.questionIndex + 1)} (R${r.roundNumber}) — ${r.answer}</span>
+            <span class="player-score">${r.points} pts</span>
+        </div>
+    `).join('');
+}
+
+function renderHistoryByQuestion() {
+    const selQuestion = document.getElementById('historyQuestionSelect');
+    const list = document.getElementById('historyQuestionList');
+    if (!selQuestion || !list) return;
+    const qIndex = Number(selQuestion.value || 0);
+    const qHist = Array.isArray(window._questionHistory) ? window._questionHistory : [];
+    const snap = qHist.find(s => Number(s.questionIndex) === qIndex);
+    if (!snap) {
+        list.innerHTML = '<div class="score-item">No data captured for this question yet</div>';
+        return;
+    }
+    const groups = Array.isArray(snap.answerGroups) ? snap.answerGroups : [];
+    // Flatten into rows: answer, points, players (count)
+    const rows = groups.map(g => ({ answer: g.answer, points: g.points, count: (Array.isArray(g.players) ? g.players.length : (g.count || 0)) }));
+    rows.sort((a,b) => b.points - a.points || b.count - a.count);
+    list.innerHTML = rows.map(r => `
+        <div class="score-item">
+            <span class="player-name">${r.answer} (${r.count})</span>
+            <span class="player-score">${r.points} pts</span>
+        </div>
+    `).join('');
+}
 // Global variables
 let socket;
 let isHost = false;
@@ -571,6 +694,21 @@ function setupEventListeners() {
     
     const toggleFullscreenBtn = document.getElementById('toggleFullscreenBtn');
     if (toggleFullscreenBtn) toggleFullscreenBtn.addEventListener('click', toggleGradingModalFullscreen);
+    // History modal (host read-only)
+    const openHistoryModalBtn = document.getElementById('openHistoryModalBtn');
+    if (openHistoryModalBtn) openHistoryModalBtn.addEventListener('click', openHistoryModal);
+    const closeHistoryModalBtn = document.getElementById('closeHistoryModal');
+    if (closeHistoryModalBtn) closeHistoryModalBtn.addEventListener('click', closeHistoryModal);
+    window.addEventListener('click', (event) => {
+        const modal = document.getElementById('historyModal');
+        if (event.target === modal) {
+            closeHistoryModal();
+        }
+    });
+    const tabByPlayer = document.getElementById('tabByPlayer');
+    const tabByQuestion = document.getElementById('tabByQuestion');
+    if (tabByPlayer) tabByPlayer.addEventListener('click', () => switchHistoryTab('player'));
+    if (tabByQuestion) tabByQuestion.addEventListener('click', () => switchHistoryTab('question'));
     
     // Close grading modal when clicking outside
     window.addEventListener('click', (event) => {
@@ -2014,6 +2152,20 @@ function handleQuestionComplete(gameStateData) {
         // Players wait for host to complete grading
         showWaitingForGrading();
     }
+
+    // Capture read-only per-question snapshot on the host
+    try {
+        if (isHost) {
+            window._questionHistory = window._questionHistory || [];
+            const snapshot = {
+                questionIndex: gameStateData.currentQuestion,
+                roundNumber: Math.ceil((gameStateData.currentQuestion + 1) / (gameStateData.questionsPerRound || 5)),
+                timestamp: Date.now(),
+                answerGroups: Array.isArray(gameStateData.currentAnswerGroups) ? JSON.parse(JSON.stringify(gameStateData.currentAnswerGroups)) : []
+            };
+            window._questionHistory.push(snapshot);
+        }
+    } catch (_) {}
 }
 
 function handleRoundComplete(gameStateData) {
@@ -2022,6 +2174,19 @@ function handleRoundComplete(gameStateData) {
     clearTimer();
     showScreen('scoring');
     displayRoundResults();
+
+    // Capture end-of-round rollup for host (read-only)
+    try {
+        if (isHost) {
+            window._roundHistoryClient = window._roundHistoryClient || [];
+            const roundSummary = {
+                roundNumber: Math.ceil((gameStateData.currentQuestion || 0) / (gameStateData.questionsPerRound || 5)),
+                timestamp: Date.now(),
+                serverRoundData: gameStateData.roundHistory?.[gameStateData.roundHistory.length - 1] || null
+            };
+            window._roundHistoryClient.push(roundSummary);
+        }
+    } catch (_) {}
 }
 
 function handleGradingComplete(gameStateData) {

@@ -60,6 +60,7 @@
                             <div class="host-actions">
                                 <button onclick="openGradingModal()" class="btn btn-primary">📝 Grading Interface</button>
                                 <a href="/grading" class="btn btn-success">👥 Multi-User Grading</a>
+                     <button id="openHistoryModalBtn" class="btn btn-secondary">📚 History</button>
                             </div>
                         </div>
                         
@@ -358,6 +359,36 @@
                 </div>
                 <div class="modal-body">
                     <div id="scoresList" class="scores-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Modal (Host Read-Only) -->
+        <div id="historyModal" class="modal" style="display: none;">
+            <div class="modal-content scores-modal">
+                <div class="modal-header">
+                    <h4>📚 Game History</h4>
+                    <span class="close" id="closeHistoryModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="history-tabs" style="display:flex; gap:8px; margin-bottom:12px;">
+                        <button id="tabByPlayer" class="btn btn-small">By Player</button>
+                        <button id="tabByQuestion" class="btn btn-small">By Question</button>
+                    </div>
+                    <div id="historyByPlayer" style="display:block;">
+                        <div style="margin-bottom:10px;">
+                            <label for="historyPlayerSelect">Player:</label>
+                            <select id="historyPlayerSelect" class="grading-input"></select>
+                        </div>
+                        <div id="historyPlayerList" class="scores-grid"></div>
+                    </div>
+                    <div id="historyByQuestion" style="display:none;">
+                        <div style="margin-bottom:10px;">
+                            <label for="historyQuestionSelect">Question:</label>
+                            <select id="historyQuestionSelect" class="grading-input"></select>
+                        </div>
+                        <div id="historyQuestionList" class="scores-grid"></div>
+                    </div>
                 </div>
             </div>
         </div>

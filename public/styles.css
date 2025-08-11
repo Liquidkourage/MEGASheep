@@ -5655,6 +5655,16 @@ body {
     font-size: 0.9rem;
 }
 
+/* Simple styling tweaks shared by history modal */
+.history-tabs .btn-small, #tabByPlayer.btn-small, #tabByQuestion.btn-small {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.history-tabs .btn-small.active, #tabByPlayer.btn-small.active, #tabByQuestion.btn-small.active {
+  background: rgba(0,123,255,0.25);
+  border-color: rgba(0,123,255,0.4);
+}
+
 .modal-controls .btn-small:hover {
     background: rgba(255, 255, 255, 0.2);
     border-color: rgba(255, 255, 255, 0.3);
