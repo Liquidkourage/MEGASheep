@@ -694,23 +694,6 @@ function setupEventListeners() {
     
     const toggleFullscreenBtn = document.getElementById('toggleFullscreenBtn');
     if (toggleFullscreenBtn) toggleFullscreenBtn.addEventListener('click', toggleGradingModalFullscreen);
-    // History modal (host read-only)
-    const openHistoryModalBtn = document.getElementById('openHistoryModalBtn');
-    if (openHistoryModalBtn) openHistoryModalBtn.addEventListener('click', openHistoryModal);
-    const openHistoryModalBtn2 = document.getElementById('openHistoryModalBtn2');
-    if (openHistoryModalBtn2) openHistoryModalBtn2.addEventListener('click', openHistoryModal);
-    const closeHistoryModalBtn = document.getElementById('closeHistoryModal');
-    if (closeHistoryModalBtn) closeHistoryModalBtn.addEventListener('click', closeHistoryModal);
-    window.addEventListener('click', (event) => {
-        const modal = document.getElementById('historyModal');
-        if (event.target === modal) {
-            closeHistoryModal();
-        }
-    });
-    const tabByPlayer = document.getElementById('tabByPlayer');
-    const tabByQuestion = document.getElementById('tabByQuestion');
-    if (tabByPlayer) tabByPlayer.addEventListener('click', () => switchHistoryTab('player'));
-    if (tabByQuestion) tabByQuestion.addEventListener('click', () => switchHistoryTab('question'));
     
     // Close grading modal when clicking outside
     window.addEventListener('click', (event) => {
