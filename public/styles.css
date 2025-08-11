@@ -1,8 +1,10 @@
 /* Force answers list to exceed the stubborn 400px inline min-height */
 #answersList.answers-grid {
   min-height: 0 !important;
-  max-height: 2000px !important;
+  max-height: none !important;
+  height: auto !important;
   display: block !important;
+  overflow: visible !important;
 }
 /* Sticky actions at bottom of results (fixed to viewport) */
 .sticky-actions {
@@ -1614,9 +1616,10 @@ body {
 /* Scoring screen styles */
 .answers-display, .scores-display {
     margin-bottom: 30px;
-    min-height: 0; /* avoid forcing extra height that creates inner scroll */
-    max-height: none;
-    overflow: visible; /* ensure parent handles scrolling */
+    min-height: 0 !important; /* avoid forcing extra height that creates inner scroll */
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important; /* ensure parent handles scrolling */
 }
 
 .answers-display h3, .scores-display h3 {

@@ -2610,6 +2610,7 @@ function displayRoundResults() {
         answersList.removeAttribute('style');
         answersList.style.setProperty('min-height', '0', 'important');
         answersList.style.setProperty('max-height', 'none', 'important');
+        answersList.style.setProperty('height', 'auto', 'important');
         answersList.style.setProperty('overflow', 'visible', 'important');
         answersList.style.setProperty('display', 'block', 'important');
     } catch (_) {}
