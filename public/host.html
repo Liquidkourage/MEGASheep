@@ -840,7 +840,6 @@
                         <button id="startGameBtn" class="control-btn success">START GAME</button>
                         <button id="endGameMainBtn" class="control-btn warning">🛑 END GAME</button>
                         <button id="gradingBtn" class="control-btn secondary">📝 GRADING INTERFACE</button>
-                        <button id="multiGradingBtn" class="control-btn success">👥 MULTI-USER GRADING</button>
                         <button id="virtualTestBtn" class="control-btn warning">🎭 VIRTUAL TEST (100 players)</button>
                         <button id="showRoundLbBtn" class="control-btn secondary">📊 SHOW ROUND LEADERBOARD</button>
                         <button id="showOverallLbBtn" class="control-btn secondary">🏆 SHOW OVERALL LEADERBOARD</button>
@@ -1608,9 +1607,7 @@
             openGradingSingleModal();
         });
 
-        document.getElementById('multiGradingBtn').addEventListener('click', () => {
-            openGradingMultiModal();
-        });
+        // Removed multi-user grading button and binding
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
