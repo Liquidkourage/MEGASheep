@@ -1338,8 +1338,8 @@ body {
 }
 
 .points-pill {
-    background: linear-gradient(135deg, rgba(139,163,208,0.35), rgba(0,123,255,0.25));
-    color: #0b1020;
+    background: linear-gradient(135deg, rgba(139,163,208,0.55), rgba(0,123,255,0.45));
+    color: #ffffff;
     padding: 4px 10px;
     border-radius: 999px;
     font-weight: 800;
@@ -1465,9 +1465,8 @@ body {
         font-size: 1.2rem;
     }
     
-    .answer-text {
-        font-size: 1rem;
-    }
+    .answer-text { font-size: 1rem; }
+    .answer-text.my-answer { height: 1.3em; }
     
     .answer-item {
         padding: 12px;

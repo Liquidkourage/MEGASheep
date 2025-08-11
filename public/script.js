@@ -2519,9 +2519,11 @@ function displayQuestionResults() {
     }
     
     // Like-minded Sheep list (players who gave the same answer)
-    const likeMindedSheep = Array.isArray(playerAnswerGroup?.players) && playerAnswerGroup.players.length > 0
-        ? playerAnswerGroup.players.join(', ')
-        : 'Just you';
+    const selfNameLower = (sessionStorage.getItem('playerName') || '').toLowerCase();
+    const likeMindedPeers = Array.isArray(playerAnswerGroup?.players)
+        ? playerAnswerGroup.players.filter(p => String(p).toLowerCase() !== selfNameLower)
+        : [];
+    const likeMindedSheep = likeMindedPeers.length > 0 ? likeMindedPeers.join(', ') : 'Just you';
     
     const youBadge = '';
     return `
@@ -2612,7 +2614,7 @@ function displayRoundResults() {
     // Nuke any inline styles from the waiting-state and expand to viewport
     try {
         answersList.removeAttribute('style');
-        answersList.style.minHeight = 'calc(100vh - 220px)';
+        answersList.style.minHeight = 'calc(100vh - 160px)';
     } catch (_) {}
     
     if (gameState.currentAnswerGroups && gameState.currentAnswerGroups.length > 0) {
