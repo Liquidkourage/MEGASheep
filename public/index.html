@@ -6,6 +6,18 @@
     <title>MEGASheep Trivia</title>
     <link rel="stylesheet" href="styles.css">
     <script src="/socket.io/socket.io.js"></script>
+    <script>
+      // Unregister any old service worker so '/' never shows stale content
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          regs.forEach(r => {
+            if (r && r.active) {
+              try { r.unregister(); } catch(_) {}
+            }
+          });
+        }).catch(()=>{});
+      }
+    </script>
 </head>
 <body>
     <div class="container">

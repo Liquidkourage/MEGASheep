@@ -1,11 +1,11 @@
 /* MEGASheep lightweight Service Worker for display stability */
-const VERSION = 'ms-v2';
+const VERSION = 'ms-v3';
 const CORE_CACHE = `core-${VERSION}`;
 const RUNTIME_CACHE = `runtime-${VERSION}`;
 
 // Core assets to precache (kept small)
+// Do NOT precache '/': always fetch index/network-first to avoid stale host/player UIs
 const CORE_ASSETS = [
-  '/',
   '/styles.css',
   '/display.html'
 ];
@@ -39,6 +39,14 @@ self.addEventListener('fetch', (event) => {
 
   // Only handle same-origin resources
   if (url.origin !== location.origin) return;
+
+  // Always network-first for navigations/HTML to prevent stale pages
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(request))
+    );
+    return;
+  }
 
   // Cache-first for uploaded images used as backgrounds
   if (request.destination === 'image' && url.pathname.startsWith('/uploads/')) {
