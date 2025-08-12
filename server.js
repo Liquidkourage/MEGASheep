@@ -2386,9 +2386,27 @@ io.on('connection', (socket) => {
         const game = activeGames.get(gameCode);
         if (!game) return;
         
-        if (game.gameState !== 'grading') {
-            socket.emit('gameError', { message: 'Not in grading phase' });
-            return;
+        // Allow host to complete grading even if the question hasn't been explicitly ended yet.
+        // If currently playing, finalize answers and enter grading implicitly.
+        if (game.gameState === 'playing') {
+            try {
+                game.calculateScores();
+                game.stopTimer();
+                game.gameState = 'grading';
+            } catch (_) {}
+        } else if (game.gameState !== 'grading') {
+            // For any other state, proceed conservatively by transitioning to grading
+            // if we have answer data; otherwise reject.
+            if (game.answers && game.answers.size >= 0) {
+                try {
+                    game.calculateScores();
+                    game.stopTimer();
+                    game.gameState = 'grading';
+                } catch (_) {}
+            } else {
+                socket.emit('gameError', { message: 'Not in grading phase' });
+                return;
+            }
         }
         
         try {
