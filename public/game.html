@@ -865,6 +865,24 @@
                 }
             }, 2500);
         });
+
+        // If the socket reconnects and user has typed but not submitted, surface retry option
+        try {
+            if (socket && socket.io) {
+                socket.io.on('reconnect', () => {
+                    try {
+                        const input = document.getElementById('answerInput');
+                        const submitted = input?.disabled;
+                        if (input && !submitted && (input.value || '').trim().length > 0) {
+                            const status = document.getElementById('answerStatus');
+                            if (status) status.innerHTML = '🔌 Reconnected. You can retry sending your answer.';
+                            const retry = document.getElementById('answerRetryContainer');
+                            if (retry) retry.style.display = 'block';
+                        }
+                    } catch (_) {}
+                });
+            }
+        } catch(_) {}
         
         // Enter key focuses on answer input
         document.addEventListener('keydown', function(e) {

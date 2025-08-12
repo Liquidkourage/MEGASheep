@@ -213,6 +213,7 @@ const screens = {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
+    const IS_HOST_ROUTE = window.location.pathname === '/host';
     initializeSocket();
     setupEventListeners();
     
@@ -794,6 +795,13 @@ function showScreen(screenName) {
 
 // Create a new game
 async function createGame() {
+    const IS_HOST_ROUTE = window.location.pathname === '/host';
+    if (!IS_HOST_ROUTE) {
+        // Enforce: hosting happens on /host only
+        try { showError('Hosting is available on the Host Console. Redirecting…'); } catch(_) {}
+        setTimeout(() => { window.location.href = '/host'; }, 250);
+        return;
+    }
     const hostName = document.getElementById('hostName').value.trim();
     if (!hostName) {
         showError('Please enter your name');
@@ -825,6 +833,8 @@ async function createGame() {
             updateLobbyDisplay();
             
             console.log(`🎮 Created game with code: ${result.gameCode}`);
+            // IMPORTANT: bind this socket as the host for this game
+            try { socket.emit('createGame', { gameCode: result.gameCode }); } catch(_) {}
         } else {
             showError(result.message);
         }
@@ -863,10 +873,12 @@ async function joinGame() {
             console.log('🎮 Script.js: API call successful, result:', result);
             currentPlayerName = playerName;
             isHost = false;
-            gameState.gameCode = result.gameCode;
+            // Prefer API-provided code; fallback to entered value
+            const resolvedCode = result.gameCode || gameCode;
+            gameState.gameCode = resolvedCode;
             gameState.playerName = playerName;
             // Persist identity for auto-resume
-            savePlayerIdentity(result.gameCode, playerName);
+            savePlayerIdentity(resolvedCode, playerName);
             
             console.log('🎮 Script.js: API call successful, emitting joinGame socket event');
             console.log('🎮 Script.js: Socket connected before emit:', socket.connected);
@@ -890,12 +902,12 @@ async function joinGame() {
                 
                 // Join the game via socket
                 console.log('🎮 Script.js: About to emit joinGame event with data:', { 
-                    gameCode: result.gameCode, 
+                    gameCode: resolvedCode, 
                     playerName: playerName 
                 });
                 
                 socket.emit('joinGame', { 
-                    gameCode: result.gameCode, 
+                    gameCode: resolvedCode, 
                     playerName: playerName 
                 });
                 
@@ -909,7 +921,7 @@ async function joinGame() {
                     }
                 }, 5000);
                 
-                console.log(`🎮 Script.js: Joining game with code: ${result.gameCode}`);
+                console.log(`🎮 Script.js: Joining game with code: ${resolvedCode}`);
             } catch (socketError) {
                 console.error('🎮 Script.js: Error during socket emit:', socketError);
                 throw socketError;
@@ -2607,6 +2619,13 @@ function displayQuestionResults() {
     // Clear previous content
     answersList.innerHTML = '';
     
+    // Compute missed-correct for players
+    const question = gameState.currentQuestionData || (Array.isArray(gameState.questions) ? gameState.questions[gameState.currentQuestion] : null);
+    const correctAnswersList = Array.isArray(question?.correct_answers) ? question.correct_answers : [];
+    const normalize = (s) => String(s||'').toLowerCase().trim();
+    const correctGivenSet = new Set((gameState.currentAnswerGroups||[]).filter(g => (g.points||0) > 0).map(g => normalize(g.answer)));
+    const missedCorrect = correctAnswersList.filter(ans => !correctGivenSet.has(normalize(ans)));
+
     // Create two-column layout for desktop, single column for mobile
     const isMobile = window.innerWidth <= 768;
     
@@ -2627,6 +2646,7 @@ function displayQuestionResults() {
         answersList.innerHTML = `
             <div class="personal-result-section">
                 ${createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints)}
+                ${missedCorrect.length > 0 ? renderMissedCorrectSection(missedCorrect) : ''}
             </div>
             <div class="all-answers-section">
                 ${createAllAnswersSection(gameState.currentAnswerGroups, playerAnswerGroup, playerAnswer)}
@@ -2677,6 +2697,15 @@ function displayQuestionResults() {
         nextQuestionBtn.style.display = 'none';
         endGameBtn.style.display = 'none';
     }
+}
+function renderMissedCorrectSection(missed) {
+    const items = missed.map(a => `<div class="compact-answer"><span class="text">"${a}"</span><span class="points-pill">—</span></div>`).join('');
+    return `
+      <div class="answers-display" style="margin-top:14px;">
+        <h3 style="display:flex; align-items:center; gap:8px;">⚠️ Correct Answers Not Given <span class="category-count">${missed.length}</span></h3>
+        <div class="answers-results-grid">${items}</div>
+      </div>
+    `;
 }
 
 // Helper function to create personal result section
@@ -3207,6 +3236,7 @@ function initializeAnswerCategorization() {
     answerCategorization.isCategorizationMode = true;
     answerCategorization.buckets = { uncategorized: [], wrong: [] };
     answerCategorization.correctAnswerBuckets = [];
+    answerCategorization.customBuckets = [];
     answerCategorization.categorizedAnswers = {};
     
     // Show categorization interface
@@ -3396,6 +3426,7 @@ function createAnswerItem(answerGroup) {
         <div class="answer-content">
             <span class="answer-text">"${answerGroup.answer}"</span>
             <span class="answer-count">${answerGroup.count} player${answerGroup.count > 1 ? 's' : ''}</span>
+            ${Array.isArray(answerGroup.players) && answerGroup.players.length > 0 ? `<div class="answer-players" style="color:#ccc; font-size:12px; margin-top:4px;">${answerGroup.players.join(', ')}</div>` : ''}
         </div>
         <div class="answer-actions">
             <button class="answer-action-btn correct" title="Mark as correct">✅</button>
@@ -3815,17 +3846,33 @@ function getBucketDisplayName(bucketKey) {
 }
 
 function applyCategorization() {
-    // Apply the categorization and complete mandatory grading
-    const categorizedGroups = calculateCategorizedScoring();
-    
-    // Send grading completion to server
+    // Build server-expected structure for reliable scoring
+    const payload = { correctAnswerBuckets: [], wrong: [], uncategorized: [] };
+    try {
+        // Correct buckets
+        (answerCategorization.correctAnswerBuckets || []).forEach(bucket => {
+            const entry = {
+                id: bucket.id,
+                name: bucket.name,
+                correctAnswer: bucket.correctAnswer || bucket.name,
+                answers: (bucket.answers || []).map(a => ({ answer: a.answer }))
+            };
+            payload.correctAnswerBuckets.push(entry);
+        });
+        // Wrong
+        (answerCategorization.buckets?.wrong || []).forEach(a => payload.wrong.push({ answer: a.answer }));
+        // Uncategorized
+        (answerCategorization.buckets?.uncategorized || []).forEach(a => payload.uncategorized.push({ answer: a.answer }));
+    } catch (e) { console.warn('Failed to build categorization payload', e); }
+
     socket.emit('completeGrading', {
         gameCode: gameState.gameCode,
-        categorizedAnswers: categorizedGroups
+        categorizedAnswers: payload
     });
     
-    // Update local game state
-    gameState.currentAnswerGroups = categorizedGroups;
+    // Locally update with a preview (non-authoritative), will be replaced by server state
+    const preview = calculateCategorizedScoring();
+    gameState.currentAnswerGroups = preview;
     
     // Hide categorization interface
     document.getElementById('hostAnswerCategorization').style.display = 'none';

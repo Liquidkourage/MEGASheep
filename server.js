@@ -35,7 +35,7 @@ io.on('connection', (socket) => {
   // Player → Host: ask a private question (top-level)
   socket.on('playerQuestion', (data) => {
     try {
-      console.log('💬 playerQuestion received from', socket.id, 'question:', data && data.question);
+  // console.log('💬 playerQuestion received from', socket.id);
       if (!data || typeof data.question !== 'string') {
         try { socket.emit('playerQuestionAck', { ok: false, reason: 'bad-payload' }); } catch (_) {}
         return;
@@ -64,8 +64,11 @@ io.on('connection', (socket) => {
         return;
       }
       const hostSocketId = hostEntry[0];
-      console.log('💬 Forwarding question to host', hostSocketId, 'player:', playerName, 'game:', gameCode, 'q:', question);
-      io.to(hostSocketId).emit('playerQuestion', { gameCode, playerName, playerSocketId: socket.id, question, at: Date.now() });
+      // console.log('💬 Forwarding question to host', hostSocketId, 'player:', playerName, 'game:', gameCode);
+      const at = Date.now();
+      io.to(hostSocketId).emit('playerQuestion', { gameCode, playerName, playerSocketId: socket.id, question, at });
+      sbInsert(SB_TABLES.qa, { game_code: gameCode, player_name: playerName, player_socket_id: socket.id, question, at: new Date(at).toISOString() });
+      sbLogEvent(gameCode, 'player_question', { playerName });
       try { socket.emit('playerQuestionAck', { ok: true }); } catch (_) {}
     } catch (e) {
       console.warn('playerQuestion handling failed', e);
@@ -76,7 +79,7 @@ io.on('connection', (socket) => {
   // Host → Player: answer a private question (top-level)
   socket.on('hostAnswer', (data) => {
     try {
-      console.log('💬 hostAnswer received from', socket.id, 'answer:', data && data.answer, 'target:', data && (data.targetSocketId || data.targetPlayerName));
+  // console.log('💬 hostAnswer received from', socket.id);
       if (!data || typeof data.answer !== 'string') return;
       const answer = data.answer.trim();
       const { gameCode, targetSocketId, targetPlayerName } = data;
@@ -254,6 +257,33 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY &&
     console.log('⚠️  Supabase not configured - running in demo mode with sample questions');
 }
 
+// Supabase logging helpers (best-effort, never block game flow)
+const SB_TABLES = {
+  games: 'games',
+  players: 'game_players',
+  answers: 'answers',
+  grading: 'grading_results',
+  rounds: 'rounds',
+  gameResults: 'game_results',
+  qa: 'qa_messages',
+  events: 'events'
+};
+
+function sbNow() { return new Date().toISOString(); }
+
+async function sbInsert(table, row) {
+  try {
+    if (!supabase || !supabaseConfigured) return;
+    await supabase.from(table).insert(row);
+  } catch (e) {
+    console.log(`⚠️  Supabase insert to ${table} failed:`, e.message);
+  }
+}
+
+function sbLogEvent(gameCode, type, data) {
+  return sbInsert(SB_TABLES.events, { game_code: gameCode, type, data, at: sbNow() });
+}
+
 // Game state management
 const activeGames = new Map(); // Map of gameCode -> Game
 const connectedPlayers = new Map(); // Map of socketId -> PlayerInfo
@@ -305,6 +335,7 @@ class Game {
         this.roundAnswerGroups = []; // Accumulate all answer groups for the current round
         this.answersNeedingEdit = new Map(); // socketId -> { reason, requestedAt, originalAnswer }
         this.seenPlayerNames = new Set(); // Track any name that has ever joined this game
+        this.expectedResponders = new Set(); // socketIds expected to answer current question
     }
 
     addPlayer(socketId, playerName) {
@@ -773,8 +804,11 @@ class Game {
         // Clear any existing timer
         this.stopTimer();
     
-    // Emit initial timer value
+    // Emit initial timer value and establish expected responders for this question
         io.to(this.gameCode).emit('timerUpdate', { timeLeft: this.timeLeft });
+    try {
+      this.expectedResponders = new Set(Array.from(this.players.keys()));
+    } catch(_) {}
     
     this.timerInterval = setInterval(() => {
       this.timeLeft--;
@@ -865,6 +899,8 @@ class Game {
             console.log(`🎯 Continuing to next question: currentQuestion=${this.currentQuestion}, gameState=playing`);
             this.gameState = 'playing';
             this.startTimer();
+            // Log question started
+            sbLogEvent(this.gameCode, 'next_question', { q: this.currentQuestion });
             io.to(this.gameCode).emit('nextQuestion', this.getGameState());
         }
     }
@@ -936,6 +972,9 @@ class Game {
         console.log(`📊 Round data:`, JSON.stringify(roundData, null, 2));
         
         this.roundHistory.push(roundData);
+        // Persist round summary
+        sbInsert(SB_TABLES.rounds, { game_code: this.gameCode, round_number: currentRound, data: roundData, at: sbNow() });
+        sbLogEvent(this.gameCode, 'round_complete', { round: currentRound });
         
         // Check if this is the final round (hard stop at 5 rounds)
         const totalRounds = Math.min(5, Math.ceil(this.questions.length / this.settings.questionsPerRound));
@@ -1611,7 +1650,7 @@ const recentStartGameRequests = new Map();
 
 // Socket.IO Connection Handler
 io.on('connection', (socket) => {
-    console.log('🔌 User connected:', socket.id);
+    // console.log('🔌 User connected:', socket.id);
     
     // Store connection info
     connectedPlayers.set(socket.id, {
@@ -1661,43 +1700,39 @@ io.on('connection', (socket) => {
 
     // Create game (legacy socket event for host joining room)
     socket.on('createGame', (data) => {
-        // Find the most recently created game (assuming this socket just created one)
+        // Prefer explicit gameCode from client (same request cycle as REST creation)
+        const requestedCode = data && data.gameCode ? String(data.gameCode) : null;
         let hostGame = null;
-        let latestGame = null;
-        let latestTime = 0;
-        
-        for (const [gameCode, game] of activeGames) {
-            if (game.createdAt > latestTime) {
-                latestTime = game.createdAt;
-                latestGame = game;
+        if (requestedCode && activeGames.has(requestedCode)) {
+            hostGame = activeGames.get(requestedCode);
+        } else {
+            // Fallback: most recently created game
+            let latestGame = null;
+            let latestTime = 0;
+            for (const [, game] of activeGames) {
+                if (game.createdAt > latestTime) {
+                    latestTime = game.createdAt;
+                    latestGame = game;
+                }
             }
-        }
-        
-        if (latestGame) {
             hostGame = latestGame;
         }
-        
         if (!hostGame) {
             socket.emit('gameError', { message: 'No game found. Please create a game first.' });
             return;
         }
-        
-        // Update connection info
+        // Update connection info securely for this host socket
         const playerInfo = connectedPlayers.get(socket.id);
         if (playerInfo) {
             playerInfo.gameCode = hostGame.gameCode;
             playerInfo.playerName = hostGame.hostId;
             playerInfo.isHost = true;
         }
-        
-        // Host joins the Socket.IO room
         socket.join(hostGame.gameCode);
-        
         socket.emit('gameCreated', {
             gameCode: hostGame.gameCode,
             gameState: hostGame.getGameState()
         });
-        
         console.log(`🏠 Host ${hostGame.hostId} joined room for game ${hostGame.gameCode}`);
     });
 
@@ -1735,10 +1770,9 @@ io.on('connection', (socket) => {
         console.log(`🏠 Host ${game.hostId} reconnected to game ${gameCode}`);
     });
 
-    // Join game (new join only allowed during 'waiting')
+    // Join game (allow mid-game joins; returning names can rebind)
     socket.on('joinGame', (data) => {
-        console.log('🔍 joinGame event received:', data);
-        console.log('🔍 joinGame: socket.id:', socket.id);
+        // Reduced verbose logging in production for joinGame
         const { gameCode, playerName } = data;
         
         if (!gameCode || !playerName) {
@@ -1747,7 +1781,7 @@ io.on('connection', (socket) => {
             return;
         }
         
-        console.log(`🔍 joinGame: Looking for game ${gameCode}`);
+        // console.log(`🔍 joinGame: Looking for game ${gameCode}`);
         const game = activeGames.get(gameCode);
         if (!game) {
             console.log(`❌ joinGame: Game ${gameCode} not found`);
@@ -1755,22 +1789,12 @@ io.on('connection', (socket) => {
             return;
         }
         
-        console.log(`🔍 joinGame: Game ${gameCode} found, state: ${game.gameState}`);
-        console.log(`🔍 joinGame: Game has ${game.players.size} players`);
-        console.log(`🔍 joinGame: Game players:`, Array.from(game.players.values()));
+        // Reduced verbose logging for player lists
         
-        if (game.gameState !== 'waiting') {
-            // Allow reconnect for a previously seen player name
-            const isReturningPlayer = game.seenPlayerNames && game.seenPlayerNames.has(playerName);
-            if (!isReturningPlayer) {
-                console.log(`❌ joinGame: Game ${gameCode} started; rejecting new player ${playerName}`);
-                socket.emit('gameError', { message: 'Game has already started. Cannot join.' });
-                return;
-            }
-        }
+        // Mid-game join policy: allow new players to join anytime; they simply won't be counted for the current question
         
         try {
-            console.log(`🔍 joinGame: Processing join for ${playerName} to game ${gameCode}`);
+            // console.log(`🔍 joinGame: Processing join for ${playerName} to game ${gameCode}`);
             
             // Update connection info first
             const playerInfo = connectedPlayers.get(socket.id);
@@ -1785,13 +1809,20 @@ io.on('connection', (socket) => {
             if (playerName !== game.hostId) {
                 const alreadyInGame = Array.from(game.players.values()).some(p => p.name === playerName);
                 if (!alreadyInGame) {
-                    console.log(`🔍 joinGame: Adding ${playerName} to game ${gameCode}`);
+                    // console.log(`🔍 joinGame: Adding ${playerName} to game ${gameCode}`);
                     game.addPlayer(socket.id, playerName);
+                    // Log player join
+                    sbInsert(SB_TABLES.players, { game_code: gameCode, socket_id: socket.id, player_name: playerName, joined_at: sbNow() });
+                    sbLogEvent(gameCode, 'player_joined', { playerName });
+                    // If a question is currently active, exclude this new player from expected responders for the ongoing question
+                    if (game.gameState === 'playing' && game.expectedResponders instanceof Set) {
+                        try { game.expectedResponders.delete(socket.id); } catch(_) {}
+                    }
                     // If game already started, do not disturb state; just update clients
                     io.to(gameCode).emit('playerJoined', game.getGameState());
                 } else {
                     // Rebind returning player to new socket
-                    console.log(`🔍 joinGame: Rebinding returning player ${playerName} to socket ${socket.id}`);
+                    // console.log(`🔍 joinGame: Rebinding returning player ${playerName} to socket ${socket.id}`);
                     // Remove any old socket entry for this name
                     for (const [sid, p] of game.players.entries()) {
                         if (p.name === playerName && sid !== socket.id) {
@@ -1801,7 +1832,12 @@ io.on('connection', (socket) => {
                     }
                     game.players.set(socket.id, { id: socket.id, name: playerName, score: 0, answers: [] });
                     if (!game.scores.has(socket.id)) game.scores.set(socket.id, 0);
+                    // Preserve expected responders for current question; remove new socket id from expected if mid-question
+                    if (game.gameState === 'playing' && game.expectedResponders instanceof Set) {
+                        try { game.expectedResponders.delete(socket.id); } catch(_) {}
+                    }
                     io.to(gameCode).emit('playerJoined', game.getGameState());
+                    sbLogEvent(gameCode, 'player_rebound', { playerName });
                 }
 
                 // If this returning player had a pending clarification, re-prompt them immediately
@@ -1813,24 +1849,19 @@ io.on('connection', (socket) => {
                     }
                 }
             } else {
-                console.log('🏠 Host', playerName, 'joined room for game', gameCode);
+            // console.log('🏠 Host joined room', gameCode);
             }
             
-            console.log(`🔍 joinGame: Adding socket ${socket.id} to room ${gameCode}`);
+            // console.log(`🔍 joinGame: Adding socket to room ${gameCode}`);
             socket.join(gameCode);
             
             // Confirm to player
-            console.log(`🔍 joinGame: Sending gameJoined response to ${playerName}`);
+            // console.log(`🔍 joinGame: Sending gameJoined response`);
             const gameStateToSend = game.getGameState();
-            console.log(`🔍 joinGame: gameState.players:`, gameStateToSend.players);
-            console.log(`🔍 joinGame: gameState.players.length:`, gameStateToSend.players?.length || 0);
-            console.log(`🔍 joinGame: Full gameState keys:`, Object.keys(gameStateToSend));
-            console.log(`🔍 joinGame: Full gameState:`, JSON.stringify(gameStateToSend, null, 2));
+            // Reduced extra joinGame logging
             
             // Test JSON serialization
-            const testSerialization = JSON.stringify(gameStateToSend);
-            const testDeserialization = JSON.parse(testSerialization);
-            console.log(`🔍 joinGame: Serialization test - players after JSON roundtrip:`, testDeserialization.players?.length || 0);
+            // Serialization test removed
             
             const responseData = {
                 gameCode: gameCode,
@@ -2006,30 +2037,28 @@ io.on('connection', (socket) => {
     // Test room membership
     socket.on('testRoomMembership', (data) => {
         const { gameCode } = data;
-        console.log(`🔍 Player ${socket.id} testing room membership for game ${gameCode}`);
+        // console.log(`🔍 Player ${socket.id} testing room membership for game ${gameCode}`);
         
         // Check if player is in the room
         const rooms = socket.rooms;
-        console.log(`🔍 Player ${socket.id} is in rooms:`, Array.from(rooms));
+        // console.log(`🔍 Player ${socket.id} is in rooms:`, Array.from(rooms));
         
         if (rooms.has(gameCode)) {
-            console.log(`✅ Player ${socket.id} is correctly in room ${gameCode}`);
+                // console.log(`✅ Player ${socket.id} is correctly in room ${gameCode}`);
         } else {
-            console.log(`❌ Player ${socket.id} is NOT in room ${gameCode}`);
+                // console.log(`❌ Player ${socket.id} is NOT in room ${gameCode}`);
         }
     });
 
     // Ping test
     socket.on('ping', (data) => {
-        console.log(`🏓 Ping received from ${socket.id}:`, data);
-        console.log(`🏓 Socket connected state:`, socket.connected);
-        console.log(`🏓 Socket rooms:`, Array.from(socket.rooms));
+        // Minimal ping logging
         socket.emit('pong', { message: 'Server pong', timestamp: Date.now() });
     });
 
     // Start game
     socket.on('startGame', async (data) => {
-        console.log('🎮 startGame event received from socket:', socket.id);
+        // console.log('🎮 startGame event received from socket:', socket.id);
         
         if (!data) {
             console.log('⚠️ startGame event received with no data');
@@ -2094,8 +2123,7 @@ io.on('connection', (socket) => {
                         throw new Error('No questions found in database. Please upload sample questions first.');
                     }
                     
-                    console.log('🔍 Debug: Raw database question structure:', dbQuestions[0]);
-                    console.log('🔍 Debug: Database field names:', Object.keys(dbQuestions[0]));
+            // Reduced verbose debug logging in production
                     
                     // Map database fields to expected format
                     questions = dbQuestions.map(q => ({
@@ -2106,8 +2134,7 @@ io.on('connection', (socket) => {
                         correct_answers: Array.isArray(q.correct_answers) ? q.correct_answers : [q.correct_answers].filter(Boolean)
                     }));
                     
-                    console.log('🔍 Debug: Mapped question structure:', questions[0]);
-                    console.log('🔍 Debug: Mapped prompt field:', questions[0]?.prompt);
+                    // Reduced verbose debug logging in production
                 } catch (dbError) {
                     console.log('⚠️ Database query failed:', dbError.message);
                     if (dbError.message.includes('fetch failed') || dbError.message.includes('network') || dbError.message.includes('ENOTFOUND')) {
@@ -2217,6 +2244,9 @@ io.on('connection', (socket) => {
             const playerName = playerInfo.playerName;
             
             console.log(`🎯 Player ${playerName} submitted answer: "${answer}"`);
+            // Persist answer
+            sbInsert(SB_TABLES.answers, { game_code: gameCode, socket_id: socket.id, player_name: playerName, answer: answer, question_index: game.currentQuestion, at: sbNow() });
+            sbLogEvent(gameCode, 'answer_submitted', { playerName, answer, q: game.currentQuestion });
             
             // Notify host of the specific answer
             const hostSocket = Array.from(connectedPlayers.entries())
@@ -2246,29 +2276,17 @@ io.on('connection', (socket) => {
             
             console.log(`✅ newAnswerSubmitted event emitted to room ${gameCode}`);
             
-            // Notify others of answer count
+            // Notify others of answer count (only count expected responders when playing)
+            const totalExpected = (game.gameState === 'playing' && game.expectedResponders instanceof Set)
+                ? game.expectedResponders.size
+                : game.players.size;
             io.to(gameCode).emit('answerUpdate', {
                 answersReceived: game.answers.size,
-                totalPlayers: game.players.size
+                totalPlayers: totalExpected
             });
             
-            // Check if all answered (require NO pending clarifications)
-            if (game.answersNeedingEdit.size === 0 && game.answers.size === game.players.size) {
-                console.log(`🎯 All players (${game.players.size}) have submitted answers, ending question automatically`);
-                game.calculateScores();
-                game.gameState = 'grading'; // Changed from 'scoring' to 'grading'
-                game.stopTimer();
-                
-                const gameStateToSend = game.getGameState();
-                console.log('📤 Sending questionComplete with answer groups:', gameStateToSend.currentAnswerGroups);
-                console.log('📤 Total game state keys:', Object.keys(gameStateToSend));
-                
-                // Debug: Check who's in the room
-                const roomSockets = await io.in(gameCode).fetchSockets();
-                console.log(`🔍 Room ${gameCode} has ${roomSockets.length} sockets:`, roomSockets.map(s => s.id));
-                
-                io.to(gameCode).emit('questionComplete', gameStateToSend);
-            } else if (game.answersNeedingEdit.size > 0) {
+            // Do not auto-end when all have answered; host or timer ends the question now
+            if (game.answersNeedingEdit.size > 0) {
                 console.log(`⏳ Not auto-ending: ${game.answers.size}/${game.players.size} answers, ${game.answersNeedingEdit.size} pending clarifications`);
             }
         }
@@ -2329,16 +2347,7 @@ io.on('connection', (socket) => {
                 totalPlayers: game.players.size
             });
             
-            // Check if all answered
-            if (game.answers.size === game.players.size) {
-                console.log(`🎯 All players (${game.players.size}) have submitted answers, ending question automatically`);
-                game.calculateScores();
-                game.gameState = 'grading';
-                game.stopTimer();
-                
-                const gameStateToSend = game.getGameState();
-                io.to(gameCode).emit('questionComplete', gameStateToSend);
-            }
+            // Do not auto-end on virtual answers either; host/timer controls flow
             
         } catch (error) {
             console.error('❌ Error submitting virtual answer:', error.message);
@@ -2411,6 +2420,17 @@ io.on('connection', (socket) => {
             const gameStateToSend = game.getGameState();
             io.to(gameCode).emit('gradingComplete', gameStateToSend);
             console.log(`📝 Host completed grading for game ${gameCode}`);
+            // Persist grading results snapshot
+            try {
+              const payload = {
+                game_code: gameCode,
+                question_index: game.currentQuestion,
+                results: game.currentAnswerGroups,
+                at: sbNow()
+              };
+              sbInsert(SB_TABLES.grading, payload);
+              sbLogEvent(gameCode, 'grading_complete', { q: game.currentQuestion });
+            } catch(_) {}
         } catch (err) {
             console.error('❌ completeGrading failed, forcing transition to scoring:', err);
             try {
@@ -2505,6 +2525,7 @@ io.on('connection', (socket) => {
     io.to(gameCode).emit('roundComplete', state);
     // Players: request them to show their round results screen as well
     io.to(gameCode).emit('playerShowRoundResults', state);
+            sbLogEvent(gameCode, 'show_round_leaderboard', {});
   });
 
     // Show overall leaderboard (from round complete screen after round 2+)
@@ -2683,6 +2704,9 @@ io.on('connection', (socket) => {
         io.to(gameCode).emit('gameFinished', gameState);
         
         console.log(`🎮 Game ${gameCode} ended by host - gameFinished event emitted`);
+        // Persist game final snapshot
+        sbInsert(SB_TABLES.gameResults, { game_code: gameCode, final_state: gameState, ended_at: sbNow() });
+        sbLogEvent(gameCode, 'game_finished', {});
     });
 
     // Join display room for specific game
@@ -2976,16 +3000,17 @@ io.on('connection', (socket) => {
         if (playerInfo && playerInfo.gameCode) {
             const game = activeGames.get(playerInfo.gameCode);
             if (game) {
-                // Only remove as player if it's not a display
                 if (!playerInfo.isDisplay) {
-                    // Delay removal slightly to tolerate brief reconnects
+                    // Delay removal to tolerate brief reconnects; defer deletion check until after grace
                     setTimeout(() => {
+                        // If the same socket id has re-appeared, skip removal
                         const stillConnected = connectedPlayers.has(socket.id);
                         if (stillConnected) return;
+                        // Remove from players and expected responders
+                        try { if (game.expectedResponders instanceof Set) game.expectedResponders.delete(socket.id); } catch(_) {}
                         game.removePlayer(socket.id);
                         io.to(playerInfo.gameCode).emit('playerLeft', game.getGameState());
                         if (game.players.size === 0) {
-                            // Delay empty game cleanup to allow reconnection
                             const code = playerInfo.gameCode;
                             setTimeout(() => {
                                 const g = activeGames.get(code);
@@ -3003,7 +3028,10 @@ io.on('connection', (socket) => {
             }
         }
         
-        connectedPlayers.delete(socket.id);
+        // Defer deletion until after grace: mark a timestamp so rebind can be detected
+        setTimeout(() => {
+            connectedPlayers.delete(socket.id);
+        }, 3000);
         // Cleanup any pairing codes issued to this socket
         for (const [code, entry] of displayPairings.entries()) {
             if (entry.socketId === socket.id) displayPairings.delete(code);
@@ -3022,6 +3050,9 @@ app.post('/api/create-game', (req, res) => {
     try {
         const game = new Game(finalHostName);
         activeGames.set(game.gameCode, game);
+        // Persist game created
+        sbInsert(SB_TABLES.games, { game_code: game.gameCode, host_name: finalHostName, created_at: sbNow() });
+        sbLogEvent(game.gameCode, 'game_created', { host: finalHostName });
         
         console.log(`🎮 Created new game: ${game.gameCode} by ${finalHostName}`);
         
@@ -3058,7 +3089,8 @@ app.post('/api/join-game', (req, res) => {
         });
     }
     
-    if (game.status !== 'waiting') {
+    // Use authoritative gameState instead of non-existent game.status
+    if (game.gameState !== 'waiting') {
         return res.status(400).json({ 
             status: 'error', 
             message: 'Game has already started' });
@@ -3082,6 +3114,8 @@ app.post('/api/join-game', (req, res) => {
     res.json({ 
         status: 'success', 
         message: 'Ready to join game',
+        // Include gameCode so clients can reliably emit join over sockets
+        gameCode: game.gameCode,
         gameState: game.getGameState()
     });
 });

@@ -7,6 +7,23 @@
     <link rel="stylesheet" href="styles.css">
     <script src="/socket.io/socket.io.js"></script>
     <style>
+        /* Floating Q&A indicator */
+        .qa-fab {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            background: linear-gradient(135deg, #ffc107, #e0a800);
+            color: #000;
+            border: 1px solid rgba(0,0,0,0.2);
+            border-radius: 999px;
+            padding: 10px 14px;
+            font-weight: 800;
+            cursor: pointer;
+            z-index: 2500;
+            display: none;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+        }
+        .qa-fab .count { margin-left: 6px; background:#000; color:#ffc107; border-radius:999px; padding:2px 8px; font-size:12px; }
         /* Host Console Specific Styles */
         body {
             background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000033 100%);
@@ -839,12 +856,22 @@
                     <div class="host-controls">
                         <button id="startGameBtn" class="control-btn success">START GAME</button>
                         <button id="endGameMainBtn" class="control-btn warning">🛑 END GAME</button>
+                        <button id="endQuestionNowBtn" class="control-btn warning">⏹️ END QUESTION NOW</button>
                         <button id="gradingBtn" class="control-btn secondary">📝 GRADING INTERFACE</button>
                         <button id="virtualTestBtn" class="control-btn warning">🎭 VIRTUAL TEST (100 players)</button>
                         <button id="showRoundLbBtn" class="control-btn secondary">📊 SHOW ROUND LEADERBOARD</button>
                         <button id="showOverallLbBtn" class="control-btn secondary">🏆 SHOW OVERALL LEADERBOARD</button>
                         <button id="historyBtn" class="control-btn secondary">📚 HISTORY</button>
                         <button id="showEndDemoBtn" class="control-btn secondary">🎉 SHOW END DEMO</button>
+                        <div class="host-info" style="grid-column: 1 / -1; text-align:left; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); padding:10px 12px; border-radius:8px;">
+                            <div class="answer-status" style="margin-bottom:6px;">
+                                <span id="answersReceived">0</span> / <span id="totalPlayers">0</span> answers received
+                            </div>
+                            <div id="awaitingContainer" style="font-size:13px; color:#cfd8dc;">
+                                <strong>Waiting on</strong> <span id="awaitingCount">0</span>:
+                                <div id="awaitingNames" style="margin-top:4px; line-height:1.5;"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -867,6 +894,12 @@
                 <div class="dashboard-panel">
                     <div class="panel-header">
                         <h3>💬 Questions <span id="qaBadge" class="qa-badge">0</span></h3>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <label style="font-size:12px; color:#bbb; display:inline-flex; align-items:center; gap:6px;">
+                                <input type="checkbox" id="qaHideAns" /> Hide answered
+                            </label>
+                            <button id="qaClearAns" class="control-btn secondary" style="padding:6px 10px; font-size:12px;">Archive answered</button>
+                        </div>
                     </div>
                     <div id="questionsInbox"></div>
                 </div>
@@ -916,6 +949,11 @@
             </div>
         </div>
     </div>
+
+    <!-- Floating QA indicator -->
+    <button id="qaFab" class="qa-fab" title="Unanswered questions" style="display:none;">
+        💬 Q&A <span id="qaFabCount" class="count">0</span>
+    </button>
 
     <!-- Single User Grading Interface Modal -->
     <div id="gradingSingleModal" class="modal" style="display: none;">
@@ -1073,8 +1111,11 @@
             socket.on('newAnswerSubmitted', (data) => {
                 try {
                     console.log('📡 [host] newAnswerSubmitted:', data);
-                    if (!currentGame) return;
-                    // Ensure the player response appears immediately in the list
+                    if (!currentGame || !data) return;
+                    window._answersByName = window._answersByName || {};
+                    if (data.playerName && typeof data.answer === 'string') {
+                        window._answersByName[data.playerName] = data.answer;
+                    }
                     updatePlayerListWithResponses();
                 } catch (e) { console.warn('Failed to handle newAnswerSubmitted', e); }
             });
@@ -1150,11 +1191,13 @@
                 const inbox = document.getElementById('questionsInbox');
                 if (!inbox) return;
                 inbox.innerHTML = '';
+                const hideAns = (localStorage.getItem('qaHideAnswered') || 'true') === 'true';
                 const unanswered = hostQuestions.filter(q => !q.answered);
                 const badge = document.getElementById('qaBadge');
                 if (badge) badge.textContent = unanswered.length;
+                updateQaIndicators(unanswered.length);
 
-                hostQuestions
+                const list = hideAns ? hostQuestions.filter(q=>!q.answered) : hostQuestions
                     .sort((a,b)=>a.answered - b.answered || a.at - b.at)
                     .forEach(q => {
                         const div = document.createElement('div');
@@ -1165,6 +1208,7 @@
                             <div class="qa-reply-row">
                                 <input id="reply_${q.id}" type="text" placeholder="Type reply..." ${q.answered ? 'disabled' : ''} />
                                 <button class="control-btn secondary" ${q.answered ? 'disabled' : ''} data-qid="${q.id}">Reply</button>
+                                <button class="control-btn small" data-ack="${q.id}">Mark done</button>
                             </div>
                         `;
                         inbox.appendChild(div);
@@ -1175,6 +1219,14 @@
                     btn.onclick = () => {
                         const id = btn.getAttribute('data-qid');
                         replyToQuestion(id);
+                    };
+                });
+                // Bind mark-done buttons
+                inbox.querySelectorAll('button[data-ack]').forEach(btn => {
+                    btn.onclick = () => {
+                        const id = btn.getAttribute('data-ack');
+                        const q = hostQuestions.find(x => String(x.id) === String(id));
+                        if (q) { q.answered = true; renderQuestionsInbox(); }
                     };
                 });
             }
@@ -1209,9 +1261,59 @@
                         toast.textContent = `💬 Question from ${payload.playerName}`;
                         toast.style.display = 'block';
                         setTimeout(()=>{ if (toast) toast.style.display='none'; }, 2500);
+                        // Also pulse the floating indicator
+                        updateQaIndicators(hostQuestions.filter(q=>!q.answered).length, true);
                     } catch(_) {}
                 } catch (_) {}
             });
+            // Persistent QA indicator setup
+            function updateQaIndicators(unansweredCount, pulse) {
+                const fab = document.getElementById('qaFab');
+                const fabCount = document.getElementById('qaFabCount');
+                if (!fab || !fabCount) return;
+                if (unansweredCount > 0) {
+                    fab.style.display = 'inline-flex';
+                    fabCount.textContent = String(unansweredCount);
+                    if (pulse) {
+                        fab.style.transform = 'scale(1.05)';
+                        setTimeout(()=>{ fab.style.transform = 'scale(1.0)'; }, 180);
+                    }
+                } else {
+                    fab.style.display = 'none';
+                }
+            }
+
+            // Bind hide answered toggle and clear button
+            (function bindQaControls(){
+                const hideCb = document.getElementById('qaHideAns');
+                if (hideCb && !hideCb._bound) {
+                    hideCb._bound = true;
+                    hideCb.checked = (localStorage.getItem('qaHideAnswered') || 'true') === 'true';
+                    hideCb.addEventListener('change', ()=>{
+                        localStorage.setItem('qaHideAnswered', hideCb.checked ? 'true' : 'false');
+                        renderQuestionsInbox();
+                    });
+                }
+                const clearBtn = document.getElementById('qaClearAns');
+                if (clearBtn && !clearBtn._bound) {
+                    clearBtn._bound = true;
+                    clearBtn.addEventListener('click', ()=>{
+                        hostQuestions = hostQuestions.filter(q => !q.answered);
+                        renderQuestionsInbox();
+                    });
+                }
+                // Floating button
+                const fab = document.getElementById('qaFab');
+                if (fab && !fab._bound) {
+                    fab._bound = true;
+                    fab.addEventListener('click', ()=>{
+                        // Scroll questions panel into view
+                        try {
+                            document.getElementById('questionsInbox')?.scrollIntoView({ behavior:'smooth', block:'center' });
+                        } catch(_) {}
+                    });
+                }
+            })();
 
             // When all players answered, server emits questionComplete (grading phase)
             socket.on('questionComplete', (data) => {
@@ -1230,6 +1332,8 @@
                     gameState = 'playing';
                     updateGameControls();
                     openGradingSingleModal();
+                    // Reset live answers cache for new question
+                    try { window._answersByName = {}; updatePlayerListWithResponses(); } catch(_) {}
                 } catch (e) { console.warn('Failed to auto-open grading on nextQuestion', e); }
             });
             
@@ -1265,7 +1369,7 @@
             if (!currentGame) return;
             
             document.getElementById('gameCodeDisplay').textContent = currentGame.gameCode;
-            document.getElementById('playerCount').textContent = currentGame.players.size || 0;
+            document.getElementById('playerCount').textContent = (Array.isArray(currentGame.players) ? currentGame.players.length : 0);
             
             updatePlayerList();
 
@@ -1286,24 +1390,25 @@
             playerList.innerHTML = '';
             
             // Update player count
-            const playerCountValue = Object.keys(currentGame.players).length;
+            const playerCountValue = Array.isArray(currentGame.players) ? currentGame.players.length : 0;
             playerCount.textContent = playerCountValue;
             
-            currentGame.players.forEach((player, socketId) => {
+            const playersArr = Array.isArray(currentGame.players) ? currentGame.players : [];
+            playersArr.forEach((player) => {
                 const playerItem = document.createElement('div');
                 playerItem.className = 'player-item';
                 
                 // Check if player has a response for the current question
                 let responseDisplay = '';
-                if (gameState === 'playing' && currentGame.currentAnswerGroups) {
-                    const playerResponse = currentGame.currentAnswerGroups.find(group => 
-                        group.players && group.players.includes(player.name)
-                    );
-                    if (playerResponse) {
+                if (gameState === 'playing') {
+                    // During playing, rely on a lightweight cache updated by newAnswerSubmitted
+                    window._answersByName = window._answersByName || {};
+                    const answerText = window._answersByName[player.name] || '';
+                    if (answerText) {
                         responseDisplay = `
                             <div class="player-response">
                                 <span class="response-label">Answer:</span>
-                                <span class="response-text">"${playerResponse.answer}"</span>
+                                <span class="response-text">"${answerText}"</span>
                             </div>
                         `;
                     } else {
@@ -1371,7 +1476,31 @@
 
         // Update player list when answers are submitted
         function updatePlayerListWithResponses() {
-            updatePlayerList();
+            try {
+                updatePlayerList();
+                // Update awaiting names panel during playing
+                if (!currentGame) return;
+                const awaitingNamesEl = document.getElementById('awaitingNames');
+                const awaitingCountEl = document.getElementById('awaitingCount');
+                const totalPlayersEl = document.getElementById('totalPlayers');
+                const answersReceivedEl = document.getElementById('answersReceived');
+                if (!awaitingNamesEl || !awaitingCountEl) return;
+                const playersArr = Array.isArray(currentGame.players) ? currentGame.players : [];
+                const answeredSet = new Set();
+                // During playing, use live cache; during grading/scoring, use currentAnswerGroups
+                if (gameState === 'playing') {
+                    window._answersByName = window._answersByName || {};
+                    Object.keys(window._answersByName).forEach(name => answeredSet.add(String(name)));
+                } else {
+                    const groups = Array.isArray(currentGame.currentAnswerGroups) ? currentGame.currentAnswerGroups : [];
+                    groups.forEach(g => (Array.isArray(g.players) ? g.players.forEach(n => answeredSet.add(String(n))) : null));
+                }
+                const awaiting = playersArr.map(p => p.name).filter(name => !answeredSet.has(String(name)));
+                awaitingNamesEl.textContent = awaiting.length > 0 ? awaiting.join(', ') : '—';
+                awaitingCountEl.textContent = String(awaiting.length);
+                if (totalPlayersEl) totalPlayersEl.textContent = String(playersArr.length);
+                if (answersReceivedEl) answersReceivedEl.textContent = String(playersArr.length - awaiting.length);
+            } catch (_) {}
         }
 
         // Show scoring panel
@@ -1383,6 +1512,71 @@
             
             if (data && data.currentAnswerGroups) {
                 scoringContent.innerHTML = '';
+                try {
+                    // Build quick highlights for host talk-track
+                    const groups = Array.isArray(data.currentAnswerGroups) ? data.currentAnswerGroups : [];
+                    const totalResponses = groups.reduce((s,g)=> s + (Number(g.count)|| (Array.isArray(g.players)?g.players.length:0) || 0), 0);
+                    const uniqueGroups = groups.filter(g => (Number(g.count) || (g.players?.length||0)) === 1);
+                    const uniquePlayers = uniqueGroups.flatMap(g => Array.isArray(g.players) ? g.players : []);
+                    const mostCommon = [...groups].sort((a,b)=> (b.count||b.players?.length||0) - (a.count||a.players?.length||0))[0] || null;
+                    // Determine missed correct answers
+                    const q = data.currentQuestionData || (Array.isArray(data.questions) ? data.questions[data.currentQuestion] : null);
+                    const correctList = Array.isArray(q?.correct_answers) ? q.correct_answers : [];
+                    const norm = s => String(s||'').toLowerCase().trim();
+                    const correctGivenSet = new Set(groups.filter(g => g.category === 'correct').map(g => norm(g.answer)));
+                    const missedCorrect = correctList.filter(ans => !correctGivenSet.has(norm(ans)));
+                    const summary = document.createElement('div');
+                    summary.style.cssText = 'background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:14px; margin-bottom:16px;';
+                    summary.innerHTML = `
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:10px;">
+                            <div><div style="color:#bbb; font-size:12px;">Total responses</div><div style="font-size:20px; font-weight:800;">${totalResponses}</div></div>
+                            <div><div style="color:#bbb; font-size:12px;">Unique answers</div><div style="font-size:20px; font-weight:800;">${uniqueGroups.length}</div></div>
+                            <div><div style="color:#bbb; font-size:12px;">Most common</div><div style="font-size:16px; font-weight:700; word-break:break-word;">${mostCommon ? `"${mostCommon.answer}" (${mostCommon.count||mostCommon.players?.length||0})` : '—'}</div></div>
+                            <div><div style="color:#bbb; font-size:12px;">Missed correct</div><div style="font-size:20px; font-weight:800; color:#ffc107;">${missedCorrect.length}</div></div>
+                        </div>
+                    `;
+                    scoringContent.appendChild(summary);
+                    // Unique answers section (players + answer)
+                    if (uniqueGroups.length > 0) {
+                        const uniqueSection = document.createElement('div');
+                        uniqueSection.className = 'scoring-section';
+                        const h = document.createElement('h4');
+                        h.textContent = '🟣 Unique Answers'; h.style.color = '#c084fc';
+                        uniqueSection.appendChild(h);
+                        uniqueGroups
+                          .sort((a,b)=> (a.answer||'').localeCompare(b.answer||''))
+                          .forEach(g => {
+                              const row = document.createElement('div');
+                              row.className = 'answer-group';
+                              row.innerHTML = `
+                                  <div class="answer-text">"${g.answer}"</div>
+                                  <div class="answer-players">${(g.players||[]).join(', ')}</div>
+                                  <div class="answer-points">+${g.points||0} pts</div>
+                              `;
+                              uniqueSection.appendChild(row);
+                          });
+                        scoringContent.appendChild(uniqueSection);
+                    }
+                    // Missed correct answers section
+                    if (missedCorrect.length > 0) {
+                        const missedSection = document.createElement('div');
+                        missedSection.className = 'scoring-section';
+                        const h = document.createElement('h4');
+                        h.textContent = '⚠️ Correct Answers Not Given'; h.style.color = '#ffc107';
+                        missedSection.appendChild(h);
+                        missedCorrect.forEach(ans => {
+                            const row = document.createElement('div');
+                            row.className = 'answer-group';
+                            row.innerHTML = `
+                                <div class="answer-text">"${ans}"</div>
+                                <div class="answer-players">—</div>
+                                <div class="answer-points">0 pts</div>
+                            `;
+                            missedSection.appendChild(row);
+                        });
+                        scoringContent.appendChild(missedSection);
+                    }
+                } catch(_) {}
                 
                 // Group answers by category
                 const correctAnswers = [];
@@ -1536,6 +1730,15 @@
                 if (!confirm('End the current game for all players?')) return;
                 socket.emit('endGame', { gameCode: currentGame.gameCode });
             } catch (e) { console.warn('Failed to emit endGame', e); }
+        });
+
+        // End question now (host manual control)
+        const endQuestionNowBtn = document.getElementById('endQuestionNowBtn');
+        if (endQuestionNowBtn) endQuestionNowBtn.addEventListener('click', () => {
+            try {
+                if (!currentGame || !currentGame.gameCode) { alert('No active game'); return; }
+                socket.emit('endQuestion', { gameCode: currentGame.gameCode });
+            } catch (e) { console.warn('Failed to emit endQuestion', e); }
         });
 
         document.getElementById('virtualTestBtn').addEventListener('click', () => {

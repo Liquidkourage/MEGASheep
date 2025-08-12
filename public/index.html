@@ -11,18 +11,7 @@
     <div class="container">
         <!-- Welcome Screen removed: root should only show Join Game for players -->
 
-        <!-- Create Game Screen -->
-        <div id="createGameScreen" class="screen">
-            <div class="screen-content">
-                <h2>Create New Game</h2>
-                <div class="form-group">
-                    <label for="hostName">Your Name:</label>
-                    <input type="text" id="hostName" placeholder="Enter your name" required>
-                </div>
-                <button id="createGameSubmitBtn" class="btn btn-primary">Create Game</button>
-                <button id="backToWelcomeBtn" class="btn btn-secondary">Back</button>
-            </div>
-        </div>
+        <!-- Create Game Screen removed: hosting happens on /host -->
 
         <!-- Join Game Screen (default active) -->
         <div id="joinGameScreen" class="screen active">
@@ -48,146 +37,8 @@
                     <p class="lobby-subtitle">Waiting for players to join...</p>
                 </div>
                 
-                <!-- Host Game Management Panel -->
-                <div id="hostGamePanel" class="host-game-panel" style="display: none;">
-                    <div class="host-dashboard">
-                        <div class="host-header">
-                            <h3>🎮 Host Dashboard</h3>
-                            <div class="game-status">
-                                <span class="status-indicator active">●</span>
-                                <span class="status-text">Game Active</span>
-                            </div>
-                            <div class="host-actions">
-                                <button onclick="openGradingModal()" class="btn btn-primary">📝 Grading Interface</button>
-                                <a href="/grading" class="btn btn-success">👥 Multi-User Grading</a>
-                            </div>
-                        </div>
-                        
-                        <!-- Game Statistics -->
-                        <div class="game-stats">
-                            <div class="stat-card">
-                                <div class="stat-number" id="totalPlayersStat">0</div>
-                                <div class="stat-label">Players</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-number" id="questionsLoaded">0</div>
-                                <div class="stat-label">Questions</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-number" id="gameDuration">00:00</div>
-                                <div class="stat-label">Duration</div>
-                            </div>
-                        </div>
-                        
-                        <!-- Game Settings -->
-                        <div class="settings-section">
-                            <h4>⚙️ Game Settings</h4>
-                            <div class="game-settings">
-                                <div class="setting-group">
-                                    <label for="questionSet">Question Set:</label>
-                                    <select id="questionSet" class="setting-input">
-                                        <option value="demo">Demo Questions (5 questions)</option>
-                                        <option value="supabase">Supabase Database</option>
-                                        <option value="custom">Custom Questions</option>
-                                    </select>
-                                </div>
-                                <div class="setting-group">
-                                    <label for="timerDuration">Timer Duration (seconds):</label>
-                                    <input type="number" id="timerDuration" class="setting-input" value="30" min="10" max="120">
-                                </div>
-                                <div class="setting-group">
-                                    <label for="maxPlayers">Maximum Players:</label>
-                                    <input type="number" id="maxPlayers" class="setting-input" value="10" min="2" max="20">
-                                </div>
-                                <div class="setting-group">
-                                    <label for="roundsPerGame">Rounds per Game:</label>
-                                    <input type="number" id="roundsPerGame" class="setting-input" value="5" min="1" max="20">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Host Controls -->
-                        <div class="host-controls-section">
-                            <h4>🎯 Host Controls</h4>
-                            <div class="game-controls">
-                                <button id="refreshQuestionsBtn" class="btn btn-secondary">
-                                    <span class="btn-icon">🔄</span>
-                                    Refresh Questions
-                                </button>
-                                <button id="openHistoryModalBtn2" class="btn btn-secondary">
-                                    <span class="btn-icon">📚</span>
-                                    History
-                                </button>
-                                <button id="testGameBtn" class="btn btn-secondary">
-                                    <span class="btn-icon">🧪</span>
-                                    Test Game
-                                </button>
-                                <button id="testCategorizationBtn" class="btn btn-secondary">
-                                    <span class="btn-icon">📝</span>
-                                    Test Categorization
-                                </button>
-                                <button id="virtualTestBtn" class="btn btn-warning">
-                                    <span class="btn-icon">🎭</span>
-                                    Virtual Test
-                                </button>
-                                <button id="openGradingModalBtn" class="btn btn-primary">
-                                    <span class="btn-icon">🎯</span>
-                                    Grading Interface
-                                </button>
-                                <button id="uploadSampleQuestionsBtn" class="btn btn-secondary">
-                                    <span class="btn-icon">📚</span>
-                                    Upload Sample Questions
-                                </button>
-                                <button id="pauseGameBtn" class="btn btn-warning" style="display: none;">
-                                    <span class="btn-icon">⏸️</span>
-                                    Pause Game
-                                </button>
-                                <button id="resumeGameBtn" class="btn btn-success" style="display: none;">
-                                    <span class="btn-icon">▶️</span>
-                                    Resume Game
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Quick Actions -->
-                        <div class="quick-actions">
-                            <h4>⚡ Quick Actions</h4>
-                            <div class="action-buttons">
-                                <button id="copyGameLinkBtn" class="btn btn-small">
-                                    <span class="btn-icon">🔗</span>
-                                    Copy Game Link
-                                </button>
-                                <button id="showQRCodeBtn" class="btn btn-small">
-                                    <span class="btn-icon">📱</span>
-                                    Show QR Code
-                                </button>
-                                <button id="exportResultsBtn" class="btn btn-small">
-                                    <span class="btn-icon">📊</span>
-                                    Export Results
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Question Management -->
-                        <div class="question-management">
-                            <h4>📝 Question Management</h4>
-                            <div class="question-actions">
-                                <div class="file-upload-section">
-                                    <label for="questionFile" class="file-upload-label">
-                                        <span class="btn-icon">📁</span>
-                                        Choose Question File
-                                    </label>
-                                    <input type="file" id="questionFile" accept=".txt" style="display: none;">
-                                    <button id="uploadQuestionsBtn" class="btn btn-small" disabled>
-                                        <span class="btn-icon">⬆️</span>
-                                        Upload Questions
-                                    </button>
-                                </div>
-                                <div class="upload-status" id="uploadStatus" style="display: none;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Host Game Management Panel intentionally hidden on player page -->
+                <div id="hostGamePanel" class="host-game-panel" style="display: none;"></div>
                 
                 <div class="players-header">
                     <h3>👥 Players (<span id="playerCount">0</span>)</h3>
@@ -232,8 +83,8 @@
                 </div>
 
                 <div class="lobby-actions">
-                    <button id="startGameBtn" class="btn btn-primary" style="display: none;">Start Game</button>
                     <button id="leaveGameBtn" class="btn btn-secondary">Leave Game</button>
+                    <a href="/host" class="btn btn-primary" style="margin-left:8px;">Host a Game</a>
                 </div>
             </div>
         </div>
@@ -271,9 +122,8 @@
                         </div>
                     </div>
                     <div class="host-actions">
-                        <button id="showAnswersBtn" class="btn btn-secondary">Show All Answers</button>
                         <button id="endQuestionBtn" class="btn btn-warning">End Question</button>
-                        <button id="forceNextBtn" class="btn btn-primary">Force Next Question</button>
+                        <a class="btn btn-primary" href="/host">Open Host Console</a>
                     </div>
                 </div>
             </div>
