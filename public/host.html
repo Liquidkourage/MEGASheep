@@ -800,6 +800,9 @@
             <p>Create a new game to get started</p>
             <div class="create-game-form">
                 <button id="createGameBtn" class="control-btn">Create New Game</button>
+                <div style="margin-top:10px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                    <button id="recoverGameBtn" class="control-btn secondary" title="Recover a game from snapshots">🔁 Recover Game</button>
+                </div>
             </div>
         </div>
 
@@ -1711,6 +1714,34 @@
             } catch (error) {
                 console.error('Error creating game:', error);
                 alert('Error creating game. Please try again.');
+            }
+        });
+
+        // Recover Game handler
+        const recoverBtn = document.getElementById('recoverGameBtn');
+        if (recoverBtn) recoverBtn.addEventListener('click', async () => {
+            try {
+                const code = (prompt('Enter 4-digit game code to recover:','') || '').trim();
+                if (!/^\d{4}$/.test(code)) { alert('Please enter a valid 4-digit game code.'); return; }
+                const res = await fetch('/api/recover-game', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gameCode: code })
+                });
+                const json = await res.json();
+                if (json && json.status === 'success') {
+                    try { localStorage.setItem('gameCode', code); } catch(_) {}
+                    // Ensure socket exists and connect if needed
+                    if (!socket) { initializeConnection(); }
+                    const emitReconnect = () => { try { socket.emit('host-reconnect', { gameCode: code }); } catch(_) {} };
+                    if (socket && socket.connected) emitReconnect(); else socket && socket.once('connect', emitReconnect);
+                    alert(json.recovered ? 'Game recovered from snapshot.' : 'Game already active. Reconnected.');
+                } else {
+                    alert('Recovery failed: ' + (json && json.message ? json.message : 'Unknown error'));
+                }
+            } catch (e) {
+                console.error('Recover game failed', e);
+                alert('Failed to recover game.');
             }
         });
 
