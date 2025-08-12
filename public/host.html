@@ -407,9 +407,10 @@
             padding: 12px;
             margin-bottom: 10px;
             display: grid;
-            grid-template-columns: minmax(180px, auto) 1fr auto; /* answer | players | points */
+            /* Slightly widen the answer card to better fit multiple player names */
+            grid-template-columns: minmax(240px, auto) 1.2fr auto; /* answer | players | points */
             align-items: center;
-            column-gap: 12px;
+            column-gap: 14px;
         }
 
         .answer-text {
