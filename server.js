@@ -4,6 +4,9 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const { spawn } = require('child_process');
+// Optional realistic virtual client launcher
+let VirtualClient = null;
+try { VirtualClient = require('socket.io-client'); } catch(_) {}
 require('dotenv').config();
 
 const { createClient } = require('@supabase/supabase-js');
@@ -2009,25 +2012,34 @@ io.on('connection', (socket) => {
         
         console.log(`🎭 Starting virtual player simulation with ${playerCount} players for game ${gameCode}`);
         
-        // Generate virtual players
-        for (let i = 1; i <= playerCount; i++) {
-            const playerId = `virtual_${Date.now()}_${i}`;
-            const playerName = `Virtual Player ${i}`;
-            
-            try {
-                game.addVirtualPlayer(playerId, playerName);
-                
-                // Notify everyone in the game room about the new virtual player
-                io.to(gameCode).emit('virtualPlayerJoined', {
-                    playerId: playerId,
-                    playerName: playerName,
-                    gameState: game.getGameState()
+        // If socket.io-client is available, spin up lightweight simulated clients
+        if (VirtualClient) {
+            const url = process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 3000}`;
+            for (let i = 1; i <= playerCount; i++) {
+                const vname = `Virtual Player ${i}`;
+                const sock = VirtualClient(url, { transports: ['websocket'] });
+                sock.on('connect', () => {
+                    try { sock.emit('joinGame', { gameCode, playerName: vname }); } catch(_) {}
                 });
-                
-                console.log(`🎭 Added virtual player ${playerName} (${playerId}) to game ${gameCode}`);
-                
-            } catch (error) {
-                console.error(`❌ Error adding virtual player ${playerName}:`, error.message);
+                // Random answer when playing
+                sock.on('gameStarted', (st)=>tryAutoAnswer(sock, st, gameCode));
+                sock.on('nextQuestion', (st)=>tryAutoAnswer(sock, st, gameCode));
+                // Clean up on end
+                sock.on('gameFinished', ()=>{ try { sock.disconnect(); } catch(_) {} });
+            }
+        } else {
+            // Fallback: server-side virtuals (no sockets)
+            for (let i = 1; i <= playerCount; i++) {
+                const playerId = `virtual_${Date.now()}_${i}`;
+                const playerName = `Virtual Player ${i}`;
+                try {
+                    game.addVirtualPlayer(playerId, playerName);
+                    io.to(gameCode).emit('virtualPlayerJoined', {
+                        playerId,
+                        playerName,
+                        gameState: game.getGameState()
+                    });
+                } catch (e) { console.error('❌ Error adding virtual player', e.message); }
             }
         }
         
@@ -3039,6 +3051,27 @@ io.on('connection', (socket) => {
         console.log('🔌 User disconnected:', socket.id);
     });
 });
+
+function tryAutoAnswer(sock, state, gameCode) {
+  try {
+    if (!state || state.gameState !== 'playing') return;
+    const q = state.currentQuestionData || (Array.isArray(state.questions) ? state.questions[state.currentQuestion] : null);
+    const correct = Array.isArray(q?.correct_answers) ? q.correct_answers : [];
+    // 60% chance answer from correct list, 40% random wrong
+    const pickCorrect = Math.random() < 0.6 && correct.length > 0;
+    let answer;
+    if (pickCorrect) {
+      answer = correct[Math.floor(Math.random() * correct.length)];
+    } else {
+      const wrongs = ['banana', 'sheep', 'mars', 'blue', 'caterpillar', '42', 'october'];
+      answer = wrongs[Math.floor(Math.random() * wrongs.length)];
+    }
+    // Random delay 0.5s–8s to simulate human typing
+    setTimeout(()=>{
+      try { sock.emit('submitAnswer', { gameCode, answer }); } catch(_) {}
+    }, 500 + Math.floor(Math.random()*7500));
+  } catch(_) {}
+}
 
 // API Endpoints
 app.post('/api/create-game', (req, res) => {
