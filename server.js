@@ -269,7 +269,8 @@ const SB_TABLES = {
   rounds: 'rounds',
   gameResults: 'game_results',
   qa: 'qa_messages',
-  events: 'events'
+  events: 'events',
+  snapshots: 'snapshots'
 };
 
 function sbNow() { return new Date().toISOString(); }
@@ -320,6 +321,7 @@ class Game {
         this.gameState = 'waiting'; // waiting, playing, scoring, grading, roundComplete, finished
         this.answers = new Map(); // socketId -> answer
         this.scores = new Map(); // socketId -> score
+        this.scoresByStableId = new Map(); // stableId -> cumulative score
         this.roundHistory = [];
         this.createdAt = Date.now();
     this.settings = {
@@ -335,13 +337,15 @@ class Game {
         this.categorizationData = null;
         this.pointsForCurrentQuestion = new Map(); // socketId -> points for current question only
         this.currentQuestionScored = false; // Track if current question has been scored
+        this.answersByStableId = new Map(); // stableId -> last submitted answer for current question
         this.roundAnswerGroups = []; // Accumulate all answer groups for the current round
         this.answersNeedingEdit = new Map(); // socketId -> { reason, requestedAt, originalAnswer }
         this.seenPlayerNames = new Set(); // Track any name that has ever joined this game
         this.expectedResponders = new Set(); // socketIds expected to answer current question
+        this.processedEventIds = new Set(); // de-duplication of critical events
     }
 
-    addPlayer(socketId, playerName) {
+    addPlayer(socketId, playerName, stablePlayerId = null) {
         if (this.settings.maxPlayers > 0 && this.players.size >= this.settings.maxPlayers) {
             throw new Error('Game is full');
         }
@@ -365,13 +369,15 @@ class Game {
             return;
         }
         
+        const playerIdentity = stablePlayerId || socketId;
         this.players.set(socketId, {
             id: socketId,
+            stableId: playerIdentity,
       name: playerName,
-      score: 0,
+            score: this.scoresByStableId.get(playerIdentity) || 0,
             answers: []
     });
-        this.scores.set(socketId, 0);
+        this.scores.set(socketId, this.scoresByStableId.get(playerIdentity) || 0);
         this.seenPlayerNames.add(playerName);
         
         console.log(`👤 Player ${playerName} added to game ${this.gameCode}`);
@@ -435,6 +441,9 @@ class Game {
         const player = this.players.get(socketId);
         if (player) {
             console.log(`📝 ${player.name} submitted answer: ${answer}`);
+            // Track by stable identity for reconnect continuity
+            const stableId = player.stableId || socketId;
+            this.answersByStableId.set(stableId, answer.trim());
         }
         return true;
   }
@@ -735,7 +744,7 @@ class Game {
     console.log(`📊 Calculated scores for ${totalResponses} answers in ${answerGroups.size} groups`);
   }
 
-  applyCurrentQuestionPoints() {
+    applyCurrentQuestionPoints() {
     if (this.currentQuestionScored) {
       console.log(`⚠️ Current question already scored, skipping duplicate scoring`);
       return;
@@ -744,17 +753,31 @@ class Game {
     console.log(`📊 Applying current question points to cumulative scores`);
     
     // Add current question points to cumulative scores
-    for (const [socketId, points] of this.pointsForCurrentQuestion) {
-      const currentScore = this.scores.get(socketId) || 0;
-      const newScore = currentScore + points;
-      this.scores.set(socketId, newScore);
-      
-      const player = this.players.get(socketId);
-      if (player) {
-        player.score = newScore;
-        console.log(`📊 Player ${player.name}: ${currentScore} + ${points} = ${newScore}`);
-      }
-    }
+        // Migrate scoring from socket IDs to stable IDs if available
+        const stableScores = new Map();
+        for (const [socketId, points] of this.pointsForCurrentQuestion) {
+            const player = this.players.get(socketId);
+            const stableId = player?.stableId || socketId;
+            const currentScore = stableScores.get(stableId) ?? 0;
+            stableScores.set(stableId, currentScore + points);
+        }
+
+        // Apply to cumulative scores and reflect on live players sharing that stableId
+        for (const [stableId, addPoints] of stableScores) {
+            // Find any live socket for this stableId
+            for (const [sid, p] of this.players.entries()) {
+                if ((p.stableId || p.id) === stableId) {
+                    const currentScore = this.scores.get(sid) || 0;
+                    const newScore = currentScore + addPoints;
+                    this.scores.set(sid, newScore);
+                    p.score = newScore;
+                    console.log(`📊 Player ${p.name} [stable=${stableId}]: ${currentScore} + ${addPoints} = ${newScore}`);
+                }
+            }
+            // Always persist cumulative score per stableId
+            const cur = this.scoresByStableId.get(stableId) || 0;
+            this.scoresByStableId.set(stableId, cur + addPoints);
+        }
     
     this.currentQuestionScored = true;
     console.log(`✅ Current question points applied to cumulative scores`);
@@ -765,6 +788,7 @@ class Game {
     this.currentQuestionScored = false;
     this.currentAnswerGroups = [];
     this.categorizationData = null;
+        this.answersByStableId.clear();
     console.log(`🔄 Reset question scoring state`);
   }
 
@@ -852,6 +876,7 @@ class Game {
             const roomSockets = await io.in(this.gameCode).fetchSockets();
             console.log(`🔍 Room ${this.gameCode} has ${roomSockets.length} sockets:`, roomSockets.map(s => s.id));
             
+            try { await persistSnapshot(this, 'question_complete'); } catch(_) {}
             io.to(this.gameCode).emit('questionComplete', gameStateToSend);
         }
     }
@@ -902,6 +927,7 @@ class Game {
             console.log(`🎯 Continuing to next question: currentQuestion=${this.currentQuestion}, gameState=playing`);
             this.gameState = 'playing';
             this.startTimer();
+            try { persistSnapshot(this, 'question_started'); } catch(_) {}
             // Log question started
             sbLogEvent(this.gameCode, 'next_question', { q: this.currentQuestion });
             io.to(this.gameCode).emit('nextQuestion', this.getGameState());
@@ -1007,6 +1033,7 @@ class Game {
             this.roundAnswerGroups = [];
             
             console.log(`🎯 Emitting 'roundComplete' event to game ${this.gameCode}`);
+            try { persistSnapshot(this, 'round_complete'); } catch(_) {}
             io.to(this.gameCode).emit('roundComplete', this.getGameState());
             console.log(`🎯 'roundComplete' event emitted successfully`);
         }
@@ -1397,6 +1424,42 @@ app.get('/api/semantic-status', (req, res) => {
     });
 });
 
+// Snapshot persistence helpers
+function serializeGame(game) {
+  try {
+    return {
+      gameCode: game.gameCode,
+      hostId: game.hostId,
+      players: Array.from(game.players.entries()).map(([sid, p]) => ({ socketId: sid, stableId: p.stableId || p.id, name: p.name, score: p.score })),
+      scoresByStableId: Object.fromEntries(game.scoresByStableId),
+      currentRound: game.currentRound,
+      currentQuestion: game.currentQuestion,
+      questions: game.questions,
+      gameState: game.gameState,
+      timeLeft: game.timeLeft,
+      currentAnswerGroups: game.currentAnswerGroups,
+      categorizationData: game.categorizationData,
+      roundHistory: game.roundHistory,
+      settings: game.settings,
+      createdAt: game.createdAt
+    };
+  } catch (e) {
+    return { error: 'serialize_failed', message: e?.message };
+  }
+}
+
+async function persistSnapshot(game, phase) {
+  try {
+    const payload = {
+      game_code: game.gameCode,
+      phase,
+      at: sbNow(),
+      snapshot: serializeGame(game)
+    };
+    sbInsert(SB_TABLES.snapshots, payload);
+  } catch (_) {}
+}
+
 // Serve uploaded images
 app.use('/uploads', express.static(uploadsDir));
 
@@ -1776,7 +1839,7 @@ io.on('connection', (socket) => {
     // Join game (allow mid-game joins; returning names can rebind)
     socket.on('joinGame', (data) => {
         // Reduced verbose logging in production for joinGame
-        const { gameCode, playerName } = data;
+        const { gameCode, playerName, playerId } = data;
         
         if (!gameCode || !playerName) {
             console.log('❌ joinGame: Missing gameCode or playerName');
@@ -1813,13 +1876,13 @@ io.on('connection', (socket) => {
                 const alreadyInGame = Array.from(game.players.values()).some(p => p.name === playerName);
                 if (!alreadyInGame) {
                     // console.log(`🔍 joinGame: Adding ${playerName} to game ${gameCode}`);
-                    game.addPlayer(socket.id, playerName);
+                    game.addPlayer(socket.id, playerName, playerId || null);
                     // Log player join
                     sbInsert(SB_TABLES.players, { game_code: gameCode, socket_id: socket.id, player_name: playerName, joined_at: sbNow() });
                     sbLogEvent(gameCode, 'player_joined', { playerName });
-                    // If a question is currently active, exclude this new player from expected responders for the ongoing question
+                    // If a question is currently active, INCLUDE late joiner as expected responder per preference
                     if (game.gameState === 'playing' && game.expectedResponders instanceof Set) {
-                        try { game.expectedResponders.delete(socket.id); } catch(_) {}
+                        try { game.expectedResponders.add(socket.id); } catch(_) {}
                     }
                     // If game already started, do not disturb state; just update clients
                     io.to(gameCode).emit('playerJoined', game.getGameState());
@@ -1830,14 +1893,19 @@ io.on('connection', (socket) => {
                     for (const [sid, p] of game.players.entries()) {
                         if (p.name === playerName && sid !== socket.id) {
                             game.players.delete(sid);
+                            // Do not drop cumulative score; keep scoresByStableId and map live socket score from it
+                            const stable = (p.stableId || playerId || sid);
+                            const cumulative = game.scoresByStableId.get(stable) || 0;
                             game.scores.delete(sid);
+                            game.scores.set(socket.id, cumulative);
                         }
                     }
-                    game.players.set(socket.id, { id: socket.id, name: playerName, score: 0, answers: [] });
-                    if (!game.scores.has(socket.id)) game.scores.set(socket.id, 0);
-                    // Preserve expected responders for current question; remove new socket id from expected if mid-question
+                    const cumulative = game.scoresByStableId.get(playerId || socket.id) || 0;
+                    game.players.set(socket.id, { id: socket.id, stableId: (playerId || null), name: playerName, score: cumulative, answers: [] });
+                    if (!game.scores.has(socket.id)) game.scores.set(socket.id, cumulative);
+                    // Include rebinder in expected responders during playing
                     if (game.gameState === 'playing' && game.expectedResponders instanceof Set) {
-                        try { game.expectedResponders.delete(socket.id); } catch(_) {}
+                        try { game.expectedResponders.add(socket.id); } catch(_) {}
                     }
                     io.to(gameCode).emit('playerJoined', game.getGameState());
                     sbLogEvent(gameCode, 'player_rebound', { playerName });
@@ -2448,6 +2516,8 @@ io.on('connection', (socket) => {
             game.gameState = 'scoring';
 
             const gameStateToSend = game.getGameState();
+            // Persist authoritative snapshot BEFORE notifying clients
+            try { await persistSnapshot(game, 'grading_complete'); } catch(_) {}
             io.to(gameCode).emit('gradingComplete', gameStateToSend);
             console.log(`📝 Host completed grading for game ${gameCode}`);
             // Persist grading results snapshot
@@ -2686,6 +2756,7 @@ io.on('connection', (socket) => {
         const roomSockets = await io.in(gameCode).fetchSockets();
         console.log(`🔍 Room ${gameCode} has ${roomSockets.length} sockets:`, roomSockets.map(s => s.id));
         
+        try { await persistSnapshot(game, 'question_complete'); } catch(_) {}
         io.to(gameCode).emit('questionComplete', gameStateToSend);
     });
 
@@ -2736,6 +2807,7 @@ io.on('connection', (socket) => {
         console.log(`🎮 Game ${gameCode} ended by host - gameFinished event emitted`);
         // Persist game final snapshot
         sbInsert(SB_TABLES.gameResults, { game_code: gameCode, final_state: gameState, ended_at: sbNow() });
+        try { persistSnapshot(game, 'game_finished'); } catch(_) {}
         sbLogEvent(gameCode, 'game_finished', {});
     });
 
@@ -3103,6 +3175,7 @@ app.post('/api/create-game', (req, res) => {
         activeGames.set(game.gameCode, game);
         // Persist game created
         sbInsert(SB_TABLES.games, { game_code: game.gameCode, host_name: finalHostName, created_at: sbNow() });
+        try { persistSnapshot(game, 'game_created'); } catch(_) {}
         sbLogEvent(game.gameCode, 'game_created', { host: finalHostName });
         
         console.log(`🎮 Created new game: ${game.gameCode} by ${finalHostName}`);

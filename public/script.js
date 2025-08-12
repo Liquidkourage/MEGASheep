@@ -407,6 +407,21 @@ function initializeSocket() {
     });
 }
 
+// Stable player identity across reconnects
+function getOrCreatePlayerId() {
+    try {
+        let pid = localStorage.getItem('player.id');
+        if (!pid) {
+            pid = 'p_' + Math.random().toString(36).slice(2) + '_' + Date.now().toString(36);
+            localStorage.setItem('player.id', pid);
+        }
+        return pid;
+    } catch (_) {
+        // Fallback to ephemeral if storage unavailable
+        return 'p_' + Math.random().toString(36).slice(2);
+    }
+}
+
 // Event listeners setup
 function setupEventListeners() {
     // Welcome screen
@@ -900,15 +915,17 @@ async function joinGame() {
                     });
                 }
                 
-                // Join the game via socket
+                // Join the game via socket (include stable playerId)
                 console.log('🎮 Script.js: About to emit joinGame event with data:', { 
                     gameCode: resolvedCode, 
-                    playerName: playerName 
+                    playerName: playerName,
+                    playerId: getOrCreatePlayerId()
                 });
                 
                 socket.emit('joinGame', { 
                     gameCode: resolvedCode, 
-                    playerName: playerName 
+                    playerName: playerName,
+                    playerId: getOrCreatePlayerId()
                 });
                 
                 console.log(`🎮 Script.js: joinGame event emitted for game: ${result.gameCode}`);
