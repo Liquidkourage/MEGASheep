@@ -1424,6 +1424,57 @@ app.get('/api/semantic-status', (req, res) => {
     });
 });
 
+// List snapshots (Supabase-first, then disk)
+app.get('/api/snapshots/:gameCode', async (req, res) => {
+  const gameCode = String(req.params.gameCode || '').trim();
+  if (!gameCode) return res.json({ status: 'error', message: 'Missing game code' });
+  const results = { status: 'success', gameCode, supabase: [], disk: [] };
+  try {
+    if (supabase && supabaseConfigured) {
+      const { data, error } = await supabase
+        .from(SB_TABLES.snapshots)
+        .select('game_code, phase, at')
+        .eq('game_code', gameCode)
+        .order('at', { ascending: false })
+        .limit(50);
+      if (!error && data) results.supabase = data;
+    }
+  } catch(_) {}
+  try {
+    const files = fs.readdirSync(snapshotsDir)
+      .filter(f => f.startsWith(`${gameCode}__`) && f.endsWith('.json'))
+      .sort()
+      .reverse()
+      .slice(0, 50);
+    results.disk = files;
+  } catch(_) {}
+  res.json(results);
+});
+
+// Recover game from latest snapshot
+app.post('/api/recover-game', async (req, res) => {
+  try {
+    const { gameCode } = req.body || {};
+    if (!gameCode) return res.status(400).json({ status: 'error', message: 'gameCode required' });
+    // If game already exists, return its state
+    const existing = activeGames.get(gameCode);
+    if (existing) {
+      return res.json({ status: 'success', recovered: false, gameState: existing.getGameState() });
+    }
+    const snap = await loadLatestSnapshot(String(gameCode));
+    if (!snap) return res.status(404).json({ status: 'error', message: 'No snapshot found for gameCode' });
+    const game = restoreGameFromSnapshot(snap);
+    if (!game) return res.status(500).json({ status: 'error', message: 'Failed to restore game' });
+    // Announce recovery in events log
+    sbLogEvent(game.gameCode, 'game_recovered', { phase: snap?.phase, at: snap?.at });
+    // Return state; clients will rebind via join/reconnect
+    return res.json({ status: 'success', recovered: true, gameState: game.getGameState() });
+  } catch (e) {
+    console.error('❌ recover-game failed:', e?.message);
+    return res.status(500).json({ status: 'error', message: 'recover failed' });
+  }
+});
+
 // Snapshot persistence helpers
 function serializeGame(game) {
   try {
@@ -1457,7 +1508,88 @@ async function persistSnapshot(game, phase) {
       snapshot: serializeGame(game)
     };
     sbInsert(SB_TABLES.snapshots, payload);
+    try { await writeSnapshotToDisk(payload); } catch(_) {}
   } catch (_) {}
+}
+
+// Disk snapshot storage (redundancy when Supabase is unavailable)
+const snapshotsDir = path.join(__dirname, 'snapshots');
+try { if (!fs.existsSync(snapshotsDir)) fs.mkdirSync(snapshotsDir, { recursive: true }); } catch(_) {}
+
+async function writeSnapshotToDisk(payload) {
+  try {
+    const safeCode = String(payload.game_code || 'unknown');
+    const ts = new Date(payload.at || Date.now()).toISOString().replace(/[:.]/g, '-');
+    const filename = `${safeCode}__${payload.phase || 'snapshot'}__${ts}.json`;
+    const filepath = path.join(snapshotsDir, filename);
+    fs.writeFileSync(filepath, JSON.stringify(payload, null, 2), 'utf-8');
+  } catch (e) {
+    console.warn('⚠️ Failed to write disk snapshot', e?.message);
+  }
+}
+
+async function loadLatestSnapshot(gameCode) {
+  // Prefer Supabase when configured
+  if (supabase && supabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from(SB_TABLES.snapshots)
+        .select('*')
+        .eq('game_code', gameCode)
+        .order('at', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      if (data && data.length > 0) return data[0];
+    } catch (e) {
+      console.warn('⚠️ Supabase loadLatestSnapshot failed:', e?.message);
+    }
+  }
+  // Fallback to disk: pick most recent by filename timestamp
+  try {
+    const files = fs.readdirSync(snapshotsDir)
+      .filter(f => f.startsWith(`${gameCode}__`) && f.endsWith('.json'))
+      .sort() // ISO-ish timestamp in name ensures lexicographic order
+      .reverse();
+    if (files.length === 0) return null;
+    const filepath = path.join(snapshotsDir, files[0]);
+    const content = fs.readFileSync(filepath, 'utf-8');
+    return JSON.parse(content);
+  } catch (e) {
+    console.warn('⚠️ Disk loadLatestSnapshot failed:', e?.message);
+    return null;
+  }
+}
+
+function restoreGameFromSnapshot(snap) {
+  try {
+    const s = snap?.snapshot || snap; // accept raw snapshot
+    if (!s || !s.gameCode || !s.hostId) throw new Error('Invalid snapshot');
+    const game = new Game(s.hostId, s.gameCode);
+    // Assign core fields
+    game.questions = Array.isArray(s.questions) ? s.questions : [];
+    game.currentRound = Number(s.currentRound) || 0;
+    game.currentQuestion = Number(s.currentQuestion) || 0;
+    game.gameState = s.gameState || 'waiting';
+    game.timeLeft = Number(s.timeLeft) || game.timeLeft;
+    game.currentAnswerGroups = Array.isArray(s.currentAnswerGroups) ? s.currentAnswerGroups : [];
+    game.categorizationData = s.categorizationData || null;
+    game.roundHistory = Array.isArray(s.roundHistory) ? s.roundHistory : [];
+    game.settings = s.settings || game.settings;
+    game.createdAt = s.createdAt || Date.now();
+    // Scores by stable ID
+    if (s.scoresByStableId) {
+      try { game.scoresByStableId = new Map(Object.entries(s.scoresByStableId)); } catch(_) {}
+    }
+    // Do not repopulate live players (no sockets). Players will rebind; cumulative scores persist by stableId.
+    
+    activeGames.set(game.gameCode, game);
+    activeGameCodes.add(game.gameCode);
+    console.log(`✅ Restored game ${game.gameCode} from snapshot (state=${game.gameState})`);
+    return game;
+  } catch (e) {
+    console.error('❌ Failed to restore game from snapshot:', e?.message);
+    return null;
+  }
 }
 
 // Serve uploaded images
