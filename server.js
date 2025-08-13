@@ -34,7 +34,7 @@ const io = socketIo(server, {
 });
 
 // Simple log level control
-const LOG_LEVEL = process.env.LOG_LEVEL || 'info'; // 'silent'|'error'|'warn'|'info'|'debug'
+const LOG_LEVEL = process.env.LOG_LEVEL || 'warn'; // 'silent'|'error'|'warn'|'info'|'debug'
 const LEVELS = { silent: 0, error: 1, warn: 2, info: 3, debug: 4 };
 const CUR_LVL = LEVELS[LOG_LEVEL] ?? 3;
 const logger = {
