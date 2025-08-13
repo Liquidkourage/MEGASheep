@@ -479,6 +479,15 @@ class Game {
         const player = this.players.get(socketId);
         const stableId = player?.stableId || socketId;
 
+      // During playing: lock after first submission unless host requested an edit
+      if (this.gameState === 'playing') {
+          const hasSubmitted = this.answersByStableId.has(stableId);
+          const canEdit = this.answersNeedingEdit.has(socketId);
+          if (hasSubmitted && !canEdit) {
+              return false;
+          }
+      }
+
         // Enforce one active answer per stableId: purge any previous socket's answer
         try {
             for (const [sid, p] of this.players.entries()) {
