@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-13T22-49-32">
+    <link rel="stylesheet" href="styles.css?v=2025-08-13T23-00-59">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -949,17 +949,14 @@
 
                 // Update the current game with the new answer WITHOUT resetting manual categorizations
                 if (currentGame && currentGame.currentAnswerGroups) {
-                    // Find if this player already has an answer
-                    const existingIndex = currentGame.currentAnswerGroups.findIndex(group =>
-                        group.players && group.players.includes(data.playerName)
+                    // Find any existing group(s) that already contain this player's name (case-insensitive)
+                    const lowerName = String(data.playerName || '').toLowerCase();
+                    const groupsWithPlayer = (currentGame.currentAnswerGroups || []).filter(g =>
+                        Array.isArray(g.players) && g.players.some(p => String(p).toLowerCase() === lowerName)
                     );
 
-                    if (existingIndex >= 0) {
-                        // Update only the group's answer text in-place
-                        console.log('🔄 Updating existing answer for player:', data.playerName);
-                        currentGame.currentAnswerGroups[existingIndex].answer = data.answer;
-                    } else {
-                        // Add new answer group
+                    if (groupsWithPlayer.length === 0) {
+                        // Add new group for this player's first submission
                         console.log('➕ Adding new answer group for player:', data.playerName);
                         currentGame.currentAnswerGroups.push({
                             answer: data.answer,
@@ -968,6 +965,25 @@
                             points: 0,
                             index: currentGame.currentAnswerGroups.length
                         });
+                    } else {
+                        // Update the text on the player's existing group, but do not drop other players in that group
+                        // If multiple groups already exist for the same normalized text due to prior consolidation,
+                        // consolidate them first to avoid overwriting counts.
+                        const norm = (txt) => String(txt || '').toLowerCase().trim();
+                        let targetGroup = groupsWithPlayer[0];
+                        try {
+                            const sameTextGroups = (currentGame.currentAnswerGroups || []).filter(g => norm(g.answer) === norm(targetGroup.answer));
+                            if (sameTextGroups.length > 1) {
+                                const mergedPlayers = Array.from(new Set(sameTextGroups.flatMap(g => g.players || [])));
+                                sameTextGroups[0].players = mergedPlayers;
+                                sameTextGroups[0].count = mergedPlayers.length;
+                                // Remove duplicates from data list
+                                currentGame.currentAnswerGroups = currentGame.currentAnswerGroups.filter(g => g === sameTextGroups[0] || norm(g.answer) !== norm(targetGroup.answer));
+                                targetGroup = sameTextGroups[0];
+                            }
+                        } catch (_) {}
+                        console.log('🔄 Updating existing player answer text without altering grouped players:', data.playerName);
+                        targetGroup.answer = data.answer;
                     }
                     
                     // Update only the affected DOM bucket if it exists; otherwise place in Uncategorized
@@ -979,7 +995,7 @@
                         const matchingCorrect = correctAnswers.find(c => c.toLowerCase().trim() === normalized);
                         if (matchingCorrect) {
                             // Ensure correct bucket exists and reflect updated players/answer
-                            const bucketId = `bucket-${matchingCorrect.toLowerCase().replace(/\s+/g, '-')}`;
+                        const bucketId = `bucket-${matchingCorrect.toLowerCase().replace(/\s+/g, '-')}`;
                             let bucket = document.getElementById(bucketId);
                             if (!bucket) {
                                 bucket = createAnswerBucket(matchingCorrect, group || { players:[affectedName], count:1 });
@@ -990,9 +1006,8 @@
                             try {
                                 const norm = (txt) => String(txt || '').toLowerCase().trim();
                                 const sameGroups = (currentGame.currentAnswerGroups || []).filter(g => norm(g.answer) === norm(group?.answer));
-                                const combinedPlayersSet = new Set();
-                                sameGroups.forEach(g => (g.players || []).forEach(p => combinedPlayersSet.add(String(p))));
-                                const combinedPlayers = Array.from(combinedPlayersSet);
+                            // Merge player lists across groups without dropping anyone
+                            const combinedPlayers = Array.from(new Set(sameGroups.flatMap(g => g.players || []).map(p => String(p))));
                                 // Update one canonical group and remove duplicates from data
                                 if (sameGroups.length > 0) {
                                     sameGroups[0].players = combinedPlayers;
@@ -1023,7 +1038,7 @@
                                 const items = Array.from(bucket.querySelectorAll('.answer-item'));
                                 const sameText = items.filter(it => (it.dataset.answerText || '').toLowerCase().trim() === (group?.answer || '').toLowerCase().trim());
                                 if (sameText.length > 1) {
-                                    // Use the first as canonical, merge player names
+                                    // Merge players into a single DOM item; keep first, merge names, remove duplicates
                                     const canonical = sameText[0].querySelector('.answer-players');
                                     const canonicalNames = new Set((canonical?.textContent || '').split(',').map(s=>s.trim()).filter(Boolean));
                                     sameText.slice(1).forEach(dup => {
@@ -1189,9 +1204,15 @@
                 // Update question number
                 questionNumber.textContent = `Question ${currentGame.currentQuestion + 1}`;
                 
-                // Update answer count
-                const totalAnswers = currentGame.currentAnswerGroups ? currentGame.currentAnswerGroups.length : 0;
-                answerCount.textContent = `${totalAnswers} answer${totalAnswers !== 1 ? 's' : ''}`;
+                // Update answer count (total responses, not unique answer texts)
+                const totalResponses = Array.isArray(currentGame.currentAnswerGroups)
+                    ? currentGame.currentAnswerGroups.reduce((sum, g) => {
+                        if (Array.isArray(g.players)) return sum + g.players.length;
+                        if (typeof g.count === 'number') return sum + g.count;
+                        return sum;
+                    }, 0)
+                    : 0;
+                answerCount.textContent = `${totalResponses} response${totalResponses !== 1 ? 's' : ''}`;
             } else {
                 // Hide question display if no question data
                 questionDisplay.style.display = 'none';
