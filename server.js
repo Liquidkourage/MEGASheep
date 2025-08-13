@@ -2614,7 +2614,8 @@ io.on('connection', (socket) => {
             io.to(gameCode).emit('newAnswerSubmitted', {
                 playerName: playerName,
                 answer: answer,
-                gameCode: gameCode
+                gameCode: gameCode,
+                at: Date.now()
             });
             
             console.log(`✅ newAnswerSubmitted event emitted to room ${gameCode}`);

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Host Console</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-13T23-37-03">
+    <link rel="stylesheet" href="styles.css?v=2025-08-13T23-48-55">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* Floating Q&A indicator */
@@ -1141,6 +1141,22 @@
                         window._answersByName[data.playerName] = data.answer;
                     }
                     updatePlayerListWithResponses();
+
+                    // Toast: who submitted, what, and when
+                    try {
+                        let toast = document.getElementById('answerToast');
+                        if (!toast) {
+                            toast = document.createElement('div');
+                            toast.id = 'answerToast';
+                            toast.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);padding:10px 14px;background:rgba(0,0,0,.85);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.35);z-index:9999;display:none;font-size:14px;line-height:1.35;';
+                            document.body.appendChild(toast);
+                        }
+                        const ts = data.at ? new Date(data.at).toLocaleTimeString() : new Date().toLocaleTimeString();
+                        toast.textContent = `✅ ${data.playerName} submitted "${data.answer}" at ${ts}`;
+                        toast.style.display = 'block';
+                        clearTimeout(window.__answerToastTimer);
+                        window.__answerToastTimer = setTimeout(()=>{ if (toast) toast.style.display='none'; }, 2500);
+                    } catch(_) {}
                 } catch (e) { console.warn('Failed to handle newAnswerSubmitted', e); }
             });
             

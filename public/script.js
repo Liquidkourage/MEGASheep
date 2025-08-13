@@ -2278,7 +2278,7 @@ function handleGameFinished(gameStateData) {
 }
 
 function handleAnswerSubmitted() {
-    showToast('✅ Answer submitted!', 'success');
+    showToast('✅ Answer submitted! (Locked)', 'success');
 }
 
 function handleAnswerUpdate(data) {
@@ -2288,13 +2288,26 @@ function handleAnswerUpdate(data) {
         const totalPlayersElement = document.getElementById('totalPlayers');
         
         if (answersReceivedElement) {
-            answersReceivedElement.textContent = data.answersReceived;
+            let count = data.answersReceived;
+            try {
+                if (data.answers && typeof data.answers === 'object') {
+                    const stableSet = new Set();
+                    const playersArr = Array.isArray(gameState?.players) ? gameState.players : [];
+                    Object.keys(data.answers).forEach(sid => {
+                        const p = playersArr.find(pl => pl.id === sid);
+                        const stable = p?.stableId || sid;
+                        stableSet.add(stable);
+                    });
+                    if (stableSet.size > 0) count = stableSet.size;
+                }
+            } catch (_) {}
+            answersReceivedElement.textContent = count;
         }
         if (totalPlayersElement) {
             totalPlayersElement.textContent = data.totalPlayers;
         }
         
-        console.log('📊 Answer update received:', data.answersReceived, 'answers from', data.totalPlayers, 'players');
+        console.log('📊 Answer update received:', answersReceivedElement?.textContent || data.answersReceived, 'answers from', data.totalPlayers, 'players');
     }
 }
 

@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-13T23-37-03">
+    <link rel="stylesheet" href="styles.css?v=2025-08-13T23-48-55">
     <style>
         /* Dynamic scaling based on screen resolution */
         :root {
@@ -1054,7 +1054,22 @@
                 
                 // Update response indicator for both 'playing' and 'questionActive' states
                 if (gameState && (gameState.gameState === 'playing' || gameState.gameState === 'questionActive')) {
-                    updateResponseIndicator(data.answersReceived, data.totalPlayers);
+                    // Prefer authoritative snapshot if provided
+                    let count = data.answersReceived;
+                    try {
+                        if (data.answers && typeof data.answers === 'object') {
+                            const stableSet = new Set();
+                            Object.keys(data.answers).forEach(sid => {
+                                try {
+                                    const p = (gameState.players || []).find(pl => pl.id === sid);
+                                    const stable = p?.stableId || sid;
+                                    stableSet.add(stable);
+                                } catch (_) {}
+                            });
+                            if (stableSet.size > 0) count = stableSet.size;
+                        }
+                    } catch (_) {}
+                    updateResponseIndicator(count, data.totalPlayers);
                     console.log('✅ Updated response indicator');
                 } else {
                     console.log('❌ Response indicator not updated - wrong game state:', gameState?.gameState);
