@@ -290,6 +290,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Resolve game code from URL params, session, or input
 function resolveGameCodeValue() {
+    // PRIORITY: typed input > URL param > session
+    const input = document.getElementById('gameCode');
+    const typed = input && typeof input.value === 'string' ? input.value.trim() : '';
+    if (/^\d{4}$/.test(typed)) return typed;
     try {
         const params = new URLSearchParams(window.location.search);
         const fromUrl = params.get('game') || params.get('code') || params.get('gameCode') || params.get('room');
@@ -299,9 +303,6 @@ function resolveGameCodeValue() {
         const fromSession = sessionStorage.getItem('gameCode');
         if (fromSession && /^\d{4}$/.test(fromSession)) return fromSession;
     } catch(_) {}
-    const input = document.getElementById('gameCode');
-    const val = input && typeof input.value === 'string' ? input.value.trim() : '';
-    if (/^\d{4}$/.test(val)) return val;
     return '';
 }
 
