@@ -450,6 +450,16 @@ class Game {
     // Replace an existing player's socket with a new one for the same stable identity
     replacePlayerSocket(stableId, oldSocketId, newSocketId, playerName) {
         try {
+            // Capture any carried answer BEFORE removing old mappings
+            let carriedAnswer = null;
+            try {
+                if (oldSocketId && this.answers.has(oldSocketId)) {
+                    carriedAnswer = this.answers.get(oldSocketId);
+                } else if (this.answersByStableId.has(stableId)) {
+                    carriedAnswer = this.answersByStableId.get(stableId);
+                }
+            } catch (_) {}
+
             // Remove old player's entry
             if (oldSocketId && this.players.has(oldSocketId)) {
                 this.players.delete(oldSocketId);
@@ -468,6 +478,31 @@ class Game {
             this.players.set(newSocketId, { id: newSocketId, stableId, name: playerName, score: cumulative, answers: [] });
             this.scores.set(newSocketId, cumulative);
             this.socketByStableId.set(stableId, newSocketId);
+
+            // Transfer any pending edit flag to the new socket id
+            try {
+                if (oldSocketId && this.answersNeedingEdit.has(oldSocketId)) {
+                    const payload = this.answersNeedingEdit.get(oldSocketId);
+                    this.answersNeedingEdit.delete(oldSocketId);
+                    this.answersNeedingEdit.set(newSocketId, payload);
+                }
+            } catch (_) {}
+
+            // Restore the player's answer for the current question to the new socket, if one existed
+            try {
+                if (carriedAnswer) {
+                    this.answers.set(newSocketId, String(carriedAnswer));
+                    // Keep the per-stableId record intact
+                    this.answersByStableId.set(stableId, String(carriedAnswer));
+                }
+            } catch (_) {}
+
+            // Ensure expected responders includes the new socket during playing
+            try {
+                if (this.gameState === 'playing' && this.expectedResponders instanceof Set) {
+                    this.expectedResponders.add(newSocketId);
+                }
+            } catch (_) {}
         } catch (_) {}
     }
 
@@ -2584,20 +2619,22 @@ io.on('connection', (socket) => {
             
             console.log(`✅ newAnswerSubmitted event emitted to room ${gameCode}`);
             
-            // Notify others of answer count (only count expected responders when playing)
+            // Notify others of answer count (unique by stableId); also include a raw answers snapshot for UIs that need it
             const totalExpected = (game.gameState === 'playing' && game.expectedResponders instanceof Set)
                 ? game.expectedResponders.size
                 : game.players.size;
-            // answersReceived should reflect unique stable players who have submitted, to avoid phantom double-count
             const stableAnswered = new Set();
-            for (const [sid] of game.answers.entries()) {
+            const rawAnswers = {};
+            for (const [sid, ans] of game.answers.entries()) {
                 const p = game.players.get(sid);
                 const st = p?.stableId || sid;
                 stableAnswered.add(st);
+                rawAnswers[sid] = ans;
             }
             io.to(gameCode).emit('answerUpdate', {
                 answersReceived: stableAnswered.size,
-                totalPlayers: totalExpected
+                totalPlayers: totalExpected,
+                answers: rawAnswers
             });
             
             // Do not auto-end when all have answered; host or timer ends the question now
