@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // If a game code is present in the URL, prefill and lock the code field
         try {
             const params = new URLSearchParams(window.location.search);
-            const codeParam = params.get('game') || params.get('code') || params.get('gameCode');
+            const codeParam = params.get('game') || params.get('code') || params.get('gameCode') || params.get('room');
             showScreen('joinGame');
             const gameCodeInput = document.getElementById('gameCode');
             if (codeParam && /^\d{4}$/.test(codeParam)) {
@@ -235,6 +235,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     gameCodeInput.style.opacity = '0.7';
                     gameCodeInput.style.pointerEvents = 'none';
                     gameCodeInput.title = 'Game code provided by link';
+                    // Hide the code field entirely when provided via URL
+                    try { gameCodeInput.required = false; } catch(_) {}
+                    try { const grp = gameCodeInput.closest('.form-group'); if (grp) grp.style.display = 'none'; } catch(_) {}
                 }
                 const playerNameInput = document.getElementById('playerName');
                 if (playerNameInput) playerNameInput.focus();
@@ -277,6 +280,23 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('🎮 MEGASheep initialized. Use debugCategorization() in console to test categorization.');
 });
+
+// Resolve game code from URL params, session, or input
+function resolveGameCodeValue() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const fromUrl = params.get('game') || params.get('code') || params.get('gameCode') || params.get('room');
+        if (fromUrl && /^\d{4}$/.test(fromUrl)) return fromUrl;
+    } catch(_) {}
+    try {
+        const fromSession = sessionStorage.getItem('gameCode');
+        if (fromSession && /^\d{4}$/.test(fromSession)) return fromSession;
+    } catch(_) {}
+    const input = document.getElementById('gameCode');
+    const val = input && typeof input.value === 'string' ? input.value.trim() : '';
+    if (/^\d{4}$/.test(val)) return val;
+    return '';
+}
 
 // Socket.IO initialization
 function initializeSocket() {
@@ -861,7 +881,7 @@ async function createGame() {
 
 // Join an existing game
 async function joinGame() {
-    const gameCode = document.getElementById('gameCode').value.trim();
+    const gameCode = resolveGameCodeValue();
     const playerName = document.getElementById('playerName').value.trim();
     
     console.log('🎮 Script.js: joinGame called with gameCode:', gameCode, 'playerName:', playerName);
@@ -869,7 +889,11 @@ async function joinGame() {
     console.log('🎮 Script.js: Socket ID:', socket.id);
     
     if (!gameCode || !playerName) {
-        showError('Please enter both game code and player name');
+        if (!gameCode) {
+            showError('Missing or invalid game code in link.');
+        } else {
+            showError('Please enter your name');
+        }
         return;
     }
     
