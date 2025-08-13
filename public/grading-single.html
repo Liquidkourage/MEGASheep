@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-13T23-00-59">
+    <link rel="stylesheet" href="styles.css?v=2025-08-13T23-08-32">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1624,7 +1624,7 @@
                 });
             }
             
-            // Create correct answer buckets and sort alphabetically
+                // Create correct answer buckets and sort alphabetically
             const correctAnswerBuckets = correctAnswerList.map((correctAnswer, index) => ({
                 id: `correct_${correctAnswer.toLowerCase().replace(/\s+/g, '_')}`,
                 name: correctAnswer,
@@ -1635,7 +1635,8 @@
             console.log('📝 Sorted bucket order:', correctAnswerBuckets.map(b => b.name));
             
             // Get responses for semantic matching
-            const responses = (currentGame.currentAnswerGroups || []).map(group => group.answer);
+                // De-duplicate identical responses so we don't double-create buckets during refresh churn
+                const responses = Array.from(new Set((currentGame.currentAnswerGroups || []).map(group => group.answer)));
             const answersToRemove = [];
             
             try {

@@ -488,6 +488,18 @@ class Game {
             }
         } catch (_) {}
 
+        // Additional hardening: prevent duplicate answers from same player name across tabs/rejoins
+        // If this same display name has other live sockets with recorded answers, purge them
+        try {
+            const currentPlayerNameLower = String(player?.name || '').toLowerCase();
+            for (const [sid, p] of this.players.entries()) {
+                if (sid === socketId) continue;
+                if (String(p?.name || '').toLowerCase() === currentPlayerNameLower) {
+                    if (this.answers.has(sid)) this.answers.delete(sid);
+                }
+            }
+        } catch (_) {}
+
         this.answers.set(socketId, trimmed);
         if (player) {
             console.log(`📝 ${player.name} submitted answer: ${trimmed}`);
@@ -2567,8 +2579,15 @@ io.on('connection', (socket) => {
             const totalExpected = (game.gameState === 'playing' && game.expectedResponders instanceof Set)
                 ? game.expectedResponders.size
                 : game.players.size;
+            // answersReceived should reflect unique stable players who have submitted, to avoid phantom double-count
+            const stableAnswered = new Set();
+            for (const [sid] of game.answers.entries()) {
+                const p = game.players.get(sid);
+                const st = p?.stableId || sid;
+                stableAnswered.add(st);
+            }
             io.to(gameCode).emit('answerUpdate', {
-                answersReceived: game.answers.size,
+                answersReceived: stableAnswered.size,
                 totalPlayers: totalExpected
             });
             
