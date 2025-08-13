@@ -217,11 +217,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSocket();
     setupEventListeners();
     
-    // Only on main player page, try auto-resume before showing join UI
+    // Only on main player page
     if (typeof screens !== 'undefined' && screens.joinGame) {
-        const resumed = attemptAutoResume();
-        if (!resumed) {
-        // If a game code is present in the URL, prefill and lock the code field
+        // If a game code is present in the URL, ALWAYS prefer it over auto-resume
         try {
             const params = new URLSearchParams(window.location.search);
             const codeParam = params.get('game') || params.get('code') || params.get('gameCode') || params.get('room');
@@ -238,9 +236,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Hide the code field entirely when provided via URL
                     try { gameCodeInput.required = false; } catch(_) {}
                     try { const grp = gameCodeInput.closest('.form-group'); if (grp) grp.style.display = 'none'; } catch(_) {}
+                    // Override any saved identity code with the URL code
+                    try { sessionStorage.setItem('gameCode', codeParam); localStorage.setItem('player.gameCode', codeParam); } catch(_) {}
                 }
                 const playerNameInput = document.getElementById('playerName');
                 if (playerNameInput) playerNameInput.focus();
+            } else {
+                // No URL code -> attempt auto-resume
+                const resumed = attemptAutoResume();
+                if (!resumed) {
+                    showScreen('joinGame');
+                }
             }
         } catch (_) {
             showScreen('joinGame');
@@ -248,27 +254,28 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Auto-focus game code input when join game screen is shown
         setTimeout(() => {
-            const gameCodeInput = document.getElementById('gameCode');
-            if (gameCodeInput) {
-                gameCodeInput.focus();
+            const gameCodeInput2 = document.getElementById('gameCode');
+            if (gameCodeInput2) {
+                gameCodeInput2.focus();
                 
                 // Auto-format game code input (numbers only, uppercase)
-                gameCodeInput.addEventListener('input', (e) => {
+                gameCodeInput2.addEventListener('input', (e) => {
                     e.target.value = e.target.value.replace(/[^0-9]/g, '').toUpperCase();
                 });
                 
                 // Auto-advance to name field when 4 digits entered
-                gameCodeInput.addEventListener('input', (e) => {
+                gameCodeInput2.addEventListener('input', (e) => {
                     if (e.target.value.length === 4) {
                         const playerNameInput = document.getElementById('playerName');
                         if (playerNameInput) {
                             playerNameInput.focus();
+                        } else {
+                            joinGame();
                         }
                     }
                 });
             }
         }, 100);
-        }
     }
     
     // Add debug function to global scope for testing
