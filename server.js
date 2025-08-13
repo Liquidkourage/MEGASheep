@@ -281,6 +281,7 @@ const SB_TABLES = {
   gameResults: 'game_results',
   qa: 'qa_messages',
   events: 'events',
+  attempts: 'attempts',
   snapshots: 'snapshots'
 };
 
@@ -350,6 +351,7 @@ class Game {
         this.currentQuestionScored = false; // Track if current question has been scored
         this.answersByStableId = new Map(); // stableId -> last submitted answer for current question
         this.socketByStableId = new Map(); // stableId -> current active socketId
+        this.attemptsByQuestion = new Map(); // questionIndex -> array of { stableId, playerName, answer, at, eventId }
         this.roundAnswerGroups = []; // Accumulate all answer groups for the current round
         this.answersNeedingEdit = new Map(); // socketId -> { reason, requestedAt, originalAnswer }
         this.seenPlayerNames = new Set(); // Track any name that has ever joined this game
@@ -454,26 +456,12 @@ class Game {
                 this.scores.delete(oldSocketId);
             }
 
-            // Clean any prior answer for this stableId on current question
-            if (oldSocketId && this.answers.has(oldSocketId)) {
-                this.answers.delete(oldSocketId);
-            }
-            // Remove from currentAnswerGroups to avoid duplicate listing
-            try {
-                if (Array.isArray(this.currentAnswerGroups)) {
-                    for (const group of this.currentAnswerGroups) {
-                        if (Array.isArray(group.players)) {
-                            const before = group.players.length;
-                            group.players = group.players.filter(n => String(n) !== String(playerName));
-                            if (group.players.length !== before) {
-                                group.count = Math.max(0, group.players.length);
-                            }
-                        }
-                    }
-                    // Drop empty groups
-                    this.currentAnswerGroups = this.currentAnswerGroups.filter(g => (g.players && g.players.length > 0));
-                }
-            } catch (_) {}
+          // Clean any prior answer for this stableId on current question (old socket only)
+          if (oldSocketId && this.answers.has(oldSocketId)) {
+              this.answers.delete(oldSocketId);
+          }
+          // IMPORTANT: Do NOT strip the player's name from currentAnswerGroups here.
+          // The groups reflect who answered this question; reconnects should not erase that membership.
 
             // Rebind mapping to new socket
             const cumulative = this.scoresByStableId.get(stableId) || 0;
@@ -506,6 +494,14 @@ class Game {
             // Track by stable identity for reconnect continuity
             this.answersByStableId.set(stableId, trimmed);
             this.socketByStableId.set(stableId, socketId);
+            // Append attempt history (in-memory + Supabase best-effort)
+            try {
+                const qIdx = this.currentQuestion || 0;
+                if (!this.attemptsByQuestion.has(qIdx)) this.attemptsByQuestion.set(qIdx, []);
+                const attempt = { stableId, playerName: player.name, answer: trimmed, at: Date.now(), eventId: `${stableId}:${Date.now()}` };
+                this.attemptsByQuestion.get(qIdx).push(attempt);
+                sbInsert(SB_TABLES.attempts, { game_code: this.gameCode, question_index: qIdx, stable_id: stableId, player_name: player.name, answer: trimmed, at: sbNow(), event_id: attempt.eventId });
+            } catch (_) {}
         }
         return true;
   }
@@ -558,7 +554,7 @@ class Game {
       for (const bucket of categorizationData.correctAnswerBuckets) {
         if (bucket.answers && Array.isArray(bucket.answers)) {
           // Group all answers in this bucket together
-          const socketIds = [];
+          const socketIdSet = new Set();
           for (const answerData of bucket.answers) {
             // Find the original answer group to get player names (case-insensitive)
             const originalGroup = this.currentAnswerGroups.find(group => 
@@ -568,15 +564,25 @@ class Game {
               // Find socket IDs for these players
               for (const playerName of originalGroup.players) {
                 for (const [socketId, player] of this.players) {
-                  if (player.name === playerName) {
-                    socketIds.push(socketId);
+                  if (String(player.name).toLowerCase() === String(playerName).toLowerCase()) {
+                    socketIdSet.add(socketId);
                     break;
                   }
                 }
               }
             }
+            // Fallback: if we couldn't resolve via players, include anyone whose live answer matches this text
+            const normalizedTarget = String(answerData.answer || '').toLowerCase().trim();
+            for (const [sid, ans] of this.answers.entries()) {
+              try {
+                if (String(ans).toLowerCase().trim() === normalizedTarget) {
+                  socketIdSet.add(sid);
+                }
+              } catch (_) {}
+            }
           }
           
+          const socketIds = Array.from(socketIdSet);
           if (socketIds.length > 0) {
             // Use the bucket ID as the group key for scoring purposes
             answerGroups.set(bucket.id, socketIds);
@@ -589,23 +595,30 @@ class Game {
     // Process wrong answers (each gets their own group)
     if (categorizationData.wrong && Array.isArray(categorizationData.wrong)) {
       for (const answerData of categorizationData.wrong) {
+        const normalizedTarget = String(answerData.answer || '').toLowerCase().trim();
+        const socketIdSet = new Set();
+        // Prefer original group players if available
         const originalGroup = this.currentAnswerGroups.find(group => 
-          group.answer.toLowerCase().trim() === answerData.answer.toLowerCase().trim()
+          group.answer.toLowerCase().trim() === normalizedTarget
         );
         if (originalGroup && originalGroup.players) {
-          const socketIds = [];
           for (const playerName of originalGroup.players) {
             for (const [socketId, player] of this.players) {
-              if (player.name === playerName) {
-                socketIds.push(socketId);
+              if (String(player.name).toLowerCase() === String(playerName).toLowerCase()) {
+                socketIdSet.add(socketId);
                 break;
               }
             }
           }
-          if (socketIds.length > 0) {
-            answerGroups.set(answerData.answer, socketIds);
-            logger.debug(`📊 Wrong answer "${answerData.answer}" with ${socketIds.length} players`);
-          }
+        }
+        // Fallback: include any live sockets whose answer text matches
+        for (const [sid, ans] of this.answers.entries()) {
+          try { if (String(ans).toLowerCase().trim() === normalizedTarget) socketIdSet.add(sid); } catch (_) {}
+        }
+        const socketIds = Array.from(socketIdSet);
+        if (socketIds.length > 0) {
+          answerGroups.set(answerData.answer, socketIds);
+          logger.debug(`📊 Wrong answer "${answerData.answer}" with ${socketIds.length} players`);
         }
       }
     }
@@ -613,23 +626,30 @@ class Game {
     // Process uncategorized answers (each gets their own group)
     if (categorizationData.uncategorized && Array.isArray(categorizationData.uncategorized)) {
       for (const answerData of categorizationData.uncategorized) {
+        const normalizedTarget = String(answerData.answer || '').toLowerCase().trim();
+        const socketIdSet = new Set();
+        // Prefer original group players if available
         const originalGroup = this.currentAnswerGroups.find(group => 
-          group.answer.toLowerCase().trim() === answerData.answer.toLowerCase().trim()
+          group.answer.toLowerCase().trim() === normalizedTarget
         );
         if (originalGroup && originalGroup.players) {
-          const socketIds = [];
           for (const playerName of originalGroup.players) {
             for (const [socketId, player] of this.players) {
-              if (player.name === playerName) {
-                socketIds.push(socketId);
+              if (String(player.name).toLowerCase() === String(playerName).toLowerCase()) {
+                socketIdSet.add(socketId);
                 break;
               }
             }
           }
-          if (socketIds.length > 0) {
-            answerGroups.set(answerData.answer, socketIds);
-            logger.debug(`📊 Uncategorized answer "${answerData.answer}" with ${socketIds.length} players`);
-          }
+        }
+        // Fallback: include any live sockets whose answer text matches
+        for (const [sid, ans] of this.answers.entries()) {
+          try { if (String(ans).toLowerCase().trim() === normalizedTarget) socketIdSet.add(sid); } catch (_) {}
+        }
+        const socketIds = Array.from(socketIdSet);
+        if (socketIds.length > 0) {
+          answerGroups.set(answerData.answer, socketIds);
+          logger.debug(`📊 Uncategorized answer "${answerData.answer}" with ${socketIds.length} players`);
         }
       }
     }
