@@ -2355,27 +2355,13 @@ function updateLobbyDisplay() {
         console.log('🎮 Script.js: playerCount element not found');
     }
     
-    // Update game code display
+    // Update game code display (no copy button on player screen)
     const gameCodeElement = document.getElementById('gameCode');
     if (gameCodeElement && gameState.gameCode) {
         gameCodeElement.textContent = gameState.gameCode;
         console.log('🎮 Script.js: Updated gameCode element to:', gameState.gameCode);
-        
-        // Add copy button if it doesn't exist
-        if (!document.getElementById('copyGameCodeBtn')) {
-            const copyBtn = document.createElement('button');
-            copyBtn.id = 'copyGameCodeBtn';
-            copyBtn.className = 'btn btn-small btn-secondary';
-            copyBtn.innerHTML = '📋 Copy Code';
-            copyBtn.onclick = () => {
-                navigator.clipboard.writeText(gameState.gameCode);
-                copyBtn.innerHTML = '✅ Copied!';
-                setTimeout(() => {
-                    copyBtn.innerHTML = '📋 Copy Code';
-                }, 2000);
-            };
-            gameCodeElement.parentNode.appendChild(copyBtn);
-        }
+        const existingCopy = document.getElementById('copyGameCodeBtn');
+        if (existingCopy && existingCopy.parentNode) existingCopy.parentNode.removeChild(existingCopy);
     }
     
     // Update host dashboard statistics
