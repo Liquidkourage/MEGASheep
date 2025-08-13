@@ -349,6 +349,7 @@ class Game {
         this.pointsForCurrentQuestion = new Map(); // socketId -> points for current question only
         this.currentQuestionScored = false; // Track if current question has been scored
         this.answersByStableId = new Map(); // stableId -> last submitted answer for current question
+        this.socketByStableId = new Map(); // stableId -> current active socketId
         this.roundAnswerGroups = []; // Accumulate all answer groups for the current round
         this.answersNeedingEdit = new Map(); // socketId -> { reason, requestedAt, originalAnswer }
         this.seenPlayerNames = new Set(); // Track any name that has ever joined this game
@@ -444,17 +445,68 @@ class Game {
         logger.info(`🎭 Virtual player ${playerName} added to game ${this.gameCode}`);
     }
 
+    // Replace an existing player's socket with a new one for the same stable identity
+    replacePlayerSocket(stableId, oldSocketId, newSocketId, playerName) {
+        try {
+            // Remove old player's entry
+            if (oldSocketId && this.players.has(oldSocketId)) {
+                this.players.delete(oldSocketId);
+                this.scores.delete(oldSocketId);
+            }
+
+            // Clean any prior answer for this stableId on current question
+            if (oldSocketId && this.answers.has(oldSocketId)) {
+                this.answers.delete(oldSocketId);
+            }
+            // Remove from currentAnswerGroups to avoid duplicate listing
+            try {
+                if (Array.isArray(this.currentAnswerGroups)) {
+                    for (const group of this.currentAnswerGroups) {
+                        if (Array.isArray(group.players)) {
+                            const before = group.players.length;
+                            group.players = group.players.filter(n => String(n) !== String(playerName));
+                            if (group.players.length !== before) {
+                                group.count = Math.max(0, group.players.length);
+                            }
+                        }
+                    }
+                    // Drop empty groups
+                    this.currentAnswerGroups = this.currentAnswerGroups.filter(g => (g.players && g.players.length > 0));
+                }
+            } catch (_) {}
+
+            // Rebind mapping to new socket
+            const cumulative = this.scoresByStableId.get(stableId) || 0;
+            this.players.set(newSocketId, { id: newSocketId, stableId, name: playerName, score: cumulative, answers: [] });
+            this.scores.set(newSocketId, cumulative);
+            this.socketByStableId.set(stableId, newSocketId);
+        } catch (_) {}
+    }
+
     submitAnswer(socketId, answer) {
         // Allow resubmission during grading only if this player was asked to edit
         if (this.gameState !== 'playing' && !this.answersNeedingEdit.has(socketId)) return false;
         
-        this.answers.set(socketId, answer.trim());
+        const trimmed = String(answer || '').trim();
+        const player = this.players.get(socketId);
+        const stableId = player?.stableId || socketId;
+
+        // Enforce one active answer per stableId: purge any previous socket's answer
+        try {
+            for (const [sid, p] of this.players.entries()) {
+                if (sid !== socketId && (p?.stableId || sid) === stableId) {
+                    if (this.answers.has(sid)) this.answers.delete(sid);
+                }
+            }
+        } catch (_) {}
+
+        this.answers.set(socketId, trimmed);
         const player = this.players.get(socketId);
         if (player) {
-            console.log(`📝 ${player.name} submitted answer: ${answer}`);
+            console.log(`📝 ${player.name} submitted answer: ${trimmed}`);
             // Track by stable identity for reconnect continuity
-            const stableId = player.stableId || socketId;
-            this.answersByStableId.set(stableId, answer.trim());
+            this.answersByStableId.set(stableId, trimmed);
+            this.socketByStableId.set(stableId, socketId);
         }
         return true;
   }
@@ -2029,22 +2081,16 @@ io.on('connection', (socket) => {
                     // If game already started, do not disturb state; just update clients
                     io.to(gameCode).emit('playerJoined', game.getGameState());
                 } else {
-                    // Rebind returning player to new socket
-                    // console.log(`🔍 joinGame: Rebinding returning player ${playerName} to socket ${socket.id}`);
-                    // Remove any old socket entry for this name
-                    for (const [sid, p] of game.players.entries()) {
-                        if (p.name === playerName && sid !== socket.id) {
-                            game.players.delete(sid);
-                            // Do not drop cumulative score; keep scoresByStableId and map live socket score from it
-                            const stable = (p.stableId || playerId || sid);
-                            const cumulative = game.scoresByStableId.get(stable) || 0;
-                            game.scores.delete(sid);
-                            game.scores.set(socket.id, cumulative);
-                        }
+                    // Rebind returning player to new socket: replace prior socket for this stable identity
+                    const prior = Array.from(game.players.entries()).find(([sid, p]) => p.name === playerName && sid !== socket.id);
+                    const stable = (playerId || prior?.[1]?.stableId || socket.id);
+                    if (prior) {
+                        game.replacePlayerSocket(stable, prior[0], socket.id, playerName);
+                    } else {
+                        const cumulative = game.scoresByStableId.get(stable) || 0;
+                        game.players.set(socket.id, { id: socket.id, stableId: (playerId || null), name: playerName, score: cumulative, answers: [] });
+                        if (!game.scores.has(socket.id)) game.scores.set(socket.id, cumulative);
                     }
-                    const cumulative = game.scoresByStableId.get(playerId || socket.id) || 0;
-                    game.players.set(socket.id, { id: socket.id, stableId: (playerId || null), name: playerName, score: cumulative, answers: [] });
-                    if (!game.scores.has(socket.id)) game.scores.set(socket.id, cumulative);
                     // Include rebinder in expected responders during playing
                     if (game.gameState === 'playing' && game.expectedResponders instanceof Set) {
                         try { game.expectedResponders.add(socket.id); } catch(_) {}
