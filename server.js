@@ -501,7 +501,6 @@ class Game {
         } catch (_) {}
 
         this.answers.set(socketId, trimmed);
-        const player = this.players.get(socketId);
         if (player) {
             console.log(`📝 ${player.name} submitted answer: ${trimmed}`);
             // Track by stable identity for reconnect continuity
