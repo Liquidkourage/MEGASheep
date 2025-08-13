@@ -33,6 +33,17 @@ const io = socketIo(server, {
   pingInterval: 25000
 });
 
+// Simple log level control
+const LOG_LEVEL = process.env.LOG_LEVEL || 'info'; // 'silent'|'error'|'warn'|'info'|'debug'
+const LEVELS = { silent: 0, error: 1, warn: 2, info: 3, debug: 4 };
+const CUR_LVL = LEVELS[LOG_LEVEL] ?? 3;
+const logger = {
+  error: (...a) => { if (CUR_LVL >= 1) console.error(...a); },
+  warn:  (...a) => { if (CUR_LVL >= 2) console.warn(...a); },
+  info:  (...a) => { if (CUR_LVL >= 3) console.log(...a); },
+  debug: (...a) => { if (CUR_LVL >= 4) console.log(...a); },
+};
+
 // Keepalive handler for display clients
 io.on('connection', (socket) => {
   // Player → Host: ask a private question (top-level)
@@ -152,7 +163,7 @@ function startPythonSemanticService() {
         
         // Handle process exit
         pythonSemanticService.on('close', (code) => {
-            console.log(`🐍 Python semantic service exited with code ${code}`);
+    logger.info(`🐍 Python semantic service exited with code ${code}`);
             semanticServiceReady = false;
             
             // Do not restart automatically; rely on env flag to control usage
@@ -160,7 +171,7 @@ function startPythonSemanticService() {
         
         // Handle process errors
         pythonSemanticService.on('error', (error) => {
-            console.error('❌ Failed to start Python semantic service:', error);
+    logger.error('❌ Failed to start Python semantic service:', error);
             semanticServiceReady = false;
         });
         
@@ -187,13 +198,13 @@ if (process.env.ENABLE_PY_SEMANTIC === 'true') {
 
 // Cleanup on server shutdown
 process.on('SIGINT', () => {
-    console.log('\n🛑 Shutting down server...');
+    logger.info('\n🛑 Shutting down server...');
     stopPythonSemanticService();
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-    console.log('\n🛑 Shutting down server...');
+    logger.info('\n🛑 Shutting down server...');
     stopPythonSemanticService();
     process.exit(0);
 });
@@ -227,37 +238,37 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY &&
         supabase.from('questions').select('count').limit(1)
             .then(({ data, error }) => {
                 if (error && error.message.includes('relation "questions" does not exist')) {
-                    console.log('✅ Supabase configured successfully (table will be created when needed)');
+    logger.info('✅ Supabase configured successfully (table will be created when needed)');
                     supabaseConfigured = true;
                 } else if (error) {
-                    console.log('⚠️  Supabase connection issue:', error.message);
-                    console.log('🔄 Falling back to demo mode');
+                    logger.warn('⚠️  Supabase connection issue:', error.message);
+                    logger.warn('🔄 Falling back to demo mode');
                     supabase = null;
                     supabaseConfigured = false;
                 } else {
-                    console.log('✅ Supabase configured and connected successfully');
+                    logger.info('✅ Supabase configured and connected successfully');
                     supabaseConfigured = true;
                 }
             })
             .catch(err => {
-                console.log('⚠️  Supabase connection failed:', err.message);
+                logger.warn('⚠️  Supabase connection failed:', err.message);
                 if (err.message.includes('fetch failed') || err.message.includes('network') || err.message.includes('ENOTFOUND')) {
-                    console.log('🌐 Network issue detected - this is common on public WiFi');
-                    console.log('🔄 Falling back to demo mode due to network restrictions');
+                    logger.warn('🌐 Network issue detected - this is common on public WiFi');
+                    logger.warn('🔄 Falling back to demo mode due to network restrictions');
                 } else {
-                    console.log('🔄 Falling back to demo mode');
+                    logger.warn('🔄 Falling back to demo mode');
                 }
                 supabase = null;
                 supabaseConfigured = false;
             });
     } catch (error) {
-        console.log('⚠️  Supabase configuration error:', error.message);
-        console.log('🔄 Falling back to demo mode');
+        logger.warn('⚠️  Supabase configuration error:', error.message);
+        logger.warn('🔄 Falling back to demo mode');
         supabase = null;
         supabaseConfigured = false;
     }
 } else {
-    console.log('⚠️  Supabase not configured - running in demo mode with sample questions');
+    logger.info('⚠️  Supabase not configured - running in demo mode with sample questions');
 }
 
 // Supabase logging helpers (best-effort, never block game flow)
@@ -305,7 +316,7 @@ function generateGameCode() {
     } while (activeGameCodes.has(code));
     
     activeGameCodes.add(code);
-    console.log(`🎮 Generated new game code: ${code}`);
+    logger.debug(`🎮 Generated new game code: ${code}`);
     return code;
 }
 
@@ -365,7 +376,7 @@ class Game {
         
         // If player already exists with same socket ID, just update
         if (this.players.has(socketId)) {
-            console.log(`👤 Player ${playerName} already in game ${this.gameCode}, updating connection`);
+            logger.debug(`👤 Player ${playerName} already in game ${this.gameCode}, updating connection`);
             return;
         }
         
@@ -389,7 +400,7 @@ class Game {
             this.players.delete(socketId);
             this.scores.delete(socketId);
             this.answers.delete(socketId);
-            console.log(`👤 Player ${player.name} removed from game ${this.gameCode}`);
+        logger.info(`👤 Player ${player.name} removed from game ${this.gameCode}`);
         }
     }
 
@@ -430,7 +441,7 @@ class Game {
         });
         this.scores.set(playerId, 0);
         
-        console.log(`🎭 Virtual player ${playerName} added to game ${this.gameCode}`);
+        logger.info(`🎭 Virtual player ${playerName} added to game ${this.gameCode}`);
     }
 
     submitAnswer(socketId, answer) {
@@ -450,28 +461,28 @@ class Game {
 
   calculateScores() {
     const totalResponses = this.answers.size;
-    console.log(`📊 calculateScores called with ${totalResponses} answers`);
+        logger.debug(`📊 calculateScores called with ${totalResponses} answers`);
     if (totalResponses === 0) {
-      console.log('⚠️ No answers to calculate scores for');
+      logger.debug('⚠️ No answers to calculate scores for');
       return;
     }
     
     // If we have categorization data from grading, use that for scoring
     if (this.categorizationData && (this.categorizationData.correctAnswerBuckets || this.categorizationData.wrong || this.categorizationData.uncategorized)) {
-      console.log(`📊 Using categorization data for scoring`);
+      logger.debug(`📊 Using categorization data for scoring`);
       this.calculateScoresFromCategorization();
       return;
     }
     
     // Otherwise, use simple text normalization (fallback)
-    console.log(`📊 Using simple text normalization for scoring (no categorization data)`);
+    logger.debug(`📊 Using simple text normalization for scoring (no categorization data)`);
     
     // Group answers by normalized text
     const answerGroups = new Map();
     
     for (const [socketId, answer] of this.answers) {
       const normalizedAnswer = answer.toLowerCase().trim();
-      console.log(`📝 Processing answer: "${answer}" (normalized: "${normalizedAnswer}") from socket ${socketId}`);
+      logger.debug(`📝 Processing answer: "${answer}" (normalized: "${normalizedAnswer}") from socket ${socketId}`);
       if (!answerGroups.has(normalizedAnswer)) {
         answerGroups.set(normalizedAnswer, []);
       }
@@ -485,8 +496,8 @@ class Game {
     const totalResponses = this.answers.size;
     const categorizationData = this.categorizationData;
     
-    console.log(`📊 Calculating scores from categorization data`);
-    console.log(`📊 Categorization data:`, categorizationData);
+    logger.debug(`📊 Calculating scores from categorization data`);
+    logger.debug(`📊 Categorization data:`, categorizationData);
     
     // Create a map of answer groups based on categorization
     const answerGroups = new Map();
@@ -518,7 +529,7 @@ class Game {
           if (socketIds.length > 0) {
             // Use the bucket ID as the group key for scoring purposes
             answerGroups.set(bucket.id, socketIds);
-            console.log(`📊 Grouped bucket "${bucket.id}" with ${socketIds.length} players from answers: ${bucket.answers.map(a => a.answer).join(', ')}`);
+            logger.debug(`📊 Grouped bucket "${bucket.id}" with ${socketIds.length} players from answers: ${bucket.answers.map(a => a.answer).join(', ')}`);
           }
         }
       }
@@ -542,7 +553,7 @@ class Game {
           }
           if (socketIds.length > 0) {
             answerGroups.set(answerData.answer, socketIds);
-            console.log(`📊 Wrong answer "${answerData.answer}" with ${socketIds.length} players`);
+            logger.debug(`📊 Wrong answer "${answerData.answer}" with ${socketIds.length} players`);
           }
         }
       }
@@ -566,7 +577,7 @@ class Game {
           }
           if (socketIds.length > 0) {
             answerGroups.set(answerData.answer, socketIds);
-            console.log(`📊 Uncategorized answer "${answerData.answer}" with ${socketIds.length} players`);
+            logger.debug(`📊 Uncategorized answer "${answerData.answer}" with ${socketIds.length} players`);
           }
         }
       }
@@ -576,26 +587,26 @@ class Game {
   }
 
   updateAnswerGroupsWithCategorization(categorizationData) {
-    console.log(`📊 updateAnswerGroupsWithCategorization called with:`, categorizationData);
+    logger.debug(`📊 updateAnswerGroupsWithCategorization called with:`, categorizationData);
     
     if (!this.currentAnswerGroups) {
       console.log(`⚠️ No currentAnswerGroups to update`);
       return;
     }
     
-    console.log(`📊 Starting with ${this.currentAnswerGroups.length} answer groups`);
+    logger.debug(`📊 Starting with ${this.currentAnswerGroups.length} answer groups`);
     
     // Create a map to track which answers have been categorized
     const categorizedAnswers = new Set();
     
     // Process correct answer buckets
     if (categorizationData.correctAnswerBuckets && Array.isArray(categorizationData.correctAnswerBuckets)) {
-      console.log(`📊 Processing ${categorizationData.correctAnswerBuckets.length} correct answer buckets`);
+      logger.debug(`📊 Processing ${categorizationData.correctAnswerBuckets.length} correct answer buckets`);
       for (const bucket of categorizationData.correctAnswerBuckets) {
-        console.log(`📊 Processing bucket: ${bucket.id} with ${bucket.answers?.length || 0} answers`);
+        logger.debug(`📊 Processing bucket: ${bucket.id} with ${bucket.answers?.length || 0} answers`);
         if (bucket.answers && Array.isArray(bucket.answers)) {
           for (const answerData of bucket.answers) {
-            console.log(`📊 Looking for answer: "${answerData.answer}"`);
+            logger.debug(`📊 Looking for answer: "${answerData.answer}"`);
             // Find and update the corresponding answer group
             const answerGroup = this.currentAnswerGroups.find(group => 
               group.answer.toLowerCase().trim() === answerData.answer.toLowerCase().trim()
@@ -604,9 +615,9 @@ class Game {
               answerGroup.category = 'correct';
               answerGroup.correctAnswer = bucket.correctAnswer || bucket.name;
               categorizedAnswers.add(answerData.answer.toLowerCase().trim());
-              console.log(`✅ Categorized "${answerData.answer}" as correct (bucket: "${bucket.correctAnswer || bucket.name}")`);
+              logger.debug(`✅ Categorized "${answerData.answer}" as correct (bucket: "${bucket.correctAnswer || bucket.name}")`);
             } else {
-              console.log(`⚠️ Could not find answer group for "${answerData.answer}"`);
+              logger.debug(`⚠️ Could not find answer group for "${answerData.answer}"`);
             }
           }
         }
@@ -615,33 +626,33 @@ class Game {
     
     // Process wrong answers
     if (categorizationData.wrong && Array.isArray(categorizationData.wrong)) {
-      console.log(`📊 Processing ${categorizationData.wrong.length} wrong answers`);
+      logger.debug(`📊 Processing ${categorizationData.wrong.length} wrong answers`);
       for (const answerData of categorizationData.wrong) {
-        console.log(`📊 Looking for wrong answer: "${answerData.answer}"`);
+        logger.debug(`📊 Looking for wrong answer: "${answerData.answer}"`);
         const answerGroup = this.currentAnswerGroups.find(group => 
           group.answer.toLowerCase().trim() === answerData.answer.toLowerCase().trim()
         );
         if (answerGroup) {
           answerGroup.category = 'wrong';
           categorizedAnswers.add(answerData.answer.toLowerCase().trim());
-          console.log(`❌ Categorized "${answerData.answer}" as wrong`);
+          logger.debug(`❌ Categorized "${answerData.answer}" as wrong`);
         } else {
-          console.log(`⚠️ Could not find answer group for wrong answer "${answerData.answer}"`);
+          logger.debug(`⚠️ Could not find answer group for wrong answer "${answerData.answer}"`);
         }
       }
     }
     
     // Mark remaining answers as uncategorized
-    console.log(`📊 Marking remaining answers as uncategorized`);
+    logger.debug(`📊 Marking remaining answers as uncategorized`);
     this.currentAnswerGroups.forEach(group => {
       if (!categorizedAnswers.has(group.answer.toLowerCase().trim())) {
         group.category = 'uncategorized';
-        console.log(`📦 Marked "${group.answer}" as uncategorized`);
+        logger.debug(`📦 Marked "${group.answer}" as uncategorized`);
       }
     });
     
-    console.log(`📊 Final result - Updated ${this.currentAnswerGroups.length} answer groups with categorization`);
-    console.log(`📊 Categorized answers set:`, Array.from(categorizedAnswers));
+    logger.debug(`📊 Final result - Updated ${this.currentAnswerGroups.length} answer groups with categorization`);
+    logger.debug(`📊 Categorized answers set:`, Array.from(categorizedAnswers));
   }
 
   calculateScoresFromGroups(answerGroups, totalResponses) {
@@ -655,18 +666,18 @@ class Game {
       
       // Determine if this is a correct answer (bucket ID) or wrong/uncategorized
       // Check if this answer exists in the correctAnswerBuckets
-      console.log(`🔍 Checking if answer "${answer}" is correct...`);
+      logger.debug(`🔍 Checking if answer "${answer}" is correct...`);
       if (this.categorizationData && this.categorizationData.correctAnswerBuckets) {
-        console.log(`🔍 Available buckets: ${this.categorizationData.correctAnswerBuckets.map(b => `"${b.id}"`).join(', ')}`);
+        logger.debug(`🔍 Available buckets: ${this.categorizationData.correctAnswerBuckets.map(b => `"${b.id}"`).join(', ')}`);
         const matchingBucket = this.categorizationData.correctAnswerBuckets.find(bucket => bucket.id === answer);
-        console.log(`🔍 Matching bucket for "${answer}": ${matchingBucket ? `"${matchingBucket.id}"` : 'none'}`);
+        logger.debug(`🔍 Matching bucket for "${answer}": ${matchingBucket ? `"${matchingBucket.id}"` : 'none'}`);
       }
       const isCorrectAnswer = this.categorizationData && 
         this.categorizationData.correctAnswerBuckets && 
         this.categorizationData.correctAnswerBuckets.some(bucket => bucket.id === answer);
       const Z = isCorrectAnswer ? Math.ceil(Y / X) : 0; // 0 points for wrong/uncategorized answers
       
-      console.log(`📊 Answer "${answer}": ${X} players, ${Y} total responses, ${Z} points each (${isCorrectAnswer ? 'correct' : 'wrong/uncategorized'})`);
+      logger.debug(`📊 Answer "${answer}": ${X} players, ${Y} total responses, ${Z} points each (${isCorrectAnswer ? 'correct' : 'wrong/uncategorized'})`);
       
       // Store points for this question (but don't add to cumulative score yet)
       for (const socketId of socketIds) {
@@ -741,16 +752,16 @@ class Game {
     // Sort by points (highest first)
     this.currentAnswerGroups.sort((a, b) => b.points - a.points);
     
-    console.log(`📊 Calculated scores for ${totalResponses} answers in ${answerGroups.size} groups`);
+    logger.debug(`📊 Calculated scores for ${totalResponses} answers in ${answerGroups.size} groups`);
   }
 
     applyCurrentQuestionPoints() {
     if (this.currentQuestionScored) {
-      console.log(`⚠️ Current question already scored, skipping duplicate scoring`);
+    logger.debug(`⚠️ Current question already scored, skipping duplicate scoring`);
       return;
     }
     
-    console.log(`📊 Applying current question points to cumulative scores`);
+    logger.debug(`📊 Applying current question points to cumulative scores`);
     
     // Add current question points to cumulative scores
         // Migrate scoring from socket IDs to stable IDs if available
@@ -771,7 +782,7 @@ class Game {
                     const newScore = currentScore + addPoints;
                     this.scores.set(sid, newScore);
                     p.score = newScore;
-                    console.log(`📊 Player ${p.name} [stable=${stableId}]: ${currentScore} + ${addPoints} = ${newScore}`);
+        logger.debug(`📊 Player ${p.name} [stable=${stableId}]: ${currentScore} + ${addPoints} = ${newScore}`);
                 }
             }
             // Always persist cumulative score per stableId
@@ -780,7 +791,7 @@ class Game {
         }
     
     this.currentQuestionScored = true;
-    console.log(`✅ Current question points applied to cumulative scores`);
+    logger.debug(`✅ Current question points applied to cumulative scores`);
   }
 
   resetQuestionScoring() {
@@ -789,7 +800,7 @@ class Game {
     this.currentAnswerGroups = [];
     this.categorizationData = null;
         this.answersByStableId.clear();
-    console.log(`🔄 Reset question scoring state`);
+    logger.debug(`🔄 Reset question scoring state`);
   }
 
   getGameState() {
@@ -826,7 +837,7 @@ class Game {
 
   startTimer() {
     this.timeLeft = this.settings.timerDuration || 30;
-        console.log(`⏰ Starting timer with ${this.timeLeft} seconds for game ${this.gameCode}`);
+        logger.info(`⏰ Starting timer with ${this.timeLeft} seconds for game ${this.gameCode}`);
         
         // Clear any existing timer
         this.stopTimer();
@@ -858,23 +869,22 @@ class Game {
   }
 
     async handleTimeUp() {
-        console.log(`⏰ Time up for game ${this.gameCode}`);
+        logger.info(`⏰ Time up for game ${this.gameCode}`);
         
         if (this.gameState === 'playing') {
-            console.log(`📊 Calculating scores for game ${this.gameCode} with ${this.answers.size} answers`);
+            logger.debug(`📊 Calculating scores for game ${this.gameCode} with ${this.answers.size} answers`);
             this.calculateScores();
             this.gameState = 'grading'; // Changed from 'scoring' to 'grading'
             
-            console.log(`🎯 Game ${this.gameCode} moved to grading state with ${this.currentAnswerGroups?.length || 0} answer groups`);
+            logger.info(`🎯 Game ${this.gameCode} moved to grading state with ${this.currentAnswerGroups?.length || 0} answer groups`);
             
             // Emit results requiring grading
             const gameStateToSend = this.getGameState();
-            console.log('📤 Sending questionComplete from handleTimeUp with answer groups:', gameStateToSend.currentAnswerGroups);
-            console.log('📤 Total game state keys:', Object.keys(gameStateToSend));
+            logger.debug('📤 Sending questionComplete from handleTimeUp');
             
             // Debug: Check who's in the room
             const roomSockets = await io.in(this.gameCode).fetchSockets();
-            console.log(`🔍 Room ${this.gameCode} has ${roomSockets.length} sockets:`, roomSockets.map(s => s.id));
+            logger.debug(`🔍 Room ${this.gameCode} has ${roomSockets.length} sockets`);
             
             try { await persistSnapshot(this, 'question_complete'); } catch(_) {}
             io.to(this.gameCode).emit('questionComplete', gameStateToSend);
@@ -904,10 +914,10 @@ class Game {
         
         // If the next question would be the last question of the current round, complete the round instead
         if (nextQuestionInRound === questionsForRoundComplete) {
-            console.log(`🎯 Triggering round complete: nextQuestionInRound (${nextQuestionInRound}) === questionsForRoundComplete (${questionsForRoundComplete})`);
+        logger.debug(`🎯 Triggering round complete: nextQuestionInRound (${nextQuestionInRound}) === questionsForRoundComplete (${questionsForRoundComplete})`);
             this.completeRound();
         } else if (this.currentQuestion >= this.questions.length) {
-            console.log(`🎯 Game finished: currentQuestion (${this.currentQuestion}) >= questions.length (${this.questions.length})`);
+            logger.info(`🎯 Game finished: currentQuestion (${this.currentQuestion}) >= questions.length (${this.questions.length})`);
             this.gameState = 'finished';
             io.to(this.gameCode).emit('gameFinished', this.getGameState());
         } else {
@@ -924,7 +934,7 @@ class Game {
                 this.answersNeedingEdit.clear();
             }
             
-            console.log(`🎯 Continuing to next question: currentQuestion=${this.currentQuestion}, gameState=playing`);
+            logger.info(`🎯 Continuing to next question: currentQuestion=${this.currentQuestion}, gameState=playing`);
             this.gameState = 'playing';
             this.startTimer();
             try { persistSnapshot(this, 'question_started'); } catch(_) {}
