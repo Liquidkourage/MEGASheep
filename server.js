@@ -3,14 +3,12 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
-const { spawn } = require('child_process');
-// Optional realistic virtual client launcher
-let VirtualClient = null;
-try { VirtualClient = require('socket.io-client'); } catch(_) {}
+
+
 require('dotenv').config();
 
 const { createClient } = require('@supabase/supabase-js');
-const multer = require('multer');
+
 const fs = require('fs');
 // Prefer Node 18+ global fetch; fallback to dynamic import for older runtimes
 const fetch = (globalThis && globalThis.fetch)
@@ -128,90 +126,14 @@ io.on('connection', (socket) => {
   });
 });
 
-// Python semantic matcher service management
-let pythonSemanticService = null;
-let semanticServiceReady = false;
-
-function startPythonSemanticService() {
-    console.log('🚀 Starting Python semantic matcher service...');
-    
-    // Check if semantic_matcher.py exists
-    const semanticMatcherPath = path.join(__dirname, 'semantic_matcher.py');
-    if (!fs.existsSync(semanticMatcherPath)) {
-        console.log('⚠️  semantic_matcher.py not found - semantic matching will use fallback');
-        return;
-    }
-    
-    try {
-        // Start the Python service
-        pythonSemanticService = spawn('python', [semanticMatcherPath], {
-            stdio: ['pipe', 'pipe', 'pipe'],
-            detached: false
-        });
-        
-        // Handle stdout
-        pythonSemanticService.stdout.on('data', (data) => {
-            const output = data.toString();
-            console.log(`🐍 Python Service: ${output.trim()}`);
-            
-            // Check if service is ready
-            if (output.includes('Running on') || output.includes('Press CTRL+C to quit')) {
-                console.log('✅ Python semantic matcher service is ready!');
-                semanticServiceReady = true;
-            }
-        });
-        
-        // Handle stderr
-        pythonSemanticService.stderr.on('data', (data) => {
-            const error = data.toString();
-            console.log(`🐍 Python Service Error: ${error.trim()}`);
-        });
-        
-        // Handle process exit
-        pythonSemanticService.on('close', (code) => {
-    logger.info(`🐍 Python semantic service exited with code ${code}`);
-            semanticServiceReady = false;
-            
-            // Do not restart automatically; rely on env flag to control usage
-        });
-        
-        // Handle process errors
-        pythonSemanticService.on('error', (error) => {
-    logger.error('❌ Failed to start Python semantic service:', error);
-            semanticServiceReady = false;
-        });
-        
-    } catch (error) {
-        console.error('❌ Error starting Python semantic service:', error);
-        semanticServiceReady = false;
-    }
-}
-
-function stopPythonSemanticService() {
-    if (pythonSemanticService) {
-        console.log('🛑 Stopping Python semantic matcher service...');
-        pythonSemanticService.kill('SIGTERM');
-        semanticServiceReady = false;
-    }
-}
-
-// Optional: Start Python service only if explicitly enabled
-if (process.env.ENABLE_PY_SEMANTIC === 'true') {
-  startPythonSemanticService();
-} else {
-  console.log('🧠 Python semantic service disabled (ENABLE_PY_SEMANTIC != true). Using JS fallback.');
-}
-
 // Cleanup on server shutdown
 process.on('SIGINT', () => {
     logger.info('\n🛑 Shutting down server...');
-    stopPythonSemanticService();
     process.exit(0);
 });
 
 process.on('SIGTERM', () => {
     logger.info('\n🛑 Shutting down server...');
-    stopPythonSemanticService();
     process.exit(0);
 });
 
@@ -411,45 +333,7 @@ class Game {
         }
     }
 
-    addVirtualPlayer(playerId, playerName) {
-        if (this.settings.maxPlayers > 0 && this.players.size >= this.settings.maxPlayers) {
-            throw new Error('Game is full');
-        }
-        
-        // Check for duplicate names (but allow same player to reconnect)
-        const existingPlayer = Array.from(this.players.values()).find(p => p.name === playerName);
-        if (existingPlayer && existingPlayer.id !== playerId) {
-            // Check if the existing player is still connected
-            const existingPlayerInfo = connectedPlayers.get(existingPlayer.id);
-            if (existingPlayerInfo && existingPlayerInfo.playerName === playerName) {
-                throw new Error('Player name already taken');
-            } else {
-                // Remove the disconnected player with same name
-                this.removePlayer(existingPlayer.id);
-            }
-        }
-        
-        // If player already exists with same ID, just update
-        if (this.players.has(playerId)) {
-            console.log(`🎭 Virtual player ${playerName} already in game ${this.gameCode}, updating connection`);
-            return;
-        }
-        
-        const [firstName, ...rest] = String(playerName).split(' ');
-        const lastName = rest.join(' ') || 'Player';
-        this.players.set(playerId, {
-            id: playerId,
-            name: playerName,
-            firstName,
-            lastName,
-            score: 0,
-            answers: [],
-            isVirtual: true
-        });
-        this.scores.set(playerId, 0);
-        
-        logger.info(`🎭 Virtual player ${playerName} added to game ${this.gameCode}`);
-    }
+
 
     // Replace an existing player's socket with a new one for the same stable identity
     replacePlayerSocket(stableId, oldSocketId, newSocketId, playerName) {
@@ -1269,260 +1153,15 @@ class Game {
         console.log(`🧹 Cleaned up game ${this.gameCode}`);
     }
 
-    submitVirtualAnswer(playerId, answer) {
-        if (this.gameState !== 'playing') return false;
-        
-        this.answers.set(playerId, answer.trim());
-        const player = this.players.get(playerId);
-        if (player) {
-            player.answers.push({ answer: answer.trim(), at: Date.now() });
-            console.log(`📝 Virtual player ${player.name} submitted answer: "${answer}"`);
-        }
-        return true;
-    }
+
 }
 
-// Utility function to call the semantic matcher service
-// Integrated JavaScript semantic matcher (no external Python service needed)
+// Simple text normalization utility
 function normalizeText(text) {
     return text.toLowerCase().trim();
 }
 
-function computeFuzzySimilarity(text1, text2) {
-    const normalized1 = normalizeText(text1);
-    const normalized2 = normalizeText(text2);
-    
-    if (normalized1 === normalized2) return 1.0;
-    
-    // Simple Levenshtein-like similarity
-    const longer = normalized1.length > normalized2.length ? normalized1 : normalized2;
-    const shorter = normalized1.length > normalized2.length ? normalized2 : normalized1;
-    
-    if (longer.length === 0) return 1.0;
-    
-    // Check for substring matches
-    if (longer.includes(shorter)) {
-        return shorter.length / longer.length;
-    }
-    
-    // Simple character-by-character similarity
-    let matches = 0;
-    const minLength = Math.min(normalized1.length, normalized2.length);
-    
-    for (let i = 0; i < minLength; i++) {
-        if (normalized1[i] === normalized2[i]) {
-            matches++;
-        }
-    }
-    
-    return matches / Math.max(normalized1.length, normalized2.length);
-}
 
-// Synonym dictionary for common cases
-const SYNONYM_DICT = {
-    'cock': ['rooster', 'chicken', 'hen'],
-    'rooster': ['cock', 'chicken', 'hen'],
-    'chicken': ['cock', 'rooster', 'hen'],
-    'hen': ['cock', 'rooster', 'chicken'],
-    'dragon': ['draggon', 'dragun', 'dragonn', 'drgon'],
-    'draggon': ['dragon'],
-    'dragun': ['dragon'],
-    'dragonn': ['dragon'],
-    'drgon': ['dragon'],
-    'pig': ['piggy', 'hog', 'swine'],
-    'piggy': ['pig', 'hog', 'swine'],
-    'hog': ['pig', 'piggy', 'swine'],
-    'swine': ['pig', 'piggy', 'hog'],
-    'rat': ['mouse', 'rodent'],
-    'mouse': ['rat', 'rodent'],
-    'rodent': ['rat', 'mouse'],
-    'ox': ['bull', 'cow', 'cattle'],
-    'bull': ['ox', 'cow', 'cattle'],
-    'cow': ['ox', 'bull', 'cattle'],
-    'cattle': ['ox', 'bull', 'cow'],
-    'tiger': ['cat', 'feline'],
-    'cat': ['tiger', 'feline'],
-    'feline': ['tiger', 'cat'],
-    'rabbit': ['bunny', 'hare'],
-    'bunny': ['rabbit', 'hare'],
-    'hare': ['rabbit', 'bunny'],
-    'snake': ['serpent', 'reptile'],
-    'serpent': ['snake', 'reptile'],
-    'reptile': ['snake', 'serpent'],
-    'horse': ['steed', 'mare', 'stallion'],
-    'steed': ['horse', 'mare', 'stallion'],
-    'mare': ['horse', 'steed', 'stallion'],
-    'stallion': ['horse', 'steed', 'mare'],
-    'goat': ['billy', 'nanny'],
-    'billy': ['goat', 'nanny'],
-    'nanny': ['goat', 'billy'],
-    'monkey': ['ape', 'primate'],
-    'ape': ['monkey', 'primate'],
-    'primate': ['monkey', 'ape'],
-    'dog': ['canine', 'hound', 'puppy'],
-    'canine': ['dog', 'hound', 'puppy'],
-    'hound': ['dog', 'canine', 'puppy'],
-    'puppy': ['dog', 'canine', 'hound']
-};
-
-function computeHybridSimilarity(text1, text2) {
-    const normalized1 = normalizeText(text1);
-    const normalized2 = normalizeText(text2);
-    
-    // Check synonym dictionary first
-    if (normalized1 in SYNONYM_DICT && SYNONYM_DICT[normalized1].includes(normalized2)) {
-        return 0.95; // 95% confidence for known synonyms
-    }
-    if (normalized2 in SYNONYM_DICT && SYNONYM_DICT[normalized2].includes(normalized1)) {
-        return 0.95; // 95% confidence for known synonyms
-    }
-    
-    // Use fuzzy similarity
-    return computeFuzzySimilarity(text1, text2);
-}
-
-function computeConfidence(similarity) {
-    // Map similarity (0-1) to confidence (0-100)
-    return Math.min(100.0, Math.max(0.0, similarity * 100));
-}
-
-async function getSemanticMatches(question, correctAnswers, responses) {
-    try {
-        console.log('🧠 Processing semantic matches...');
-        console.log(`Question: ${question}`);
-        console.log(`Correct answers: ${correctAnswers.join(', ')}`);
-        console.log(`Responses: ${responses.join(', ')}`);
-        
-        // Try Python service first if available
-        if (semanticServiceReady) {
-            try {
-                console.log('🐍 Using Python Sentence Transformers service...');
-                const res = await fetch('http://127.0.0.1:5005/semantic-match', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        question,
-                        correct_answers: correctAnswers,
-                        responses
-                    }),
-                    timeout: 10000 // 10 second timeout for public WiFi
-                });
-                
-                if (res.ok) {
-                    const data = await res.json();
-                    console.log('✅ Python semantic matching completed');
-                    return data.results;
-                } else {
-                    console.log('⚠️ Python service returned error, falling back to JavaScript');
-                }
-            } catch (error) {
-                console.log('⚠️ Python service unavailable, falling back to JavaScript:', error.message);
-                if (error.message.includes('fetch failed') || error.message.includes('network')) {
-                    console.log('🌐 Network issue detected - this is common on public WiFi');
-                }
-                // Don't re-throw the error, just continue with JavaScript fallback
-            }
-        } else {
-            console.log('⚠️ Python service not ready, using JavaScript fallback');
-        }
-        
-        // Fallback to JavaScript implementation
-        console.log('🔄 Using JavaScript fuzzy matching fallback...');
-        const results = [];
-        
-        for (const response of responses) {
-            let bestMatch = null;
-            let bestSimilarity = 0.0;
-            
-            // Find the best matching correct answer
-            for (const correctAnswer of correctAnswers) {
-                const similarity = computeHybridSimilarity(response, correctAnswer);
-                if (similarity > bestSimilarity) {
-                    bestSimilarity = similarity;
-                    bestMatch = correctAnswer;
-                }
-            }
-            
-            const confidence = computeConfidence(bestSimilarity);
-            
-            const result = {
-                response: response,
-                best_match: bestMatch,
-                similarity: Math.round(bestSimilarity * 100) / 100,
-                confidence: Math.round(confidence * 100) / 100
-            };
-            
-            results.push(result);
-            console.log(`'${response}' -> '${bestMatch}' (confidence: ${confidence.toFixed(1)}%)`);
-        }
-        
-        console.log('✅ JavaScript semantic matching completed');
-        return results;
-        
-    } catch (error) {
-        console.error('❌ Error in semantic matching:', error);
-        return null;
-    }
-}
-
-// Example integration in grading logic (replace with your actual grading handler):
-// Assume you have: question, correctAnswers, responses (array of answer strings)
-//
-// async function autoCategorizeAnswers(question, correctAnswers, responses) {
-//     const matches = await getSemanticMatches(question, correctAnswers, responses);
-//     const categorized = { correct: [], wrong: [], uncategorized: [] };
-//     matches.forEach((match, i) => {
-//         if (match.confidence >= 80 && match.best_match) {
-//             categorized.correct.push({
-//                 response: match.response,
-//                 matchedTo: match.best_match,
-//                 confidence: match.confidence
-//             });
-//         } else {
-//             categorized.uncategorized.push({
-//                 response: match.response,
-//                 confidence: match.confidence
-//             });
-//         }
-//     });
-//     return categorized;
-// }
-//
-// You should call this function during grading and use the result to populate the correct, wrong, and uncategorized buckets. Pass the confidence scores to the frontend as needed.
-
-// Create uploads directory if it doesn't exist
-const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadsDir);
-    },
-    filename: function (req, file, cb) {
-        // Keep original filename with timestamp prefix
-        const timestamp = Date.now();
-        const originalName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-        cb(null, `sheep_${timestamp}_${originalName}`);
-    }
-});
-
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB limit
-    },
-    fileFilter: function (req, file, cb) {
-        // Only allow image files
-        if (file.mimetype.startsWith('image/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only image files are allowed!'), false);
-        }
-    }
-});
 
 // Routes
 app.get('/', (req, res) => {
@@ -1775,174 +1414,7 @@ function restoreGameFromSnapshot(snap) {
   }
 }
 
-// Serve uploaded images
-app.use('/uploads', express.static(uploadsDir));
 
-// Sheep upload API endpoints
-app.post('/api/upload-sheep', upload.array('sheep-photos', 20), (req, res) => {
-    try {
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ error: 'No files uploaded' });
-        }
-
-        const uploadedFiles = req.files.map(file => ({
-            filename: file.filename,
-            originalName: file.originalname,
-            size: file.size,
-            path: `/uploads/${file.filename}`
-        }));
-
-        console.log(`🐑 Uploaded ${uploadedFiles.length} sheep photos:`, uploadedFiles.map(f => f.originalName));
-
-        res.json({ 
-            success: true, 
-            message: `Successfully uploaded ${uploadedFiles.length} sheep photo(s)`,
-            files: uploadedFiles 
-        });
-    } catch (error) {
-        console.error('Upload error:', error);
-        res.status(500).json({ error: 'Upload failed' });
-    }
-});
-
-app.get('/api/sheep-photos', (req, res) => {
-    try {
-        const uploadsPath = uploadsDir;
-        
-        if (!fs.existsSync(uploadsPath)) {
-            return res.json({ photos: [] });
-        }
-
-        const files = fs.readdirSync(uploadsPath)
-            .filter(file => file.startsWith('sheep_') && /\.(jpg|jpeg|png|gif|webp|avif)$/i.test(file))
-            .map(file => {
-                const filePath = path.join(uploadsPath, file);
-                const stats = fs.statSync(filePath);
-                return {
-                    filename: file,
-                    path: `/uploads/${file}`,
-                    size: stats.size,
-                    uploaded: stats.mtime
-                };
-            })
-            .sort((a, b) => new Date(b.uploaded) - new Date(a.uploaded));
-
-        res.json({ photos: files });
-    } catch (error) {
-        console.error('Error listing sheep photos:', error);
-        res.status(500).json({ error: 'Failed to list photos' });
-    }
-});
-
-app.delete('/api/sheep-photos/:filename', (req, res) => {
-    try {
-        const filename = req.params.filename;
-        const filePath = path.join(uploadsDir, filename);
-        
-        if (!filename.startsWith('sheep_')) {
-            return res.status(400).json({ error: 'Invalid filename' });
-        }
-
-        if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-            console.log(`🗑️ Deleted sheep photo: ${filename}`);
-            res.json({ success: true, message: 'Photo deleted successfully' });
-        } else {
-            res.status(404).json({ error: 'Photo not found' });
-        }
-    } catch (error) {
-        console.error('Delete error:', error);
-        res.status(500).json({ error: 'Failed to delete photo' });
-    }
-});
-
-app.get('/api/sheep-urls', (req, res) => {
-    try {
-        const uploadsPath = uploadsDir;
-        
-        if (!fs.existsSync(uploadsPath)) {
-            return res.json({ urls: [] });
-        }
-
-        const files = fs.readdirSync(uploadsPath)
-            .filter(file => file.startsWith('sheep_') && /\.(jpg|jpeg|png|gif|webp|avif)$/i.test(file))
-            .map(file => `/uploads/${file}`)
-            .sort();
-
-        res.json({ urls: files });
-    } catch (error) {
-        console.error('Error getting sheep URLs:', error);
-        res.status(500).json({ error: 'Failed to get photo URLs' });
-    }
-});
-
-app.post('/api/remove-duplicates', (req, res) => {
-    try {
-        const uploadsPath = uploadsDir;
-        
-        if (!fs.existsSync(uploadsPath)) {
-            return res.json({ removed: [], message: 'No uploads directory found' });
-        }
-
-        const files = fs.readdirSync(uploadsPath)
-            .filter(file => file.startsWith('sheep_') && /\.(jpg|jpeg|png|gif|webp|avif)$/i.test(file))
-            .map(file => {
-                const filePath = path.join(uploadsPath, file);
-                const stats = fs.statSync(filePath);
-                // Extract the original photo ID from filename (after the timestamp)
-                const originalName = file.replace(/^sheep_\d+_/, '');
-                return {
-                    filename: file,
-                    originalName: originalName,
-                    size: stats.size,
-                    uploaded: stats.mtime,
-                    path: filePath
-                };
-            });
-
-        // Group files by their original name to find duplicates
-        const grouped = {};
-        files.forEach(file => {
-            if (!grouped[file.originalName]) {
-                grouped[file.originalName] = [];
-            }
-            grouped[file.originalName].push(file);
-        });
-
-        // Find duplicates and keep only the newest (latest timestamp)
-        const toRemove = [];
-        Object.values(grouped).forEach(group => {
-            if (group.length > 1) {
-                // Sort by upload time, keep the newest
-                group.sort((a, b) => new Date(b.uploaded) - new Date(a.uploaded));
-                // Mark older duplicates for removal
-                toRemove.push(...group.slice(1));
-            }
-        });
-
-        // Remove duplicate files
-        const removedFiles = [];
-        toRemove.forEach(file => {
-            try {
-                fs.unlinkSync(file.path);
-                removedFiles.push(file.filename);
-                console.log(`🗑️ Removed duplicate: ${file.filename}`);
-            } catch (error) {
-                console.error(`Failed to remove ${file.filename}:`, error);
-            }
-        });
-
-        res.json({ 
-            success: true,
-            removed: removedFiles,
-            count: removedFiles.length,
-            message: `Removed ${removedFiles.length} duplicate photo(s)`
-        });
-    } catch (error) {
-        console.error('Error removing duplicates:', error);
-        res.status(500).json({ error: 'Failed to remove duplicates' });
-    }
-});
 
 // API Endpoints
 app.post('/api/create-game', (req, res) => {
@@ -2294,96 +1766,7 @@ io.on('connection', (socket) => {
     }
   });
 
-    // Virtual player join (for testing)
-    socket.on('virtualPlayerJoined', (data) => {
-        console.log('🎭 virtualPlayerJoined event received:', data);
-        const { gameCode, playerId, playerName } = data;
-        
-        if (!gameCode || !playerId || !playerName) {
-            console.log('⚠️ virtualPlayerJoined event received with incomplete data');
-            return;
-        }
-        
-        const game = activeGames.get(gameCode);
-        if (!game) {
-            console.log(`❌ Game ${gameCode} not found for virtualPlayerJoined`);
-            return;
-        }
-        
-        // Allow adding virtual players in any state for testing
-        
-        try {
-            // Add virtual player directly to game without socket ID
-            game.addVirtualPlayer(playerId, playerName);
-            
-            // Notify everyone in the game room about the new virtual player
-            console.log(`🎭 Emitting virtualPlayerJoined to room ${gameCode} for player ${playerName}`);
-            io.to(gameCode).emit('virtualPlayerJoined', {
-                playerId: playerId,
-                playerName: playerName,
-                gameState: game.getGameState()
-            });
-            
-            console.log(`🎭 Virtual player ${playerName} (${playerId}) added to game ${gameCode}`);
-            
-        } catch (error) {
-            console.error('❌ Error adding virtual player:', error.message);
-        }
-    });
 
-    // Start virtual player simulation
-    socket.on('startVirtualPlayerSimulation', (data) => {
-        console.log('🎭 startVirtualPlayerSimulation event received:', data);
-        const { gameCode, playerCount } = data;
-        
-        if (!gameCode || !playerCount || playerCount < 1 || playerCount > 100) {
-            console.log('⚠️ startVirtualPlayerSimulation: Invalid parameters');
-            return;
-        }
-        
-        const game = activeGames.get(gameCode);
-        if (!game) {
-            console.log(`❌ Game ${gameCode} not found for virtual player simulation`);
-            return;
-        }
-        
-        // Allow adding virtual players in any state for testing
-        
-        console.log(`🎭 Starting virtual player simulation with ${playerCount} players for game ${gameCode}`);
-        
-        // If socket.io-client is available, spin up lightweight simulated clients
-        if (VirtualClient) {
-            const url = process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 3000}`;
-            for (let i = 1; i <= playerCount; i++) {
-                const vname = `Virtual Player ${i}`;
-                const sock = VirtualClient(url, { transports: ['websocket'] });
-                sock.on('connect', () => {
-                    try { sock.emit('joinGame', { gameCode, playerName: vname }); } catch(_) {}
-                });
-                // Random answer when playing
-                sock.on('gameStarted', (st)=>tryAutoAnswer(sock, st, gameCode));
-                sock.on('nextQuestion', (st)=>tryAutoAnswer(sock, st, gameCode));
-                // Clean up on end
-                sock.on('gameFinished', ()=>{ try { sock.disconnect(); } catch(_) {} });
-            }
-        } else {
-            // Fallback: server-side virtuals (no sockets)
-            for (let i = 1; i <= playerCount; i++) {
-                const playerId = `virtual_${Date.now()}_${i}`;
-                const playerName = `Virtual Player ${i}`;
-                try {
-                    game.addVirtualPlayer(playerId, playerName);
-                    io.to(gameCode).emit('virtualPlayerJoined', {
-                        playerId,
-                        playerName,
-                        gameState: game.getGameState()
-                    });
-                } catch (e) { console.error('❌ Error adding virtual player', e.message); }
-            }
-        }
-        
-        console.log(`🎭 Virtual player simulation complete. Added ${playerCount} players to game ${gameCode}`);
-    });
 
     // Test room membership
     socket.on('testRoomMembership', (data) => {
@@ -2667,67 +2050,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Virtual answer submission (for testing)
-    socket.on('virtualAnswerSubmitted', async (data) => {
-        if (!data) {
-            console.log('⚠️ virtualAnswerSubmitted event received with no data');
-            return;
-        }
-        
-        const { gameCode, playerId, playerName, answer, isCorrect } = data;
-        
-        if (!gameCode || !playerId || !playerName || !answer) {
-            console.log('⚠️ virtualAnswerSubmitted event received with incomplete data');
-            return;
-        }
-        
-        const game = activeGames.get(gameCode);
-        if (!game) {
-            console.log(`❌ Game ${gameCode} not found for virtualAnswerSubmitted`);
-            return;
-        }
-        
-        if (game.gameState !== 'playing') {
-            console.log('⚠️ Cannot submit virtual answer when game is not playing');
-            return;
-        }
-        
-        try {
-            // Submit answer for virtual player
-            game.submitVirtualAnswer(playerId, answer);
-            
-            console.log(`🎭 Virtual player ${playerName} submitted answer: "${answer}" (${isCorrect ? 'correct' : 'incorrect'})`);
-            
-            // Notify host of the specific answer
-            const hostSocket = Array.from(connectedPlayers.entries())
-                .find(([id, info]) => info.gameCode === gameCode && info.isHost);
-            
-            if (hostSocket) {
-                io.to(hostSocket[0]).emit('answerSubmitted', {
-                    playerName: playerName,
-                    answer: answer
-                });
-            }
-            
-            // Notify grading interface of new answer
-            io.to(gameCode).emit('newAnswerSubmitted', {
-                playerName: playerName,
-                answer: answer,
-                gameCode: gameCode
-            });
-            
-            // Notify others of answer count
-            io.to(gameCode).emit('answerUpdate', {
-                answersReceived: game.answers.size,
-                totalPlayers: game.players.size
-            });
-            
-            // Do not auto-end on virtual answers either; host/timer controls flow
-            
-        } catch (error) {
-            console.error('❌ Error submitting virtual answer:', error.message);
-        }
-    });
+
 
     // Complete grading (mandatory before next question)
     socket.on('completeGrading', async (data) => {
