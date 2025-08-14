@@ -29,8 +29,14 @@ const io = socketIo(server, {
   },
   transports: ['websocket', 'polling'],
   allowEIO3: true,
-  pingTimeout: 60000,
-  pingInterval: 25000
+  pingTimeout: 120000,  // 2 minutes before timeout
+  pingInterval: 10000,  // Ping every 10 seconds
+  upgradeTimeout: 30000,
+  maxHttpBufferSize: 1e6,
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 60000,  // 1 minute recovery window
+    skipMiddlewares: true
+  }
 });
 
 // Simple log level control

@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-13T23-48-55">
+    <link rel="stylesheet" href="styles.css?v=2025-08-14T02-49-59">
     <style>
         /* Dynamic scaling based on screen resolution */
         :root {
@@ -895,12 +895,32 @@
         let displayGameCode = null;
         
         function initializeSocket() {
-            socket = io();
+            socket = io({
+                transports: ['websocket', 'polling'],
+                timeout: 20000,
+                forceNew: false,
+                reconnection: true,
+                reconnectionAttempts: 20,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                maxReconnectionAttempts: 20
+            });
             
             socket.on('connect', () => {
                 console.log('🔌 Display connected to server');
                 // Request a pairing code so host can attach this display to a game
                 try { socket.emit('requestDisplayPairingCode'); } catch (_) {}
+                
+                // Auto-rejoin game if we have a saved code
+                try {
+                    if (displayGameCode) {
+                        console.log('🔄 Auto-rejoining display to game:', displayGameCode);
+                        socket.emit('joinGameRoom', { gameCode: displayGameCode });
+                        socket.emit('getGameState', { gameCode: displayGameCode });
+                    }
+                } catch (e) {
+                    console.warn('Display auto-rejoin failed:', e);
+                }
                 
                 // Prefer explicit URL param; do not reuse stale session code
                 const urlParams = new URLSearchParams(window.location.search);

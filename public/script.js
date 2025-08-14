@@ -310,7 +310,16 @@ function resolveGameCodeValue() {
 function initializeSocket() {
     console.log('🎮 Script.js: Initializing socket connection...');
     
-    socket = io();
+    socket = io({
+        transports: ['websocket', 'polling'],
+        timeout: 20000,
+        forceNew: false,
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        maxReconnectionAttempts: 10
+    });
     
     // Add error handling
     socket.on('connect_error', (error) => {
@@ -328,6 +337,21 @@ function initializeSocket() {
     socket.on('connect', () => {
         console.log('✅ Connected to server with ID:', socket.id);
         console.log('🎮 Script.js: Socket connection established successfully');
+        
+        // Aggressive auto-resume on connect
+        try {
+            const savedGameCode = getGameCodeFromUrlOrSession();
+            const savedPlayerName = sessionStorage.getItem('playerName') || localStorage.getItem('playerName');
+            const savedPlayerId = localStorage.getItem('playerId');
+            
+            if (savedGameCode && savedPlayerName && !autoResumeInProgress) {
+                console.log('🔄 Auto-resuming game on reconnect:', { gameCode: savedGameCode, playerName: savedPlayerName });
+                autoResumeInProgress = true;
+                attemptAutoResume();
+            }
+        } catch (e) {
+            console.warn('Auto-resume on connect failed:', e);
+        }
     });
     
     // Connection debugging

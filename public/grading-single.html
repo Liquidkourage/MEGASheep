@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-13T23-48-55">
+    <link rel="stylesheet" href="styles.css?v=2025-08-14T02-49-59">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -741,7 +741,16 @@
         let draggedElement = null;
 
         function initializeConnection() {
-            socket = io();
+            socket = io({
+                transports: ['websocket', 'polling'],
+                timeout: 20000,
+                forceNew: false,
+                reconnection: true,
+                reconnectionAttempts: 15,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                maxReconnectionAttempts: 15
+            });
 
             // Lightweight Q&A toast for grader
             (function ensureQaToast(){
