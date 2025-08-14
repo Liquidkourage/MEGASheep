@@ -511,23 +511,36 @@ class Game {
     }
 
     submitAnswer(socketId, answer) {
-        // SIMPLIFIED: Basic answer submission with edit permission check
-        if (this.gameState !== 'playing' && !this.answersNeedingEdit.has(socketId)) return false;
-        
-        const trimmed = String(answer || '').trim();
-        const player = this.players.get(socketId);
-        if (!player) return false;
+        try {
+            // SIMPLIFIED: Basic answer submission with edit permission check
+            if (!socketId || !this.players || !this.answers || !this.answersNeedingEdit) {
+                logger.warn('submitAnswer called with invalid game state');
+                return false;
+            }
+            
+            if (this.gameState !== 'playing' && !this.answersNeedingEdit.has(socketId)) return false;
+            
+            const trimmed = String(answer || '').trim();
+            const player = this.players.get(socketId);
+            if (!player || !player.name) {
+                logger.warn(`submitAnswer: Player not found for socket ${socketId}`);
+                return false;
+            }
 
-        // Simple rule: one answer per socket during playing (unless edit requested)
-        if (this.gameState === 'playing' && this.answers.has(socketId) && !this.answersNeedingEdit.has(socketId)) {
-            return false; // Already submitted, locked
+            // Simple rule: one answer per socket during playing (unless edit requested)
+            if (this.gameState === 'playing' && this.answers.has(socketId) && !this.answersNeedingEdit.has(socketId)) {
+                return false; // Already submitted, locked
+            }
+
+            // Set the answer - simple and direct
+            this.answers.set(socketId, trimmed);
+            logger.info(`📝 ${player.name} submitted: "${trimmed}"`);
+            
+            return true;
+        } catch (e) {
+            logger.error('Error in submitAnswer:', e?.message);
+            return false;
         }
-
-        // Set the answer - simple and direct
-        this.answers.set(socketId, trimmed);
-        logger.info(`📝 ${player.name} submitted: "${trimmed}"`);
-        
-        return true;
     }
 
   calculateScores() {
@@ -890,30 +903,57 @@ class Game {
   }
 
   resetQuestionScoring() {
-    this.pointsForCurrentQuestion.clear();
-    this.currentQuestionScored = false;
-    this.currentAnswerGroups = [];
-    this.categorizationData = null;
-    this.answers.clear(); // Simple: clear all answers for new question
-    this.answersNeedingEdit.clear(); // Clear edit requests
-    logger.debug(`🔄 Reset for new question`);
+    try {
+        if (this.pointsForCurrentQuestion && typeof this.pointsForCurrentQuestion.clear === 'function') {
+            this.pointsForCurrentQuestion.clear();
+        }
+        this.currentQuestionScored = false;
+        this.currentAnswerGroups = [];
+        this.categorizationData = null;
+        
+        if (this.answers && typeof this.answers.clear === 'function') {
+            this.answers.clear();
+        }
+        if (this.answersNeedingEdit && typeof this.answersNeedingEdit.clear === 'function') {
+            this.answersNeedingEdit.clear();
+        }
+        
+        logger.debug(`🔄 Reset for new question`);
+    } catch (e) {
+        logger.error('Error in resetQuestionScoring:', e?.message);
+        // Initialize safe defaults if something went wrong
+        this.currentAnswerGroups = [];
+        this.categorizationData = null;
+        this.currentQuestionScored = false;
+    }
   }
 
   // CRITICAL FIX: Rebuild answer groups from current live answers
   // This ensures grading interface always shows the latest answer state
   rebuildCurrentAnswerGroups() {
     try {
+        // Safety checks
+        if (!this.answers || !this.players) {
+            logger.warn('rebuildCurrentAnswerGroups: Missing required data structures');
+            this.currentAnswerGroups = [];
+            return;
+        }
+        
         const groupMap = new Map();
         
         // Group current live answers by normalized text
         for (const [socketId, answer] of this.answers.entries()) {
+            if (!socketId || answer === undefined || answer === null) continue;
+            
             const player = this.players.get(socketId);
-            if (!player) continue;
+            if (!player || !player.name) continue;
             
             const normalizedAnswer = String(answer || '').toLowerCase().trim();
+            if (!normalizedAnswer) continue; // Skip empty answers
+            
             if (!groupMap.has(normalizedAnswer)) {
                 groupMap.set(normalizedAnswer, {
-                    answer: answer, // Use original case
+                    answer: String(answer), // Use original case, ensure string
                     players: [],
                     count: 0,
                     points: 0,
@@ -922,8 +962,8 @@ class Game {
             }
             
             const group = groupMap.get(normalizedAnswer);
-            if (!group.players.includes(player.name)) {
-                group.players.push(player.name);
+            if (group && group.players && !group.players.includes(player.name)) {
+                group.players.push(String(player.name)); // Ensure string
                 group.count = group.players.length;
             }
         }
@@ -931,7 +971,9 @@ class Game {
         this.currentAnswerGroups = Array.from(groupMap.values());
         logger.debug(`🔄 Rebuilt ${this.currentAnswerGroups.length} answer groups from ${this.answers.size} live answers`);
     } catch (e) {
-        logger.warn('Failed to rebuild answer groups:', e?.message);
+        logger.error('Failed to rebuild answer groups:', e?.message);
+        // Ensure we don't leave undefined state
+        this.currentAnswerGroups = this.currentAnswerGroups || [];
     }
   }
 
@@ -2524,23 +2566,24 @@ io.on('connection', (socket) => {
 
     // Submit answer
     socket.on('submitAnswer', async (data) => {
-        if (!data) {
-            console.log('⚠️ submitAnswer event received with no data');
-            return;
-        }
-        
-        const { gameCode, answer } = data;
-        
-        if (!gameCode || !answer) {
-            console.log('⚠️ submitAnswer event received with missing gameCode or answer');
-            return;
-        }
-        
-        const playerInfo = connectedPlayers.get(socket.id);
-        if (!playerInfo || playerInfo.gameCode !== gameCode) return;
-        
-        const game = activeGames.get(gameCode);
-        if (!game) return;
+        try {
+            if (!data) {
+                logger.warn('submitAnswer event received with no data');
+                return;
+            }
+            
+            const { gameCode, answer } = data;
+            
+            if (!gameCode || answer === undefined || answer === null) {
+                logger.warn('submitAnswer event received with missing gameCode or answer');
+                return;
+            }
+            
+            const playerInfo = connectedPlayers.get(socket.id);
+            if (!playerInfo || playerInfo.gameCode !== gameCode) return;
+            
+            const game = activeGames.get(gameCode);
+            if (!game) return;
         
         if (game.submitAnswer(socket.id, answer)) {
             // Clear edit flag if this was a clarification
@@ -2554,7 +2597,12 @@ io.on('connection', (socket) => {
             logger.info(`🎯 ${playerName} submitted: "${answer}"`);
             
             // Simple answer groups rebuild - just group current live answers
-            game.rebuildCurrentAnswerGroups();
+            try {
+                game.rebuildCurrentAnswerGroups();
+            } catch (e) {
+                logger.error('Failed to rebuild answer groups after submission:', e?.message);
+                // Continue without crashing - grading interface will still work with existing groups
+            }
             
             // Notify host of the specific answer
             const hostSocket = Array.from(connectedPlayers.entries())
@@ -2607,6 +2655,15 @@ io.on('connection', (socket) => {
             if (game.answersNeedingEdit.size > 0) {
                 console.log(`⏳ Not auto-ending: ${game.answers.size}/${game.players.size} answers, ${game.answersNeedingEdit.size} pending clarifications`);
             }
+        } else {
+            logger.info(`🚫 ${playerInfo.playerName} answer rejected`);
+        }
+        } catch (e) {
+            logger.error('Error in submitAnswer event handler:', e?.message);
+            // Send error to client so they know submission failed
+            try {
+                socket.emit('answerError', { message: 'Failed to submit answer' });
+            } catch (_) {}
         }
     });
 
