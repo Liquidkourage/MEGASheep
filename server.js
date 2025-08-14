@@ -2308,24 +2308,37 @@ io.on('connection', (socket) => {
 
     console.log(`✏️ [server] hostRequestEdit → target=${playerName||targetSocketId} sid=${targetSocketId} reason="${reason}" original="${original}"`);
     
-    // CRITICAL FIX: Send to player via socketId AND broadcast to all clients for persistent notification
-    // This ensures the notification reaches the player even if they reconnect/refresh
-    io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });
+    // CRITICAL FIX: Send to specific player via socketId
+    // Check if the target socket is still connected before sending
+    const targetPlayer = game.players.get(targetSocketId);
+    const targetIsConnected = connectedPlayers.has(targetSocketId);
     
-    // Also notify ALL clients about pending edits so grading UI can show status
-    io.to(gameCode).emit('gameStateUpdate', { 
-      gameState: game.getGameState(),
-      pendingEdits: Array.from(game.answersNeedingEdit.entries()).map(([sid, info]) => {
-        const player = game.players.get(sid);
-        return {
-          socketId: sid,
-          playerName: player?.name || 'Unknown',
-          reason: info.reason,
-          originalAnswer: info.originalAnswer,
-          requestedAt: info.requestedAt
-        };
-      })
-    });
+    if (targetIsConnected && targetPlayer) {
+        io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });
+        console.log(`✏️ Sent requireAnswerEdit to connected player ${targetPlayer.name} (${targetSocketId})`);
+    } else {
+        console.warn(`⚠️ Target player ${playerName} (${targetSocketId}) not connected, storing edit request for reconnect`);
+    }
+    
+    // Send updated pending edits to grading interfaces only (not to players)
+    // This prevents ALL players from getting UI resets
+    for (const [sid, info] of connectedPlayers.entries()) {
+        if (info.gameCode === gameCode && info.isHost) {
+            io.to(sid).emit('gameStateUpdate', { 
+                gameState: game.getGameState(),
+                pendingEdits: Array.from(game.answersNeedingEdit.entries()).map(([socketId, editInfo]) => {
+                    const player = game.players.get(socketId);
+                    return {
+                        socketId,
+                        playerName: player?.name || 'Unknown',
+                        reason: editInfo.reason,
+                        originalAnswer: editInfo.originalAnswer,
+                        requestedAt: editInfo.requestedAt
+                    };
+                })
+            });
+        }
+    }
   });
 
     // Virtual player join (for testing)
@@ -2640,20 +2653,25 @@ io.on('connection', (socket) => {
                 game.rebuildCurrentAnswerGroups();
                 console.log(`🔄 Rebuilt answer groups after ${wasEditRequest ? 'clarification' : 'grading submission'} from ${playerName}`);
                 
-                // Send updated game state to all clients including grading interfaces
-                io.to(gameCode).emit('gameStateUpdate', { 
-                    gameState: game.getGameState(),
-                    pendingEdits: Array.from(game.answersNeedingEdit.entries()).map(([sid, info]) => {
-                        const player = game.players.get(sid);
-                        return {
-                            socketId: sid,
-                            playerName: player?.name || 'Unknown',
-                            reason: info.reason,
-                            originalAnswer: info.originalAnswer,
-                            requestedAt: info.requestedAt
-                        };
-                    })
-                });
+                // Send updated game state to grading interfaces only (not to players)
+                // This prevents all players from getting UI resets when someone submits clarification
+                for (const [sid, info] of connectedPlayers.entries()) {
+                    if (info.gameCode === gameCode && info.isHost) {
+                        io.to(sid).emit('gameStateUpdate', { 
+                            gameState: game.getGameState(),
+                            pendingEdits: Array.from(game.answersNeedingEdit.entries()).map(([socketId, editInfo]) => {
+                                const player = game.players.get(socketId);
+                                return {
+                                    socketId,
+                                    playerName: player?.name || 'Unknown',
+                                    reason: editInfo.reason,
+                                    originalAnswer: editInfo.originalAnswer,
+                                    requestedAt: editInfo.requestedAt
+                                };
+                            })
+                        });
+                    }
+                }
             }
             
             // Notify host of the specific answer

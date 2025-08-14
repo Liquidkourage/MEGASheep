@@ -2362,6 +2362,11 @@ function handleError(data) {
 function handleGameStateUpdate(data) {
     console.log('🔄 Game state update received:', data);
     if (data && data.gameState) {
+        // CRITICAL FIX: Only update game state for players if this is a significant state change
+        // Don't let clarification updates reset player UIs
+        const oldPhase = gameState?.gameState;
+        const newPhase = data.gameState.gameState;
+        
         gameState = data.gameState;
         
         // Update questions if provided
@@ -2374,18 +2379,43 @@ function handleGameStateUpdate(data) {
             currentQuestionIndex = data.gameState.currentQuestion;
         }
         
-        // Route to appropriate screen based on new state
-        const phase = gameState.gameState;
-        if (phase === 'playing') {
-            showScreen('game');
-            displayCurrentQuestion();
-            startTimer();
-        } else if (phase === 'grading') {
-            showScreen('scoring');
-            showWaitingForGrading();
-        } else if (phase === 'finished') {
-            clearTimer();
-            showScreen('gameOver');
+        // Only route to screens if the game phase actually changed
+        // This prevents clarification submissions from resetting all player UIs
+        if (oldPhase !== newPhase) {
+            console.log(`🔄 Game phase changed from ${oldPhase} to ${newPhase}, updating UI`);
+            if (newPhase === 'playing') {
+                showScreen('game');
+                displayCurrentQuestion();
+                startTimer();
+            } else if (newPhase === 'grading') {
+                showScreen('scoring');
+                showWaitingForGrading();
+            } else if (newPhase === 'finished') {
+                clearTimer();
+                showScreen('gameOver');
+            }
+        } else {
+            console.log(`🔄 Game phase unchanged (${newPhase}), skipping UI reset`);
+        }
+        
+        // Check if this player has a pending edit request
+        if (data.pendingEdits && Array.isArray(data.pendingEdits)) {
+            const currentPlayerName = localStorage.getItem('player.name') || sessionStorage.getItem('playerName');
+            const myPendingEdit = data.pendingEdits.find(p => p.playerName === currentPlayerName);
+            if (myPendingEdit && newPhase === 'grading') {
+                // This player needs to edit their answer
+                console.log('✏️ Pending edit found for this player during grading');
+                showScreen('game');
+                const input = document.getElementById('answerInput');
+                const btn = document.getElementById('submitAnswerBtn');
+                if (input) {
+                    input.disabled = false;
+                    input.value = myPendingEdit.originalAnswer || '';
+                    input.focus();
+                }
+                if (btn) btn.disabled = false;
+                showToast(`✏️ Edit requested: ${myPendingEdit.reason}`, 'warning');
+            }
         }
     }
 }
