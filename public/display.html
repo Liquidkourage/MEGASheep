@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-14T15-49-48">
+    <link rel="stylesheet" href="styles.css?v=2025-08-14T15-58-23">
     <style>
         /* Dynamic scaling based on screen resolution */
         :root {
@@ -912,26 +912,33 @@
                 // Request a pairing code so host can attach this display to a game
                 try { socket.emit('requestDisplayPairingCode'); } catch (_) {}
                 
-                // Auto-rejoin game if we have a saved code
-                try {
-                    if (displayGameCode) {
-                        console.log('🔄 Auto-rejoining display to game:', displayGameCode);
-                        socket.emit('joinGameRoom', { gameCode: displayGameCode });
-                        socket.emit('getGameState', { gameCode: displayGameCode });
-                    }
-                } catch (e) {
-                    console.warn('Display auto-rejoin failed:', e);
-                }
+                // Check for stored game code first (for reconnections)
+                const storedGameCode = sessionStorage.getItem('displayGameCode');
                 
-                // Prefer explicit URL param; do not reuse stale session code
+                // Prefer explicit URL param; fall back to stored code
                 const urlParams = new URLSearchParams(window.location.search);
                 const codeFromUrl = urlParams.get('game');
                 if (codeFromUrl) {
                     displayGameCode = codeFromUrl;
                     sessionStorage.setItem('displayGameCode', displayGameCode);
+                    console.log('📺 Using game code from URL:', displayGameCode);
+                } else if (storedGameCode) {
+                    displayGameCode = storedGameCode;
+                    console.log('🔄 Using stored game code for reconnection:', displayGameCode);
                 } else {
-                    sessionStorage.removeItem('displayGameCode');
                     displayGameCode = null;
+                    console.log('📺 No game code available');
+                }
+                
+                // Auto-rejoin game if we have any code
+                try {
+                    if (displayGameCode) {
+                        console.log('🔄 Auto-joining display to game:', displayGameCode);
+                        socket.emit('joinDisplayRoom', { gameCode: displayGameCode });
+                        socket.emit('getGameState', { gameCode: displayGameCode });
+                    }
+                } catch (e) {
+                    console.warn('Display auto-rejoin failed:', e);
                 }
                 
                 if (displayGameCode) {
@@ -952,13 +959,19 @@
             });
             
             socket.on('disconnect', () => {
-                console.log('Display disconnected from server');
-                showIntroScreen();
+                console.log('🔌 Display disconnected from server - attempting rejoin...');
+                // Don't reset to intro screen - try to rejoin the game instead
+                if (displayGameCode) {
+                    console.log(`🔄 Display will attempt to rejoin game ${displayGameCode} on reconnect`);
+                } else {
+                    console.log('⚠️ No game code stored, will show intro screen on reconnect');
+                }
             });
             
             socket.on('connect_error', (error) => {
-                console.error('Display connection error:', error);
-                showIntroScreen();
+                console.error('❌ Display connection error:', error);
+                console.log('🔄 Will retry connection automatically');
+                // Don't reset to intro screen - let Socket.IO handle reconnection
             });
             
             socket.on('displayGameState', (gameStateData) => {
