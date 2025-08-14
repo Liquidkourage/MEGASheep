@@ -27,12 +27,12 @@ const io = socketIo(server, {
   },
   transports: ['websocket', 'polling'],
   allowEIO3: true,
-  pingTimeout: 120000,  // 2 minutes before timeout
-  pingInterval: 10000,  // Ping every 10 seconds
+  pingTimeout: 30000,   // 30s before timeout (was 120s - too long)
+  pingInterval: 5000,   // Ping every 5s (was 10s - more frequent)
   upgradeTimeout: 30000,
   maxHttpBufferSize: 1e6,
   connectionStateRecovery: {
-    maxDisconnectionDuration: 60000,  // 1 minute recovery window
+    maxDisconnectionDuration: 30000,  // 30s recovery window (was 60s)
     skipMiddlewares: true
   }
 });

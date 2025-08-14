@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Game</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-14T14-16-58">
+    <link rel="stylesheet" href="styles.css?v=2025-08-14T15-18-12">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* Player interface enhancements */
@@ -218,7 +218,17 @@
             console.log('Player: Socket.IO version check - io object:', typeof io);
             console.log('Player: Socket.IO version check - io function:', io);
             
-            socket = io();
+            socket = io({
+                transports: ['websocket', 'polling'],
+                timeout: 20000,
+                forceNew: false,
+                reconnection: true,
+                reconnectionAttempts: 25,
+                reconnectionDelay: 500,
+                reconnectionDelayMax: 3000,
+                maxReconnectionAttempts: 25,
+                autoConnect: true
+            });
             console.log('Player: Socket object created:', socket);
             console.log('Player: Socket connected state:', socket.connected);
             console.log('Player: Socket ID before connection:', socket.id);

@@ -315,10 +315,11 @@ function initializeSocket() {
         timeout: 20000,
         forceNew: false,
         reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-        maxReconnectionAttempts: 10
+        reconnectionAttempts: 25,
+        reconnectionDelay: 500,
+        reconnectionDelayMax: 3000,
+        maxReconnectionAttempts: 25,
+        autoConnect: true
     });
     
     // Add error handling
