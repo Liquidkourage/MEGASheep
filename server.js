@@ -1750,9 +1750,14 @@ io.on('connection', (socket) => {
 
   // SIMPLIFIED: Host requests a player's answer edit ("Send Back")
   socket.on('hostRequestEdit', (data) => {
+    console.log('🚨🚨🚨 EMERGENCY: hostRequestEdit handler called with data:', data);
     const { gameCode, playerSocketId, playerName, reason } = data || {};
     const hostInfo = connectedPlayers.get(socket.id);
-    if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) return;
+    console.log('🚨🚨🚨 EMERGENCY: hostInfo:', hostInfo);
+    if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) {
+      console.log('🚨🚨🚨 EMERGENCY: hostRequestEdit REJECTED - invalid host');
+      return;
+    }
     const game = activeGames.get(gameCode);
     if (!game) return;
     
@@ -1998,14 +2003,17 @@ io.on('connection', (socket) => {
 
 
     // Submit answer
-    socket.on('submitAnswer', async (data) => {
+        socket.on('submitAnswer', async (data) => {
+        console.log('🚨🚨🚨 EMERGENCY: submitAnswer handler called with data:', data);
         try {
         if (!data) {
-                logger.warn('submitAnswer event received with no data');
+            console.log('🚨🚨🚨 EMERGENCY: submitAnswer REJECTED - no data');
+            logger.warn('submitAnswer event received with no data');
             return;
         }
         
         const { gameCode, answer } = data;
+        console.log('🚨🚨🚨 EMERGENCY: submitAnswer parsed gameCode:', gameCode, 'answer:', answer);
         
             if (!gameCode || answer === undefined || answer === null) {
                 logger.warn('submitAnswer event received with missing gameCode or answer');
