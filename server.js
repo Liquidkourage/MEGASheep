@@ -861,6 +861,12 @@ class Game {
         
         this.currentAnswerGroups = Array.from(groupMap.values());
         logger.debug(`🔄 Rebuilt ${this.currentAnswerGroups.length} answer groups from ${this.answers.size} live answers`);
+        
+        // DEBUG: Log detailed rebuild info
+        console.log(`🔄 REBUILD DEBUG: Created ${this.currentAnswerGroups.length} groups from ${this.answers.size} answers`);
+        console.log(`🔄 REBUILD DEBUG: Answer groups:`, this.currentAnswerGroups.map(g => `"${g.answer}" (${g.count} players: ${g.players.join(', ')})`));
+        console.log(`🔄 REBUILD DEBUG: Raw answers:`, Array.from(this.answers.entries()).map(([sid, ans]) => `${sid}: "${ans}"`));
+        console.log(`🔄 REBUILD DEBUG: Excluded pending edits:`, Array.from(this.answersNeedingEdit.keys()));
     } catch (e) {
         logger.error('Failed to rebuild answer groups:', e?.message);
         // Ensure we don't leave undefined state
@@ -2050,6 +2056,9 @@ io.on('connection', (socket) => {
             if (wasClarity) {
                 console.log(`🚨 SENDING gameStateUpdate for CLARIFICATION by ${playerName}`);
                 const gameStateToSend = game.getGameState();
+                
+                console.log(`🚨 CLARIFICATION gameState contains ${gameStateToSend.currentAnswerGroups?.length || 0} answer groups`);
+                console.log(`🚨 CLARIFICATION gameState answer groups:`, gameStateToSend.currentAnswerGroups?.map(g => `"${g.answer}" (${g.count})`));
                 
                 // Send to host and grading interface specifically for clarifications
                 if (hostSocket) {
