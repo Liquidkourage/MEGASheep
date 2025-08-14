@@ -355,11 +355,9 @@ class Game {
         this.categorizationData = null;
         this.pointsForCurrentQuestion = new Map(); // socketId -> points for current question only
         this.currentQuestionScored = false; // Track if current question has been scored
-        this.answersByStableId = new Map(); // stableId -> last submitted answer for current question
-        this.socketByStableId = new Map(); // stableId -> current active socketId
-        this.attemptsByQuestion = new Map(); // questionIndex -> array of { stableId, playerName, answer, at, eventId }
-        this.roundAnswerGroups = []; // Accumulate all answer groups for the current round
         this.answersNeedingEdit = new Map(); // socketId -> { reason, requestedAt, originalAnswer }
+        // SIMPLIFIED: Removed answersByStableId, socketByStableId, attemptsByQuestion, roundAnswerGroups
+        // ONE source of truth: this.answers (socketId -> answer)
         this.seenPlayerNames = new Set(); // Track any name that has ever joined this game
         this.expectedResponders = new Set(); // socketIds expected to answer current question
         this.processedEventIds = new Set(); // de-duplication of critical events
@@ -513,60 +511,24 @@ class Game {
     }
 
     submitAnswer(socketId, answer) {
-        // Allow resubmission during grading only if this player was asked to edit
+        // SIMPLIFIED: Basic answer submission with edit permission check
         if (this.gameState !== 'playing' && !this.answersNeedingEdit.has(socketId)) return false;
         
         const trimmed = String(answer || '').trim();
         const player = this.players.get(socketId);
-        const stableId = player?.stableId || socketId;
+        if (!player) return false;
 
-      // During playing: lock after first submission unless host requested an edit
-      if (this.gameState === 'playing') {
-          const hasSubmitted = this.answersByStableId.has(stableId);
-          const canEdit = this.answersNeedingEdit.has(socketId);
-          if (hasSubmitted && !canEdit) {
-              return false;
-          }
-      }
-
-        // Enforce one active answer per stableId: purge any previous socket's answer
-        try {
-            for (const [sid, p] of this.players.entries()) {
-                if (sid !== socketId && (p?.stableId || sid) === stableId) {
-                    if (this.answers.has(sid)) this.answers.delete(sid);
-                }
-            }
-        } catch (_) {}
-
-        // Additional hardening: prevent duplicate answers from same player name across tabs/rejoins
-        // If this same display name has other live sockets with recorded answers, purge them
-        try {
-            const currentPlayerNameLower = String(player?.name || '').toLowerCase();
-            for (const [sid, p] of this.players.entries()) {
-                if (sid === socketId) continue;
-                if (String(p?.name || '').toLowerCase() === currentPlayerNameLower) {
-                    if (this.answers.has(sid)) this.answers.delete(sid);
-                }
-            }
-        } catch (_) {}
-
-        this.answers.set(socketId, trimmed);
-        if (player) {
-            console.log(`📝 ${player.name} submitted answer: ${trimmed}`);
-            // Track by stable identity for reconnect continuity
-            this.answersByStableId.set(stableId, trimmed);
-            this.socketByStableId.set(stableId, socketId);
-            // Append attempt history (in-memory + Supabase best-effort)
-            try {
-                const qIdx = this.currentQuestion || 0;
-                if (!this.attemptsByQuestion.has(qIdx)) this.attemptsByQuestion.set(qIdx, []);
-                const attempt = { stableId, playerName: player.name, answer: trimmed, at: Date.now(), eventId: `${stableId}:${Date.now()}` };
-                this.attemptsByQuestion.get(qIdx).push(attempt);
-                sbInsert(SB_TABLES.attempts, { game_code: this.gameCode, question_index: qIdx, stable_id: stableId, player_name: player.name, answer: trimmed, at: sbNow(), event_id: attempt.eventId });
-            } catch (_) {}
+        // Simple rule: one answer per socket during playing (unless edit requested)
+        if (this.gameState === 'playing' && this.answers.has(socketId) && !this.answersNeedingEdit.has(socketId)) {
+            return false; // Already submitted, locked
         }
+
+        // Set the answer - simple and direct
+        this.answers.set(socketId, trimmed);
+        logger.info(`📝 ${player.name} submitted: "${trimmed}"`);
+        
         return true;
-  }
+    }
 
   calculateScores() {
     const totalResponses = this.answers.size;
@@ -932,8 +894,9 @@ class Game {
     this.currentQuestionScored = false;
     this.currentAnswerGroups = [];
     this.categorizationData = null;
-        this.answersByStableId.clear();
-    logger.debug(`🔄 Reset question scoring state`);
+    this.answers.clear(); // Simple: clear all answers for new question
+    this.answersNeedingEdit.clear(); // Clear edit requests
+    logger.debug(`🔄 Reset for new question`);
   }
 
   // CRITICAL FIX: Rebuild answer groups from current live answers
@@ -995,10 +958,9 @@ class Game {
               const player = this.players.get(sid);
               return {
                 socketId: sid,
-                playerName: player ? player.name : 'Unknown',
-                originalAnswer: info?.originalAnswer || '',
-                reason: info?.reason || 'Please be more specific',
-                requestedAt: info?.requestedAt || Date.now()
+                playerName: player?.name || 'Unknown',
+                originalAnswer: info.originalAnswer || '',
+                reason: info.reason || 'Please be more specific'
               };
             })
         };
@@ -2212,30 +2174,11 @@ io.on('connection', (socket) => {
                     sbLogEvent(gameCode, 'player_rebound', { playerName });
                 }
 
-                // CRITICAL FIX: If this returning player had a pending clarification, re-prompt them immediately
-                // Also send gameStateUpdate with pending edits to ensure grading UI shows status
-                for (const [sid, info] of game.answersNeedingEdit.entries()) {
-                    const p = game.players.get(sid);
-                    if (p && p.name === playerName) {
-                        console.log(`✏️ Re-prompting returning player ${playerName} for pending edit`);
-                        io.to(socket.id).emit('requireAnswerEdit', { reason: info?.reason || 'Please be more specific', originalAnswer: info?.originalAnswer || '' });
-                        
-                        // Also broadcast updated pending edits to all clients
-                        io.to(gameCode).emit('gameStateUpdate', { 
-                            gameState: game.getGameState(),
-                            pendingEdits: Array.from(game.answersNeedingEdit.entries()).map(([socketId, editInfo]) => {
-                                const player = game.players.get(socketId);
-                                return {
-                                    socketId,
-                                    playerName: player?.name || 'Unknown',
-                                    reason: editInfo.reason,
-                                    originalAnswer: editInfo.originalAnswer,
-                                    requestedAt: editInfo.requestedAt
-                                };
-                            })
-                        });
-                        break;
-                    }
+                // Simple: Check if returning player has pending edit
+                if (game.answersNeedingEdit.has(socket.id)) {
+                    const editInfo = game.answersNeedingEdit.get(socket.id);
+                    io.to(socket.id).emit('requireAnswerEdit', { reason: editInfo.reason, originalAnswer: editInfo.originalAnswer });
+                    logger.info(`✏️ Re-sent edit request to reconnecting ${playerName}`);
                 }
             } else {
             // console.log('🏠 Host joined room', gameCode);
@@ -2278,66 +2221,34 @@ io.on('connection', (socket) => {
         }
     });
 
-  // Host requests a player's answer edit ("Send Back")
+  // SIMPLIFIED: Host requests a player's answer edit ("Send Back")
   socket.on('hostRequestEdit', (data) => {
     const { gameCode, playerSocketId, playerName, reason } = data || {};
     const hostInfo = connectedPlayers.get(socket.id);
     if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) return;
     const game = activeGames.get(gameCode);
     if (!game) return;
-    // Resolve target socketId by either provided socketId or playerName
+    
+    // Find target player by socketId or name
     let targetSocketId = playerSocketId;
     if (!targetSocketId && playerName) {
       for (const [sid, p] of game.players.entries()) {
-        const a = (p.name || '').trim().toLowerCase();
-        const b = (playerName || '').trim().toLowerCase();
-        if (a === b) { targetSocketId = sid; break; }
+        if (p.name.toLowerCase() === playerName.toLowerCase()) {
+          targetSocketId = sid;
+          break;
+        }
       }
     }
+    
     if (!targetSocketId || !game.players.has(targetSocketId)) return;
+    
     const original = game.answers.get(targetSocketId) || '';
-    game.answersNeedingEdit.set(targetSocketId, {
-      reason: reason || 'Please be more specific',
-      requestedAt: Date.now(),
-      originalAnswer: original
-    });
-
-    // CRITICAL FIX: Do NOT remove answers or modify answer groups during clarification request
-    // The original answer should remain visible in grading UI until replacement arrives
-    // Just mark the socket as needing edit - the answer stays in place for grading reference
-
-    console.log(`✏️ [server] hostRequestEdit → target=${playerName||targetSocketId} sid=${targetSocketId} reason="${reason}" original="${original}"`);
+    game.answersNeedingEdit.set(targetSocketId, { reason: reason || 'Please be more specific', originalAnswer: original });
     
-    // CRITICAL FIX: Send to specific player via socketId
-    // Check if the target socket is still connected before sending
-    const targetPlayer = game.players.get(targetSocketId);
-    const targetIsConnected = connectedPlayers.has(targetSocketId);
-    
-    if (targetIsConnected && targetPlayer) {
+    // Send edit request to player if connected
+    if (connectedPlayers.has(targetSocketId)) {
         io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });
-        console.log(`✏️ Sent requireAnswerEdit to connected player ${targetPlayer.name} (${targetSocketId})`);
-    } else {
-        console.warn(`⚠️ Target player ${playerName} (${targetSocketId}) not connected, storing edit request for reconnect`);
-    }
-    
-    // Send updated pending edits to grading interfaces only (not to players)
-    // This prevents ALL players from getting UI resets
-    for (const [sid, info] of connectedPlayers.entries()) {
-        if (info.gameCode === gameCode && info.isHost) {
-            io.to(sid).emit('gameStateUpdate', { 
-                gameState: game.getGameState(),
-                pendingEdits: Array.from(game.answersNeedingEdit.entries()).map(([socketId, editInfo]) => {
-                    const player = game.players.get(socketId);
-                    return {
-                        socketId,
-                        playerName: player?.name || 'Unknown',
-                        reason: editInfo.reason,
-                        originalAnswer: editInfo.originalAnswer,
-                        requestedAt: editInfo.requestedAt
-                    };
-                })
-            });
-        }
+        logger.info(`✏️ Clarification sent to ${game.players.get(targetSocketId)?.name}`);
     }
   });
 
@@ -2632,47 +2543,18 @@ io.on('connection', (socket) => {
         if (!game) return;
         
         if (game.submitAnswer(socket.id, answer)) {
-            // If this player was sent back for edit, clear the flag on update
-            const wasEditRequest = game.answersNeedingEdit.has(socket.id);
-            if (wasEditRequest) {
+            // Clear edit flag if this was a clarification
+            if (game.answersNeedingEdit.has(socket.id)) {
                 game.answersNeedingEdit.delete(socket.id);
             }
-            socket.emit('answerSubmitted');
             
-            // Get player name for the answer
+            socket.emit('answerSubmitted');
             const playerName = playerInfo.playerName;
             
-            console.log(`🎯 Player ${playerName} submitted answer: "${answer}"`);
-            // Persist answer
-            sbInsert(SB_TABLES.answers, { game_code: gameCode, socket_id: socket.id, player_name: playerName, answer: answer, question_index: game.currentQuestion, at: sbNow() });
-            sbLogEvent(gameCode, 'answer_submitted', { playerName, answer, q: game.currentQuestion });
+            logger.info(`🎯 ${playerName} submitted: "${answer}"`);
             
-            // CRITICAL FIX: Rebuild answer groups when player submits clarification
-            // This ensures the grading interface shows the updated answer immediately
-            if (wasEditRequest || game.gameState === 'grading') {
-                game.rebuildCurrentAnswerGroups();
-                console.log(`🔄 Rebuilt answer groups after ${wasEditRequest ? 'clarification' : 'grading submission'} from ${playerName}`);
-                
-                // Send updated game state to grading interfaces only (not to players)
-                // This prevents all players from getting UI resets when someone submits clarification
-                for (const [sid, info] of connectedPlayers.entries()) {
-                    if (info.gameCode === gameCode && info.isHost) {
-                        io.to(sid).emit('gameStateUpdate', { 
-                            gameState: game.getGameState(),
-                            pendingEdits: Array.from(game.answersNeedingEdit.entries()).map(([socketId, editInfo]) => {
-                                const player = game.players.get(socketId);
-                                return {
-                                    socketId,
-                                    playerName: player?.name || 'Unknown',
-                                    reason: editInfo.reason,
-                                    originalAnswer: editInfo.originalAnswer,
-                                    requestedAt: editInfo.requestedAt
-                                };
-                            })
-                        });
-                    }
-                }
-            }
+            // Simple answer groups rebuild - just group current live answers
+            game.rebuildCurrentAnswerGroups();
             
             // Notify host of the specific answer
             const hostSocket = Array.from(connectedPlayers.entries())
