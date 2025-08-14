@@ -820,13 +820,20 @@
             
             socket.on('gameStateUpdate', (data) => {
                 console.log('🔄 Game state update received:', data);
+                console.log('🔄 Current game code:', currentGame?.gameCode);
+                console.log('🔄 Data game code:', data.gameCode);
+                console.log('🔄 Answer groups in data:', data.currentAnswerGroups?.length || 0);
+                console.log('🔄 Answer groups details:', data.currentAnswerGroups);
                 
                 // Auto-open grading interface when question starts or grading begins
                 if ((data.gameState === 'playing' || data.gameState === 'grading') && data.gameCode) {
                     autoOpenGradingInterface(data.gameCode);
                 }
                 
-                if (!currentGame || data.gameCode !== currentGame.gameCode) return;
+                if (!currentGame || data.gameCode !== currentGame.gameCode) {
+                    console.log('🔄 Skipping update - game mismatch or no current game');
+                    return;
+                }
                 
                 // Update only lightweight parts to avoid wiping manual categorizations
                 // Preserve local DOM placements; refresh pending edits banner
@@ -837,9 +844,13 @@
                 // CRITICAL FIX: Update answer groups when they change (like after clarifications)
                 if (data.currentAnswerGroups && Array.isArray(data.currentAnswerGroups)) {
                     console.log('🔄 Updating answer groups from gameStateUpdate:', data.currentAnswerGroups.length, 'groups');
+                    console.log('🔄 Answer groups content:', data.currentAnswerGroups);
                     currentGame.currentAnswerGroups = data.currentAnswerGroups;
                     // Trigger a smooth update to reflect the new answers
+                    console.log('🔄 Calling updateAnswerBucketsSmoothly()');
                     updateAnswerBucketsSmoothly();
+                } else {
+                    console.log('🔄 No answer groups in gameStateUpdate data');
                 }
                 
                 // CRITICAL FIX: Show pending edits in grading interface
@@ -1381,13 +1392,27 @@
         }
         
         async function updateAnswerBucketsSmoothly() {
-            if (!currentGame || !currentGame.currentQuestionData) return;
+            console.log('🔄 updateAnswerBucketsSmoothly called');
+            console.log('🔄 currentGame:', currentGame);
+            console.log('🔄 currentQuestionData:', currentGame?.currentQuestionData);
+            
+            if (!currentGame || !currentGame.currentQuestionData) {
+                console.log('🔄 Skipping update - no current game or question data');
+                return;
+            }
             
             const correctAnswers = (currentGame.currentQuestionData.correct_answers || []).slice().sort();
             const correctAnswersContainer = document.getElementById('correctAnswers');
             const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
             
-            if (!correctAnswersContainer || !uncategorizedContainer) return;
+            console.log('🔄 correctAnswers:', correctAnswers);
+            console.log('🔄 correctAnswersContainer:', correctAnswersContainer);
+            console.log('🔄 uncategorizedContainer:', uncategorizedContainer);
+            
+            if (!correctAnswersContainer || !uncategorizedContainer) {
+                console.log('🔄 Skipping update - missing containers');
+                return;
+            }
             
             // Check if this is the first real-time update (clear initial buckets)
             if (!window.smoothUpdateInitialized) {
@@ -1826,8 +1851,13 @@
         }
 
         async function populateUncategorizedAnswers(answersToRemove = []) {
+            console.log('🔄 populateUncategorizedAnswers called');
+            console.log('🔄 answersToRemove:', answersToRemove);
+            console.log('🔄 currentGame.currentAnswerGroups:', currentGame?.currentAnswerGroups);
+            
             // Check if we should skip this call due to a recent restore
             if (window.skipPopulateUncategorized) {
+                console.log('🔄 Skipping populateUncategorizedAnswers due to skipPopulateUncategorized flag');
                 return;
             }
             
