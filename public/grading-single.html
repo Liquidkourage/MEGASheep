@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-14T21-41-30">
+    <link rel="stylesheet" href="styles.css?v=2025-08-14T21-53-45">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1479,6 +1479,8 @@
                 correctAnswer: key,
                 answerGroup: JSON.stringify(value)
             })));
+            console.log('🔍 All answer groups being processed:', answerGroups);
+            console.log('🔍 Grouped answers before conversion:', groupedAnswers);
             
             // Update each correct answer bucket smoothly
             correctAnswers.forEach(correctAnswer => {
@@ -1891,11 +1893,34 @@
             } catch (_) {}
 
             // Populate uncategorized answers (non-matching), excluding players already placed elsewhere
+            console.log('🔄 Processing uncategorized answers:');
+            console.log('🔄 Current answer groups:', currentGame.currentAnswerGroups);
+            console.log('🔄 answersToRemove:', answersToRemove);
+            console.log('🔄 placedPlayersLower:', Array.from(placedPlayersLower));
+            
             const uncategorizedAnswers = (currentGame.currentAnswerGroups || []).map(group => {
+                console.log(`🔄 Processing group "${group.answer}":`, group);
                 const keepPlayers = (group.players || []).filter(p => !placedPlayersLower.has(String(p).toLowerCase()));
-                if (keepPlayers.length === 0) return null;
-                return { ...group, players: keepPlayers, count: keepPlayers.length };
-            }).filter(group => group && !answersToRemove.includes(group.answer));
+                console.log(`🔄 Keep players for "${group.answer}":`, keepPlayers);
+                if (keepPlayers.length === 0) {
+                    console.log(`🔄 Skipping "${group.answer}" - no players to keep`);
+                    return null;
+                }
+                const result = { ...group, players: keepPlayers, count: keepPlayers.length };
+                console.log(`🔄 Result for "${group.answer}":`, result);
+                return result;
+            }).filter(group => {
+                if (!group) {
+                    console.log(`🔄 Filtering out null group`);
+                    return false;
+                }
+                if (answersToRemove.includes(group.answer)) {
+                    console.log(`🔄 Filtering out "${group.answer}" - in answersToRemove`);
+                    return false;
+                }
+                console.log(`🔄 Keeping "${group.answer}" in uncategorized`);
+                return true;
+            });
             
             // Calculate confidence scores for uncategorized answers
             const questionData = currentGame.currentQuestionData;
