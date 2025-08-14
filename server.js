@@ -826,8 +826,15 @@ class Game {
         const groupMap = new Map();
         
         // Group current live answers by normalized text
+        // EXCLUDE answers that are pending edits (they should not appear in grading)
         for (const [socketId, answer] of this.answers.entries()) {
             if (!socketId || answer === undefined || answer === null) continue;
+            
+            // Skip answers that are flagged for editing
+            if (this.answersNeedingEdit && this.answersNeedingEdit.has(socketId)) {
+                logger.debug(`🚫 Excluding pending edit answer from ${socketId}`);
+                continue;
+            }
             
             const player = this.players.get(socketId);
             if (!player || !player.name) continue;
@@ -1759,11 +1766,23 @@ io.on('connection', (socket) => {
     const original = game.answers.get(targetSocketId) || '';
     game.answersNeedingEdit.set(targetSocketId, { reason: reason || 'Please be more specific', originalAnswer: original });
     
+    // Rebuild answer groups to exclude the pending edit from grading
+    try {
+        game.rebuildCurrentAnswerGroups();
+    } catch (e) {
+        logger.error('Failed to rebuild answer groups after edit request:', e?.message);
+    }
+    
     // Send edit request to player if connected
     if (connectedPlayers.has(targetSocketId)) {
         io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });
         logger.info(`✏️ Clarification sent to ${game.players.get(targetSocketId)?.name}`);
     }
+    
+    // Broadcast updated game state to grading interface (shows pending edits banner)
+    const gameStateToSend = game.getGameState();
+    io.to(gameCode).emit('gameStateUpdate', gameStateToSend);
+    logger.debug('📤 Sent gameStateUpdate after edit request');
   });
 
 
