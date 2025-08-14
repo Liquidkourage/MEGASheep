@@ -334,18 +334,22 @@ function initializeSocket() {
         console.log('🎮 Script.js: Socket disconnected:', reason);
     });
     
-    socket.on('connect', () => {
+                socket.on('connect', () => {
         console.log('✅ Connected to server with ID:', socket.id);
         console.log('🎮 Script.js: Socket connection established successfully');
         
-        // Aggressive auto-resume on connect
+        // CRITICAL FIX: Enhanced mobile refresh persistence - check all storage methods
         try {
-            const savedGameCode = getGameCodeFromUrlOrSession();
-            const savedPlayerName = sessionStorage.getItem('playerName') || localStorage.getItem('playerName');
+            // Priority: URL params > sessionStorage > localStorage for mobile compatibility
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlGameCode = urlParams.get('game') || urlParams.get('code') || urlParams.get('gameCode') || urlParams.get('room');
+            
+            const savedGameCode = urlGameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode');
+            const savedPlayerName = sessionStorage.getItem('playerName') || localStorage.getItem('player.name');
             const savedPlayerId = localStorage.getItem('playerId');
             
             if (savedGameCode && savedPlayerName && !autoResumeInProgress) {
-                console.log('🔄 Auto-resuming game on reconnect:', { gameCode: savedGameCode, playerName: savedPlayerName });
+                console.log('🔄 Auto-resuming game on reconnect (enhanced mobile):', { gameCode: savedGameCode, playerName: savedPlayerName });
                 autoResumeInProgress = true;
                 attemptAutoResume();
             }

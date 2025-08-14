@@ -1949,12 +1949,8 @@ app.post('/api/join-game', (req, res) => {
         });
     }
     
-    if (game.gameState !== 'waiting') {
-        return res.status(400).json({ 
-            status: 'error', 
-            message: 'Game has already started. Cannot join.' 
-        });
-    }
+    // CRITICAL FIX: Allow joining during any game state for reconnections and mid-game joins
+    // Remove restriction that prevented joining after game started
     
     res.json({
         status: 'success',
@@ -2253,40 +2249,9 @@ io.on('connection', (socket) => {
       originalAnswer: original
     });
 
-    // If the player had an existing answer, remove it so counts/groups reflect the pending clarification
-    if (game.answers.has(targetSocketId)) {
-      game.answers.delete(targetSocketId);
-      try {
-        // Remove this player's entry from currentAnswerGroups if present
-        if (Array.isArray(game.currentAnswerGroups)) {
-          let groupsChanged = false;
-          for (const group of game.currentAnswerGroups) {
-            if (Array.isArray(group.players)) {
-              const before = group.players.length;
-              group.players = group.players.filter(n => {
-                const player = game.players.get(targetSocketId);
-                return player ? n !== player.name : true;
-              });
-              if (group.players.length !== before) {
-                groupsChanged = true;
-                group.count = Math.max(0, group.players.length);
-              }
-            }
-          }
-          // Drop empty groups
-          if (groupsChanged) {
-            game.currentAnswerGroups = game.currentAnswerGroups.filter(g => (g.players && g.players.length > 0));
-          }
-        }
-      } catch (_) {}
-      // Notify clients of updated answer counts immediately
-      io.to(gameCode).emit('answerUpdate', {
-        answersReceived: game.answers.size,
-        totalPlayers: game.players.size
-      });
-      // Push full game state update so grading UI reflects removed answer and pendingEdits
-      try { io.to(gameCode).emit('gameStateUpdate', game.getGameState()); } catch (_) {}
-    }
+    // CRITICAL FIX: Do NOT remove answers or modify answer groups during clarification request
+    // The original answer should remain visible in grading UI until replacement arrives
+    // Just mark the socket as needing edit - the answer stays in place for grading reference
 
     console.log(`✏️ [server] hostRequestEdit → target=${playerName||targetSocketId} sid=${targetSocketId} reason="${reason}" original="${original}"`);
     io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });

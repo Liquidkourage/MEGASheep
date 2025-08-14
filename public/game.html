@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Game</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-14T03-09-17">
+    <link rel="stylesheet" href="styles.css?v=2025-08-14T03-43-19">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* Player interface enhancements */
@@ -179,10 +179,15 @@
         let awaitingAnswerAck = false;
         let answerAckTimerId = null;
         
-        // Check session data on load
+        // Check session data on load - CRITICAL FIX: Check URL params first for mobile refresh persistence
         window.addEventListener('load', function() {
-            gameCode = sessionStorage.getItem('gameCode');
-            playerName = sessionStorage.getItem('playerName');
+            // Priority: URL params > sessionStorage for mobile refresh handling
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlGameCode = urlParams.get('game') || urlParams.get('code') || urlParams.get('gameCode') || urlParams.get('room');
+            const urlPlayerName = urlParams.get('name') || urlParams.get('player') || urlParams.get('playerName');
+            
+            gameCode = urlGameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode');
+            playerName = urlPlayerName || sessionStorage.getItem('playerName') || localStorage.getItem('player.name');
             
             if (!gameCode || !playerName) {
                 showError('No game session found. Please join a game first.');
@@ -191,6 +196,14 @@
                 }, 2000);
                 return;
             }
+            
+            // Save to both session and local storage for persistence
+            try {
+                sessionStorage.setItem('gameCode', gameCode);
+                sessionStorage.setItem('playerName', playerName);
+                localStorage.setItem('player.gameCode', gameCode);
+                localStorage.setItem('player.name', playerName);
+            } catch (_) {}
             
             // Update display
             document.getElementById('gameCodeDisplay').textContent = gameCode;
