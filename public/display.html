@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-14T16-09-35">
+    <link rel="stylesheet" href="styles.css?v=2025-08-14T16-14-08">
     <style>
         /* Dynamic scaling based on screen resolution */
         :root {
@@ -915,10 +915,18 @@
                 // Check for stored game code first (for reconnections)
                 const storedGameCode = sessionStorage.getItem('displayGameCode');
                 
-                // Prefer explicit URL param; fall back to stored code
+                // Check URL parameters
                 const urlParams = new URLSearchParams(window.location.search);
                 const codeFromUrl = urlParams.get('game');
-                if (codeFromUrl) {
+                const resetParam = urlParams.get('reset');
+                
+                // Force reset if ?reset=true
+                if (resetParam === 'true') {
+                    console.log('🔄 Display reset requested via URL parameter');
+                    displayGameCode = null;
+                    sessionStorage.removeItem('displayGameCode');
+                    window.currentGameCode = null;
+                } else if (codeFromUrl) {
                     displayGameCode = codeFromUrl;
                     sessionStorage.setItem('displayGameCode', displayGameCode);
                     console.log('📺 Using game code from URL:', displayGameCode);
@@ -946,7 +954,7 @@
                     // Join the specific game room
                     socket.emit('joinDisplayRoom', { gameCode: displayGameCode });
                 } else {
-                    console.log('📺 No game code specified, showing welcome screen');
+                    console.log('📺 No game code specified, showing welcome screen for pairing');
                     showIntroScreen();
                 }
             });
@@ -993,6 +1001,10 @@
 
             socket.on('displayError', (data) => {
                 console.error('📺 Display error:', data.message);
+                // Clear stored game code and show intro screen for pairing
+                displayGameCode = null;
+                sessionStorage.removeItem('displayGameCode');
+                window.currentGameCode = null;
                 showIntroScreen();
             });
             
