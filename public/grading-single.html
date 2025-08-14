@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-14T22-04-33">
+    <link rel="stylesheet" href="styles.css?v=2025-08-14T22-11-07">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1437,13 +1437,28 @@
                 correctAnswers: correctAnswers
             });
             
-            // Group answers by their normalized correct answer
+            // Group answers by their normalized correct answer (using semantic matching)
             const groupedAnswers = new Map();
             answerGroups.forEach(group => {
                 const normalizedAnswer = group.answer.toLowerCase().trim();
-                const matchingCorrectAnswer = correctAnswers.find(correct => 
+                
+                // First try exact matching
+                let matchingCorrectAnswer = correctAnswers.find(correct => 
                     correct.toLowerCase().trim() === normalizedAnswer
                 );
+                
+                // If no exact match, try semantic matching
+                if (!matchingCorrectAnswer) {
+                    let bestConfidence = 0;
+                    correctAnswers.forEach(correctAnswer => {
+                        const confidence = calculateSemanticConfidence(group.answer, correctAnswer);
+                        if (confidence > bestConfidence && confidence >= 80) { // Only match if 80%+ confidence
+                            bestConfidence = confidence;
+                            matchingCorrectAnswer = correctAnswer;
+                        }
+                    });
+                }
+                
                 console.log(`🔍 Checking answer "${group.answer}":`, {
                     normalizedAnswer: normalizedAnswer,
                     matchingCorrectAnswer: matchingCorrectAnswer,
