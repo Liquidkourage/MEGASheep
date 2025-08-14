@@ -2010,9 +2010,15 @@ io.on('connection', (socket) => {
             // Check if this was a clarification
             const wasClarity = game.answersNeedingEdit.has(socket.id);
             
+            // DEBUG: Log clarification detection
+            console.log(`🔍 CLARIFICATION DEBUG: socketId=${socket.id}, wasClarity=${wasClarity}`);
+            console.log(`🔍 answersNeedingEdit size before clear: ${game.answersNeedingEdit.size}`);
+            console.log(`🔍 answersNeedingEdit has socketId: ${game.answersNeedingEdit.has(socket.id)}`);
+            
             // Clear edit flag if this was a clarification
             if (wasClarity) {
                 game.answersNeedingEdit.delete(socket.id);
+                console.log(`🔍 Cleared clarification flag for ${socket.id}`);
             }
             
             socket.emit('answerSubmitted');
@@ -2034,17 +2040,20 @@ io.on('connection', (socket) => {
             
             // ONLY send gameStateUpdate for clarifications to avoid wiping uncategorized answers
             if (wasClarity) {
+                console.log(`🚨 SENDING gameStateUpdate for CLARIFICATION by ${playerName}`);
                 const gameStateToSend = game.getGameState();
                 
                 // Send to host and grading interface specifically for clarifications
                 if (hostSocket) {
                     io.to(hostSocket[0]).emit('gameStateUpdate', gameStateToSend);
-                    logger.debug('📤 Sent gameStateUpdate to host after CLARIFICATION');
+                    console.log('📤 Sent gameStateUpdate to host after CLARIFICATION');
                 }
                 
                 // Also broadcast to room for any other connected grading interfaces
                 io.to(gameCode).emit('gameStateUpdate', gameStateToSend);
-                logger.debug('📤 Sent gameStateUpdate to room after CLARIFICATION');
+                console.log('📤 Sent gameStateUpdate to room after CLARIFICATION');
+            } else {
+                console.log(`ℹ️ NOT sending gameStateUpdate - this was NOT a clarification`);
             }
             
             if (hostSocket) {
