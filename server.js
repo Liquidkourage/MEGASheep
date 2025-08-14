@@ -402,10 +402,10 @@ class Game {
                 return false;
             }
             
-            if (this.gameState !== 'playing' && !this.answersNeedingEdit.has(socketId)) return false;
-            
+        if (this.gameState !== 'playing' && !this.answersNeedingEdit.has(socketId)) return false;
+        
             const trimmed = String(answer || '').trim();
-            const player = this.players.get(socketId);
+        const player = this.players.get(socketId);
             if (!player || !player.name) {
                 logger.warn(`submitAnswer: Player not found for socket ${socketId}`);
                 return false;
@@ -420,12 +420,12 @@ class Game {
             this.answers.set(socketId, trimmed);
             logger.info(`📝 ${player.name} submitted: "${trimmed}"`);
             
-            return true;
+        return true;
         } catch (e) {
             logger.error('Error in submitAnswer:', e?.message);
             return false;
         }
-    }
+  }
 
   calculateScores() {
     const totalResponses = this.answers.size;
@@ -537,8 +537,8 @@ class Game {
           try { if (String(ans).toLowerCase().trim() === normalizedTarget) socketIdSet.add(sid); } catch (_) {}
         }
         const socketIds = Array.from(socketIdSet);
-        if (socketIds.length > 0) {
-          answerGroups.set(answerData.answer, socketIds);
+          if (socketIds.length > 0) {
+            answerGroups.set(answerData.answer, socketIds);
           logger.debug(`📊 Wrong answer "${answerData.answer}" with ${socketIds.length} players`);
         }
       }
@@ -568,8 +568,8 @@ class Game {
           try { if (String(ans).toLowerCase().trim() === normalizedTarget) socketIdSet.add(sid); } catch (_) {}
         }
         const socketIds = Array.from(socketIdSet);
-        if (socketIds.length > 0) {
-          answerGroups.set(answerData.answer, socketIds);
+          if (socketIds.length > 0) {
+            answerGroups.set(answerData.answer, socketIds);
           logger.debug(`📊 Uncategorized answer "${answerData.answer}" with ${socketIds.length} players`);
         }
       }
@@ -747,7 +747,7 @@ class Game {
     logger.debug(`📊 Calculated scores for ${totalResponses} answers in ${answerGroups.size} groups`);
   }
 
-    applyCurrentQuestionPoints() {
+  applyCurrentQuestionPoints() {
     if (this.currentQuestionScored) {
     logger.debug(`⚠️ Current question already scored, skipping duplicate scoring`);
       return;
@@ -758,8 +758,8 @@ class Game {
     // Add current question points to cumulative scores
         // Migrate scoring from socket IDs to stable IDs if available
         const stableScores = new Map();
-        for (const [socketId, points] of this.pointsForCurrentQuestion) {
-            const player = this.players.get(socketId);
+    for (const [socketId, points] of this.pointsForCurrentQuestion) {
+      const player = this.players.get(socketId);
             const stableId = player?.stableId || socketId;
             const currentScore = stableScores.get(stableId) ?? 0;
             stableScores.set(stableId, currentScore + points);
@@ -780,7 +780,7 @@ class Game {
             // Always persist cumulative score per stableId
             const cur = this.scoresByStableId.get(stableId) || 0;
             this.scoresByStableId.set(stableId, cur + addPoints);
-        }
+    }
     
     this.currentQuestionScored = true;
     logger.debug(`✅ Current question points applied to cumulative scores`);
@@ -789,11 +789,11 @@ class Game {
   resetQuestionScoring() {
     try {
         if (this.pointsForCurrentQuestion && typeof this.pointsForCurrentQuestion.clear === 'function') {
-            this.pointsForCurrentQuestion.clear();
+    this.pointsForCurrentQuestion.clear();
         }
-        this.currentQuestionScored = false;
-        this.currentAnswerGroups = [];
-        this.categorizationData = null;
+    this.currentQuestionScored = false;
+    this.currentAnswerGroups = [];
+    this.categorizationData = null;
         
         if (this.answers && typeof this.answers.clear === 'function') {
             this.answers.clear();
@@ -1307,7 +1307,7 @@ app.post('/api/recover-game', async (req, res) => {
 // Snapshot persistence helpers
 function serializeGame(game) {
   try {
-    return {
+                return {
       gameCode: game.gameCode,
       hostId: game.hostId,
       players: Array.from(game.players.entries()).map(([sid, p]) => ({ socketId: sid, stableId: p.stableId || p.id, name: p.name, score: p.score })),
@@ -1775,7 +1775,7 @@ io.on('connection', (socket) => {
     
     // Send edit request to player if connected
     if (connectedPlayers.has(targetSocketId)) {
-        io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });
+    io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });
         logger.info(`✏️ Clarification sent to ${game.players.get(targetSocketId)?.name}`);
     }
     
@@ -1988,34 +1988,37 @@ io.on('connection', (socket) => {
     // Submit answer
     socket.on('submitAnswer', async (data) => {
         try {
-            if (!data) {
+        if (!data) {
                 logger.warn('submitAnswer event received with no data');
-                return;
-            }
-            
-            const { gameCode, answer } = data;
-            
+            return;
+        }
+        
+        const { gameCode, answer } = data;
+        
             if (!gameCode || answer === undefined || answer === null) {
                 logger.warn('submitAnswer event received with missing gameCode or answer');
-                return;
-            }
-            
-            const playerInfo = connectedPlayers.get(socket.id);
-            if (!playerInfo || playerInfo.gameCode !== gameCode) return;
-            
-            const game = activeGames.get(gameCode);
-            if (!game) return;
+            return;
+        }
+        
+        const playerInfo = connectedPlayers.get(socket.id);
+        if (!playerInfo || playerInfo.gameCode !== gameCode) return;
+        
+        const game = activeGames.get(gameCode);
+        if (!game) return;
         
         if (game.submitAnswer(socket.id, answer)) {
+            // Check if this was a clarification
+            const wasClarity = game.answersNeedingEdit.has(socket.id);
+            
             // Clear edit flag if this was a clarification
-            if (game.answersNeedingEdit.has(socket.id)) {
+            if (wasClarity) {
                 game.answersNeedingEdit.delete(socket.id);
             }
             
             socket.emit('answerSubmitted');
             const playerName = playerInfo.playerName;
             
-            logger.info(`🎯 ${playerName} submitted: "${answer}"`);
+            logger.info(`🎯 ${playerName} submitted: "${answer}"${wasClarity ? ' (clarification)' : ''}`);
             
             // Simple answer groups rebuild - just group current live answers
             try {
@@ -2029,18 +2032,20 @@ io.on('connection', (socket) => {
             const hostSocket = Array.from(connectedPlayers.entries())
                 .find(([id, info]) => info.gameCode === gameCode && info.isHost);
             
-            // Send updated game state to grading interface (especially for clarifications)
-            const gameStateToSend = game.getGameState();
-            
-            // Send to host and grading interface specifically for clarifications
-            if (hostSocket) {
-                io.to(hostSocket[0]).emit('gameStateUpdate', gameStateToSend);
-                logger.debug('📤 Sent gameStateUpdate to host after answer submission');
+            // ONLY send gameStateUpdate for clarifications to avoid wiping uncategorized answers
+            if (wasClarity) {
+                const gameStateToSend = game.getGameState();
+                
+                // Send to host and grading interface specifically for clarifications
+                if (hostSocket) {
+                    io.to(hostSocket[0]).emit('gameStateUpdate', gameStateToSend);
+                    logger.debug('📤 Sent gameStateUpdate to host after CLARIFICATION');
+                }
+                
+                // Also broadcast to room for any other connected grading interfaces
+                io.to(gameCode).emit('gameStateUpdate', gameStateToSend);
+                logger.debug('📤 Sent gameStateUpdate to room after CLARIFICATION');
             }
-            
-            // Also broadcast to room for any other connected grading interfaces
-            io.to(gameCode).emit('gameStateUpdate', gameStateToSend);
-            logger.debug('📤 Sent gameStateUpdate to room after answer submission');
             
             if (hostSocket) {
                 console.log(`📤 [server] Emitting answerSubmitted to host socket ${hostSocket[0]} for player ${playerName}`);
