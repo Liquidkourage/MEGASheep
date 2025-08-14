@@ -1766,6 +1766,12 @@ io.on('connection', (socket) => {
     const original = game.answers.get(targetSocketId) || '';
     game.answersNeedingEdit.set(targetSocketId, { reason: reason || 'Please be more specific', originalAnswer: original });
     
+    // DEBUG: Log clarification request
+    console.log(`🚨 HOST REQUESTED EDIT: targetSocketId=${targetSocketId}, playerName=${playerName}`);
+    console.log(`🚨 Original answer: "${original}"`);
+    console.log(`🚨 answersNeedingEdit now has ${game.answersNeedingEdit.size} entries`);
+    console.log(`🚨 answersNeedingEdit contains targetSocketId: ${game.answersNeedingEdit.has(targetSocketId)}`);
+    
     // Rebuild answer groups to exclude the pending edit from grading
     try {
         game.rebuildCurrentAnswerGroups();
@@ -2014,6 +2020,8 @@ io.on('connection', (socket) => {
             console.log(`🔍 CLARIFICATION DEBUG: socketId=${socket.id}, wasClarity=${wasClarity}`);
             console.log(`🔍 answersNeedingEdit size before clear: ${game.answersNeedingEdit.size}`);
             console.log(`🔍 answersNeedingEdit has socketId: ${game.answersNeedingEdit.has(socket.id)}`);
+            console.log(`🔍 ALL answersNeedingEdit socketIds:`, Array.from(game.answersNeedingEdit.keys()));
+            console.log(`🔍 Current submitAnswer socketId: ${socket.id}`);
             
             // Clear edit flag if this was a clarification
             if (wasClarity) {
