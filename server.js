@@ -936,6 +936,42 @@ class Game {
     logger.debug(`🔄 Reset question scoring state`);
   }
 
+  // CRITICAL FIX: Rebuild answer groups from current live answers
+  // This ensures grading interface always shows the latest answer state
+  rebuildCurrentAnswerGroups() {
+    try {
+        const groupMap = new Map();
+        
+        // Group current live answers by normalized text
+        for (const [socketId, answer] of this.answers.entries()) {
+            const player = this.players.get(socketId);
+            if (!player) continue;
+            
+            const normalizedAnswer = String(answer || '').toLowerCase().trim();
+            if (!groupMap.has(normalizedAnswer)) {
+                groupMap.set(normalizedAnswer, {
+                    answer: answer, // Use original case
+                    players: [],
+                    count: 0,
+                    points: 0,
+                    index: groupMap.size
+                });
+            }
+            
+            const group = groupMap.get(normalizedAnswer);
+            if (!group.players.includes(player.name)) {
+                group.players.push(player.name);
+                group.count = group.players.length;
+            }
+        }
+        
+        this.currentAnswerGroups = Array.from(groupMap.values());
+        logger.debug(`🔄 Rebuilt ${this.currentAnswerGroups.length} answer groups from ${this.answers.size} live answers`);
+    } catch (e) {
+        logger.warn('Failed to rebuild answer groups:', e?.message);
+    }
+  }
+
   getGameState() {
     return {
             gameCode: this.gameCode,
@@ -2584,7 +2620,8 @@ io.on('connection', (socket) => {
         
         if (game.submitAnswer(socket.id, answer)) {
             // If this player was sent back for edit, clear the flag on update
-            if (game.answersNeedingEdit.has(socket.id)) {
+            const wasEditRequest = game.answersNeedingEdit.has(socket.id);
+            if (wasEditRequest) {
                 game.answersNeedingEdit.delete(socket.id);
             }
             socket.emit('answerSubmitted');
@@ -2596,6 +2633,28 @@ io.on('connection', (socket) => {
             // Persist answer
             sbInsert(SB_TABLES.answers, { game_code: gameCode, socket_id: socket.id, player_name: playerName, answer: answer, question_index: game.currentQuestion, at: sbNow() });
             sbLogEvent(gameCode, 'answer_submitted', { playerName, answer, q: game.currentQuestion });
+            
+            // CRITICAL FIX: Rebuild answer groups when player submits clarification
+            // This ensures the grading interface shows the updated answer immediately
+            if (wasEditRequest || game.gameState === 'grading') {
+                game.rebuildCurrentAnswerGroups();
+                console.log(`🔄 Rebuilt answer groups after ${wasEditRequest ? 'clarification' : 'grading submission'} from ${playerName}`);
+                
+                // Send updated game state to all clients including grading interfaces
+                io.to(gameCode).emit('gameStateUpdate', { 
+                    gameState: game.getGameState(),
+                    pendingEdits: Array.from(game.answersNeedingEdit.entries()).map(([sid, info]) => {
+                        const player = game.players.get(sid);
+                        return {
+                            socketId: sid,
+                            playerName: player?.name || 'Unknown',
+                            reason: info.reason,
+                            originalAnswer: info.originalAnswer,
+                            requestedAt: info.requestedAt
+                        };
+                    })
+                });
+            }
             
             // Notify host of the specific answer
             const hostSocket = Array.from(connectedPlayers.entries())
