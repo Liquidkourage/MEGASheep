@@ -2029,6 +2029,19 @@ io.on('connection', (socket) => {
             const hostSocket = Array.from(connectedPlayers.entries())
                 .find(([id, info]) => info.gameCode === gameCode && info.isHost);
             
+            // Send updated game state to grading interface (especially for clarifications)
+            const gameStateToSend = game.getGameState();
+            
+            // Send to host and grading interface specifically for clarifications
+            if (hostSocket) {
+                io.to(hostSocket[0]).emit('gameStateUpdate', gameStateToSend);
+                logger.debug('📤 Sent gameStateUpdate to host after answer submission');
+            }
+            
+            // Also broadcast to room for any other connected grading interfaces
+            io.to(gameCode).emit('gameStateUpdate', gameStateToSend);
+            logger.debug('📤 Sent gameStateUpdate to room after answer submission');
+            
             if (hostSocket) {
                 console.log(`📤 [server] Emitting answerSubmitted to host socket ${hostSocket[0]} for player ${playerName}`);
                 io.to(hostSocket[0]).emit('answerSubmitted', {
