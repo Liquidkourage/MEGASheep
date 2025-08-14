@@ -1213,51 +1213,7 @@ app.get('/upload', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'upload.html'));
 });
 
-// API endpoint for semantic matching
-app.post('/api/semantic-match', async (req, res) => {
-    try {
-        const { question, correct_answers, responses } = req.body;
-        
-        if (!question || !correct_answers || !responses) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required parameters: question, correct_answers, responses'
-            });
-        }
-        
-        const results = await getSemanticMatches(question, correct_answers, responses);
-        
-        if (results === null) {
-            return res.status(500).json({
-                success: false,
-                error: 'Semantic matching failed'
-            });
-        }
-        
-        res.json({
-            success: true,
-            results: results
-        });
-        
-    } catch (error) {
-        console.error('API semantic match error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Internal server error'
-        });
-    }
-});
 
-// Health check endpoint for semantic service
-app.get('/api/semantic-status', (req, res) => {
-    res.json({
-        pythonServiceReady: semanticServiceReady,
-        pythonServiceRunning: pythonSemanticService !== null && !pythonSemanticService.killed,
-        message: semanticServiceReady ? 
-            'Python Sentence Transformers service is ready' : 
-            'Using JavaScript fallback semantic matching'
-    });
-});
 
 // List snapshots (Supabase-first, then disk)
 app.get('/api/snapshots/:gameCode', async (req, res) => {
