@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-14T03-43-19">
+    <link rel="stylesheet" href="styles.css?v=2025-08-14T03-54-39">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -832,6 +832,28 @@
                 currentGame.pendingEdits = data.pendingEdits || [];
                 currentGame.currentQuestionIndex = data.currentQuestionIndex;
                 currentGame.currentQuestionData = data.currentQuestionData || currentGame.currentQuestionData;
+                
+                // CRITICAL FIX: Show pending edits in grading interface
+                try {
+                    if (Array.isArray(data.pendingEdits) && data.pendingEdits.length > 0) {
+                        console.log('✏️ Updating pending edits banner:', data.pendingEdits);
+                        let notice = document.getElementById('pendingEditsNotice');
+                        if (!notice) {
+                            notice = document.createElement('div');
+                            notice.id = 'pendingEditsNotice';
+                            notice.style.cssText = 'margin:8px 0;padding:8px 12px;border:1px solid rgba(241,196,15,.4);background:rgba(241,196,15,.12);border-radius:8px;color:#b9770e;';
+                            notice.innerHTML = '<strong>⏳ Pending clarifications:</strong> <span id="pendingEditsList"></span>';
+                            document.querySelector('#gradingInterface')?.prepend(notice);
+                        }
+                        const listEl = document.getElementById('pendingEditsList');
+                        if (listEl) {
+                            listEl.textContent = data.pendingEdits.map(p=>`${p.playerName} ("${p.originalAnswer}")`).join(', ');
+                        }
+                    } else {
+                        const notice = document.getElementById('pendingEditsNotice');
+                        if (notice && notice.parentNode) notice.parentNode.removeChild(notice);
+                    }
+                } catch (_) {}
                 
                 try {
                     if (Array.isArray(currentGame.pendingEdits) && currentGame.pendingEdits.length > 0) {

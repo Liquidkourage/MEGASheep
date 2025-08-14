@@ -2176,11 +2176,28 @@ io.on('connection', (socket) => {
                     sbLogEvent(gameCode, 'player_rebound', { playerName });
                 }
 
-                // If this returning player had a pending clarification, re-prompt them immediately
+                // CRITICAL FIX: If this returning player had a pending clarification, re-prompt them immediately
+                // Also send gameStateUpdate with pending edits to ensure grading UI shows status
                 for (const [sid, info] of game.answersNeedingEdit.entries()) {
                     const p = game.players.get(sid);
                     if (p && p.name === playerName) {
+                        console.log(`✏️ Re-prompting returning player ${playerName} for pending edit`);
                         io.to(socket.id).emit('requireAnswerEdit', { reason: info?.reason || 'Please be more specific', originalAnswer: info?.originalAnswer || '' });
+                        
+                        // Also broadcast updated pending edits to all clients
+                        io.to(gameCode).emit('gameStateUpdate', { 
+                            gameState: game.getGameState(),
+                            pendingEdits: Array.from(game.answersNeedingEdit.entries()).map(([socketId, editInfo]) => {
+                                const player = game.players.get(socketId);
+                                return {
+                                    socketId,
+                                    playerName: player?.name || 'Unknown',
+                                    reason: editInfo.reason,
+                                    originalAnswer: editInfo.originalAnswer,
+                                    requestedAt: editInfo.requestedAt
+                                };
+                            })
+                        });
                         break;
                     }
                 }
@@ -2254,7 +2271,25 @@ io.on('connection', (socket) => {
     // Just mark the socket as needing edit - the answer stays in place for grading reference
 
     console.log(`✏️ [server] hostRequestEdit → target=${playerName||targetSocketId} sid=${targetSocketId} reason="${reason}" original="${original}"`);
+    
+    // CRITICAL FIX: Send to player via socketId AND broadcast to all clients for persistent notification
+    // This ensures the notification reaches the player even if they reconnect/refresh
     io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });
+    
+    // Also notify ALL clients about pending edits so grading UI can show status
+    io.to(gameCode).emit('gameStateUpdate', { 
+      gameState: game.getGameState(),
+      pendingEdits: Array.from(game.answersNeedingEdit.entries()).map(([sid, info]) => {
+        const player = game.players.get(sid);
+        return {
+          socketId: sid,
+          playerName: player?.name || 'Unknown',
+          reason: info.reason,
+          originalAnswer: info.originalAnswer,
+          requestedAt: info.requestedAt
+        };
+      })
+    });
   });
 
     // Virtual player join (for testing)
