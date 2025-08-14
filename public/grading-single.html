@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-14T21-53-45">
+    <link rel="stylesheet" href="styles.css?v=2025-08-14T22-04-33">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -846,6 +846,12 @@
                     console.log('🔄 Updating answer groups from gameStateUpdate:', data.currentAnswerGroups.length, 'groups');
                     console.log('🔄 Answer groups content:', data.currentAnswerGroups);
                     currentGame.currentAnswerGroups = data.currentAnswerGroups;
+                    
+                    // CRITICAL FIX: Clear placed players when server sends new answer groups
+                    // This ensures we trust the server's state rather than local placements
+                    console.log('🔄 Clearing placed players cache - server sent new answer groups');
+                    window.placedPlayersCache = new Set();
+                    
                     // Trigger a smooth update to reflect the new answers
                     console.log('🔄 Calling updateAnswerBucketsSmoothly()');
                     updateAnswerBucketsSmoothly();
@@ -1883,14 +1889,20 @@
             }
             
             // Build a set of players already placed in non-uncategorized buckets to preserve manual placements
-            const placedPlayersLower = new Set();
-            try {
-                const nonUncatPlayerEls = Array.from(document.querySelectorAll('.answer-bucket:not(.uncategorized-bucket) .answer-players'));
-                nonUncatPlayerEls.forEach(el => {
-                    const names = (el.textContent || '').split(',').map(s => s.trim()).filter(Boolean);
-                    names.forEach(n => placedPlayersLower.add(n.toLowerCase()));
-                });
-            } catch (_) {}
+            let placedPlayersLower = window.placedPlayersCache || new Set();
+            
+            // Only scan DOM if we don't have a cached version
+            if (!window.placedPlayersCache) {
+                try {
+                    const nonUncatPlayerEls = Array.from(document.querySelectorAll('.answer-bucket:not(.uncategorized-bucket) .answer-players'));
+                    nonUncatPlayerEls.forEach(el => {
+                        const names = (el.textContent || '').split(',').map(s => s.trim()).filter(Boolean);
+                        names.forEach(n => placedPlayersLower.add(n.toLowerCase()));
+                    });
+                    // Cache the result
+                    window.placedPlayersCache = placedPlayersLower;
+                } catch (_) {}
+            }
 
             // Populate uncategorized answers (non-matching), excluding players already placed elsewhere
             console.log('🔄 Processing uncategorized answers:');
