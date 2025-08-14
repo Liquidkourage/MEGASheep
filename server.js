@@ -1705,11 +1705,14 @@ io.on('connection', (socket) => {
     });
 
   // SIMPLIFIED: Host requests a player's answer edit ("Send Back")
-      socket.on('hostRequestEdit', (data) => {
+    socket.on('hostRequestEdit', (data) => {
         const { gameCode, playerSocketId, playerName, reason } = data || {};
         const hostInfo = connectedPlayers.get(socket.id);
         if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) {
-    const game = activeGames.get(gameCode);
+            return;
+        }
+        
+        const game = activeGames.get(gameCode);
     if (!game) return;
     
     // Find target player by socketId or name
