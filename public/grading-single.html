@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-14T19-56-38">
+    <link rel="stylesheet" href="styles.css?v=2025-08-14T20-23-10">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1896,13 +1896,7 @@
             const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
             
             if (uncategorizedContainer) {
-                // Check if there are already items in the container (indicating a restore happened)
-                const existingItems = uncategorizedContainer.children.length;
-                
-                if (existingItems > 0) {
-                    return; // Skip repopulation - items already exist
-                }
-                
+                // Clear and repopulate to ensure all current answers are shown
                 uncategorizedContainer.innerHTML = '';
                 
                 uncategorizedAnswers.forEach((group, index) => {
