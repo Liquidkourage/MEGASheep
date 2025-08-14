@@ -2123,7 +2123,9 @@ function handlePlayerJoined(gameStateData) {
 }
 
 function handleGameStarted(gameStateData) {
-    console.log('🎮 handleGameStarted called with data:', gameStateData);
+    console.log('🚨 EMERGENCY: handleGameStarted called with data:', gameStateData);
+    console.log('🚨 EMERGENCY: Current screen before change:', document.querySelector('.screen.active')?.id || 'none');
+    
     gameState = gameStateData;
     questions = gameStateData.questions || [];
     currentQuestionIndex = 0;
@@ -2138,13 +2140,22 @@ function handleGameStarted(gameStateData) {
         console.log('🗄️ Stored', questions.length, 'questions from database for grading interface');
     }
     
-    console.log('🎮 About to show game screen');
+    console.log('🚨 EMERGENCY: About to show game screen');
     showScreen('game');
-    console.log('🎮 About to display current question');
+    console.log('🚨 EMERGENCY: After showScreen - active screen:', document.querySelector('.screen.active')?.id || 'none');
+    console.log('🚨 EMERGENCY: About to display current question');
     displayCurrentQuestion();
-    console.log('🎮 About to start timer');
+    console.log('🚨 EMERGENCY: About to start timer');
     startTimer();
-    console.log('🎮 handleGameStarted completed');
+    console.log('🚨 EMERGENCY: handleGameStarted completed');
+    
+    // Show alert to confirm the event was received
+    try {
+        showToast('Game Started! Moving to question...', 'success');
+    } catch (e) {
+        alert('EMERGENCY DEBUG: Game started event received!');
+    }
+    
     // Auto-generate virtual responses if testing
     scheduleVirtualQuestionFlow();
 }

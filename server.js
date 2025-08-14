@@ -1927,7 +1927,26 @@ io.on('connection', (socket) => {
             game.startTimer();
             
             const gameStateToSend = game.getGameState();
+            
+            // EMERGENCY DEBUG: Log room membership when starting game
+            const roomSockets = io.sockets.adapter.rooms.get(gameCode);
+            const roomSocketArray = roomSockets ? Array.from(roomSockets) : [];
+            console.log(`🚨 EMERGENCY DEBUG: Starting game ${gameCode}`);
+            console.log(`🚨 Room ${gameCode} has ${roomSocketArray.length} sockets: ${roomSocketArray.join(', ')}`);
+            console.log(`🚨 Game has ${game.players.size} players: ${Array.from(game.players.values()).map(p => `${p.name}(${p.id})`).join(', ')}`);
+            console.log(`🚨 Emitting gameStarted to room ${gameCode}`);
+            
             io.to(gameCode).emit('gameStarted', gameStateToSend);
+            
+            // Also emit directly to each player socket as backup
+            for (const [socketId, player] of game.players.entries()) {
+                try {
+                    console.log(`🚨 BACKUP: Sending gameStarted directly to ${player.name} (${socketId})`);
+                    io.to(socketId).emit('gameStarted', gameStateToSend);
+                } catch (e) {
+                    console.log(`🚨 BACKUP FAILED for ${player.name}: ${e.message}`);
+                }
+            }
             
         } catch (error) {
             console.error('Error starting game:', {
