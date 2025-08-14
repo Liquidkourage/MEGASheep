@@ -1058,12 +1058,34 @@ function submitAnswer() {
         return;
     }
     
+    // DEBUG: Log submit attempt details
+    console.log('🚨 SUBMIT DEBUG: Attempting to submit answer');
+    console.log('🚨 gameState:', gameState);
+    console.log('🚨 gameState.gameCode:', gameState?.gameCode);
+    console.log('🚨 answer:', answer);
+    console.log('🚨 sessionStorage gameCode:', sessionStorage.getItem('gameCode'));
+    console.log('🚨 localStorage gameCode:', localStorage.getItem('gameCode'));
+    
+    // Fallback for missing gameCode
+    let gameCodeToUse = gameState?.gameCode;
+    if (!gameCodeToUse) {
+        gameCodeToUse = sessionStorage.getItem('gameCode') || localStorage.getItem('gameCode');
+        console.log('🚨 Using fallback gameCode:', gameCodeToUse);
+    }
+    
+    if (!gameCodeToUse) {
+        console.error('🚨 CRITICAL: No gameCode available for submitAnswer!');
+        showError('Game code not found. Please rejoin the game.');
+        return;
+    }
+    
     // Store the submitted answer for later display
     window.lastSubmittedAnswer = answer;
     localStorage.setItem('lastSubmittedAnswer', answer);
     console.log('💾 Stored submitted answer:', answer);
     
-    socket.emit('submitAnswer', { gameCode: gameState.gameCode, answer });
+    console.log('🚨 Emitting submitAnswer with:', { gameCode: gameCodeToUse, answer });
+    socket.emit('submitAnswer', { gameCode: gameCodeToUse, answer });
     
     // Populate the answer textbox with the submitted answer instead of clearing it
     answerInput.value = answer;
