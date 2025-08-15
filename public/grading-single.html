@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T20-38-31">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T20-57-14">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1402,38 +1402,51 @@
                 correctAnswers: correctAnswers
             });
             
-            // FIXED: Automatic grouping with proper display - answers will auto-match AND be visible
-            const groupedAnswers = new Map();
-            console.log('✅ Automatic exact matching enabled - auto-matched answers will be visible in correct buckets');
+            // Automatic grouping with proper display - exact matches go into correct buckets
+            console.log('✅ Automatic exact matching enabled - exact matches go to correct buckets');
             
             answerGroups.forEach(group => {
-                const normalizedAnswer = group.answer.toLowerCase().trim();
-                
+                const normalizedAnswer = String(group.answer || '').toLowerCase().trim();
                 // Only do exact matching - no semantic matching complexity
                 const matchingCorrectAnswer = correctAnswers.find(correct => 
-                    correct.toLowerCase().trim() === normalizedAnswer
+                    String(correct || '').toLowerCase().trim() === normalizedAnswer
                 );
                 
                 console.log(`🔍 Checking answer "${group.answer}":`, {
-                    normalizedAnswer: normalizedAnswer,
-                    matchingCorrectAnswer: matchingCorrectAnswer,
+                    normalizedAnswer,
+                    matchingCorrectAnswer,
                     players: group.players,
+                    count: group.count,
                     totalResponses: group.totalResponses
                 });
                 
-                // SURGICAL FIX: Completely skip auto-matching - all answers go to uncategorized
-                console.log(`📝 Skipping auto-matching for "${group.answer}" - will go to uncategorized`);
-                // NO auto-matching logic - answers will be processed by uncategorized logic
+                if (matchingCorrectAnswer) {
+                    // Merge into map (handle potential multiple groups defensively)
+                    const existing = correctAnswerMap.get(matchingCorrectAnswer);
+                    if (!existing) {
+                        correctAnswerMap.set(matchingCorrectAnswer, {
+                            answer: group.answer,
+                            players: Array.isArray(group.players) ? [...group.players] : [],
+                            count: Array.isArray(group.players) ? group.players.length : (group.count || 0),
+                            points: group.points || 0
+                        });
+                    } else {
+                        const mergedPlayers = new Set([...(existing.players || []), ...((group.players) || [])]);
+                        correctAnswerMap.set(matchingCorrectAnswer, {
+                            answer: group.answer,
+                            players: Array.from(mergedPlayers),
+                            count: Array.from(mergedPlayers).length,
+                            points: Math.max(existing.points || 0, group.points || 0)
+                        });
+                    }
+                }
             });
             
-            // SURGICAL FIX: Skip auto-matching conversion - groupedAnswers should be empty
-            console.log(`📝 Skipping auto-matching conversion - groupedAnswers size: ${groupedAnswers.size}`);
             console.log('🔍 Final correct answer map:', Array.from(correctAnswerMap.entries()).map(([key, value]) => ({
                 correctAnswer: key,
                 answerGroup: JSON.stringify(value)
             })));
             console.log('🔍 All answer groups being processed:', answerGroups);
-            console.log('🔍 Grouped answers before conversion:', groupedAnswers);
             
             // Update each correct answer bucket smoothly
             correctAnswers.forEach(correctAnswer => {
@@ -1458,31 +1471,21 @@
                             bucket.style.transform = 'scale(1)';
                         }, 10);
                     } else {
-                        // Update existing bucket count smoothly
+                        // Update existing bucket count smoothly and update list
                         const countElement = bucket.querySelector('.answer-count-badge');
                         if (countElement) {
                             const oldCount = parseInt(countElement.textContent) || 0;
-                            const newCount = answerGroup.totalResponses || (answerGroup.players ? answerGroup.players.length : 0);
-                            
-                            console.log(`🔢 Updating count for bucket:`, {
-                                oldCount,
-                                newCount,
-                                answerGroup: JSON.stringify(answerGroup)
-                            });
-                            
+                            const newCount = answerGroup.players ? answerGroup.players.length : (answerGroup.count || 0);
                             if (oldCount !== newCount) {
-                                // Animate count change
                                 countElement.style.transform = 'scale(1.2)';
                                 countElement.style.color = '#4CAF50';
                                 setTimeout(() => {
-                                    countElement.textContent = newCount;
+                                    countElement.textContent = String(newCount);
                                     countElement.style.transform = 'scale(1)';
                                     countElement.style.color = '';
                                 }, 150);
                             }
                         }
-                        
-                        // Update answer list
                         updateBucketAnswerList(bucket, answerGroup);
                     }
                 } else {
