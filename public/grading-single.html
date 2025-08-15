@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T20-57-14">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T21-03-49">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1387,8 +1387,12 @@
             
             // Check if this is the first real-time update (clear initial buckets)
             if (!window.smoothUpdateInitialized) {
-                console.log('🔄 First real-time update - clearing initial buckets');
-                correctAnswersContainer.innerHTML = '';
+                const hasExistingItems = !!correctAnswersContainer.querySelector('.answer-item');
+                console.log('🔄 First real-time update - initial clear?', !hasExistingItems);
+                // Only clear if there aren't already answer items (avoid wiping just-added cards)
+                if (!hasExistingItems) {
+                    correctAnswersContainer.innerHTML = '';
+                }
                 window.smoothUpdateInitialized = true;
             }
             
@@ -1910,24 +1914,22 @@
             const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
             
             if (uncategorizedContainer) {
-                // CRITICAL FIX: Only clear if we have answers to repopulate
                 console.log('🔄 Populating', uncategorizedAnswers.length, 'uncategorized answers');
-                
                 if (uncategorizedAnswers.length > 0) {
-                // Clear and repopulate to ensure all current answers are shown
-                uncategorizedContainer.innerHTML = '';
-                
-                uncategorizedAnswers.forEach((group, index) => {
+                    // Replace with newly computed uncategorized set
+                    uncategorizedContainer.innerHTML = '';
+                    uncategorizedAnswers.forEach((group, index) => {
                         try {
-                    const answerItem = createAnswerItem(group, index);
-                    uncategorizedContainer.appendChild(answerItem);
+                            const answerItem = createAnswerItem(group, index);
+                            uncategorizedContainer.appendChild(answerItem);
                             console.log('✅ Added uncategorized answer:', group.answer);
                         } catch (error) {
                             console.error('❌ Failed to create answer item:', error, group);
                         }
-                });
+                    });
                 } else {
                     console.log('🔄 No uncategorized answers to display - preserving existing content');
+                    // Do not clear; keep any manually placed items
                 }
             }
             
