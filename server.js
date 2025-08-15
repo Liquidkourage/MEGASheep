@@ -2927,8 +2927,17 @@ io.on('connection', (socket) => {
         const game = activeGames.get(gameCode);
         if (game) {
             const gameState = game.getGameState();
+            
+            // ENHANCED DEBUG: Log the actual state being sent to grading interface
+            console.log(`📤 GRADING STATE DEBUG for ${gameCode}:`);
+            console.log(`📤   gameState: ${gameState.gameState}`);
+            console.log(`📤   currentAnswerGroups: ${gameState.currentAnswerGroups?.length || 0}`);
+            console.log(`📤   currentAnswerGroups content:`, gameState.currentAnswerGroups?.map(g => `"${g.answer}" (${g.players?.join(', ')})`));
+            console.log(`📤   raw answers in game.answers: ${game.answers.size}`);
+            console.log(`📤   raw answers content:`, Array.from(game.answers.entries()).map(([sid, ans]) => `${sid}: "${ans}"`));
+            
             socket.emit('gameStateResponse', gameState);
-            console.log(`📤 Sent game state for ${gameCode}: ${gameState.gameState}, answers=${gameState.answers ? Object.keys(gameState.answers).length : 0}`);
+            console.log(`📤 Sent game state for ${gameCode}: ${gameState.gameState}, answerGroups=${gameState.currentAnswerGroups?.length || 0}`);
         } else {
             console.log(`❌ Game ${gameCode} not found`);
             socket.emit('gameStateResponse', null);
