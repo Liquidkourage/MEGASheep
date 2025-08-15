@@ -2068,6 +2068,12 @@ io.on('connection', (socket) => {
                 game.answersNeedingEdit.delete(socket.id);
                 console.log(`🔍 Cleared clarification flag for ${socket.id} AFTER successful submit but BEFORE rebuild`);
             }
+            
+            // ENHANCED DEBUG: Log current answer state before rebuild
+            console.log(`🔍 BEFORE REBUILD - Answer in game.answers: "${game.answers.get(socket.id)}"`);
+            console.log(`🔍 BEFORE REBUILD - answersNeedingEdit has socketId: ${game.answersNeedingEdit.has(socket.id)}`);
+            console.log(`🔍 BEFORE REBUILD - Total answers in game: ${game.answers.size}`);
+            
             socket.emit('answerSubmitted');
             const playerName = playerInfo.playerName;
             
@@ -2076,7 +2082,14 @@ io.on('connection', (socket) => {
             // Simple answer groups rebuild - now clarified answers will be included
             try {
                 game.rebuildCurrentAnswerGroups();
-                console.log(`🔍 Answer groups rebuilt - clarified answers should now be included`);
+                console.log(`🔍 AFTER REBUILD - Created ${game.currentAnswerGroups.length} answer groups`);
+                console.log(`🔍 AFTER REBUILD - Groups:`, game.currentAnswerGroups.map(g => `"${g.answer}" (${g.players.join(', ')})`));
+                
+                // FORCE IMMEDIATE UPDATE: Ensure grading interfaces get the latest state
+                const gameStateToSend = game.getGameState();
+                console.log(`🔍 Sending immediate gameStateUpdate for clarification - groups: ${gameStateToSend.currentAnswerGroups?.length || 0}`);
+                io.to(gameCode).emit('gameStateUpdate', gameStateToSend);
+                
             } catch (e) {
                 logger.error('Failed to rebuild answer groups after submission:', e?.message);
                 // Continue without crashing - grading interface will still work with existing groups
