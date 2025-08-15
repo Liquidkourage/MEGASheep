@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T21-13-20">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T21-18-07">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1463,8 +1463,8 @@
             
             // Update each correct answer bucket smoothly
             correctAnswers.forEach(correctAnswer => {
-                const bucketId = `bucket-${correctAnswer.toLowerCase().replace(/\s+/g, '-')}`;
-                let bucket = document.getElementById(bucketId);
+                const bucketDomId = `bucket-${correctAnswer.toLowerCase().replace(/\s+/g, '-')}`;
+                let bucket = document.getElementById(bucketDomId);
                 const answerGroup = correctAnswerMap.get(correctAnswer);
                 
                 if (answerGroup) {
@@ -1472,7 +1472,7 @@
                     if (!bucket) {
                         // Create new bucket with smooth animation
                         bucket = createAnswerBucket(correctAnswer, answerGroup);
-                        bucket.id = bucketId;
+                        bucket.id = bucketDomId;
                         bucket.style.opacity = '0';
                         bucket.style.transform = 'scale(0.8)';
                         correctAnswersContainer.appendChild(bucket);
@@ -1505,7 +1505,7 @@
                     // No answers for this bucket - ensure it exists with count 0
                     if (!bucket) {
                         bucket = createAnswerBucket(correctAnswer, { count: 0, players: [] });
-                        bucket.id = bucketId;
+                        bucket.id = bucketDomId;
                         bucket.style.opacity = '0';
                         bucket.style.transform = 'scale(0.8)';
                         correctAnswersContainer.appendChild(bucket);
@@ -1850,7 +1850,8 @@
             if (!correctAnswersRoot || correctAnswerList.length === 0) return;
             // Create any missing buckets
             const wantedIds = new Set(correctAnswerList.map(a => `bucket-${a.toLowerCase().replace(/\s+/g, '-')}`));
-            const existingIds = new Set(Array.from(correctAnswersRoot.querySelectorAll('.answer-items')).map(d => d.id));
+            // Look for existing OUTER buckets by id
+            const existingIds = new Set(Array.from(correctAnswersRoot.querySelectorAll('.answer-bucket[id]')).map(d => d.id));
             const toCreate = [...wantedIds].filter(id => !existingIds.has(id));
             if (toCreate.length > 0) {
                 console.log('🧩 Ensuring buckets exist, creating:', toCreate);
@@ -1861,12 +1862,13 @@
                     if (existingIds.has(bucketId)) return;
                     const bucketDiv = document.createElement('div');
                     bucketDiv.className = 'answer-bucket correct-bucket';
+                    bucketDiv.id = bucketId;
                     bucketDiv.innerHTML = `
                         <h4 onclick="toggleBucket(this)">
                             <span class="bucket-toggle">▼</span>
                             ✅ ${name} <span class="answer-count-badge">0</span>
                         </h4>
-                        <div id="${bucketId}" class="answer-items" data-bucket="correct_${name.toLowerCase().replace(/\s+/g, '_')}"></div>
+                        <div class="answer-items" data-bucket="correct_${name.toLowerCase().replace(/\s+/g, '_')}"></div>
                     `;
                     correctAnswersRoot.appendChild(bucketDiv);
                 });
@@ -3108,8 +3110,8 @@
                     console.log('ℹ️ No exact correct-answer match for', answerText);
                     return false;
                 }
-                const bucketId = `bucket-${match.toLowerCase().replace(/\s+/g, '-')}`;
-                let bucket = document.getElementById(bucketId);
+                const bucketDomId = `bucket-${match.toLowerCase().replace(/\s+/g, '-')}`;
+                let bucket = document.getElementById(bucketDomId);
                 let dropZone = bucket ? bucket.querySelector('.answer-items') : null;
                 if (!dropZone) {
                     // Create the bucket on-the-fly if missing
@@ -3117,19 +3119,20 @@
                     if (correctAnswersRoot) {
                         bucket = document.createElement('div');
                         bucket.className = 'answer-bucket correct-bucket';
+                        bucket.id = bucketDomId;
                         bucket.innerHTML = `
                             <h4 onclick="toggleBucket(this)">
                                 <span class="bucket-toggle">▼</span>
                                 ✅ ${match} <span class="answer-count-badge">0</span>
                             </h4>
-                            <div id="${bucketId}" class="answer-items" data-bucket="correct_${match.toLowerCase().replace(/\s+/g, '_')}"></div>
+                            <div class="answer-items" data-bucket="correct_${match.toLowerCase().replace(/\s+/g, '_')}"></div>
                         `;
                         correctAnswersRoot.appendChild(bucket);
                         dropZone = bucket.querySelector('.answer-items');
                     }
                 }
                 if (!dropZone) {
-                    console.log('⚠️ Target bucket drop zone still not found for', bucketId);
+                    console.log('⚠️ Target bucket drop zone still not found for', bucketDomId);
                     return false;
                 }
                 if (answerCard.parentElement !== dropZone) {
