@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-59-16">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-07-56">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1793,16 +1793,31 @@
                 });
             }
             
-            // CRITICAL FIX: Render ALL correct answer buckets (even empty ones) - ensures buckets appear immediately
+            // CRITICAL FIX: Update existing buckets instead of clearing and rebuilding
+            // This prevents answers from disappearing when buckets already exist
+            const correctAnswersRoot = document.getElementById('correctAnswers');
+            if (!correctAnswersRoot) {
+                console.error('❌ Correct answers container not found');
+                return;
+            }
+            
             // Sort buckets alphabetically before rendering  
             correctAnswerBuckets.sort((a, b) => a.name.localeCompare(b.name));
-            // Clear container first to ensure no duplicates remain from previous renders
-            const correctAnswersRoot = document.getElementById('correctAnswers');
-            if (correctAnswersRoot) {
+            
+            // Check if we already have buckets created (to avoid clearing them)
+            const existingBuckets = correctAnswersRoot.children.length > 0;
+            console.log('🎯 Existing buckets found:', existingBuckets);
+            console.log('🎯 Processing', correctAnswerBuckets.length, 'correct answer buckets');
+            
+            if (!existingBuckets) {
+                // Only clear if we don't have existing buckets
                 correctAnswersRoot.innerHTML = '';
-                console.log('🎯 Rendering', correctAnswerBuckets.length, 'correct answer buckets (including empty ones)');
+                console.log('🎯 Creating new buckets from scratch');
             } else {
-                console.error('❌ Correct answers container not found');
+                console.log('🎯 Updating existing buckets with new answers');
+                // Use the smooth update function instead of rebuilding everything
+                updateAnswerBucketsSmoothly(correctAnswerBuckets);
+                return; // Exit early to avoid recreating buckets
             }
             correctAnswerBuckets.forEach(bucket => {
                 const bucketDiv = document.createElement('div');
