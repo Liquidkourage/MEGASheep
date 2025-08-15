@@ -2060,14 +2060,14 @@ io.on('connection', (socket) => {
         console.log(`🔍 answersNeedingEdit has socketId: ${game.answersNeedingEdit.has(socket.id)}`);
         console.log(`🔍 ALL answersNeedingEdit socketIds:`, Array.from(game.answersNeedingEdit.keys()));
         console.log(`🔍 Current submitAnswer socketId: ${socket.id}`);
-        
-        // CRITICAL: Clear edit flag BEFORE submitAnswer and rebuild
-        if (wasClarity) {
-            game.answersNeedingEdit.delete(socket.id);
-            console.log(`🔍 Cleared clarification flag for ${socket.id} BEFORE answer processing`);
-        }
+        console.log(`🔍 Game state: ${game.gameState}`);
         
         if (game.submitAnswer(socket.id, answer)) {
+            // CRITICAL: Clear edit flag AFTER successful submitAnswer but BEFORE rebuild
+            if (wasClarity) {
+                game.answersNeedingEdit.delete(socket.id);
+                console.log(`🔍 Cleared clarification flag for ${socket.id} AFTER successful submit but BEFORE rebuild`);
+            }
             socket.emit('answerSubmitted');
             const playerName = playerInfo.playerName;
             
