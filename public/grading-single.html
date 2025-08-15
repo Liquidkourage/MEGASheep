@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T18-06-18">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T18-18-22">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1354,7 +1354,9 @@
                     totalResponses: group.totalResponses
                 });
                 
-                if (matchingCorrectAnswer) {
+                // SURGICAL FIX: Disable auto-matching to prevent complex rendering issues
+                // All answers will go to uncategorized for manual categorization
+                if (false && matchingCorrectAnswer) {
                     if (!groupedAnswers.has(matchingCorrectAnswer)) {
                         groupedAnswers.set(matchingCorrectAnswer, {
                             answer: matchingCorrectAnswer,
@@ -1707,13 +1709,12 @@
                         }
                     });
                     
-                    // Auto-categorize high confidence matches (>= 90%)
+                    // SURGICAL FIX: Disable all auto-categorization to prevent rendering issues
+                    // Keep confidence calculation for informational purposes only
                     if (bestMatch && bestConfidence >= 90) {
                         answerGroup.semanticConfidence = bestConfidence;
                         answerGroup.semanticMatch = bestMatch.correctAnswer;
-                        bestMatch.answers.push(answerGroup);
-                        answersToRemove.push(answerGroup.answer);
-                        console.log(`✅ High confidence auto-match: "${answerGroup.answer}" → "${bestMatch.correctAnswer}" (${bestConfidence}%)`);
+                        console.log(`🧠 High confidence detected: "${answerGroup.answer}" → "${bestMatch.correctAnswer}" (${bestConfidence}%) - manual categorization required`);
                     } else if (bestMatch && bestConfidence >= 70) {
                         // Medium confidence - just add confidence info but don't auto-categorize
                         answerGroup.semanticConfidence = bestConfidence;
