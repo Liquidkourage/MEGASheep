@@ -875,42 +875,69 @@ class Game {
   }
 
   getGameState() {
-    return {
-            gameCode: this.gameCode,
-            hostId: this.hostId,
-      players: Array.from(this.players.values()),
-      currentRound: this.currentRound,
-      currentQuestion: this.currentQuestion,
-      currentQuestionData: this.questions[this.currentQuestion] || null,
-      gameState: this.gameState,
-      scores: Object.fromEntries(this.scores),
-      questions: this.questions,
-            currentAnswerGroups: this.currentAnswerGroups,
-            categorizationData: this.categorizationData || null,
-      timeLeft: this.timeLeft,
-      roundHistory: this.roundHistory,
-            questionsPerRound: this.settings.questionsPerRound,
-            createdAt: this.createdAt,
-            playerCount: this.players.size,
-            isTestMode: this.isTestMode,
-            pendingEdits: (() => {
-              try {
-                if (!this.answersNeedingEdit || this.answersNeedingEdit.size === 0) return [];
-                return Array.from(this.answersNeedingEdit.entries()).map(([sid, info]) => {
-                  const player = this.players.get(sid);
-                  return {
-                    socketId: sid,
-                    playerName: player?.name || 'Unknown',
-                    originalAnswer: info?.originalAnswer || '',
-                    reason: info?.reason || 'Please be more specific'
-                  };
-                });
-              } catch (error) {
-                console.error('❌ Error processing pendingEdits in getGameState:', error);
-                return [];
-              }
-            })()
-        };
+    try {
+      return {
+              gameCode: this.gameCode,
+              hostId: this.hostId,
+        players: Array.from(this.players?.values() || []),
+        currentRound: this.currentRound || 0,
+        currentQuestion: this.currentQuestion || 0,
+        currentQuestionData: (this.questions && this.questions[this.currentQuestion]) ? this.questions[this.currentQuestion] : null,
+        gameState: this.gameState || 'waiting',
+        scores: this.scores ? Object.fromEntries(this.scores) : {},
+        questions: this.questions || [],
+              currentAnswerGroups: this.currentAnswerGroups || [],
+              categorizationData: this.categorizationData || null,
+        timeLeft: this.timeLeft || 0,
+        roundHistory: this.roundHistory || [],
+              questionsPerRound: this.settings?.questionsPerRound || 5,
+              createdAt: this.createdAt || new Date().toISOString(),
+              playerCount: this.players ? this.players.size : 0,
+              isTestMode: this.isTestMode || false,
+              pendingEdits: (() => {
+                try {
+                  if (!this.answersNeedingEdit || this.answersNeedingEdit.size === 0) return [];
+                  return Array.from(this.answersNeedingEdit.entries()).map(([sid, info]) => {
+                    const player = this.players ? this.players.get(sid) : null;
+                    return {
+                      socketId: sid,
+                      playerName: player?.name || 'Unknown',
+                      originalAnswer: info?.originalAnswer || '',
+                      reason: info?.reason || 'Please be more specific'
+                    };
+                  });
+                } catch (error) {
+                  console.error('❌ Error processing pendingEdits in getGameState:', error);
+                  return [];
+                }
+              })()
+          };
+    } catch (error) {
+      console.error('❌ CRITICAL ERROR in getGameState():', error);
+      console.error('❌ Error stack:', error.stack);
+      
+      // Return a minimal safe game state
+      return {
+        gameCode: this.gameCode || 'UNKNOWN',
+        hostId: this.hostId || 'UNKNOWN',
+        players: [],
+        currentRound: 0,
+        currentQuestion: 0,
+        currentQuestionData: null,
+        gameState: 'error',
+        scores: {},
+        questions: [],
+        currentAnswerGroups: [],
+        categorizationData: null,
+        timeLeft: 0,
+        roundHistory: [],
+        questionsPerRound: 5,
+        createdAt: new Date().toISOString(),
+        playerCount: 0,
+        isTestMode: false,
+        pendingEdits: []
+      };
+    }
     }
 
   startTimer() {
@@ -2286,38 +2313,94 @@ io.on('connection', (socket) => {
 
     // Next question (only after grading is complete)
     socket.on('nextQuestion', (data) => {
-        if (!data) {
-            console.log('⚠️ nextQuestion event received with no data');
-            return;
+        try {
+            console.log('🎯 nextQuestion event received:', data);
+            
+            if (!data) {
+                console.log('⚠️ nextQuestion event received with no data');
+                return;
+            }
+            
+            const { gameCode } = data;
+            
+            if (!gameCode) {
+                console.log('⚠️ nextQuestion event received with no gameCode');
+                return;
+            }
+            
+            console.log(`🎯 Processing nextQuestion for game: ${gameCode}`);
+            
+            const playerInfo = connectedPlayers.get(socket.id);
+            if (!playerInfo || !playerInfo.isHost) {
+                console.log(`⚠️ nextQuestion rejected - not host. PlayerInfo:`, playerInfo);
+                return;
+            }
+            
+            const game = activeGames.get(gameCode);
+            if (!game) {
+                console.log(`⚠️ nextQuestion rejected - game not found: ${gameCode}`);
+                return;
+            }
+            
+            console.log(`🎯 Game state check: ${game.gameState}, currentQuestion: ${game.currentQuestion}`);
+            
+            if (game.gameState !== 'scoring' && game.gameState !== 'roundComplete') {
+                console.log(`⚠️ nextQuestion rejected - invalid state: ${game.gameState}`);
+                socket.emit('gameError', { message: 'Must complete grading before proceeding' });
+                return;
+            }
+            
+            // Server-side hard stop: do not advance beyond 5 rounds
+            const totalRounds = Math.min(5, Math.ceil(game.questions.length / game.settings.questionsPerRound));
+            const currentRound = Math.ceil((game.currentQuestion + 1) / game.settings.questionsPerRound);
+            console.log(`🎯 Round check: currentRound=${currentRound}, totalRounds=${totalRounds}`);
+            
+            if (currentRound >= totalRounds && game.gameState === 'roundComplete') {
+                console.log(`🏆 Final round reached, showing overall leaderboard`);
+                try {
+                    game.gameState = 'overallLeaderboard';
+                    io.to(gameCode).emit('showOverallLeaderboard', game.getGameState());
+                } catch (leaderboardError) {
+                    console.error(`❌ Error showing leaderboard:`, leaderboardError);
+                    socket.emit('gameError', { message: 'Error showing final leaderboard' });
+                }
+                return;
+            }
+            
+            console.log(`🎯 About to call game.nextQuestion() for game ${gameCode}`);
+            
+            // CRITICAL: Wrap the nextQuestion call in comprehensive error handling
+            try {
+                game.nextQuestion();
+                console.log(`✅ Successfully called game.nextQuestion() for game ${gameCode}`);
+            } catch (nextQuestionError) {
+                console.error(`❌ CRITICAL ERROR in game.nextQuestion():`, nextQuestionError);
+                console.error(`❌ Error stack:`, nextQuestionError.stack);
+                
+                // Try to recover gracefully
+                try {
+                    socket.emit('gameError', { 
+                        message: 'Error starting next question', 
+                        error: nextQuestionError.message 
+                    });
+                } catch (recoveryError) {
+                    console.error(`❌ Even error recovery failed:`, recoveryError);
+                }
+            }
+            
+        } catch (overallError) {
+            console.error(`❌ CRITICAL ERROR in nextQuestion handler:`, overallError);
+            console.error(`❌ Error stack:`, overallError.stack);
+            
+            try {
+                socket.emit('gameError', { 
+                    message: 'Server error processing next question', 
+                    error: overallError.message 
+                });
+            } catch (finalError) {
+                console.error(`❌ Final error handling failed:`, finalError);
+            }
         }
-        
-        const { gameCode } = data;
-        
-        if (!gameCode) {
-            console.log('⚠️ nextQuestion event received with no gameCode');
-            return;
-        }
-        
-        const playerInfo = connectedPlayers.get(socket.id);
-        if (!playerInfo || !playerInfo.isHost) return;
-        
-        const game = activeGames.get(gameCode);
-        if (!game) return;
-        
-        if (game.gameState !== 'scoring' && game.gameState !== 'roundComplete') {
-            socket.emit('gameError', { message: 'Must complete grading before proceeding' });
-            return;
-        }
-        // Server-side hard stop: do not advance beyond 5 rounds
-        const totalRounds = Math.min(5, Math.ceil(game.questions.length / game.settings.questionsPerRound));
-        const currentRound = Math.ceil((game.currentQuestion + 1) / game.settings.questionsPerRound);
-        if (currentRound >= totalRounds && game.gameState === 'roundComplete') {
-            game.gameState = 'overallLeaderboard';
-            io.to(gameCode).emit('showOverallLeaderboard', game.getGameState());
-            return;
-        }
-        
-        game.nextQuestion();
     });
 
     // Continue to next round (from round complete screen)
