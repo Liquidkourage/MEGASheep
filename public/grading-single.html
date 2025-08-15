@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-48-52">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-52-54">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -857,6 +857,14 @@
                 } else {
                     // Server sent empty answers but we have local answers - keep local and don't rebuild
                     console.log('🔄 Server sent empty answers, keeping local answer groups:', previousAnswerGroups.length);
+                    console.log('🔄 Current answer groups length:', currentGame.currentAnswerGroups?.length || 0);
+                    
+                    // CRITICAL: Restore previous answer groups if current ones were lost
+                    if ((!currentGame.currentAnswerGroups || currentGame.currentAnswerGroups.length === 0) && previousAnswerGroups.length > 0) {
+                        console.log('🔄 Restoring previous answer groups to prevent disappearing answers');
+                        currentGame.currentAnswerGroups = previousAnswerGroups;
+                    }
+                    
                     console.log('🔄 Skipping interface rebuild to preserve newly added answers');
                 }
                 
@@ -1047,10 +1055,13 @@
                     console.log('📝 Created new answer group:', newGroup);
                 }
                 
-                // DON'T immediately update interface - let gameStateUpdate handle it
-                // This prevents double-rebuilding which causes answers to appear and disappear
-                console.log('📝 Answer added to local state - waiting for gameStateUpdate to rebuild interface');
+                // CRITICAL FIX: Immediately update interface with local state to prevent disappearing
+                // This ensures answers stay visible while waiting for server gameStateUpdate
+                console.log('📝 Answer updated in local state - immediately updating interface');
                 console.log('📝 Local state now has', currentGame.currentAnswerGroups.length, 'answer groups');
+                
+                // Force immediate interface update with debouncing to prevent rapid rebuilds
+                updateGradingInterface();
             });
 
             // Auto-open grading interface when question starts
