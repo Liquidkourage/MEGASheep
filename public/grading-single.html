@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-45-12">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-48-07">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1306,46 +1306,21 @@
                 correctAnswers: correctAnswers
             });
             
-            // Group answers by their normalized correct answer (exact matching only)
+            // DISABLED: Automatic grouping to ensure all answers appear in uncategorized for manual grading
             const groupedAnswers = new Map();
+            console.log('🚫 Automatic exact matching disabled - all answers will appear in uncategorized');
+            
+            // Log confidence for informational purposes only
             answerGroups.forEach(group => {
                 const normalizedAnswer = group.answer.toLowerCase().trim();
                 
-                // Only do exact matching - no semantic matching complexity
                 const matchingCorrectAnswer = correctAnswers.find(correct => 
                     correct.toLowerCase().trim() === normalizedAnswer
                 );
                 
-                console.log(`🔍 Checking answer "${group.answer}":`, {
-                    normalizedAnswer: normalizedAnswer,
-                    matchingCorrectAnswer: matchingCorrectAnswer,
-                    players: group.players,
-                    totalResponses: group.totalResponses
-                });
                 if (matchingCorrectAnswer) {
-                    if (!groupedAnswers.has(matchingCorrectAnswer)) {
-                        groupedAnswers.set(matchingCorrectAnswer, {
-                            answer: matchingCorrectAnswer,
-                            players: [],
-                            count: 0,
-                            totalResponses: 0
-                        });
-                    }
-                    const combinedGroup = groupedAnswers.get(matchingCorrectAnswer);
-                    combinedGroup.players.push(...(group.players || []));
-                    combinedGroup.count = combinedGroup.players.length;
-                    combinedGroup.totalResponses = (group.totalResponses || 0) + combinedGroup.totalResponses;
-                    
-                    // Add semantic confidence calculation for real-time updates
-                    if (!group.semanticConfidence) {
-                        // Calculate confidence if not already calculated
-                        const confidence = calculateSemanticConfidence(group.answer, matchingCorrectAnswer);
-                        group.semanticConfidence = confidence;
-                        group.semanticMatch = matchingCorrectAnswer;
-                        console.log(`🧠 Calculated confidence for "${group.answer}": ${confidence}%`);
-                    }
-                    
-                    console.log(`✅ Combined "${group.answer}" into "${matchingCorrectAnswer}"`);
+                    const confidence = calculateSemanticConfidence(group.answer, matchingCorrectAnswer);
+                    console.log(`🧠 Answer "${group.answer}" matches "${matchingCorrectAnswer}" (${confidence}%) - but auto-categorization disabled`);
                 }
             });
             
