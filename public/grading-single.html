@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-33-53">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-39-12">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1019,9 +1019,10 @@
                     console.log('📝 Created new answer group:', newGroup);
                 }
                 
-                // Immediately update the grading interface to show the new answer
-                console.log('📝 Updating grading interface with new answer');
-                updateGradingInterface();
+                // DON'T immediately update interface - let gameStateUpdate handle it
+                // This prevents double-rebuilding which causes answers to appear and disappear
+                console.log('📝 Answer added to local state - waiting for gameStateUpdate to rebuild interface');
+                console.log('📝 Local state now has', currentGame.currentAnswerGroups.length, 'answer groups');
             });
 
             // Auto-open grading interface when question starts
@@ -1266,6 +1267,7 @@
             }
             
             console.log('🔄 Updating grading interface for question:', currentGame.currentQuestionIndex);
+            console.log('🔄 Current answer groups available:', currentGame.currentAnswerGroups?.length || 0);
             
             // CRITICAL: Clear grading states from previous questions to prevent wrong answers from persisting
             clearPreviousGradingStates();
@@ -1273,16 +1275,25 @@
             // Update question display
             updateQuestionDisplay();
             
-            // Clear all buckets
-            document.getElementById('correctAnswers').innerHTML = '';
-            document.getElementById('wrongAnswers').innerHTML = '';
-            document.getElementById('uncategorizedAnswers').innerHTML = '';
-            
-            // Reset count badges
-            document.getElementById('wrongAnswersCount').textContent = '0';
-            document.getElementById('uncategorizedAnswersCount').textContent = '0';
-            
-            await populateGradingInterface();
+            // CRITICAL FIX: Only clear buckets if we actually have answers to repopulate
+            // This prevents the clearing/empty state that causes answers to disappear
+            if (currentGame.currentAnswerGroups && currentGame.currentAnswerGroups.length > 0) {
+                console.log('🔄 Clearing and repopulating interface with', currentGame.currentAnswerGroups.length, 'answer groups');
+                
+                // Clear all buckets
+                document.getElementById('correctAnswers').innerHTML = '';
+                document.getElementById('wrongAnswers').innerHTML = '';
+                document.getElementById('uncategorizedAnswers').innerHTML = '';
+                
+                // Reset count badges
+                document.getElementById('wrongAnswersCount').textContent = '0';
+                document.getElementById('uncategorizedAnswersCount').textContent = '0';
+                
+                await populateGradingInterface();
+            } else {
+                console.log('🔄 No answer groups available - keeping current interface state');
+                console.log('🔄 This prevents clearing answers that just appeared');
+            }
         }
 
         async function updateGradingInterfaceSmoothly() {
@@ -1662,6 +1673,9 @@
             } catch (error) {
                 console.error('❌ Semantic matching failed, falling back to exact matching:', error);
                 
+                // CRITICAL: Ensure answers still get populated even if semantic matching fails
+                console.log('🔧 Fallback: Populating all answers as uncategorized to prevent empty interface');
+                
                 // Fallback to local semantic matching
                 (currentGame.currentAnswerGroups || []).forEach(answerGroup => {
                     let bestMatch = null;
@@ -1811,13 +1825,25 @@
             const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
             
             if (uncategorizedContainer) {
-                // Clear and repopulate to ensure all current answers are shown
-                uncategorizedContainer.innerHTML = '';
+                // CRITICAL FIX: Only clear if we have answers to repopulate
+                console.log('🔄 Populating', uncategorizedAnswers.length, 'uncategorized answers');
                 
-                uncategorizedAnswers.forEach((group, index) => {
-                    const answerItem = createAnswerItem(group, index);
-                    uncategorizedContainer.appendChild(answerItem);
-                });
+                if (uncategorizedAnswers.length > 0) {
+                    // Clear and repopulate to ensure all current answers are shown
+                    uncategorizedContainer.innerHTML = '';
+                    
+                    uncategorizedAnswers.forEach((group, index) => {
+                        try {
+                            const answerItem = createAnswerItem(group, index);
+                            uncategorizedContainer.appendChild(answerItem);
+                            console.log('✅ Added uncategorized answer:', group.answer);
+                        } catch (error) {
+                            console.error('❌ Failed to create answer item:', error, group);
+                        }
+                    });
+                } else {
+                    console.log('🔄 No uncategorized answers to display - preserving existing content');
+                }
             }
             
             // Setup drag and drop after populating
