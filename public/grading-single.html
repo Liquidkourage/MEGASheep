@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-07-56">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-19-39">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -836,50 +836,15 @@
                     return;
                 }
                 
-                // Store previous answer groups to compare
-                const previousAnswerGroups = currentGame.currentAnswerGroups || [];
+                // SIMPLIFIED: Update game state but NO interface rebuilds
+                // We handle answer display via direct DOM updates now
                 
                 // Update game state from server
                 currentGame.pendingEdits = data.pendingEdits || [];
                 currentGame.currentQuestionIndex = data.currentQuestionIndex !== undefined ? data.currentQuestionIndex : (currentGame.currentQuestionIndex || 0);
                 currentGame.currentQuestionData = data.currentQuestionData || currentGame.currentQuestionData;
                 
-                                // Only update answer groups if the server actually sent some, otherwise keep current ones
-                if (data.currentAnswerGroups && data.currentAnswerGroups.length > 0) {
-                    // CRITICAL: Check if we recently processed a clarification and should preserve local state
-                    const hasRecentLocalChanges = previousAnswerGroups.length > 0 && 
-                        currentGame.currentAnswerGroups && 
-                        currentGame.currentAnswerGroups.length > 0 &&
-                        JSON.stringify(currentGame.currentAnswerGroups) !== JSON.stringify(previousAnswerGroups);
-                    
-                    if (hasRecentLocalChanges) {
-                        console.log('🔄 Preserving recent local clarification changes instead of server overwrite');
-                        console.log('🔄 Local groups:', currentGame.currentAnswerGroups.length);
-                        console.log('🔄 Server groups:', data.currentAnswerGroups.length);
-                        // Keep local state that includes clarification logic
-                    } else {
-                        currentGame.currentAnswerGroups = data.currentAnswerGroups;
-                        console.log('🔄 Updated answer groups from server:', data.currentAnswerGroups.length);
-                        updateGradingInterface();
-                    }
-                } else if (previousAnswerGroups.length === 0) {
-                    // If we had no answers before and still have none, update normally
-                    currentGame.currentAnswerGroups = data.currentAnswerGroups || [];
-                    console.log('🔄 No answers before or after, updating interface');
-                    updateGradingInterface();
-                } else {
-                    // Server sent empty answers but we have local answers - keep local and don't rebuild
-                    console.log('🔄 Server sent empty answers, keeping local answer groups:', previousAnswerGroups.length);
-                    console.log('🔄 Current answer groups length:', currentGame.currentAnswerGroups?.length || 0);
-                    
-                    // CRITICAL: Restore previous answer groups if current ones were lost
-                    if ((!currentGame.currentAnswerGroups || currentGame.currentAnswerGroups.length === 0) && previousAnswerGroups.length > 0) {
-                        console.log('🔄 Restoring previous answer groups to prevent disappearing answers');
-                        currentGame.currentAnswerGroups = previousAnswerGroups;
-                    }
-                    
-                    console.log('🔄 Skipping interface rebuild to preserve newly added answers');
-                }
+                console.log('🔄 Game state updated, but skipping interface rebuild (using direct DOM updates)');
                 
                 // CRITICAL FIX: Show pending edits in grading interface
                 try {
@@ -1002,79 +967,14 @@
             // Real-time answer updates - Enhanced to preserve answers
             socket.on('newAnswerSubmitted', (data) => {
                 console.log('📝 New answer submitted:', data);
-                console.log('📝 Answer data:', { playerName: data.playerName, answer: data.answer, gameCode: data.gameCode });
                 
                 if (!currentGame || data.gameCode !== currentGame.gameCode) {
                     console.log('📝 Ignoring answer for different game');
                     return;
                 }
                 
-                // Add this answer to local state immediately so it doesn't disappear
-                if (!currentGame.currentAnswerGroups) {
-                    currentGame.currentAnswerGroups = [];
-                }
-                
-                // CRITICAL FIX: Handle clarifications properly
-                // First, check if this player already has an answer in any group (clarification case)
-                let playerExistingGroup = currentGame.currentAnswerGroups.find(group => 
-                    group.players && group.players.includes(data.playerName)
-                );
-                
-                if (playerExistingGroup) {
-                    console.log('🔄 Player', data.playerName, 'already has answer:', playerExistingGroup.answer);
-                    console.log('🔄 New answer:', data.answer);
-                    
-                    // This is likely a clarification - remove player from old group
-                    const playerIndex = playerExistingGroup.players.indexOf(data.playerName);
-                    if (playerIndex > -1) {
-                        playerExistingGroup.players.splice(playerIndex, 1);
-                        playerExistingGroup.count = playerExistingGroup.players.length;
-                        console.log('🔄 Removed player from old group. Remaining players:', playerExistingGroup.players);
-                        
-                        // If this was the only player in the group, remove the entire group
-                        if (playerExistingGroup.players.length === 0) {
-                            const groupIndex = currentGame.currentAnswerGroups.indexOf(playerExistingGroup);
-                            if (groupIndex > -1) {
-                                currentGame.currentAnswerGroups.splice(groupIndex, 1);
-                                console.log('🗑️ Removed empty answer group for:', playerExistingGroup.answer);
-                            }
-                        }
-                    }
-                }
-                
-                // Now check if the new answer already exists in a different group
-                let newAnswerGroup = currentGame.currentAnswerGroups.find(group => 
-                    group.answer && group.answer.toLowerCase().trim() === data.answer.toLowerCase().trim()
-                );
-                
-                if (newAnswerGroup) {
-                    // Add player to existing group with this answer text
-                    if (!newAnswerGroup.players) newAnswerGroup.players = [];
-                    if (!newAnswerGroup.players.includes(data.playerName)) {
-                        newAnswerGroup.players.push(data.playerName);
-                        newAnswerGroup.count = newAnswerGroup.players.length;
-                        console.log('📝 Added player to existing answer group:', newAnswerGroup);
-                    }
-                } else {
-                    // Create new answer group for this answer
-                    const newGroup = {
-                        answer: data.answer,
-                        players: [data.playerName],
-                        count: 1,
-                        semanticConfidence: 100,
-                        semanticMatch: null
-                    };
-                    currentGame.currentAnswerGroups.push(newGroup);
-                    console.log('📝 Created new answer group:', newGroup);
-                }
-                
-                // CRITICAL FIX: Immediately update interface with local state to prevent disappearing
-                // This ensures answers stay visible while waiting for server gameStateUpdate
-                console.log('📝 Answer updated in local state - immediately updating interface');
-                console.log('📝 Local state now has', currentGame.currentAnswerGroups.length, 'answer groups');
-                
-                // Force immediate interface update with debouncing to prevent rapid rebuilds
-                updateGradingInterface();
+                // SIMPLE APPROACH: Direct DOM manipulation - no interface refresh
+                handleAnswerDirectly(data.playerName, data.answer);
             });
 
             // Auto-open grading interface when question starts
@@ -1723,14 +1623,9 @@
             const answersToRemove = [];
             
             try {
-                // Call semantic matcher service
-                const semanticMatches = await getSemanticMatches(
-                    questionData?.prompt || '', 
-                    correctAnswerList, 
-                    responses
-                );
-                
-                console.log('🧠 Semantic matches:', semanticMatches);
+                // DISABLED: Semantic matching to prevent player name overwrites
+                console.log('🚫 Semantic matching disabled');
+                throw new Error('Semantic matching disabled');
                 
                 // Process semantic matches
                 semanticMatches.forEach(match => {
@@ -1761,10 +1656,8 @@
                 });
                 
             } catch (error) {
-                console.error('❌ Semantic matching failed, falling back to exact matching:', error);
-                
-                // CRITICAL: Ensure answers still get populated even if semantic matching fails
-                console.log('🔧 Fallback: Populating all answers as uncategorized to prevent empty interface');
+                console.log('🚫 Semantic matching disabled to prevent player name overwrites');
+                console.log('🔧 Using simple exact matching only');
                 
                 // Fallback to local semantic matching
                 (currentGame.currentAnswerGroups || []).forEach(answerGroup => {
@@ -2955,6 +2848,78 @@
         function showToast(message, type = 'info') {
             console.log(`🔔 Toast (${type}):`, message);
             // For now, just log to console. Could be enhanced with actual UI toast later.
+        }
+        
+        // SIMPLE APPROACH: Direct DOM manipulation for answers
+        function handleAnswerDirectly(playerName, answerText) {
+            console.log(`📝 Direct answer handling: ${playerName} → "${answerText}"`);
+            
+            // 1. Check if this player already has an answer card (clarification case)
+            const existingCard = findPlayerAnswerCard(playerName);
+            if (existingCard) {
+                console.log(`🔄 Found existing answer for ${playerName}, removing it (clarification)`);
+                removePlayerAnswerCard(existingCard);
+            }
+            
+            // 2. Add the new answer card to uncategorized
+            addAnswerCardToUncategorized(playerName, answerText);
+            
+            console.log(`✅ Answer added directly: ${playerName} → "${answerText}"`);
+        }
+        
+        function findPlayerAnswerCard(playerName) {
+            // Search all buckets for a card containing this player name
+            const allAnswerItems = document.querySelectorAll('.answer-item');
+            for (const item of allAnswerItems) {
+                const playersElement = item.querySelector('.answer-players');
+                if (playersElement && playersElement.textContent.includes(playerName)) {
+                    return item;
+                }
+            }
+            return null;
+        }
+        
+        function removePlayerAnswerCard(answerCard) {
+            const playersElement = answerCard.querySelector('.answer-players');
+            const answerPlayers = playersElement.textContent.split(',').map(p => p.trim());
+            
+            if (answerPlayers.length === 1) {
+                // Only one player, remove entire card
+                answerCard.remove();
+                console.log('🗑️ Removed entire answer card (only player)');
+            } else {
+                // Multiple players, just remove this player's name
+                // This is more complex, for now just remove the whole card for simplicity
+                answerCard.remove();
+                console.log('🗑️ Removed answer card (had multiple players)');
+            }
+        }
+        
+        function addAnswerCardToUncategorized(playerName, answerText) {
+            const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
+            if (!uncategorizedContainer) {
+                console.error('❌ Uncategorized container not found');
+                return;
+            }
+            
+            // Create simple answer card HTML (NO semantic matching data)
+            const answerCardHTML = `
+                <div class="answer-item" data-answer-text="${answerText}">
+                    <div class="answer-text">${answerText}</div>
+                    <div class="answer-players">${playerName}</div>
+                </div>
+            `;
+            
+            uncategorizedContainer.insertAdjacentHTML('beforeend', answerCardHTML);
+            
+            // Update count badge
+            const countBadge = document.getElementById('uncategorizedAnswersCount');
+            if (countBadge) {
+                const currentCount = uncategorizedContainer.children.length;
+                countBadge.textContent = currentCount.toString();
+            }
+            
+            console.log(`📝 Added answer card: "${answerText}" by ${playerName}`);
         }
 
         // Re-sync function to refresh game data
