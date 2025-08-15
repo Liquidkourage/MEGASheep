@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-40-54">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-45-12">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -2258,11 +2258,22 @@
             // Show confirmation dialog with results
             showGradingConfirmation(categorization);
             
-            // Send categorization to server
-            socket.emit('completeGrading', {
+            // Send categorization to server with enhanced debugging
+            console.log('🎯 About to emit completeGrading with data:', {
                 gameCode: currentGame.gameCode,
                 categorizedAnswers: categorization
             });
+            
+            try {
+                socket.emit('completeGrading', {
+                    gameCode: currentGame.gameCode,
+                    categorizedAnswers: categorization
+                });
+                console.log('✅ Successfully emitted completeGrading');
+            } catch (error) {
+                console.error('❌ Error emitting completeGrading:', error);
+                alert('Error submitting grading: ' + error.message);
+            }
 
             // Optimistically close modal and signal completion in UI
             try {

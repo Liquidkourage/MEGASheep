@@ -2135,10 +2135,27 @@ io.on('connection', (socket) => {
 
     // Complete grading (mandatory before next question)
     socket.on('completeGrading', async (data) => {
+        console.log('🎯 completeGrading event received:', data);
+        
         if (!data) {
             console.log('⚠️ completeGrading event received with no data');
             return;
         }
+        
+        // CRITICAL FIX: Validate data structure to prevent issues
+        if (!data.gameCode) {
+            console.error('❌ completeGrading missing gameCode');
+            socket.emit('gameError', { message: 'Missing game code in grading data' });
+            return;
+        }
+        
+        if (!data.categorizedAnswers) {
+            console.error('❌ completeGrading missing categorizedAnswers');
+            socket.emit('gameError', { message: 'Missing categorized answers in grading data' });
+            return;
+        }
+        
+        console.log('🎯 Grading data validation passed');
         
         const { gameCode, categorizedAnswers } = data;
         
