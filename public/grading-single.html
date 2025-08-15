@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T18-18-22">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T18-26-21">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1354,39 +1354,13 @@
                     totalResponses: group.totalResponses
                 });
                 
-                // SURGICAL FIX: Disable auto-matching to prevent complex rendering issues
-                // All answers will go to uncategorized for manual categorization
-                if (false && matchingCorrectAnswer) {
-                    if (!groupedAnswers.has(matchingCorrectAnswer)) {
-                        groupedAnswers.set(matchingCorrectAnswer, {
-                            answer: matchingCorrectAnswer,
-                            players: [],
-                            count: 0,
-                            totalResponses: 0
-                        });
-                    }
-                    const combinedGroup = groupedAnswers.get(matchingCorrectAnswer);
-                    combinedGroup.players.push(...(group.players || []));
-                    combinedGroup.count = combinedGroup.players.length;
-                    combinedGroup.totalResponses = (group.totalResponses || 0) + combinedGroup.totalResponses;
-                    
-                    // Add semantic confidence calculation for real-time updates
-                    if (!group.semanticConfidence) {
-                        // Calculate confidence if not already calculated
-                        const confidence = calculateSemanticConfidence(group.answer, matchingCorrectAnswer);
-                        group.semanticConfidence = confidence;
-                        group.semanticMatch = matchingCorrectAnswer;
-                        console.log(`🧠 Calculated confidence for "${group.answer}": ${confidence}%`);
-                    }
-                    
-                    console.log(`✅ Auto-matched "${group.answer}" into "${matchingCorrectAnswer}" - will be visible in correct bucket`);
-                }
+                // SURGICAL FIX: Completely skip auto-matching - all answers go to uncategorized
+                console.log(`📝 Skipping auto-matching for "${group.answer}" - will go to uncategorized`);
+                // NO auto-matching logic - answers will be processed by uncategorized logic
             });
             
-            // Convert grouped answers to the map
-            groupedAnswers.forEach((combinedGroup, correctAnswer) => {
-                correctAnswerMap.set(correctAnswer, combinedGroup);
-            });
+            // SURGICAL FIX: Skip auto-matching conversion - groupedAnswers should be empty
+            console.log(`📝 Skipping auto-matching conversion - groupedAnswers size: ${groupedAnswers.size}`);
             console.log('🔍 Final correct answer map:', Array.from(correctAnswerMap.entries()).map(([key, value]) => ({
                 correctAnswer: key,
                 answerGroup: JSON.stringify(value)
