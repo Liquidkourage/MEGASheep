@@ -2051,31 +2051,32 @@ io.on('connection', (socket) => {
         const game = activeGames.get(gameCode);
         if (!game) return;
         
+        // CRITICAL FIX: Check for clarification BEFORE submitAnswer to ensure proper rebuild
+        const wasClarity = game.answersNeedingEdit.has(socket.id);
+        
+        // DEBUG: Log clarification detection
+        console.log(`🔍 CLARIFICATION DEBUG: socketId=${socket.id}, wasClarity=${wasClarity}`);
+        console.log(`🔍 answersNeedingEdit size before clear: ${game.answersNeedingEdit.size}`);
+        console.log(`🔍 answersNeedingEdit has socketId: ${game.answersNeedingEdit.has(socket.id)}`);
+        console.log(`🔍 ALL answersNeedingEdit socketIds:`, Array.from(game.answersNeedingEdit.keys()));
+        console.log(`🔍 Current submitAnswer socketId: ${socket.id}`);
+        
+        // CRITICAL: Clear edit flag BEFORE submitAnswer and rebuild
+        if (wasClarity) {
+            game.answersNeedingEdit.delete(socket.id);
+            console.log(`🔍 Cleared clarification flag for ${socket.id} BEFORE answer processing`);
+        }
+        
         if (game.submitAnswer(socket.id, answer)) {
-            // Check if this was a clarification
-            const wasClarity = game.answersNeedingEdit.has(socket.id);
-            
-            // DEBUG: Log clarification detection
-            console.log(`🔍 CLARIFICATION DEBUG: socketId=${socket.id}, wasClarity=${wasClarity}`);
-            console.log(`🔍 answersNeedingEdit size before clear: ${game.answersNeedingEdit.size}`);
-            console.log(`🔍 answersNeedingEdit has socketId: ${game.answersNeedingEdit.has(socket.id)}`);
-            console.log(`🔍 ALL answersNeedingEdit socketIds:`, Array.from(game.answersNeedingEdit.keys()));
-            console.log(`🔍 Current submitAnswer socketId: ${socket.id}`);
-            
-            // Clear edit flag if this was a clarification
-            if (wasClarity) {
-                game.answersNeedingEdit.delete(socket.id);
-                console.log(`🔍 Cleared clarification flag for ${socket.id}`);
-            }
-            
             socket.emit('answerSubmitted');
             const playerName = playerInfo.playerName;
             
             logger.info(`🎯 ${playerName} submitted: "${answer}"${wasClarity ? ' (clarification)' : ''}`);
             
-            // Simple answer groups rebuild - just group current live answers
+            // Simple answer groups rebuild - now clarified answers will be included
             try {
                 game.rebuildCurrentAnswerGroups();
+                console.log(`🔍 Answer groups rebuilt - clarified answers should now be included`);
             } catch (e) {
                 logger.error('Failed to rebuild answer groups after submission:', e?.message);
                 // Continue without crashing - grading interface will still work with existing groups
