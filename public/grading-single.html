@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T21-07-58">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T21-13-20">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1322,6 +1322,8 @@
             
             // Update question display
             updateQuestionDisplay();
+            // Ensure correct answer buckets exist even if there are no answers yet
+            try { ensureCorrectBucketsExist(); } catch (_) {}
             
             // CRITICAL FIX: Only clear buckets if we actually have answers to repopulate
             // Also, if we just updated a card in the last 500ms, skip the bulk clear once
@@ -1346,6 +1348,8 @@
             } else {
                 console.log('🔄 No answer groups available - keeping current interface state');
                 console.log('🔄 This prevents clearing answers that just appeared');
+                // Still ensure buckets are present for graders
+                try { ensureCorrectBucketsExist(); } catch (_) {}
             }
         }
 
@@ -1648,43 +1652,7 @@
             console.log('📊 Current answer groups from server:', currentGame.currentAnswerGroups);
             console.log('🎯 Current question index:', currentGame.currentQuestionIndex);
             
-            // CRITICAL FIX: Always create correct answer buckets immediately, even if no answers yet
-            // This ensures buckets appear as soon as the grading interface loads
-            if (correctAnswerList.length > 0) {
-                const correctAnswerBuckets = correctAnswerList.map((correctAnswer, index) => ({
-                    id: `correct_${correctAnswer.toLowerCase().replace(/\s+/g, '_')}`,
-                    name: correctAnswer,
-                    correctAnswer: correctAnswer,
-                    answers: [] // Start empty, will be populated if we have answers
-                }));
-                
-                // Immediately render empty buckets so they're visible
-                const correctAnswersRoot = document.getElementById('correctAnswers');
-                if (correctAnswersRoot && correctAnswersRoot.children.length === 0) {
-                    correctAnswerBuckets.sort((a, b) => a.name.localeCompare(b.name));
-                    console.log('🎯 Creating initial empty buckets for:', correctAnswerBuckets.map(b => b.name));
-                    
-                    correctAnswerBuckets.forEach(bucket => {
-                        const bucketDiv = document.createElement('div');
-                        const bucketId = `bucket-${bucket.name.toLowerCase().replace(/\s+/g, '-')}`;
-                        bucketDiv.className = 'answer-bucket correct-bucket';
-                        bucketDiv.innerHTML = `
-                            <h4>✅ ${bucket.name} <span class="answer-count-badge">0</span></h4>
-                            <div id="${bucketId}" class="answer-items" data-bucket="${bucket.id}">
-                                <!-- Answers will appear here when submitted -->
-                            </div>
-                        `;
-                        correctAnswersRoot.appendChild(bucketDiv);
-                    });
-                    
-                    // Setup drag and drop for the empty buckets
-                    try {
-                        setupDragAndDrop();
-                    } catch (error) {
-                        console.log('⚠️ Drag and drop setup delayed until answers arrive');
-                    }
-                }
-            }
+            ensureCorrectBucketsExist();
             
             // CRITICAL DEBUG: Check if answer groups contain old data
             if (currentGame.currentAnswerGroups && currentGame.currentAnswerGroups.length > 0) {
@@ -1873,6 +1841,37 @@
                 }, 500);
             }
         }, 100);
+        }
+
+        function ensureCorrectBucketsExist() {
+            const questionData = currentGame?.currentQuestionData;
+            const correctAnswerList = questionData?.correct_answers || [];
+            const correctAnswersRoot = document.getElementById('correctAnswers');
+            if (!correctAnswersRoot || correctAnswerList.length === 0) return;
+            // Create any missing buckets
+            const wantedIds = new Set(correctAnswerList.map(a => `bucket-${a.toLowerCase().replace(/\s+/g, '-')}`));
+            const existingIds = new Set(Array.from(correctAnswersRoot.querySelectorAll('.answer-items')).map(d => d.id));
+            const toCreate = [...wantedIds].filter(id => !existingIds.has(id));
+            if (toCreate.length > 0) {
+                console.log('🧩 Ensuring buckets exist, creating:', toCreate);
+                // Sort by label to keep stable order
+                const sorted = [...correctAnswerList].sort((a,b)=>a.localeCompare(b));
+                sorted.forEach(name => {
+                    const bucketId = `bucket-${name.toLowerCase().replace(/\s+/g, '-')}`;
+                    if (existingIds.has(bucketId)) return;
+                    const bucketDiv = document.createElement('div');
+                    bucketDiv.className = 'answer-bucket correct-bucket';
+                    bucketDiv.innerHTML = `
+                        <h4 onclick="toggleBucket(this)">
+                            <span class="bucket-toggle">▼</span>
+                            ✅ ${name} <span class="answer-count-badge">0</span>
+                        </h4>
+                        <div id="${bucketId}" class="answer-items" data-bucket="correct_${name.toLowerCase().replace(/\s+/g, '_')}"></div>
+                    `;
+                    correctAnswersRoot.appendChild(bucketDiv);
+                });
+                setupDragAndDrop();
+            }
         }
 
                 async function populateUncategorizedAnswers(answersToRemove = []) {
