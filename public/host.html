@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Host Console</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-32-43">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-36-32">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* Floating Q&A indicator */
@@ -1178,14 +1178,46 @@
             });
             
             socket.on('gradingComplete', (data) => {
-                // Update current game state and UI controls
-                currentGame = data;
-                gameState = 'scoring';
-                try { updateGameControls(); } catch (_) {}
+                console.log('🎯 Host received gradingComplete event:', data);
+                
+                // CRITICAL FIX: Add comprehensive error handling to prevent host disconnection
+                try {
+                    // Update current game state and UI controls
+                    currentGame = data;
+                    gameState = 'scoring';
+                    console.log('🎯 Updated game state to scoring');
+                } catch (error) {
+                    console.error('❌ Error updating game state:', error);
+                }
+                
+                try { 
+                    updateGameControls(); 
+                    console.log('🎯 Updated game controls');
+                } catch (error) {
+                    console.error('❌ Error updating game controls:', error);
+                }
+                
                 // Close the single-user grading modal if open
-                try { closeGradingSingleModal(); } catch (_) {}
-                showScoringPanel(data);
-                try { updatePlayerList(); } catch (_) {}
+                try { 
+                    closeGradingSingleModal(); 
+                    console.log('🎯 Closed grading modal');
+                } catch (error) {
+                    console.error('❌ Error closing grading modal:', error);
+                }
+                
+                try {
+                    showScoringPanel(data);
+                    console.log('🎯 Showed scoring panel');
+                } catch (error) {
+                    console.error('❌ Error showing scoring panel:', error);
+                }
+                
+                try { 
+                    updatePlayerList(); 
+                    console.log('🎯 Updated player list');
+                } catch (error) {
+                    console.error('❌ Error updating player list:', error);
+                }
 
                 // Capture finalized per-question snapshot for History (read-only)
                 try {

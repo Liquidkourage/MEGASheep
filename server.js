@@ -2216,9 +2216,35 @@ io.on('connection', (socket) => {
 
             const gameStateToSend = game.getGameState();
             // Persist authoritative snapshot BEFORE notifying clients
-            try { await persistSnapshot(game, 'grading_complete'); } catch(_) {}
-            io.to(gameCode).emit('gradingComplete', gameStateToSend);
-            console.log(`📝 Host completed grading for game ${gameCode}`);
+            try { 
+                await persistSnapshot(game, 'grading_complete'); 
+            } catch(error) {
+                console.error('❌ Error persisting grading_complete snapshot:', error);
+            }
+            
+            // CRITICAL FIX: Add comprehensive error handling for gradingComplete emission
+            try {
+                console.log(`🎯 Emitting gradingComplete for game ${gameCode}`);
+                console.log(`🎯 GameState data valid:`, !!gameStateToSend);
+                console.log(`🎯 Room exists:`, io.sockets.adapter.rooms.has(gameCode));
+                
+                io.to(gameCode).emit('gradingComplete', gameStateToSend);
+                console.log(`✅ Successfully emitted gradingComplete event`);
+                console.log(`📝 Host completed grading for game ${gameCode}`);
+            } catch (emitError) {
+                console.error(`❌ CRITICAL ERROR emitting gradingComplete:`, emitError);
+                console.error(`❌ Error stack:`, emitError.stack);
+                
+                // Try a fallback emission
+                try {
+                    io.to(gameCode).emit('gameError', { 
+                        message: 'Error completing grading', 
+                        error: emitError.message 
+                    });
+                } catch (fallbackError) {
+                    console.error(`❌ Even fallback emission failed:`, fallbackError);
+                }
+            }
             // Persist grading results snapshot
             try {
               const payload = {
