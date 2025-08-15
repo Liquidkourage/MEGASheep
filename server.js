@@ -2579,6 +2579,98 @@ io.on('connection', (socket) => {
         });
     });
 
+    // Join grading session for collaborative grading interfaces
+    socket.on('joinGradingSession', (data) => {
+        const { gameCode, questionIndex, graderId } = data;
+        
+        if (!gameCode) {
+            console.log('⚠️ joinGradingSession event received with no gameCode');
+            socket.emit('gradingError', { message: 'Game code is required' });
+            return;
+        }
+        
+        const game = activeGames.get(gameCode);
+        if (!game) {
+            console.log(`❌ Game ${gameCode} not found for joinGradingSession`);
+            socket.emit('gradingError', { message: 'Game not found' });
+            return;
+        }
+        
+        // Update connection info for grading interface
+        const playerInfo = connectedPlayers.get(socket.id);
+        if (playerInfo) {
+            playerInfo.gameCode = gameCode;
+            playerInfo.isGradingInterface = true;
+            playerInfo.graderId = graderId;
+            playerInfo.questionIndex = questionIndex;
+        }
+        
+        // Join the game room to receive real-time updates
+        socket.join(gameCode);
+        
+        // Count current graders in this game room
+        const roomSockets = io.sockets.adapter.rooms.get(gameCode) || new Set();
+        let graderCount = 0;
+        roomSockets.forEach(socketId => {
+            const info = connectedPlayers.get(socketId);
+            if (info && info.isGradingInterface) {
+                graderCount++;
+            }
+        });
+        
+        // Confirm successful join
+        socket.emit('gradingSessionJoined', {
+            gameCode: gameCode,
+            questionIndex: questionIndex,
+            graderCount: graderCount
+        });
+        
+        // Notify other graders that someone joined
+        socket.to(gameCode).emit('graderJoined', {
+            graderId: graderId,
+            graderCount: graderCount
+        });
+        
+        console.log(`📝 Grading interface joined session ${gameCode} for question ${questionIndex} (grader: ${graderId})`);
+        console.log(`📝 Room ${gameCode} now has ${graderCount} graders out of ${roomSockets.size} total sockets`);
+        console.log(`📝 Socket ${socket.id} grading session info:`, {
+            gameCode: playerInfo?.gameCode,
+            isGradingInterface: playerInfo?.isGradingInterface,
+            graderId: playerInfo?.graderId,
+            questionIndex: playerInfo?.questionIndex
+        });
+    });
+
+    // Leave grading session
+    socket.on('leaveGradingSession', (data) => {
+        const { gameCode, graderId } = data;
+        
+        const playerInfo = connectedPlayers.get(socket.id);
+        if (playerInfo && playerInfo.gameCode === gameCode) {
+            // Leave the game room
+            socket.leave(gameCode);
+            
+            // Count remaining graders
+            const roomSockets = io.sockets.adapter.rooms.get(gameCode) || new Set();
+            let graderCount = 0;
+            roomSockets.forEach(socketId => {
+                const info = connectedPlayers.get(socketId);
+                if (info && info.isGradingInterface) {
+                    graderCount++;
+                }
+            });
+            
+            // Notify other graders that someone left
+            socket.to(gameCode).emit('graderLeft', {
+                graderId: graderId,
+                graderCount: graderCount
+            });
+            
+            console.log(`📝 Grading interface left session ${gameCode} (grader: ${graderId})`);
+            console.log(`📝 Room ${gameCode} now has ${graderCount} graders remaining`);
+        }
+    });
+
     // Get active game state for host interface
     socket.on('getActiveGameState', () => {
         console.log('🔍 Host interface requesting active game state');
