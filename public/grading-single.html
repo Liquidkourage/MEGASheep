@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-14T22-17-03">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T06-15-06">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1873,8 +1873,6 @@
             console.log('🔄 Uncategorized answers (exact match only):', uncategorizedAnswers);
             
             // Calculate confidence scores for uncategorized answers
-            const questionData = currentGame.currentQuestionData;
-            const correctAnswerList = questionData?.correct_answers || [];
             
             uncategorizedAnswers.forEach(answerGroup => {
                 if (!answerGroup.semanticConfidence) {
