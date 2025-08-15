@@ -278,7 +278,8 @@ class Game {
         this.pointsForCurrentQuestion = new Map(); // socketId -> points for current question only
         this.currentQuestionScored = false; // Track if current question has been scored
         this.answersNeedingEdit = new Map(); // socketId -> { reason, requestedAt, originalAnswer }
-        // SIMPLIFIED: Removed answersByStableId, socketByStableId, attemptsByQuestion, roundAnswerGroups
+        this.roundAnswerGroups = []; // CRITICAL FIX: Initialize roundAnswerGroups array
+        // SIMPLIFIED: Removed answersByStableId, socketByStableId, attemptsByQuestion
         // ONE source of truth: this.answers (socketId -> answer)
         this.seenPlayerNames = new Set(); // Track any name that has ever joined this game
         this.expectedResponders = new Set(); // socketIds expected to answer current question
