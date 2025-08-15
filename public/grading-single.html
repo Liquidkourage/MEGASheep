@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-29-52">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-33-53">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -841,7 +841,7 @@
                 
                 // Update game state from server
                 currentGame.pendingEdits = data.pendingEdits || [];
-                currentGame.currentQuestionIndex = data.currentQuestionIndex;
+                currentGame.currentQuestionIndex = data.currentQuestionIndex !== undefined ? data.currentQuestionIndex : (currentGame.currentQuestionIndex || 0);
                 currentGame.currentQuestionData = data.currentQuestionData || currentGame.currentQuestionData;
                 
                 // Only update answer groups if the server actually sent some, otherwise keep current ones
@@ -1246,8 +1246,24 @@
             });
         }
 
-        async function updateGradingInterface() {
+        // Debounce mechanism to prevent rapid rebuilds
+        let updateGradingInterfaceTimeout = null;
+        
+        async function updateGradingInterface(forceImmediate = false) {
             if (!currentGame || !currentGame.currentAnswerGroups) return;
+            
+            // If not forcing immediate update, debounce the call
+            if (!forceImmediate) {
+                if (updateGradingInterfaceTimeout) {
+                    console.log('🔄 Debouncing updateGradingInterface call');
+                    clearTimeout(updateGradingInterfaceTimeout);
+                }
+                
+                updateGradingInterfaceTimeout = setTimeout(() => {
+                    updateGradingInterface(true);
+                }, 100); // 100ms debounce
+                return;
+            }
             
             console.log('🔄 Updating grading interface for question:', currentGame.currentQuestionIndex);
             
@@ -2799,6 +2815,12 @@
             }, 10000);
         });
 
+        // Simple toast notification function
+        function showToast(message, type = 'info') {
+            console.log(`🔔 Toast (${type}):`, message);
+            // For now, just log to console. Could be enhanced with actual UI toast later.
+        }
+        
         // Re-sync function to refresh game data
         async function resyncGameData() {
             console.log('🔄 Re-syncing game data...');
