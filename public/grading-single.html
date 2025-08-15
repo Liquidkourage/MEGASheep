@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T21-03-49">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T21-07-58">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1324,7 +1324,12 @@
             updateQuestionDisplay();
             
             // CRITICAL FIX: Only clear buckets if we actually have answers to repopulate
-            // This prevents the clearing/empty state that causes answers to disappear
+            // Also, if we just updated a card in the last 500ms, skip the bulk clear once
+            if (window.recentCardUpdateAt && Date.now() - window.recentCardUpdateAt < 500) {
+                console.log('⏭️ Skipping full rebuild due to recent direct DOM update');
+                window.recentCardUpdateAt = 0;
+                return;
+            }
             if (currentGame.currentAnswerGroups && currentGame.currentAnswerGroups.length > 0) {
                 console.log('🔄 Clearing and repopulating interface with', currentGame.currentAnswerGroups.length, 'answer groups');
             
@@ -2948,6 +2953,8 @@
         // SIMPLE APPROACH: Direct DOM manipulation for answers
         function handleAnswerDirectly(playerName, answerText, isClarification = false) {
             console.log(`📝 Direct answer handling: ${playerName} → "${answerText}"`);
+            // Mark a very recent DOM update so bulk rebuilds won't wipe it
+            window.recentCardUpdateAt = Date.now();
             
             // 1. Check if this player already has an answer card (clarification case)
             const existingCard = findPlayerAnswerCard(playerName);
@@ -2966,6 +2973,7 @@
                     }
                 }
                 updateCountBadges();
+                window.recentCardUpdateAt = Date.now();
                 return; // Don't add a new card
             }
             
@@ -2981,6 +2989,7 @@
                 // stays in uncategorized
             }
             updateCountBadges();
+            window.recentCardUpdateAt = Date.now();
             
             console.log(`✅ Answer added directly: ${playerName} → "${answerText}"`);
         }
