@@ -2840,6 +2840,38 @@ io.on('connection', (socket) => {
         console.log(`📤 Emitted questionsLoaded event for game ${gameCode}`);
     });
 
+    // Player leave game handler for manual disconnect
+    socket.on('leaveGame', (data) => {
+        const { gameCode, playerName } = data;
+        console.log(`🚪 Player ${playerName} manually leaving game ${gameCode}`);
+        
+        const playerInfo = connectedPlayers.get(socket.id);
+        if (playerInfo && playerInfo.gameCode === gameCode) {
+            const game = activeGames.get(gameCode);
+            if (game) {
+                // Remove player immediately (no grace period for manual leave)
+                game.removePlayer(socket.id);
+                console.log(`👋 Removed player ${playerName} from game ${gameCode}`);
+                
+                // Notify host about player leaving
+                const hostSocket = Array.from(connectedPlayers.entries())
+                    .find(([id, info]) => info.gameCode === gameCode && info.isHost);
+                
+                if (hostSocket) {
+                    hostSocket[1].socket?.emit('playerLeft', {
+                        playerName: playerName,
+                        gameCode: gameCode,
+                        totalPlayers: game.players.size
+                    });
+                }
+            }
+            
+            // Remove from connected players
+            connectedPlayers.delete(socket.id);
+            console.log(`🧹 Cleaned up socket ${socket.id} for manual leave`);
+        }
+    });
+
     // Disconnect
     socket.on('disconnect', () => {
         const playerInfo = connectedPlayers.get(socket.id);

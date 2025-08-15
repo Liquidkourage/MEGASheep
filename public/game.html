@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Game</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-19-39">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-26-38">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* Player interface enhancements */
@@ -47,6 +47,11 @@
             <div class="status-item">
                 <span class="label">Connection:</span>
                 <span class="connection-pill"><span id="connectionDot" class="dot warn"></span><span id="connectionText">Connecting…</span></span>
+            </div>
+            <div class="status-item">
+                <button id="leaveGameBtn" class="btn-inline" onclick="leaveGame()" title="Leave game and return to join screen">
+                    🚪 Leave Game
+                </button>
             </div>
         </div>
 
@@ -1064,6 +1069,52 @@
                     }, 300);
                 }
             }, 4000);
+        }
+        
+        // Leave Game function for stuck game recovery
+        function leaveGame() {
+            console.log('🚪 Player leaving game...');
+            
+            // Confirm with user first
+            if (!confirm('Are you sure you want to leave the game? You can rejoin with the same name if needed.')) {
+                return;
+            }
+            
+            try {
+                // Disconnect from socket
+                if (socket && socket.connected) {
+                    console.log('🔌 Disconnecting socket...');
+                    socket.emit('leaveGame', { gameCode, playerName });
+                    socket.disconnect();
+                }
+                
+                // Clear session data
+                sessionStorage.removeItem('gameCode');
+                sessionStorage.removeItem('playerName');
+                localStorage.removeItem('player.gameCode');
+                localStorage.removeItem('player.playerName');
+                
+                console.log('🧹 Cleared session data');
+                
+                // Show leaving message briefly then redirect
+                document.body.innerHTML = `
+                    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: Arial, sans-serif;">
+                        <h2>🚪 Leaving Game...</h2>
+                        <p>Returning to join screen...</p>
+                    </div>
+                `;
+                
+                // Redirect to main page after brief delay
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+                
+            } catch (error) {
+                console.error('❌ Error leaving game:', error);
+                // Force redirect even if there's an error
+                alert('Error leaving game, but redirecting anyway...');
+                window.location.href = '/';
+            }
         }
     </script>
 </body>
