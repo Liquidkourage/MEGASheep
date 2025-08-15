@@ -403,30 +403,45 @@ class Game {
                 return false;
             }
             
-        if (this.gameState !== 'playing' && !this.answersNeedingEdit.has(socketId)) return false;
+            // Allow submission during playing OR if player has pending edit
+            if (this.gameState !== 'playing' && !this.answersNeedingEdit.has(socketId)) {
+                logger.warn(`submitAnswer: Invalid game state ${this.gameState} for socket ${socketId}`);
+                return false;
+            }
         
             const trimmed = String(answer || '').trim();
-        const player = this.players.get(socketId);
+            const player = this.players.get(socketId);
             if (!player || !player.name) {
                 logger.warn(`submitAnswer: Player not found for socket ${socketId}`);
                 return false;
             }
 
-            // Simple rule: one answer per socket during playing (unless edit requested)
-            if (this.gameState === 'playing' && this.answers.has(socketId) && !this.answersNeedingEdit.has(socketId)) {
+            // Check if this is a clarification submission
+            const isClarification = this.answersNeedingEdit.has(socketId);
+            
+            // For clarifications, always allow submission (replaces original)
+            // For regular submissions, only allow if not already submitted
+            if (!isClarification && this.gameState === 'playing' && this.answers.has(socketId)) {
+                logger.warn(`submitAnswer: Player ${player.name} already submitted answer`);
                 return false; // Already submitted, locked
             }
 
-            // Set the answer - simple and direct
+            // Set the answer - this replaces any existing answer
             this.answers.set(socketId, trimmed);
-            logger.info(`📝 ${player.name} submitted: "${trimmed}"`);
+            logger.info(`📝 ${player.name} submitted: "${trimmed}"${isClarification ? ' (clarification)' : ''}`);
             
-        return true;
+            // If this was a clarification, clear the edit flag
+            if (isClarification) {
+                this.answersNeedingEdit.delete(socketId);
+                logger.info(`✅ Cleared clarification flag for ${player.name}`);
+            }
+            
+            return true;
         } catch (e) {
             logger.error('Error in submitAnswer:', e?.message);
             return false;
         }
-  }
+    }
 
   calculateScores() {
     const totalResponses = this.answers.size;
@@ -833,7 +848,8 @@ class Game {
             
             // Skip answers that are flagged for editing
             if (this.answersNeedingEdit && this.answersNeedingEdit.has(socketId)) {
-                logger.debug(`🚫 Excluding pending edit answer from ${socketId}`);
+                const player = this.players.get(socketId);
+                logger.debug(`🚫 Excluding pending edit answer from ${player?.name || socketId}: "${answer}"`);
                 continue;
             }
             
@@ -868,6 +884,10 @@ class Game {
         console.log(`🔄 REBUILD DEBUG: Answer groups:`, this.currentAnswerGroups.map(g => `"${g.answer}" (${g.count} players: ${g.players.join(', ')})`));
         console.log(`🔄 REBUILD DEBUG: Raw answers:`, Array.from(this.answers.entries()).map(([sid, ans]) => `${sid}: "${ans}"`));
         console.log(`🔄 REBUILD DEBUG: Excluded pending edits:`, Array.from(this.answersNeedingEdit.keys()));
+        
+        // CRITICAL: Ensure answer groups are sorted by player count (most popular first)
+        this.currentAnswerGroups.sort((a, b) => b.count - a.count);
+        
     } catch (e) {
         logger.error('Failed to rebuild answer groups:', e?.message);
         // Ensure we don't leave undefined state
@@ -2031,142 +2051,116 @@ io.on('connection', (socket) => {
 
 
     // Submit answer
-        socket.on('submitAnswer', async (data) => {
+    socket.on('submitAnswer', async (data) => {
         try {
-        if (!data) {
-            logger.warn('submitAnswer event received with no data');
-            return;
-        }
-        
-        const { gameCode, answer } = data;
-        
+            if (!data) {
+                logger.warn('submitAnswer event received with no data');
+                return;
+            }
+            
+            const { gameCode, answer } = data;
+            
             if (!gameCode || answer === undefined || answer === null) {
                 logger.warn('submitAnswer event received with missing gameCode or answer');
-            return;
-        }
-        
-        const playerInfo = connectedPlayers.get(socket.id);
-        if (!playerInfo || playerInfo.gameCode !== gameCode) return;
-        
-        const game = activeGames.get(gameCode);
-        if (!game) return;
-        
-        // CRITICAL FIX: Check for clarification BEFORE submitAnswer to ensure proper rebuild
-        const wasClarity = game.answersNeedingEdit.has(socket.id);
-        
-        // DEBUG: Log clarification detection
-        console.log(`🔍 CLARIFICATION DEBUG: socketId=${socket.id}, wasClarity=${wasClarity}`);
-        console.log(`🔍 answersNeedingEdit size before clear: ${game.answersNeedingEdit.size}`);
-        console.log(`🔍 answersNeedingEdit has socketId: ${game.answersNeedingEdit.has(socket.id)}`);
-        console.log(`🔍 ALL answersNeedingEdit socketIds:`, Array.from(game.answersNeedingEdit.keys()));
-        console.log(`🔍 Current submitAnswer socketId: ${socket.id}`);
-        console.log(`🔍 Game state: ${game.gameState}`);
-        
-        if (game.submitAnswer(socket.id, answer)) {
-            // CRITICAL: Clear edit flag AFTER successful submitAnswer but BEFORE rebuild
-            if (wasClarity) {
-                game.answersNeedingEdit.delete(socket.id);
-                console.log(`🔍 Cleared clarification flag for ${socket.id} AFTER successful submit but BEFORE rebuild`);
+                return;
             }
             
-            // ENHANCED DEBUG: Log current answer state before rebuild
-            console.log(`🔍 BEFORE REBUILD - Answer in game.answers: "${game.answers.get(socket.id)}"`);
-            console.log(`🔍 BEFORE REBUILD - answersNeedingEdit has socketId: ${game.answersNeedingEdit.has(socket.id)}`);
-            console.log(`🔍 BEFORE REBUILD - Total answers in game: ${game.answers.size}`);
+            const playerInfo = connectedPlayers.get(socket.id);
+            if (!playerInfo || playerInfo.gameCode !== gameCode) return;
             
-            socket.emit('answerSubmitted');
+            const game = activeGames.get(gameCode);
+            if (!game) return;
+            
+            // Check if this is a clarification submission BEFORE calling submitAnswer
+            const wasClarity = game.answersNeedingEdit.has(socket.id);
             const playerName = playerInfo.playerName;
             
-            logger.info(`🎯 ${playerName} submitted: "${answer}"${wasClarity ? ' (clarification)' : ''}`);
+            logger.info(`🔍 Processing answer submission: ${playerName} → "${answer}"${wasClarity ? ' (clarification)' : ''}`);
             
-            // Simple answer groups rebuild - now clarified answers will be included
-            try {
-                game.rebuildCurrentAnswerGroups();
-                console.log(`🔍 AFTER REBUILD - Created ${game.currentAnswerGroups.length} answer groups`);
-                console.log(`🔍 AFTER REBUILD - Groups:`, game.currentAnswerGroups.map(g => `"${g.answer}" (${g.players.join(', ')})`));
+            if (game.submitAnswer(socket.id, answer)) {
+                // Answer was accepted - send confirmation to player
+                socket.emit('answerSubmitted');
+                logger.info(`✅ ${playerName} answer accepted${wasClarity ? ' (clarification)' : ''}`);
                 
-                // FORCE IMMEDIATE UPDATE: Ensure grading interfaces get the latest state
+                // CRITICAL: Rebuild answer groups immediately after submission
+                // This ensures grading interface gets updated in real-time
+                // For clarifications, ensure the flag is cleared before rebuilding
+                if (wasClarity) {
+                    // Double-check that the clarification flag is cleared
+                    if (game.answersNeedingEdit.has(socket.id)) {
+                        game.answersNeedingEdit.delete(socket.id);
+                        logger.info(`🔧 Force-cleared clarification flag for ${playerName}`);
+                    }
+                }
+                
+                try {
+                    game.rebuildCurrentAnswerGroups();
+                    logger.info(`🔄 Rebuilt answer groups after ${playerName}'s submission`);
+                    logger.debug(`📊 Current answer groups: ${game.currentAnswerGroups.length}`);
+                } catch (e) {
+                    logger.error('Failed to rebuild answer groups after submission:', e?.message);
+                }
+                
+                // Send real-time update to grading interface
                 const gameStateToSend = game.getGameState();
-                console.log(`🔍 Sending immediate gameStateUpdate for clarification - groups: ${gameStateToSend.currentAnswerGroups?.length || 0}`);
-                io.to(gameCode).emit('gameStateUpdate', gameStateToSend);
                 
-            } catch (e) {
-                logger.error('Failed to rebuild answer groups after submission:', e?.message);
-                // Continue without crashing - grading interface will still work with existing groups
-            }
-            
-            // Notify host of the specific answer
-            const hostSocket = Array.from(connectedPlayers.entries())
-                .find(([id, info]) => info.gameCode === gameCode && info.isHost);
-            
-            // Send gameStateUpdate for ALL submissions to keep grading interface in sync
-            const gameStateToSend = game.getGameState();
-            console.log(`📤 SENDING gameStateUpdate for ${wasClarity ? 'CLARIFICATION' : 'REGULAR'} submission by ${playerName}`);
-            console.log(`📤 gameState contains ${gameStateToSend.currentAnswerGroups?.length || 0} answer groups`);
-            
-            // Send to host and grading interface
-            if (hostSocket) {
-                io.to(hostSocket[0]).emit('gameStateUpdate', gameStateToSend);
-                console.log('📤 Sent gameStateUpdate to host');
-            }
-            
-            // Also broadcast to room for any other connected grading interfaces
-            io.to(gameCode).emit('gameStateUpdate', gameStateToSend);
-            console.log('📤 Sent gameStateUpdate to room');
-            
-            if (hostSocket) {
-                console.log(`📤 [server] Emitting answerSubmitted to host socket ${hostSocket[0]} for player ${playerName}`);
-                io.to(hostSocket[0]).emit('answerSubmitted', {
+                // Notify host of the specific answer
+                const hostSocket = Array.from(connectedPlayers.entries())
+                    .find(([id, info]) => info.gameCode === gameCode && info.isHost);
+                
+                if (hostSocket) {
+                    io.to(hostSocket[0]).emit('answerSubmitted', {
+                        playerName: playerName,
+                        answer: answer
+                    });
+                    logger.debug(`📤 Sent answerSubmitted to host for ${playerName}`);
+                }
+                
+                // Broadcast game state update to ALL connected clients (including grading interface)
+                io.to(gameCode).emit('gameStateUpdate', gameStateToSend);
+                logger.debug(`📤 Broadcasted gameStateUpdate to room ${gameCode}`);
+                
+                // Send specific newAnswerSubmitted event for real-time grading updates
+                const newAnswerEvent = {
                     playerName: playerName,
-                    answer: answer
+                    answer: answer,
+                    gameCode: gameCode,
+                    at: Date.now(),
+                    isClarification: wasClarity
+                };
+                io.to(gameCode).emit('newAnswerSubmitted', newAnswerEvent);
+                logger.debug(`📤 Sent newAnswerSubmitted event for ${playerName} (clarification: ${wasClarity})`);
+                logger.debug(`📤 Event data:`, newAnswerEvent);
+                
+                // Update answer count for all players
+                const totalExpected = (game.gameState === 'playing' && game.expectedResponders instanceof Set)
+                    ? game.expectedResponders.size
+                    : game.players.size;
+                const stableAnswered = new Set();
+                const rawAnswers = {};
+                for (const [sid, ans] of game.answers.entries()) {
+                    const p = game.players.get(sid);
+                    const st = p?.stableId || sid;
+                    stableAnswered.add(st);
+                    rawAnswers[sid] = ans;
+                }
+                
+                io.to(gameCode).emit('answerUpdate', {
+                    answersReceived: stableAnswered.size,
+                    totalPlayers: totalExpected,
+                    answers: rawAnswers
                 });
-
-      // Q&A handlers are registered at top-level (outside submitAnswer)
+                
+                // Don't auto-end when there are pending clarifications
+                if (game.answersNeedingEdit.size > 0) {
+                    logger.debug(`⏳ Not auto-ending: ${game.answers.size}/${game.players.size} answers, ${game.answersNeedingEdit.size} pending clarifications`);
+                }
             } else {
-                console.log(`❌ [server] No host socket found for game ${gameCode}`);
+                logger.info(`🚫 ${playerName} answer rejected`);
+                socket.emit('answerError', { message: 'Answer submission failed' });
             }
-            
-            // Notify grading interface of new answer (real-time updates)
-            console.log(`📡 [server] Broadcasting newAnswerSubmitted to room ${gameCode} for ${playerName}: "${answer}"`);
-            console.log(`📤 Room ${gameCode} sockets:`, Array.from(io.sockets.adapter.rooms.get(gameCode) || []));
-            
-            io.to(gameCode).emit('newAnswerSubmitted', {
-                playerName: playerName,
-                answer: answer,
-                gameCode: gameCode,
-                at: Date.now()
-            });
-            
-            console.log(`✅ newAnswerSubmitted event emitted to room ${gameCode}`);
-            
-            // Notify others of answer count (unique by stableId); also include a raw answers snapshot for UIs that need it
-            const totalExpected = (game.gameState === 'playing' && game.expectedResponders instanceof Set)
-                ? game.expectedResponders.size
-                : game.players.size;
-            const stableAnswered = new Set();
-            const rawAnswers = {};
-            for (const [sid, ans] of game.answers.entries()) {
-                const p = game.players.get(sid);
-                const st = p?.stableId || sid;
-                stableAnswered.add(st);
-                rawAnswers[sid] = ans;
-            }
-            io.to(gameCode).emit('answerUpdate', {
-                answersReceived: stableAnswered.size,
-                totalPlayers: totalExpected,
-                answers: rawAnswers
-            });
-            
-            // Do not auto-end when all have answered; host or timer ends the question now
-            if (game.answersNeedingEdit.size > 0) {
-                console.log(`⏳ Not auto-ending: ${game.answers.size}/${game.players.size} answers, ${game.answersNeedingEdit.size} pending clarifications`);
-            }
-        } else {
-            logger.info(`🚫 ${playerInfo.playerName} answer rejected`);
-        }
         } catch (e) {
             logger.error('Error in submitAnswer event handler:', e?.message);
-            // Send error to client so they know submission failed
             try {
                 socket.emit('answerError', { message: 'Failed to submit answer' });
             } catch (_) {}
@@ -2201,16 +2195,17 @@ io.on('connection', (socket) => {
         
         const { gameCode, categorizedAnswers } = data;
         
-        if (!gameCode) {
-            console.log('⚠️ completeGrading event received with no gameCode');
+        const playerInfo = connectedPlayers.get(socket.id);
+        if (!playerInfo || !playerInfo.isHost) {
+            console.log('⚠️ completeGrading rejected - not host');
             return;
         }
         
-        const playerInfo = connectedPlayers.get(socket.id);
-        if (!playerInfo || !playerInfo.isHost) return;
-        
         const game = activeGames.get(gameCode);
-        if (!game) return;
+        if (!game) {
+            console.log('⚠️ completeGrading rejected - game not found');
+            return;
+        }
         
         // Allow host to complete grading even if the question hasn't been explicitly ended yet.
         // If currently playing, finalize answers and enter grading implicitly.
@@ -2219,7 +2214,10 @@ io.on('connection', (socket) => {
                 game.calculateScores();
                 game.stopTimer();
                 game.gameState = 'grading';
-            } catch (_) {}
+                console.log('🎯 Transitioned from playing to grading state');
+            } catch (e) {
+                console.error('❌ Error transitioning to grading state:', e);
+            }
         } else if (game.gameState !== 'grading') {
             // For any other state, proceed conservatively by transitioning to grading
             // if we have answer data; otherwise reject.
@@ -2228,7 +2226,10 @@ io.on('connection', (socket) => {
                     game.calculateScores();
                     game.stopTimer();
                     game.gameState = 'grading';
-                } catch (_) {}
+                    console.log('🎯 Transitioned to grading state from other state');
+                } catch (e) {
+                    console.error('❌ Error transitioning to grading state:', e);
+                }
             } else {
                 socket.emit('gameError', { message: 'Not in grading phase' });
                 return;
@@ -2253,6 +2254,7 @@ io.on('connection', (socket) => {
             }
 
             game.categorizationData = normalized;
+            console.log('🎯 Applied categorization data to game');
 
             // Update current groups with categories if any groups exist
             console.log(`📊 Updating currentAnswerGroups with categorization data`);
@@ -2269,14 +2271,18 @@ io.on('connection', (socket) => {
 
             // Apply points once
             game.applyCurrentQuestionPoints();
+            console.log('🎯 Applied current question points');
 
             // Move to scoring phase
             game.gameState = 'scoring';
+            console.log('🎯 Moved to scoring phase');
 
             const gameStateToSend = game.getGameState();
+            
             // Persist authoritative snapshot BEFORE notifying clients
             try { 
                 await persistSnapshot(game, 'grading_complete'); 
+                console.log('🎯 Persisted grading complete snapshot');
             } catch(error) {
                 console.error('❌ Error persisting grading_complete snapshot:', error);
             }
@@ -2287,9 +2293,15 @@ io.on('connection', (socket) => {
                 console.log(`🎯 GameState data valid:`, !!gameStateToSend);
                 console.log(`🎯 Room exists:`, io.sockets.adapter.rooms.has(gameCode));
                 
+                // Send to all clients in the room
                 io.to(gameCode).emit('gradingComplete', gameStateToSend);
                 console.log(`✅ Successfully emitted gradingComplete event`);
                 console.log(`📝 Host completed grading for game ${gameCode}`);
+                
+                // Also send to host specifically as backup
+                socket.emit('gradingComplete', gameStateToSend);
+                console.log(`✅ Sent gradingComplete to host as backup`);
+                
             } catch (emitError) {
                 console.error(`❌ CRITICAL ERROR emitting gradingComplete:`, emitError);
                 console.error(`❌ Error stack:`, emitError.stack);
@@ -2300,10 +2312,12 @@ io.on('connection', (socket) => {
                         message: 'Error completing grading', 
                         error: emitError.message 
                     });
+                    console.log(`✅ Sent fallback error message`);
                 } catch (fallbackError) {
                     console.error(`❌ Even fallback emission failed:`, fallbackError);
                 }
             }
+            
             // Persist grading results snapshot
             try {
               const payload = {
@@ -2314,15 +2328,24 @@ io.on('connection', (socket) => {
               };
               sbInsert(SB_TABLES.grading, payload);
               sbLogEvent(gameCode, 'grading_complete', { q: game.currentQuestion });
-            } catch(_) {}
+              console.log('🎯 Persisted grading results to database');
+            } catch(dbError) {
+                console.error('❌ Error persisting to database:', dbError);
+            }
+            
         } catch (err) {
             console.error('❌ completeGrading failed, forcing transition to scoring:', err);
             try {
                 // Best-effort fallback: ensure state progresses
                 game.applyCurrentQuestionPoints();
                 game.gameState = 'scoring';
-                io.to(gameCode).emit('gradingComplete', game.getGameState());
-            } catch (_) {}
+                const fallbackState = game.getGameState();
+                io.to(gameCode).emit('gradingComplete', fallbackState);
+                socket.emit('gradingComplete', fallbackState);
+                console.log('✅ Applied fallback grading completion');
+            } catch (fallbackError) {
+                console.error('❌ Even fallback failed:', fallbackError);
+            }
         }
     });
 
@@ -2905,7 +2928,7 @@ io.on('connection', (socket) => {
         }
         
         socket.emit('activeGamesUpdate', gamesArray);
-        console.log(`📤 Sent ${gamesArray.length} active games to grading interface`);
+        console.log(`�� Sent ${gamesArray.length} active games to grading interface`);
     });
 
     // Get specific game state by game code

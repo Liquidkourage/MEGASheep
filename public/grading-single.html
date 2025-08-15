@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T18-26-21">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T20-20-06">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -981,14 +981,60 @@
             // Real-time answer updates - Enhanced to preserve answers
             socket.on('newAnswerSubmitted', (data) => {
                 console.log('📝 New answer submitted:', data);
+                console.log('📝 Is clarification:', data.isClarification);
                 
                 if (!currentGame || data.gameCode !== currentGame.gameCode) {
                     console.log('📝 Ignoring answer for different game');
                     return;
                 }
                 
-                // SIMPLE APPROACH: Direct DOM manipulation - no interface refresh
-                handleAnswerDirectly(data.playerName, data.answer);
+                // Update the current game state with the new answer
+                if (currentGame.currentAnswerGroups) {
+                    // Find if this player already has an answer in any group
+                    let found = false;
+                    for (const group of currentGame.currentAnswerGroups) {
+                        if (group.players && group.players.includes(data.playerName)) {
+                            // Update existing answer
+                            group.answer = data.answer;
+                            found = true;
+                            console.log(`📝 Updated existing answer for ${data.playerName}: "${data.answer}"`);
+                            break;
+                        }
+                    }
+                    
+                    if (!found) {
+                        // Add new answer group or add to existing group with same answer
+                        const normalizedAnswer = data.answer.toLowerCase().trim();
+                        let existingGroup = currentGame.currentAnswerGroups.find(g => 
+                            g.answer.toLowerCase().trim() === normalizedAnswer
+                        );
+                        
+                        if (existingGroup) {
+                            // Add to existing group
+                            if (!existingGroup.players.includes(data.playerName)) {
+                                existingGroup.players.push(data.playerName);
+                                existingGroup.count = existingGroup.players.length;
+                                console.log(`📝 Added ${data.playerName} to existing answer group: "${data.answer}"`);
+                            }
+                        } else {
+                            // Create new group
+                            currentGame.currentAnswerGroups.push({
+                                answer: data.answer,
+                                players: [data.playerName],
+                                count: 1,
+                                points: 0,
+                                index: currentGame.currentAnswerGroups.length
+                            });
+                            console.log(`📝 Created new answer group for ${data.playerName}: "${data.answer}"`);
+                        }
+                    }
+                    
+                    // Sort by player count (most popular first)
+                    currentGame.currentAnswerGroups.sort((a, b) => b.count - a.count);
+                    
+                    // Update the interface immediately
+                    handleAnswerDirectly(data.playerName, data.answer);
+                }
             });
 
             // Auto-open grading interface when question starts
@@ -2880,9 +2926,13 @@
             // 1. Check if this player already has an answer card (clarification case)
             const existingCard = findPlayerAnswerCard(playerName);
             if (existingCard) {
-                console.log(`🔄 Found existing answer for ${playerName}, removing it (clarification)`);
-                removePlayerAnswerCard(existingCard);
+                console.log(`🔄 Found existing answer for ${playerName}, updating it (clarification)`);
+                console.log(`🔄 Existing card found:`, existingCard);
+                updatePlayerAnswerCard(existingCard, answerText);
+                return; // Don't add a new card
             }
+            
+            console.log(`📝 No existing card found for ${playerName}, adding new card`);
             
             // 2. Add the new answer card to uncategorized
             addAnswerCardToUncategorized(playerName, answerText);
@@ -2893,13 +2943,36 @@
         function findPlayerAnswerCard(playerName) {
             // Search all buckets for a card containing this player name
             const allAnswerItems = document.querySelectorAll('.answer-item');
+            console.log(`🔍 Searching for player "${playerName}" in ${allAnswerItems.length} answer items`);
+            
             for (const item of allAnswerItems) {
                 const playersElement = item.querySelector('.answer-players');
-                if (playersElement && playersElement.textContent.includes(playerName)) {
-                    return item;
+                if (playersElement) {
+                    console.log(`🔍 Checking item with players: "${playersElement.textContent}"`);
+                    if (playersElement.textContent.includes(playerName)) {
+                        console.log(`✅ Found player "${playerName}" in answer item`);
+                        return item;
+                    }
                 }
             }
+            console.log(`❌ Player "${playerName}" not found in any answer items`);
             return null;
+        }
+        
+        function updatePlayerAnswerCard(answerCard, newAnswerText) {
+            // Update the answer text
+            const answerTextElement = answerCard.querySelector('.answer-text');
+            if (answerTextElement) {
+                // Preserve the count badge if it exists
+                const countBadge = answerTextElement.querySelector('.answer-count-badge');
+                const countText = countBadge ? countBadge.textContent : '1';
+                answerTextElement.innerHTML = `"${newAnswerText}" <span class="answer-count-badge">${countText}</span>`;
+            }
+            
+            // Update the data attribute
+            answerCard.dataset.answerText = newAnswerText;
+            
+            console.log(`✅ Updated answer card for player: "${newAnswerText}"`);
         }
         
         function removePlayerAnswerCard(answerCard) {
@@ -2925,15 +2998,19 @@
                 return;
             }
             
-            // Create simple answer card HTML (NO semantic matching data)
-            const answerCardHTML = `
-                <div class="answer-item" data-answer-text="${answerText}">
-                    <div class="answer-text">${answerText}</div>
-                    <div class="answer-players">${playerName}</div>
-                </div>
+            // Create answer card with proper structure
+            const answerCard = document.createElement('div');
+            answerCard.className = 'answer-item';
+            answerCard.draggable = true;
+            answerCard.dataset.answerText = answerText;
+            answerCard.dataset.playerNames = playerName;
+            
+            answerCard.innerHTML = `
+                <div class="answer-text">"${answerText}" <span class="answer-count-badge">1</span></div>
+                <div class="answer-players">${playerName}</div>
             `;
             
-            uncategorizedContainer.insertAdjacentHTML('beforeend', answerCardHTML);
+            uncategorizedContainer.appendChild(answerCard);
             
             // Update count badge
             const countBadge = document.getElementById('uncategorizedAnswersCount');
@@ -2941,6 +3018,9 @@
                 const currentCount = uncategorizedContainer.children.length;
                 countBadge.textContent = currentCount.toString();
             }
+            
+            // Setup drag and drop for the new card
+            setupDragAndDrop();
             
             console.log(`📝 Added answer card: "${answerText}" by ${playerName}`);
         }

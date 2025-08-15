@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Game</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T18-26-21">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T20-20-06">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* Player interface enhancements */
@@ -487,18 +487,36 @@
                     
                     const input = document.getElementById('answerInput');
                     const btn = document.getElementById('submitBtn');
+                    const statusEl = document.getElementById('answerStatus');
+                    
+                    // Re-enable the form for editing
                     input.disabled = false;
                     btn.disabled = false;
+                    
+                    // Clear any existing status
+                    statusEl.innerHTML = '';
+                    statusEl.className = 'answer-status';
+                    
                     // Prefill with original answer if provided
                     if (data && data.originalAnswer && !input.value) {
                         input.value = data.originalAnswer;
                     }
+                    
+                    // Show edit request notice
+                    statusEl.innerHTML = `✏️ Edit requested by host: ${reason}`;
+                    statusEl.className = 'answer-status warning';
+                    
                     // Ensure the question screen is visible (works even during grading)
                     if (!document.getElementById('questionScreen').classList.contains('active')) {
                         console.log('✏️ Switching to questionScreen for clarification');
                         showScreen('questionScreen');
                     }
+                    
+                    // Hide the "My answer" display since we're editing
+                    document.getElementById('myAnswerDisplay').style.display = 'none';
+                    
                     input.focus();
+                    console.log('✏️ Form re-enabled for clarification');
                 } catch (e) {
                     console.warn('Failed to present edit request', e);
                 }
@@ -730,392 +748,272 @@
             
             sortedPlayers.forEach((player, index) => {
                 const playerDiv = document.createElement('div');
-                playerDiv.className = `leaderboard-item ${index === 0 ? 'winner' : ''}`;
+                playerDiv.className = 'leaderboard-item';
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '';
                 playerDiv.innerHTML = `
                     <span class="rank">${index + 1}</span>
-                    <span class="name">${player.name}</span>
+                    <span class="medal">${medal}</span>
+                    <span class="player-name">${player.name}</span>
                     <span class="score">${player.score || 0}</span>
                 `;
                 leaderboardDiv.appendChild(playerDiv);
             });
         }
         
-        function showScreen(screenId) {
+        // Screen management
+        function showScreen(screenName) {
             // Hide all screens
-            document.querySelectorAll('.screen').forEach(screen => {
-                screen.classList.remove('active');
-            });
+            const screens = document.querySelectorAll('.screen');
+            screens.forEach(screen => screen.classList.remove('active'));
             
-            // Show target screen
-            document.getElementById(screenId).classList.add('active');
+            // Show the requested screen
+            const targetScreen = document.getElementById(screenName);
+            if (targetScreen) {
+                targetScreen.classList.add('active');
+            }
         }
         
         function showError(message) {
             document.getElementById('errorMessage').textContent = message;
             showScreen('errorScreen');
         }
-
-        function updateConnectionUI(state) {
-            const dot = document.getElementById('connectionDot');
-            const text = document.getElementById('connectionText');
-            if (!dot || !text) return;
-            if (state === 'connected') { dot.className = 'dot ok'; text.textContent = 'Connected'; }
-            else if (state === 'connecting') { dot.className = 'dot warn'; text.textContent = 'Reconnecting…'; }
-            else { dot.className = 'dot err'; text.textContent = 'Offline'; }
-        }
-
-        function showConnectionToast(message, autoHideMs) {
-            let toast = document.getElementById('connectionToast');
-            if (!toast) {
-                toast = document.createElement('div');
-                toast.id = 'connectionToast';
-                toast.className = 'connection-toast';
-                document.body.appendChild(toast);
-            }
-            toast.textContent = message;
-            toast.style.display = 'block';
-            if (autoHideMs) {
-                setTimeout(() => hideConnectionToast(), autoHideMs);
-            }
-        }
-
-        function hideConnectionToast() {
-            const toast = document.getElementById('connectionToast');
-            if (toast) toast.style.display = 'none';
-        }
         
-        function showCurrentScores() {
-            // This function can be expanded later to show current scores
-            // For now, just show a simple alert
-            if (gameState && gameState.players) {
-                const currentPlayer = gameState.players.find(p => p.name === playerName);
-                if (currentPlayer) {
-                    alert(`Your current score: ${currentPlayer.score || 0}`);
-                }
-            }
-        }
-        
-        // Answer form submission
-        document.getElementById('answerForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const answer = document.getElementById('answerInput').value.trim();
-            if (!answer) {
-                return;
-            }
-            
-            console.log('📤 Submitting answer:', answer);
-            socket.emit('submitAnswer', { gameCode, answer });
-            
-            // Show "My answer" display
-            document.getElementById('myAnswerText').textContent = answer;
-            document.getElementById('myAnswerDisplay').style.display = 'block';
-            
-            // Disable form
-            document.getElementById('answerInput').disabled = true;
-            document.getElementById('submitBtn').disabled = true;
-            document.getElementById('answerStatus').innerHTML = '⏳ Submitting answer...';
-            document.getElementById('answerStatus').className = 'answer-status pending';
-            
-            // Store the answer for later display
-            window.lastSubmittedAnswer = answer;
-            console.log('💾 Stored answer in window.lastSubmittedAnswer:', answer);
-
-            // Persist to session (same-session refresh resilience)
-            try {
-                const qIndex = (gameState && typeof gameState.currentQuestion === 'number') ? gameState.currentQuestion : null;
-                if (qIndex !== null && gameCode) {
-                    sessionStorage.setItem(`lastAnswer-${gameCode}-${qIndex}`, answer);
-                }
-            } catch (_) {}
-
-            // If no ack arrives soon, allow retry
-            awaitingAnswerAck = true;
-            clearTimeout(answerAckTimerId);
-            answerAckTimerId = setTimeout(() => {
-                if (awaitingAnswerAck) {
-                    document.getElementById('answerStatus').innerHTML = '⚠️ Still sending… network is slow. You can retry.';
-                    document.getElementById('answerStatus').className = 'answer-status pending';
-                    document.getElementById('answerRetryContainer').style.display = 'block';
-                }
-            }, 2500);
-        });
-
-        // Send-to-host (inline input)
-        (function(){
-            const btn = document.getElementById('askHostBtn');
-            const input = document.getElementById('askHostInput');
-            const send = function(){
-                const q = (input && typeof input.value === 'string') ? input.value.trim() : '';
-                if (!q) return;
-                console.log('💬 [player] Send-to-host clicked (game.html), text:', q);
-                try { window.lastAskedQuestion = q; sessionStorage.setItem('lastAskedQuestion', q); } catch(_){}
-                try { socket.once('playerQuestionAck', function(ack){ console.log('💬 [player] playerQuestionAck (once, game.html):', ack); }); } catch(_){}
-                try {
-                    const payload = { question: q };
-                    try {
-                        let gc = sessionStorage.getItem('gameCode') || null;
-                        let pn = sessionStorage.getItem('playerName') || null;
-                        if (gc) payload.gameCode = gc; if (pn) payload.playerName = pn;
-                    } catch(_){}
-                    console.log('💬 [player] playerQuestion payload (game.html):', payload);
-                    socket.emit('playerQuestion', payload);
-                } catch(e){ console.warn('💬 [player] Failed to emit playerQuestion', e); }
-                const statusEl = document.getElementById('answerStatus');
-                if (statusEl) {
-                    statusEl.innerHTML = `💬 You: ${q} …`;
-                    statusEl.className = 'answer-status info';
-                }
-                if (input) input.value = '';
-            };
-            if (btn) btn.addEventListener('click', send);
-            if (input) input.addEventListener('keypress', function(e){ if (e.key === 'Enter') send(); });
-        })();
-
-        // Show ack logs in game.html too
-        socket.on('playerQuestionAck', function(ack) {
-            console.log('💬 [player] playerQuestionAck (game.html):', ack);
-        });
-
-        // Retry submission
-        document.getElementById('retrySubmitBtn').addEventListener('click', function() {
-            if (!window.lastSubmittedAnswer) return;
-            console.log('🔁 Retrying answer submission');
-            document.getElementById('answerStatus').innerHTML = '⏳ Resubmitting…';
-            document.getElementById('answerRetryContainer').style.display = 'none';
-            awaitingAnswerAck = true;
-            clearTimeout(answerAckTimerId);
-            socket.emit('submitAnswer', { gameCode, answer: window.lastSubmittedAnswer });
-            answerAckTimerId = setTimeout(() => {
-                if (awaitingAnswerAck) {
-                    document.getElementById('answerStatus').innerHTML = '⚠️ Still sending… will keep trying.';
-                    document.getElementById('answerRetryContainer').style.display = 'block';
-                }
-            }, 2500);
-        });
-
-        // If the socket reconnects and user has typed but not submitted, surface retry option
-        try {
-            if (socket && socket.io) {
-                socket.io.on('reconnect', () => {
-                    try {
-                        const input = document.getElementById('answerInput');
-                        const submitted = input?.disabled;
-                        if (input && !submitted && (input.value || '').trim().length > 0) {
-                            const status = document.getElementById('answerStatus');
-                            if (status) status.innerHTML = '🔌 Reconnected. You can retry sending your answer.';
-                            const retry = document.getElementById('answerRetryContainer');
-                            if (retry) retry.style.display = 'block';
-                        }
-                    } catch (_) {}
-                });
-            }
-        } catch(_) {}
-        
-        // Enter key focuses on answer input
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && document.getElementById('questionScreen').classList.contains('active')) {
-                const answerInput = document.getElementById('answerInput');
-                if (document.activeElement !== answerInput && !answerInput.disabled) {
-                    answerInput.focus();
-                }
-            }
-        });
-
-        // Periodic check to test if we're receiving events
-        setInterval(() => {
-            if (gameState && gameState.players) {
-                console.log('Player: Current player count:', gameState.players.length);
-                console.log('Player: Virtual players:', gameState.players.filter(p => p.isVirtual).length);
-                console.log('Player: Live players:', gameState.players.filter(p => !p.isVirtual).length);
-            }
-        }, 5000); // Check every 5 seconds
-
-        // Dynamic Sheep Carousel System
-        async function initializeSheepCarousel() {
-            try {
-                console.log('🐑 Fetching sheep photos...');
-                const response = await fetch('/api/sheep-urls');
-                console.log('🐑 API Response status:', response.status);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                console.log('🐑 API Response data:', data);
-                
-                if (data.urls && data.urls.length > 0) {
-                    updateSheepCarousel(data.urls);
-                    console.log(`🐑 Loaded ${data.urls.length} sheep photos for background carousel`);
-                    
-                    // Test if first image loads
-                    const img = new Image();
-                    img.onload = () => console.log('✅ First sheep image loaded successfully:', data.urls[0]);
-                    img.onerror = () => console.error('❌ Failed to load first sheep image:', data.urls[0]);
-                    img.src = data.urls[0];
-                } else {
-                    console.log('🐑 No uploaded sheep photos found, using default background');
-                }
-            } catch (error) {
-                console.error('Failed to load sheep photos:', error);
-                // Don't throw the error to prevent it from breaking the game
-                // Just log it and continue with default background
-            }
-        }
-
-        function updateSheepCarousel(sheepUrls) {
-            console.log('🐑 Updating carousel with', sheepUrls.length, 'sheep photos');
-            
-            // Remove existing animation if it exists
-            const existingStyle = document.getElementById('dynamic-sheep-carousel');
-            if (existingStyle) {
-                existingStyle.remove();
-            }
-
-            if (sheepUrls.length === 0) {
-                console.log('🐑 No sheep URLs provided');
-                return;
-            }
-
-            // Calculate timing for smooth transitions
-            const totalDuration = Math.max(60, sheepUrls.length * 5); // At least 60s, 5s per photo
-            const stepPercentage = 100 / sheepUrls.length;
-
-            // Generate CSS keyframes
-            let keyframes = '@keyframes sheepCarousel {\n';
-            sheepUrls.forEach((url, index) => {
-                const percentage = (index * stepPercentage).toFixed(2);
-                keyframes += `    ${percentage}% { background-image: url('${url}'); }\n`;
-            });
-            // Loop back to first image
-            keyframes += `    100% { background-image: url('${sheepUrls[0]}'); }\n`;
-            keyframes += '}\n\n';
-
-            // Set initial background and animation
-            keyframes += `.playing-container::after {\n`;
-            keyframes += `    background-image: url('${sheepUrls[0]}');\n`;
-            keyframes += `    animation: sheepCarousel ${totalDuration}s linear infinite;\n`;
-            keyframes += `}\n`;
-
-            console.log('🐑 Generated CSS for carousel:', keyframes.slice(0, 200) + '...');
-
-            // Inject the CSS
-            const style = document.createElement('style');
-            style.id = 'dynamic-sheep-carousel';
-            style.textContent = keyframes;
-            document.head.appendChild(style);
-            
-            console.log('🐑 Carousel CSS injected, total duration:', totalDuration + 's');
-        }
-
-        // Initialize carousel when page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize carousel with error handling
-            initializeSheepCarousel().catch(error => {
-                console.error('Carousel initialization failed:', error);
-                // Continue with game initialization even if carousel fails
-            });
-            // Guard against losing unsent answer
-            window.addEventListener('beforeunload', (e) => {
-                const onQuestion = document.getElementById('questionScreen').classList.contains('active');
-                const input = document.getElementById('answerInput');
-                const submitted = input.disabled;
-                if (onQuestion && !submitted && input.value.trim().length > 0) {
-                    e.preventDefault();
-                    e.returnValue = '';
-                }
-            });
-        });
-
-        // Refresh carousel every 5 minutes to pick up new uploads
-        setInterval(() => {
-            initializeSheepCarousel().catch(error => {
-                console.error('Carousel refresh failed:', error);
-            });
-        }, 5 * 60 * 1000);
-
-        // Toast notification function
-        function showToast(message, type = 'info') {
-            // Remove existing toasts
-            const existingToasts = document.querySelectorAll('.toast-notification');
-            existingToasts.forEach(toast => toast.remove());
-            
+        function showToast(message, type = 'info', duration = 3000) {
+            // Create toast element
             const toast = document.createElement('div');
-            toast.className = `toast-notification toast-${type}`;
-            toast.innerHTML = `
-                <div class="toast-content">
-                    <span class="toast-message">${message}</span>
-                    <button class="toast-close" onclick="this.parentElement.parentElement.remove()">×</button>
-                </div>
+            toast.className = `toast toast-${type}`;
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#2ecc71' : type === 'warning' ? '#f1c40f' : type === 'error' ? '#e74c3c' : '#3498db'};
+                color: white;
+                padding: 12px 16px;
+                border-radius: 8px;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+                max-width: 300px;
+                word-wrap: break-word;
             `;
+            toast.textContent = message;
             
-            // Add to body for overlay positioning
             document.body.appendChild(toast);
             
-            // Trigger animation
+            // Animate in
             setTimeout(() => {
-                toast.classList.add('show');
-            }, 10);
+                toast.style.transform = 'translateX(0)';
+            }, 100);
             
-            // Auto-remove after 4 seconds
+            // Auto remove
             setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.classList.remove('show');
-                    setTimeout(() => {
-                        if (toast.parentNode) {
-                            toast.remove();
-                        }
-                    }, 300);
-                }
-            }, 4000);
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, duration);
         }
         
-        // Leave Game function for stuck game recovery
         function leaveGame() {
-            console.log('🚪 Player leaving game...');
-            
-            // Confirm with user first
-            if (!confirm('Are you sure you want to leave the game? You can rejoin with the same name if needed.')) {
-                return;
-            }
-            
-            try {
-                // Disconnect from socket
-                if (socket && socket.connected) {
-                    console.log('🔌 Disconnecting socket...');
+            if (confirm('Are you sure you want to leave the game?')) {
+                if (socket) {
                     socket.emit('leaveGame', { gameCode, playerName });
                     socket.disconnect();
                 }
-                
                 // Clear session data
                 sessionStorage.removeItem('gameCode');
                 sessionStorage.removeItem('playerName');
                 localStorage.removeItem('player.gameCode');
-                localStorage.removeItem('player.playerName');
-                
-                console.log('🧹 Cleared session data');
-                
-                // Show leaving message briefly then redirect
-                document.body.innerHTML = `
-                    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: Arial, sans-serif;">
-                        <h2>🚪 Leaving Game...</h2>
-                        <p>Returning to join screen...</p>
-                    </div>
-                `;
-                
-                // Redirect to main page after brief delay
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1500);
-                
-            } catch (error) {
-                console.error('❌ Error leaving game:', error);
-                // Force redirect even if there's an error
-                alert('Error leaving game, but redirecting anyway...');
+                localStorage.removeItem('player.name');
+                // Redirect to join page
                 window.location.href = '/';
             }
         }
+        
+        // Connection UI management
+        function updateConnectionUI(status) {
+            const dot = document.getElementById('connectionDot');
+            const text = document.getElementById('connectionText');
+            
+            if (status === 'connected') {
+                dot.className = 'dot ok';
+                text.textContent = 'Connected';
+            } else if (status === 'connecting') {
+                dot.className = 'dot warn';
+                text.textContent = 'Connecting...';
+            } else {
+                dot.className = 'dot err';
+                text.textContent = 'Disconnected';
+            }
+        }
+        
+        function showConnectionToast(message, duration = 3000) {
+            const toast = document.querySelector('.connection-toast');
+            if (toast) {
+                toast.textContent = message;
+                toast.style.display = 'block';
+                setTimeout(() => {
+                    toast.style.display = 'none';
+                }, duration);
+            }
+        }
+        
+        function hideConnectionToast() {
+            const toast = document.querySelector('.connection-toast');
+            if (toast) {
+                toast.style.display = 'none';
+            }
+        }
+        
+        // Form submission handling
+        document.addEventListener('DOMContentLoaded', function() {
+            const answerForm = document.getElementById('answerForm');
+            const answerInput = document.getElementById('answerInput');
+            const submitBtn = document.getElementById('submitBtn');
+            const askHostBtn = document.getElementById('askHostBtn');
+            const answerStatus = document.getElementById('answerStatus');
+            
+            if (answerForm) {
+                answerForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    submitAnswer();
+                });
+            }
+            
+            if (askHostBtn) {
+                askHostBtn.addEventListener('click', function() {
+                    sendMessageToHost();
+                });
+            }
+            
+            // Handle Enter key in answer status for host messages
+            if (answerStatus) {
+                answerStatus.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessageToHost();
+                    }
+                });
+            }
+        });
+        
+        function submitAnswer() {
+            const answerInput = document.getElementById('answerInput');
+            const submitBtn = document.getElementById('submitBtn');
+            const answer = answerInput.value.trim();
+            
+            if (!answer) {
+                showToast('Please enter an answer', 'warning');
+                return;
+            }
+            
+            if (!socket || !socket.connected) {
+                showToast('Not connected to server', 'error');
+                return;
+            }
+            
+            // Disable form
+            answerInput.disabled = true;
+            submitBtn.disabled = true;
+            awaitingAnswerAck = true;
+            
+            // Show "My Answer" display
+            const myAnswerDisplay = document.getElementById('myAnswerDisplay');
+            const myAnswerText = document.getElementById('myAnswerText');
+            if (myAnswerDisplay && myAnswerText) {
+                myAnswerText.textContent = answer;
+                myAnswerDisplay.style.display = 'block';
+            }
+            
+            // Store for results display
+            window.lastSubmittedAnswer = answer;
+            
+            // Send answer
+            socket.emit('submitAnswer', { answer, gameCode });
+            
+            // Set timeout for acknowledgment
+            answerAckTimerId = setTimeout(() => {
+                if (awaitingAnswerAck) {
+                    showToast('Answer submission timeout. Please try again.', 'warning');
+                    answerInput.disabled = false;
+                    submitBtn.disabled = false;
+                    awaitingAnswerAck = false;
+                    document.getElementById('answerRetryContainer').style.display = 'block';
+                }
+            }, 5000);
+        }
+        
+        function sendMessageToHost() {
+            const answerStatus = document.getElementById('answerStatus');
+            const message = answerStatus.textContent.trim();
+            
+            if (!message) {
+                showToast('Please enter a message', 'warning');
+                return;
+            }
+            
+            if (!socket || !socket.connected) {
+                showToast('Not connected to server', 'error');
+                return;
+            }
+            
+            // Send message to host
+            socket.emit('messageToHost', { message, gameCode, playerName });
+            
+            // Add to DM history
+            const dmHistory = document.getElementById('dmHistory');
+            if (dmHistory) {
+                const messageDiv = document.createElement('div');
+                messageDiv.style.cssText = 'margin-bottom: 4px; padding: 4px 8px; background: rgba(255,255,255,0.05); border-radius: 4px;';
+                messageDiv.innerHTML = `<strong>You:</strong> ${message}`;
+                dmHistory.appendChild(messageDiv);
+            }
+            
+            // Clear input
+            answerStatus.textContent = '';
+        }
+        
+        function retrySubmission() {
+            const answerInput = document.getElementById('answerInput');
+            const submitBtn = document.getElementById('submitBtn');
+            const answer = answerInput.value.trim();
+            
+            if (!answer) {
+                showToast('Please enter an answer', 'warning');
+                return;
+            }
+            
+            // Re-enable form
+            answerInput.disabled = true;
+            submitBtn.disabled = true;
+            awaitingAnswerAck = true;
+            document.getElementById('answerRetryContainer').style.display = 'none';
+            
+            // Send answer again
+            socket.emit('submitAnswer', { answer, gameCode });
+            
+            // Set timeout again
+            answerAckTimerId = setTimeout(() => {
+                if (awaitingAnswerAck) {
+                    showToast('Answer submission timeout. Please try again.', 'warning');
+                    answerInput.disabled = false;
+                    submitBtn.disabled = false;
+                    awaitingAnswerAck = false;
+                    document.getElementById('answerRetryContainer').style.display = 'block';
+                }
+            }, 5000);
+        }
+        
+        // Add retry button event listener
+        document.addEventListener('DOMContentLoaded', function() {
+            const retryBtn = document.getElementById('retrySubmitBtn');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', retrySubmission);
+            }
+        });
     </script>
 </body>
-</html> 
+</html>
