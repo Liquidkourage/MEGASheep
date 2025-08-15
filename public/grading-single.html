@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-14T22-11-07">
+    <link rel="stylesheet" href="styles.css?v=2025-08-14T22-17-03">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -844,17 +844,11 @@
                 // CRITICAL FIX: Update answer groups when they change (like after clarifications)
                 if (data.currentAnswerGroups && Array.isArray(data.currentAnswerGroups)) {
                     console.log('🔄 Updating answer groups from gameStateUpdate:', data.currentAnswerGroups.length, 'groups');
-                    console.log('🔄 Answer groups content:', data.currentAnswerGroups);
                     currentGame.currentAnswerGroups = data.currentAnswerGroups;
                     
-                    // CRITICAL FIX: Clear placed players when server sends new answer groups
-                    // This ensures we trust the server's state rather than local placements
-                    console.log('🔄 Clearing placed players cache - server sent new answer groups');
-                    window.placedPlayersCache = new Set();
-                    
-                    // Trigger a smooth update to reflect the new answers
-                    console.log('🔄 Calling updateAnswerBucketsSmoothly()');
-                    updateAnswerBucketsSmoothly();
+                    // SIMPLE FIX: Just rebuild the entire grading interface
+                    console.log('🔄 Rebuilding grading interface with new answer groups');
+                    updateGradingInterface();
                 } else {
                     console.log('🔄 No answer groups in gameStateUpdate data');
                 }
@@ -1437,27 +1431,15 @@
                 correctAnswers: correctAnswers
             });
             
-            // Group answers by their normalized correct answer (using semantic matching)
+            // Group answers by their normalized correct answer (exact matching only)
             const groupedAnswers = new Map();
             answerGroups.forEach(group => {
                 const normalizedAnswer = group.answer.toLowerCase().trim();
                 
-                // First try exact matching
-                let matchingCorrectAnswer = correctAnswers.find(correct => 
+                // Only do exact matching - no semantic matching complexity
+                const matchingCorrectAnswer = correctAnswers.find(correct => 
                     correct.toLowerCase().trim() === normalizedAnswer
                 );
-                
-                // If no exact match, try semantic matching
-                if (!matchingCorrectAnswer) {
-                    let bestConfidence = 0;
-                    correctAnswers.forEach(correctAnswer => {
-                        const confidence = calculateSemanticConfidence(group.answer, correctAnswer);
-                        if (confidence > bestConfidence && confidence >= 80) { // Only match if 80%+ confidence
-                            bestConfidence = confidence;
-                            matchingCorrectAnswer = correctAnswer;
-                        }
-                    });
-                }
                 
                 console.log(`🔍 Checking answer "${group.answer}":`, {
                     normalizedAnswer: normalizedAnswer,
@@ -1873,81 +1855,22 @@
         }, 100);
         }
 
-        async function populateUncategorizedAnswers(answersToRemove = []) {
+                async function populateUncategorizedAnswers(answersToRemove = []) {
             console.log('🔄 populateUncategorizedAnswers called');
-            console.log('🔄 answersToRemove:', answersToRemove);
-            console.log('🔄 currentGame.currentAnswerGroups:', currentGame?.currentAnswerGroups);
             
-            // Check if we should skip this call due to a recent restore
-            if (window.skipPopulateUncategorized) {
-                console.log('🔄 Skipping populateUncategorizedAnswers due to skipPopulateUncategorized flag');
-                return;
-            }
+            // SIMPLE FIX: Just show all answers that aren't exact matches to correct answers
+            const questionData = currentGame.currentQuestionData;
+            const correctAnswerList = questionData?.correct_answers || [];
             
-            // If no answersToRemove provided, calculate them from current state
-            if (answersToRemove.length === 0) {
-                const questionData = currentGame.currentQuestionData;
-                const correctAnswerList = questionData?.correct_answers || [];
-                
-                // Simple matching for uncategorized answers
-                (currentGame.currentAnswerGroups || []).forEach(answerGroup => {
-                    const matchingBucket = correctAnswerList.find(correctAnswer => {
-                        const normalizedAnswer = normalizeAnswer(answerGroup.answer);
-                        const normalizedCorrect = normalizeAnswer(correctAnswer);
-                        return normalizedAnswer === normalizedCorrect;
-                    });
-                    
-                    if (matchingBucket) {
-                        answersToRemove.push(answerGroup.answer);
-                    }
-                });
-            }
-            
-            // Build a set of players already placed in non-uncategorized buckets to preserve manual placements
-            let placedPlayersLower = window.placedPlayersCache || new Set();
-            
-            // Only scan DOM if we don't have a cached version
-            if (!window.placedPlayersCache) {
-                try {
-                    const nonUncatPlayerEls = Array.from(document.querySelectorAll('.answer-bucket:not(.uncategorized-bucket) .answer-players'));
-                    nonUncatPlayerEls.forEach(el => {
-                        const names = (el.textContent || '').split(',').map(s => s.trim()).filter(Boolean);
-                        names.forEach(n => placedPlayersLower.add(n.toLowerCase()));
-                    });
-                    // Cache the result
-                    window.placedPlayersCache = placedPlayersLower;
-                } catch (_) {}
-            }
-
-            // Populate uncategorized answers (non-matching), excluding players already placed elsewhere
-            console.log('🔄 Processing uncategorized answers:');
-            console.log('🔄 Current answer groups:', currentGame.currentAnswerGroups);
-            console.log('🔄 answersToRemove:', answersToRemove);
-            console.log('🔄 placedPlayersLower:', Array.from(placedPlayersLower));
-            
-            const uncategorizedAnswers = (currentGame.currentAnswerGroups || []).map(group => {
-                console.log(`🔄 Processing group "${group.answer}":`, group);
-                const keepPlayers = (group.players || []).filter(p => !placedPlayersLower.has(String(p).toLowerCase()));
-                console.log(`🔄 Keep players for "${group.answer}":`, keepPlayers);
-                if (keepPlayers.length === 0) {
-                    console.log(`🔄 Skipping "${group.answer}" - no players to keep`);
-                    return null;
-                }
-                const result = { ...group, players: keepPlayers, count: keepPlayers.length };
-                console.log(`🔄 Result for "${group.answer}":`, result);
-                return result;
-            }).filter(group => {
-                if (!group) {
-                    console.log(`🔄 Filtering out null group`);
-                    return false;
-                }
-                if (answersToRemove.includes(group.answer)) {
-                    console.log(`🔄 Filtering out "${group.answer}" - in answersToRemove`);
-                    return false;
-                }
-                console.log(`🔄 Keeping "${group.answer}" in uncategorized`);
-                return true;
+            // Only do exact matching - no semantic matching complexity
+            const uncategorizedAnswers = (currentGame.currentAnswerGroups || []).filter(group => {
+                const isExactMatch = correctAnswerList.some(correctAnswer => 
+                    group.answer.toLowerCase().trim() === correctAnswer.toLowerCase().trim()
+                );
+                return !isExactMatch;
             });
+            
+            console.log('🔄 Uncategorized answers (exact match only):', uncategorizedAnswers);
             
             // Calculate confidence scores for uncategorized answers
             const questionData = currentGame.currentQuestionData;
