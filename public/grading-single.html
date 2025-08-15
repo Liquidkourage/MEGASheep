@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-26-09">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-29-52">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -824,6 +824,8 @@
             
             socket.on('gameStateUpdate', (data) => {
                 console.log('🔄 Game state update received:', data);
+                console.log('🔄 Data contains answer groups:', data.currentAnswerGroups?.length || 0);
+                console.log('🔄 Current local answer groups:', currentGame?.currentAnswerGroups?.length || 0);
                 
                 // Auto-open grading interface when question starts or grading begins
                 if ((data.gameState === 'playing' || data.gameState === 'grading') && data.gameCode) {
@@ -834,15 +836,29 @@
                     return;
                 }
                 
-                // SIMPLE: Just update everything from the server state
+                // Store previous answer groups to compare
+                const previousAnswerGroups = currentGame.currentAnswerGroups || [];
+                
+                // Update game state from server
                 currentGame.pendingEdits = data.pendingEdits || [];
                 currentGame.currentQuestionIndex = data.currentQuestionIndex;
                 currentGame.currentQuestionData = data.currentQuestionData || currentGame.currentQuestionData;
-                currentGame.currentAnswerGroups = data.currentAnswerGroups || [];
                 
-                // ALWAYS rebuild the interface when we get a gameStateUpdate
-                console.log('🔄 Rebuilding grading interface with server state');
-                updateGradingInterface();
+                // Only update answer groups if the server actually sent some, otherwise keep current ones
+                if (data.currentAnswerGroups && data.currentAnswerGroups.length > 0) {
+                    currentGame.currentAnswerGroups = data.currentAnswerGroups;
+                    console.log('🔄 Updated answer groups from server:', data.currentAnswerGroups.length);
+                    updateGradingInterface();
+                } else if (previousAnswerGroups.length === 0) {
+                    // If we had no answers before and still have none, update normally
+                    currentGame.currentAnswerGroups = data.currentAnswerGroups || [];
+                    console.log('🔄 No answers before or after, updating interface');
+                    updateGradingInterface();
+                } else {
+                    // Server sent empty answers but we have local answers - keep local and don't rebuild
+                    console.log('🔄 Server sent empty answers, keeping local answer groups:', previousAnswerGroups.length);
+                    console.log('🔄 Skipping interface rebuild to preserve newly added answers');
+                }
                 
                 // CRITICAL FIX: Show pending edits in grading interface
                 try {
@@ -962,10 +978,50 @@
                 } catch (_) {}
             });
 
-            // Real-time answer updates - SIMPLIFIED
+            // Real-time answer updates - Enhanced to preserve answers
             socket.on('newAnswerSubmitted', (data) => {
                 console.log('📝 New answer submitted:', data);
-                // Do nothing - let gameStateUpdate handle all updates
+                console.log('📝 Answer data:', { playerName: data.playerName, answer: data.answer, gameCode: data.gameCode });
+                
+                if (!currentGame || data.gameCode !== currentGame.gameCode) {
+                    console.log('📝 Ignoring answer for different game');
+                    return;
+                }
+                
+                // Add this answer to local state immediately so it doesn't disappear
+                if (!currentGame.currentAnswerGroups) {
+                    currentGame.currentAnswerGroups = [];
+                }
+                
+                // Check if this answer already exists in a group
+                let existingGroup = currentGame.currentAnswerGroups.find(group => 
+                    group.answer && group.answer.toLowerCase().trim() === data.answer.toLowerCase().trim()
+                );
+                
+                if (existingGroup) {
+                    // Add player to existing group if not already there
+                    if (!existingGroup.players) existingGroup.players = [];
+                    if (!existingGroup.players.includes(data.playerName)) {
+                        existingGroup.players.push(data.playerName);
+                        existingGroup.count = existingGroup.players.length;
+                        console.log('📝 Added player to existing answer group:', existingGroup);
+                    }
+                } else {
+                    // Create new answer group
+                    const newGroup = {
+                        answer: data.answer,
+                        players: [data.playerName],
+                        count: 1,
+                        semanticConfidence: 100,
+                        semanticMatch: null
+                    };
+                    currentGame.currentAnswerGroups.push(newGroup);
+                    console.log('📝 Created new answer group:', newGroup);
+                }
+                
+                // Immediately update the grading interface to show the new answer
+                console.log('📝 Updating grading interface with new answer');
+                updateGradingInterface();
             });
 
             // Auto-open grading interface when question starts
