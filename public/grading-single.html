@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-39-12">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-48-52">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -848,7 +848,7 @@
                 if (data.currentAnswerGroups && data.currentAnswerGroups.length > 0) {
                     currentGame.currentAnswerGroups = data.currentAnswerGroups;
                     console.log('🔄 Updated answer groups from server:', data.currentAnswerGroups.length);
-                    updateGradingInterface();
+                updateGradingInterface();
                 } else if (previousAnswerGroups.length === 0) {
                     // If we had no answers before and still have none, update normally
                     currentGame.currentAnswerGroups = data.currentAnswerGroups || [];
@@ -993,21 +993,49 @@
                     currentGame.currentAnswerGroups = [];
                 }
                 
-                // Check if this answer already exists in a group
-                let existingGroup = currentGame.currentAnswerGroups.find(group => 
+                // CRITICAL FIX: Handle clarifications properly
+                // First, check if this player already has an answer in any group (clarification case)
+                let playerExistingGroup = currentGame.currentAnswerGroups.find(group => 
+                    group.players && group.players.includes(data.playerName)
+                );
+                
+                if (playerExistingGroup) {
+                    console.log('🔄 Player', data.playerName, 'already has answer:', playerExistingGroup.answer);
+                    console.log('🔄 New answer:', data.answer);
+                    
+                    // This is likely a clarification - remove player from old group
+                    const playerIndex = playerExistingGroup.players.indexOf(data.playerName);
+                    if (playerIndex > -1) {
+                        playerExistingGroup.players.splice(playerIndex, 1);
+                        playerExistingGroup.count = playerExistingGroup.players.length;
+                        console.log('🔄 Removed player from old group. Remaining players:', playerExistingGroup.players);
+                        
+                        // If this was the only player in the group, remove the entire group
+                        if (playerExistingGroup.players.length === 0) {
+                            const groupIndex = currentGame.currentAnswerGroups.indexOf(playerExistingGroup);
+                            if (groupIndex > -1) {
+                                currentGame.currentAnswerGroups.splice(groupIndex, 1);
+                                console.log('🗑️ Removed empty answer group for:', playerExistingGroup.answer);
+                            }
+                        }
+                    }
+                }
+                
+                // Now check if the new answer already exists in a different group
+                let newAnswerGroup = currentGame.currentAnswerGroups.find(group => 
                     group.answer && group.answer.toLowerCase().trim() === data.answer.toLowerCase().trim()
                 );
                 
-                if (existingGroup) {
-                    // Add player to existing group if not already there
-                    if (!existingGroup.players) existingGroup.players = [];
-                    if (!existingGroup.players.includes(data.playerName)) {
-                        existingGroup.players.push(data.playerName);
-                        existingGroup.count = existingGroup.players.length;
-                        console.log('📝 Added player to existing answer group:', existingGroup);
+                if (newAnswerGroup) {
+                    // Add player to existing group with this answer text
+                    if (!newAnswerGroup.players) newAnswerGroup.players = [];
+                    if (!newAnswerGroup.players.includes(data.playerName)) {
+                        newAnswerGroup.players.push(data.playerName);
+                        newAnswerGroup.count = newAnswerGroup.players.length;
+                        console.log('📝 Added player to existing answer group:', newAnswerGroup);
                     }
                 } else {
-                    // Create new answer group
+                    // Create new answer group for this answer
                     const newGroup = {
                         answer: data.answer,
                         players: [data.playerName],
@@ -1279,17 +1307,17 @@
             // This prevents the clearing/empty state that causes answers to disappear
             if (currentGame.currentAnswerGroups && currentGame.currentAnswerGroups.length > 0) {
                 console.log('🔄 Clearing and repopulating interface with', currentGame.currentAnswerGroups.length, 'answer groups');
-                
-                // Clear all buckets
-                document.getElementById('correctAnswers').innerHTML = '';
-                document.getElementById('wrongAnswers').innerHTML = '';
-                document.getElementById('uncategorizedAnswers').innerHTML = '';
-                
-                // Reset count badges
-                document.getElementById('wrongAnswersCount').textContent = '0';
-                document.getElementById('uncategorizedAnswersCount').textContent = '0';
-                
-                await populateGradingInterface();
+            
+            // Clear all buckets
+            document.getElementById('correctAnswers').innerHTML = '';
+            document.getElementById('wrongAnswers').innerHTML = '';
+            document.getElementById('uncategorizedAnswers').innerHTML = '';
+            
+            // Reset count badges
+            document.getElementById('wrongAnswersCount').textContent = '0';
+            document.getElementById('uncategorizedAnswersCount').textContent = '0';
+            
+            await populateGradingInterface();
             } else {
                 console.log('🔄 No answer groups available - keeping current interface state');
                 console.log('🔄 This prevents clearing answers that just appeared');
@@ -1829,18 +1857,18 @@
                 console.log('🔄 Populating', uncategorizedAnswers.length, 'uncategorized answers');
                 
                 if (uncategorizedAnswers.length > 0) {
-                    // Clear and repopulate to ensure all current answers are shown
-                    uncategorizedContainer.innerHTML = '';
-                    
-                    uncategorizedAnswers.forEach((group, index) => {
+                // Clear and repopulate to ensure all current answers are shown
+                uncategorizedContainer.innerHTML = '';
+                
+                uncategorizedAnswers.forEach((group, index) => {
                         try {
-                            const answerItem = createAnswerItem(group, index);
-                            uncategorizedContainer.appendChild(answerItem);
+                    const answerItem = createAnswerItem(group, index);
+                    uncategorizedContainer.appendChild(answerItem);
                             console.log('✅ Added uncategorized answer:', group.answer);
                         } catch (error) {
                             console.error('❌ Failed to create answer item:', error, group);
                         }
-                    });
+                });
                 } else {
                     console.log('🔄 No uncategorized answers to display - preserving existing content');
                 }
@@ -2846,7 +2874,7 @@
             console.log(`🔔 Toast (${type}):`, message);
             // For now, just log to console. Could be enhanced with actual UI toast later.
         }
-        
+
         // Re-sync function to refresh game data
         async function resyncGameData() {
             console.log('🔄 Re-syncing game data...');
