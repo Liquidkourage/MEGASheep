@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T06-21-20">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T06-28-55">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -633,6 +633,10 @@
         <div class="connection-status">
             <span class="status-indicator status-disconnected" id="connectionIndicator"></span>
             <span id="connectionStatus">Connecting to server...</span>
+            <div style="float: right; margin-top: 10px;">
+                <input type="text" id="manualGameCode" placeholder="Enter game code" style="margin-right: 10px; padding: 5px; border-radius: 3px; border: 1px solid #007bff; background: #1a1a1a; color: white;">
+                <button onclick="connectToManualGame()" style="background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">Connect</button>
+            </div>
         </div>
 
         <!-- Header -->
@@ -1172,6 +1176,16 @@
                 autoOpenGradingInterface(gameCode);
             } else {
                 alert('No game code found in URL. Please ensure you accessed this page with a game code.');
+            }
+        }
+        
+        function connectToManualGame() {
+            const gameCode = document.getElementById('manualGameCode').value.trim();
+            if (gameCode) {
+                console.log('🔧 Manual game connection requested for:', gameCode);
+                connectToHostGame(gameCode);
+            } else {
+                alert('Please enter a game code');
             }
         }
 
