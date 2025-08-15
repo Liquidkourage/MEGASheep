@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-48-07">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-52-11">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1306,21 +1306,49 @@
                 correctAnswers: correctAnswers
             });
             
-            // DISABLED: Automatic grouping to ensure all answers appear in uncategorized for manual grading
+            // FIXED: Automatic grouping with proper display - answers will auto-match AND be visible
             const groupedAnswers = new Map();
-            console.log('🚫 Automatic exact matching disabled - all answers will appear in uncategorized');
+            console.log('✅ Automatic exact matching enabled - auto-matched answers will be visible in correct buckets');
             
-            // Log confidence for informational purposes only
             answerGroups.forEach(group => {
                 const normalizedAnswer = group.answer.toLowerCase().trim();
                 
+                // Only do exact matching - no semantic matching complexity
                 const matchingCorrectAnswer = correctAnswers.find(correct => 
                     correct.toLowerCase().trim() === normalizedAnswer
                 );
                 
+                console.log(`🔍 Checking answer "${group.answer}":`, {
+                    normalizedAnswer: normalizedAnswer,
+                    matchingCorrectAnswer: matchingCorrectAnswer,
+                    players: group.players,
+                    totalResponses: group.totalResponses
+                });
+                
                 if (matchingCorrectAnswer) {
-                    const confidence = calculateSemanticConfidence(group.answer, matchingCorrectAnswer);
-                    console.log(`🧠 Answer "${group.answer}" matches "${matchingCorrectAnswer}" (${confidence}%) - but auto-categorization disabled`);
+                    if (!groupedAnswers.has(matchingCorrectAnswer)) {
+                        groupedAnswers.set(matchingCorrectAnswer, {
+                            answer: matchingCorrectAnswer,
+                            players: [],
+                            count: 0,
+                            totalResponses: 0
+                        });
+                    }
+                    const combinedGroup = groupedAnswers.get(matchingCorrectAnswer);
+                    combinedGroup.players.push(...(group.players || []));
+                    combinedGroup.count = combinedGroup.players.length;
+                    combinedGroup.totalResponses = (group.totalResponses || 0) + combinedGroup.totalResponses;
+                    
+                    // Add semantic confidence calculation for real-time updates
+                    if (!group.semanticConfidence) {
+                        // Calculate confidence if not already calculated
+                        const confidence = calculateSemanticConfidence(group.answer, matchingCorrectAnswer);
+                        group.semanticConfidence = confidence;
+                        group.semanticMatch = matchingCorrectAnswer;
+                        console.log(`🧠 Calculated confidence for "${group.answer}": ${confidence}%`);
+                    }
+                    
+                    console.log(`✅ Auto-matched "${group.answer}" into "${matchingCorrectAnswer}" - will be visible in correct bucket`);
                 }
             });
             
@@ -1650,13 +1678,18 @@
                         }
                     });
                     
-                    // DISABLED: Auto-categorization to ensure all answers appear in uncategorized for manual sorting
+                    // Auto-categorize high confidence matches (>= 90%)
                     if (bestMatch && bestConfidence >= 90) {
                         answerGroup.semanticConfidence = bestConfidence;
                         answerGroup.semanticMatch = bestMatch.correctAnswer;
-                        console.log(`🧠 Confidence calculated: "${answerGroup.answer}" → "${bestMatch.correctAnswer}" (${bestConfidence}%) - but auto-match disabled`);
-                        // Removed auto-categorization: bestMatch.answers.push(answerGroup);
-                        // Removed auto-removal: answersToRemove.push(answerGroup.answer);
+                        bestMatch.answers.push(answerGroup);
+                        answersToRemove.push(answerGroup.answer);
+                        console.log(`✅ High confidence auto-match: "${answerGroup.answer}" → "${bestMatch.correctAnswer}" (${bestConfidence}%)`);
+                    } else if (bestMatch && bestConfidence >= 70) {
+                        // Medium confidence - just add confidence info but don't auto-categorize
+                        answerGroup.semanticConfidence = bestConfidence;
+                        answerGroup.semanticMatch = bestMatch.correctAnswer;
+                        console.log(`⚠️ Medium confidence: "${answerGroup.answer}" → "${bestMatch.correctAnswer}" (${bestConfidence}%) - manual review needed`);
                     }
                 });
             }
