@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-52-54">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-59-16">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -844,11 +844,24 @@
                 currentGame.currentQuestionIndex = data.currentQuestionIndex !== undefined ? data.currentQuestionIndex : (currentGame.currentQuestionIndex || 0);
                 currentGame.currentQuestionData = data.currentQuestionData || currentGame.currentQuestionData;
                 
-                // Only update answer groups if the server actually sent some, otherwise keep current ones
+                                // Only update answer groups if the server actually sent some, otherwise keep current ones
                 if (data.currentAnswerGroups && data.currentAnswerGroups.length > 0) {
-                    currentGame.currentAnswerGroups = data.currentAnswerGroups;
-                    console.log('🔄 Updated answer groups from server:', data.currentAnswerGroups.length);
-                updateGradingInterface();
+                    // CRITICAL: Check if we recently processed a clarification and should preserve local state
+                    const hasRecentLocalChanges = previousAnswerGroups.length > 0 && 
+                        currentGame.currentAnswerGroups && 
+                        currentGame.currentAnswerGroups.length > 0 &&
+                        JSON.stringify(currentGame.currentAnswerGroups) !== JSON.stringify(previousAnswerGroups);
+                    
+                    if (hasRecentLocalChanges) {
+                        console.log('🔄 Preserving recent local clarification changes instead of server overwrite');
+                        console.log('🔄 Local groups:', currentGame.currentAnswerGroups.length);
+                        console.log('🔄 Server groups:', data.currentAnswerGroups.length);
+                        // Keep local state that includes clarification logic
+                    } else {
+                        currentGame.currentAnswerGroups = data.currentAnswerGroups;
+                        console.log('🔄 Updated answer groups from server:', data.currentAnswerGroups.length);
+                        updateGradingInterface();
+                    }
                 } else if (previousAnswerGroups.length === 0) {
                     // If we had no answers before and still have none, update normally
                     currentGame.currentAnswerGroups = data.currentAnswerGroups || [];
@@ -1648,6 +1661,44 @@
             console.log('📊 Current answer groups from server:', currentGame.currentAnswerGroups);
             console.log('🎯 Current question index:', currentGame.currentQuestionIndex);
             
+            // CRITICAL FIX: Always create correct answer buckets immediately, even if no answers yet
+            // This ensures buckets appear as soon as the grading interface loads
+            if (correctAnswerList.length > 0) {
+                const correctAnswerBuckets = correctAnswerList.map((correctAnswer, index) => ({
+                    id: `correct_${correctAnswer.toLowerCase().replace(/\s+/g, '_')}`,
+                    name: correctAnswer,
+                    correctAnswer: correctAnswer,
+                    answers: [] // Start empty, will be populated if we have answers
+                }));
+                
+                // Immediately render empty buckets so they're visible
+                const correctAnswersRoot = document.getElementById('correctAnswers');
+                if (correctAnswersRoot && correctAnswersRoot.children.length === 0) {
+                    correctAnswerBuckets.sort((a, b) => a.name.localeCompare(b.name));
+                    console.log('🎯 Creating initial empty buckets for:', correctAnswerBuckets.map(b => b.name));
+                    
+                    correctAnswerBuckets.forEach(bucket => {
+                        const bucketDiv = document.createElement('div');
+                        const bucketId = `bucket-${bucket.name.toLowerCase().replace(/\s+/g, '-')}`;
+                        bucketDiv.className = 'answer-bucket correct-bucket';
+                        bucketDiv.innerHTML = `
+                            <h4>✅ ${bucket.name} <span class="answer-count-badge">0</span></h4>
+                            <div id="${bucketId}" class="answer-items" data-bucket="${bucket.id}">
+                                <!-- Answers will appear here when submitted -->
+                            </div>
+                        `;
+                        correctAnswersRoot.appendChild(bucketDiv);
+                    });
+                    
+                    // Setup drag and drop for the empty buckets
+                    try {
+                        setupDragAndDrop();
+                    } catch (error) {
+                        console.log('⚠️ Drag and drop setup delayed until answers arrive');
+                    }
+                }
+            }
+            
             // CRITICAL DEBUG: Check if answer groups contain old data
             if (currentGame.currentAnswerGroups && currentGame.currentAnswerGroups.length > 0) {
                 console.log('⚠️ DEBUGGING ANSWER SOURCE:');
@@ -1742,12 +1793,17 @@
                 });
             }
             
-            // Render ALL correct answer buckets (even empty ones)
-            // Sort buckets alphabetically before rendering
+            // CRITICAL FIX: Render ALL correct answer buckets (even empty ones) - ensures buckets appear immediately
+            // Sort buckets alphabetically before rendering  
             correctAnswerBuckets.sort((a, b) => a.name.localeCompare(b.name));
             // Clear container first to ensure no duplicates remain from previous renders
             const correctAnswersRoot = document.getElementById('correctAnswers');
-            if (correctAnswersRoot) correctAnswersRoot.innerHTML = '';
+            if (correctAnswersRoot) {
+                correctAnswersRoot.innerHTML = '';
+                console.log('🎯 Rendering', correctAnswerBuckets.length, 'correct answer buckets (including empty ones)');
+            } else {
+                console.error('❌ Correct answers container not found');
+            }
             correctAnswerBuckets.forEach(bucket => {
                 const bucketDiv = document.createElement('div');
                 const bucketId = `bucket-${bucket.name.toLowerCase().replace(/\s+/g, '-')}`;
