@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-16-44">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T14-26-09">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -962,78 +962,10 @@
                 } catch (_) {}
             });
 
-                        // Real-time answer updates - SIMPLIFIED
+            // Real-time answer updates - SIMPLIFIED
             socket.on('newAnswerSubmitted', (data) => {
                 console.log('📝 New answer submitted:', data);
                 // Do nothing - let gameStateUpdate handle all updates
-            });
-                            } catch(_) {}
-                            // Remove this player from uncategorized DOM if present
-                            try {
-                                const unc = document.getElementById('uncategorizedAnswers');
-                                if (unc) {
-                                    Array.from(unc.querySelectorAll('.answer-players')).forEach(el => {
-                                        const names = (el.textContent || '').split(',').map(s=>s.trim().toLowerCase());
-                                        if (names.includes(String(affectedName).toLowerCase())) {
-                                            const item = el.closest('.answer-item');
-                                            if (item) item.remove();
-                                        }
-                                    });
-                                }
-                            } catch(_) {}
-                            updateBucketAnswerList(bucket, group);
-                            // If this exact answer text already exists as another item, merge names and remove duplicate item
-                            try {
-                                const items = Array.from(bucket.querySelectorAll('.answer-item'));
-                                const sameText = items.filter(it => (it.dataset.answerText || '').toLowerCase().trim() === (group?.answer || '').toLowerCase().trim());
-                                if (sameText.length > 1) {
-                                    // Merge players into a single DOM item; keep first, merge names, remove duplicates
-                                    const canonical = sameText[0].querySelector('.answer-players');
-                                    const canonicalNames = new Set((canonical?.textContent || '').split(',').map(s=>s.trim()).filter(Boolean));
-                                    sameText.slice(1).forEach(dup => {
-                                        const namesEl = dup.querySelector('.answer-players');
-                                        (namesEl?.textContent || '').split(',').map(s=>s.trim()).filter(Boolean).forEach(n=>canonicalNames.add(n));
-                                        dup.remove();
-                                    });
-                                    if (canonical) canonical.textContent = Array.from(canonicalNames).join(', ');
-                                }
-                            } catch(_) {}
-                            updateCountBadges();
-                        } else {
-                            // Move/update in Uncategorized only if not already categorized manually
-                            // If the player is currently listed in any correct/wrong bucket DOM, skip auto-move
-                            let listedSomewhere = false;
-                            try {
-                                const playerEls = Array.from(document.querySelectorAll('.answer-players'));
-                                for (const el of playerEls) {
-                                    if ((el.textContent || '').split(',').map(s => s.trim().toLowerCase()).includes(String(affectedName).toLowerCase())) {
-                                        // If this element is inside uncategorized, allow update there; otherwise treat as categorized
-                                        const parentBucket = el.closest('.answer-bucket');
-                                        const isUncategorized = parentBucket && parentBucket.classList.contains('uncategorized-bucket');
-                                        if (!isUncategorized) { listedSomewhere = true; }
-                                        break;
-                                    }
-                                }
-                            } catch(_) {}
-                            if (!listedSomewhere) {
-                                const unc = document.getElementById('uncategorizedAnswers');
-                                if (unc) {
-                                    // Remove any previous item for this player's old answer
-                                    Array.from(unc.children).forEach(ch => {
-                                        if ((ch.dataset?.answerText || '') && (group?.answer || '') && ch.dataset.answerText.toLowerCase().trim() === group.answer.toLowerCase().trim()) {
-                                            ch.remove();
-                                        }
-                                    });
-                                    const newItem = createAnswerItem({ answer: group?.answer || data.answer, players:[affectedName], semanticConfidence: group?.semanticConfidence, semanticMatch: group?.semanticMatch }, 0);
-                                    unc.appendChild(newItem);
-                                    updateCountBadges();
-                                }
-                            }
-                        }
-                    } catch (e) { console.warn('Failed partial DOM update for new answer', e); }
-                } else {
-                    console.log('⚠️ Cannot update: no current game or answer groups');
-                }
             });
 
             // Auto-open grading interface when question starts
