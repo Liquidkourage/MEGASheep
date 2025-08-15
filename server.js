@@ -893,15 +893,23 @@ class Game {
             createdAt: this.createdAt,
             playerCount: this.players.size,
             isTestMode: this.isTestMode,
-            pendingEdits: Array.from(this.answersNeedingEdit.entries()).map(([sid, info]) => {
-              const player = this.players.get(sid);
-              return {
-                socketId: sid,
-                playerName: player?.name || 'Unknown',
-                originalAnswer: info.originalAnswer || '',
-                reason: info.reason || 'Please be more specific'
-              };
-            })
+            pendingEdits: (() => {
+              try {
+                if (!this.answersNeedingEdit || this.answersNeedingEdit.size === 0) return [];
+                return Array.from(this.answersNeedingEdit.entries()).map(([sid, info]) => {
+                  const player = this.players.get(sid);
+                  return {
+                    socketId: sid,
+                    playerName: player?.name || 'Unknown',
+                    originalAnswer: info?.originalAnswer || '',
+                    reason: info?.reason || 'Please be more specific'
+                  };
+                });
+              } catch (error) {
+                console.error('❌ Error processing pendingEdits in getGameState:', error);
+                return [];
+              }
+            })()
         };
     }
 
@@ -1006,11 +1014,49 @@ class Game {
             
             logger.info(`🎯 Continuing to next question: currentQuestion=${this.currentQuestion}, gameState=playing`);
             this.gameState = 'playing';
-            this.startTimer();
-            try { persistSnapshot(this, 'question_started'); } catch(_) {}
-            // Log question started
-            sbLogEvent(this.gameCode, 'next_question', { q: this.currentQuestion });
-            io.to(this.gameCode).emit('nextQuestion', this.getGameState());
+            
+            // CRITICAL FIX: Add safety checks and error handling for question progression
+            try {
+                this.startTimer();
+            } catch (error) {
+                console.error(`❌ Error starting timer for question ${this.currentQuestion}:`, error);
+            }
+            
+            try { 
+                persistSnapshot(this, 'question_started'); 
+            } catch (error) {
+                console.error(`❌ Error persisting snapshot:`, error);
+            }
+            
+            try {
+                sbLogEvent(this.gameCode, 'next_question', { q: this.currentQuestion });
+            } catch (error) {
+                console.error(`❌ Error logging next_question event:`, error);
+            }
+            
+            // CRITICAL: Add comprehensive error handling for socket emission
+            try {
+                const gameState = this.getGameState();
+                console.log(`🎯 Emitting nextQuestion for game ${this.gameCode}, question ${this.currentQuestion}`);
+                console.log(`🎯 GameState valid:`, !!gameState);
+                console.log(`🎯 Current question data:`, !!gameState.currentQuestionData);
+                
+                io.to(this.gameCode).emit('nextQuestion', gameState);
+                console.log(`✅ Successfully emitted nextQuestion event`);
+            } catch (error) {
+                console.error(`❌ CRITICAL ERROR emitting nextQuestion:`, error);
+                console.error(`❌ Error stack:`, error.stack);
+                
+                // Try a simpler emission as fallback
+                try {
+                    io.to(this.gameCode).emit('gameError', { 
+                        message: 'Error starting next question', 
+                        error: error.message 
+                    });
+                } catch (fallbackError) {
+                    console.error(`❌ Even fallback emission failed:`, fallbackError);
+                }
+            }
         }
     }
 
