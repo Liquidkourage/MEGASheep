@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T17-50-38">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T18-06-18">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -890,8 +890,20 @@
             });
             
             socket.on('gameStateResponse', (data) => {
+                // ENHANCED DEBUG: Log what the client receives
+                console.log('📨 CLIENT RECEIVED gameStateResponse:', data);
+                console.log('📨   gameCode:', data?.gameCode);
+                console.log('📨   gameState:', data?.gameState);
+                console.log('📨   currentAnswerGroups length:', data?.currentAnswerGroups?.length || 0);
+                console.log('📨   currentAnswerGroups content:', data?.currentAnswerGroups?.map(g => `"${g.answer}" (${g.players?.join(', ')})`));
+                
                 if (data && data.gameCode) {
                     currentGame = data;
+                    
+                    // CRITICAL DEBUG: Verify currentGame has the data after assignment
+                    console.log('📨 AFTER ASSIGNMENT - currentGame.currentAnswerGroups length:', currentGame.currentAnswerGroups?.length || 0);
+                    console.log('📨 AFTER ASSIGNMENT - currentGame data intact:', !!currentGame.currentAnswerGroups);
+                    
                     // Hide the game selection and show the grading interface
                     document.getElementById('gameSelection').style.display = 'none';
                     document.getElementById('noGamesMessage').style.display = 'none';
@@ -913,6 +925,8 @@
                             if (n && n.parentNode) n.parentNode.removeChild(n);
                         }
                     } catch (_) {}
+                    
+                    console.log('📨 About to call updateGradingInterface() with currentGame.currentAnswerGroups:', currentGame.currentAnswerGroups?.length || 0);
                     updateGradingInterface();
                 } else {
                     // If no game found, fall back to showing available games
@@ -1203,7 +1217,22 @@
         let updateGradingInterfaceTimeout = null;
         
         async function updateGradingInterface(forceImmediate = false) {
-            if (!currentGame || !currentGame.currentAnswerGroups) return;
+            // CRITICAL DEBUG: Log why function might exit early
+            console.log('🔄 updateGradingInterface called - currentGame exists:', !!currentGame);
+            console.log('🔄 updateGradingInterface called - currentGame.currentAnswerGroups exists:', !!currentGame?.currentAnswerGroups);
+            console.log('🔄 updateGradingInterface called - currentGame.currentAnswerGroups length:', currentGame?.currentAnswerGroups?.length || 0);
+            console.log('🔄 updateGradingInterface called - currentGame.currentAnswerGroups value:', currentGame?.currentAnswerGroups);
+            
+            if (!currentGame) {
+                console.log('❌ updateGradingInterface EXITING: No currentGame');
+                return;
+            }
+            
+            if (!currentGame.currentAnswerGroups) {
+                console.log('❌ updateGradingInterface EXITING: No currentGame.currentAnswerGroups');
+                console.log('❌ currentGame properties:', Object.keys(currentGame || {}));
+                return;
+            }
             
             // If not forcing immediate update, debounce the call
             if (!forceImmediate) {
@@ -1218,8 +1247,8 @@
                 return;
             }
             
-            console.log('🔄 Updating grading interface for question:', currentGame.currentQuestionIndex);
-            console.log('🔄 Current answer groups available:', currentGame.currentAnswerGroups?.length || 0);
+            console.log('✅ updateGradingInterface PROCEEDING - updating grading interface for question:', currentGame.currentQuestionIndex);
+            console.log('✅ Current answer groups available:', currentGame.currentAnswerGroups?.length || 0);
             
             // CRITICAL: Clear grading states from previous questions to prevent wrong answers from persisting
             clearPreviousGradingStates();
