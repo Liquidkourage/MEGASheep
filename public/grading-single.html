@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T20-32-04">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T20-38-31">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1054,7 +1054,7 @@
                     currentGame.currentAnswerGroups.sort((a, b) => b.count - a.count);
                     
                     // Update the interface immediately (moves card between groups as needed)
-                    handleAnswerDirectly(data.playerName, data.answer);
+                    handleAnswerDirectly(data.playerName, data.answer, data.isClarification === true);
                 }
             });
 
@@ -2941,7 +2941,7 @@
         }
         
         // SIMPLE APPROACH: Direct DOM manipulation for answers
-        function handleAnswerDirectly(playerName, answerText) {
+        function handleAnswerDirectly(playerName, answerText, isClarification = false) {
             console.log(`📝 Direct answer handling: ${playerName} → "${answerText}"`);
             
             // 1. Check if this player already has an answer card (clarification case)
@@ -2950,17 +2950,32 @@
                 console.log(`🔄 Found existing answer for ${playerName}, updating it (clarification)`);
                 console.log(`🔄 Existing card found:`, existingCard);
                 updatePlayerAnswerCard(existingCard, answerText);
-                // Auto-place into correct bucket if it now matches
-                autoPlaceCardIfCorrect(existingCard, answerText);
+                // Clear any stale copy in send-back
+                removeFromSendBack(playerName);
+                // Auto-place into correct bucket if it now matches; otherwise move to uncategorized
+                const placed = autoPlaceCardIfCorrect(existingCard, answerText);
+                if (!placed) {
+                    const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
+                    if (uncategorizedContainer) {
+                        uncategorizedContainer.appendChild(existingCard);
+                    }
+                }
+                updateCountBadges();
                 return; // Don't add a new card
             }
             
             console.log(`📝 No existing card found for ${playerName}, adding new card`);
             
             // 2. Add the new answer card to uncategorized
+            // Clear any stale copy in send-back first
+            removeFromSendBack(playerName);
             const newCard = addAnswerCardToUncategorized(playerName, answerText);
             // Auto-place into correct bucket if it matches a correct answer
-            autoPlaceCardIfCorrect(newCard, answerText);
+            const placedNew = autoPlaceCardIfCorrect(newCard, answerText);
+            if (!placedNew) {
+                // stays in uncategorized
+            }
+            updateCountBadges();
             
             console.log(`✅ Answer added directly: ${playerName} → "${answerText}"`);
         }
@@ -2982,6 +2997,24 @@
             }
             console.log(`❌ Player "${playerName}" not found in any answer items`);
             return null;
+        }
+        
+        // Remove any cards for this player from send-back bucket
+        function removeFromSendBack(playerName) {
+            try {
+                const sendBack = document.getElementById('sendBackAnswers');
+                if (!sendBack) return;
+                const items = Array.from(sendBack.querySelectorAll('.answer-item'));
+                for (const item of items) {
+                    const playersEl = item.querySelector('.answer-players');
+                    if (playersEl && playersEl.textContent.includes(playerName)) {
+                        item.remove();
+                        console.log('🧹 Removed old send-back card for', playerName);
+                    }
+                }
+            } catch (e) {
+                console.warn('removeFromSendBack failed:', e);
+            }
         }
         
         function updatePlayerAnswerCard(answerCard, newAnswerText) {
@@ -3060,22 +3093,48 @@
                 const match = correctAnswers.find(c => String(c || '').toLowerCase().trim() === normalized);
                 if (!match) {
                     console.log('ℹ️ No exact correct-answer match for', answerText);
-                    return;
+                    return false;
                 }
                 const bucketId = `bucket-${match.toLowerCase().replace(/\s+/g, '-')}`;
-                const bucket = document.getElementById(bucketId);
-                const dropZone = bucket ? bucket.querySelector('.answer-items') : null;
+                let bucket = document.getElementById(bucketId);
+                let dropZone = bucket ? bucket.querySelector('.answer-items') : null;
                 if (!dropZone) {
-                    console.log('⚠️ Target bucket drop zone not found for', bucketId);
-                    return;
+                    // Create the bucket on-the-fly if missing
+                    const correctAnswersRoot = document.getElementById('correctAnswers');
+                    if (correctAnswersRoot) {
+                        bucket = document.createElement('div');
+                        bucket.className = 'answer-bucket correct-bucket';
+                        bucket.innerHTML = `
+                            <h4 onclick="toggleBucket(this)">
+                                <span class="bucket-toggle">▼</span>
+                                ✅ ${match} <span class="answer-count-badge">0</span>
+                            </h4>
+                            <div id="${bucketId}" class="answer-items" data-bucket="correct_${match.toLowerCase().replace(/\s+/g, '_')}"></div>
+                        `;
+                        correctAnswersRoot.appendChild(bucket);
+                        dropZone = bucket.querySelector('.answer-items');
+                    }
+                }
+                if (!dropZone) {
+                    console.log('⚠️ Target bucket drop zone still not found for', bucketId);
+                    return false;
                 }
                 if (answerCard.parentElement !== dropZone) {
                     dropZone.appendChild(answerCard);
+                    // Ensure bucket is expanded/visible
+                    const header = bucket.querySelector('h4');
+                    const toggle = header ? header.querySelector('.bucket-toggle') : null;
+                    if (dropZone.classList.contains('collapsed')) {
+                        dropZone.classList.remove('collapsed');
+                        if (toggle) toggle.classList.remove('collapsed');
+                    }
                     updateCountBadges();
                     console.log(`✅ Auto-matched "${answerText}" to correct bucket "${match}"`);
                 }
+                return true;
             } catch (e) {
                 console.error('❌ autoPlaceCardIfCorrect failed:', e);
+                return false;
             }
         }
 
