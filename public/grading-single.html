@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-36-32">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T15-40-54">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1675,13 +1675,13 @@
                         }
                     });
                     
-                    // Auto-categorize if confidence is high enough
+                    // DISABLED: Auto-categorization to ensure all answers appear in uncategorized for manual sorting
                     if (bestMatch && bestConfidence >= 90) {
                         answerGroup.semanticConfidence = bestConfidence;
                         answerGroup.semanticMatch = bestMatch.correctAnswer;
-                        bestMatch.answers.push(answerGroup);
-                        answersToRemove.push(answerGroup.answer);
-                        console.log(`✅ Local match: "${answerGroup.answer}" to "${bestMatch.correctAnswer}" (${bestConfidence}% confidence)`);
+                        console.log(`🧠 Confidence calculated: "${answerGroup.answer}" → "${bestMatch.correctAnswer}" (${bestConfidence}%) - but auto-match disabled`);
+                        // Removed auto-categorization: bestMatch.answers.push(answerGroup);
+                        // Removed auto-removal: answersToRemove.push(answerGroup.answer);
                     }
                 });
             }
