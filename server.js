@@ -2011,26 +2011,20 @@ io.on('connection', (socket) => {
             const hostSocket = Array.from(connectedPlayers.entries())
                 .find(([id, info]) => info.gameCode === gameCode && info.isHost);
             
-            // ONLY send gameStateUpdate for clarifications to avoid wiping uncategorized answers
-            if (wasClarity) {
-                console.log(`🚨 SENDING gameStateUpdate for CLARIFICATION by ${playerName}`);
-                const gameStateToSend = game.getGameState();
-                
-                console.log(`🚨 CLARIFICATION gameState contains ${gameStateToSend.currentAnswerGroups?.length || 0} answer groups`);
-                console.log(`🚨 CLARIFICATION gameState answer groups:`, gameStateToSend.currentAnswerGroups?.map(g => `"${g.answer}" (${g.count})`));
-                
-                // Send to host and grading interface specifically for clarifications
-                if (hostSocket) {
-                    io.to(hostSocket[0]).emit('gameStateUpdate', gameStateToSend);
-                    console.log('📤 Sent gameStateUpdate to host after CLARIFICATION');
-                }
-                
-                // Also broadcast to room for any other connected grading interfaces
-                io.to(gameCode).emit('gameStateUpdate', gameStateToSend);
-                console.log('📤 Sent gameStateUpdate to room after CLARIFICATION');
-            } else {
-                console.log(`ℹ️ NOT sending gameStateUpdate - this was NOT a clarification`);
+            // Send gameStateUpdate for ALL submissions to keep grading interface in sync
+            const gameStateToSend = game.getGameState();
+            console.log(`📤 SENDING gameStateUpdate for ${wasClarity ? 'CLARIFICATION' : 'REGULAR'} submission by ${playerName}`);
+            console.log(`📤 gameState contains ${gameStateToSend.currentAnswerGroups?.length || 0} answer groups`);
+            
+            // Send to host and grading interface
+            if (hostSocket) {
+                io.to(hostSocket[0]).emit('gameStateUpdate', gameStateToSend);
+                console.log('📤 Sent gameStateUpdate to host');
             }
+            
+            // Also broadcast to room for any other connected grading interfaces
+            io.to(gameCode).emit('gameStateUpdate', gameStateToSend);
+            console.log('📤 Sent gameStateUpdate to room');
             
             if (hostSocket) {
                 console.log(`📤 [server] Emitting answerSubmitted to host socket ${hostSocket[0]} for player ${playerName}`);
