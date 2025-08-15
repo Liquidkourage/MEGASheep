@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T20-20-06">
+    <link rel="stylesheet" href="styles.css?v=2025-08-15T20-32-04">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -978,7 +978,7 @@
                 } catch (_) {}
             });
 
-            // Real-time answer updates - Enhanced to preserve answers
+            // Real-time answer updates - Auto-match clarified answers to groups
             socket.on('newAnswerSubmitted', (data) => {
                 console.log('📝 New answer submitted:', data);
                 console.log('📝 Is clarification:', data.isClarification);
@@ -988,36 +988,58 @@
                     return;
                 }
                 
-                // Update the current game state with the new answer
                 if (currentGame.currentAnswerGroups) {
-                    // Find if this player already has an answer in any group
-                    let found = false;
-                    for (const group of currentGame.currentAnswerGroups) {
-                        if (group.players && group.players.includes(data.playerName)) {
-                            // Update existing answer
-                            group.answer = data.answer;
-                            found = true;
-                            console.log(`📝 Updated existing answer for ${data.playerName}: "${data.answer}"`);
+                    const normalizedNew = String(data.answer || '').toLowerCase().trim();
+                    
+                    // Locate the group this player currently belongs to (if any)
+                    let fromGroupIndex = -1;
+                    for (let i = 0; i < currentGame.currentAnswerGroups.length; i++) {
+                        const grp = currentGame.currentAnswerGroups[i];
+                        if (Array.isArray(grp.players) && grp.players.includes(data.playerName)) {
+                            fromGroupIndex = i;
                             break;
                         }
                     }
                     
-                    if (!found) {
-                        // Add new answer group or add to existing group with same answer
-                        const normalizedAnswer = data.answer.toLowerCase().trim();
-                        let existingGroup = currentGame.currentAnswerGroups.find(g => 
-                            g.answer.toLowerCase().trim() === normalizedAnswer
-                        );
+                    if (fromGroupIndex !== -1) {
+                        const fromGroup = currentGame.currentAnswerGroups[fromGroupIndex];
+                        const normalizedOld = String(fromGroup.answer || '').toLowerCase().trim();
                         
-                        if (existingGroup) {
-                            // Add to existing group
-                            if (!existingGroup.players.includes(data.playerName)) {
-                                existingGroup.players.push(data.playerName);
-                                existingGroup.count = existingGroup.players.length;
-                                console.log(`📝 Added ${data.playerName} to existing answer group: "${data.answer}"`);
+                        if (normalizedNew !== normalizedOld) {
+                            // Move player from old group to the appropriate target group
+                            fromGroup.players = fromGroup.players.filter(n => n !== data.playerName);
+                            fromGroup.count = fromGroup.players.length;
+                            if (fromGroup.count === 0) {
+                                currentGame.currentAnswerGroups.splice(fromGroupIndex, 1);
+                            }
+                            
+                            let targetGroup = currentGame.currentAnswerGroups.find(g => String(g.answer || '').toLowerCase().trim() === normalizedNew);
+                            if (targetGroup) {
+                                if (!targetGroup.players.includes(data.playerName)) {
+                                    targetGroup.players.push(data.playerName);
+                                    targetGroup.count = targetGroup.players.length;
+                                }
+                            } else {
+                                currentGame.currentAnswerGroups.push({
+                                    answer: data.answer,
+                                    players: [data.playerName],
+                                    count: 1,
+                                    points: 0,
+                                    index: currentGame.currentAnswerGroups.length
+                                });
                             }
                         } else {
-                            // Create new group
+                            // Same normalized answer; nothing structural to change
+                        }
+                    } else {
+                        // Player not in any group yet; add to existing matching group or create new
+                        let targetGroup = currentGame.currentAnswerGroups.find(g => String(g.answer || '').toLowerCase().trim() === normalizedNew);
+                        if (targetGroup) {
+                            if (!targetGroup.players.includes(data.playerName)) {
+                                targetGroup.players.push(data.playerName);
+                                targetGroup.count = targetGroup.players.length;
+                            }
+                        } else {
                             currentGame.currentAnswerGroups.push({
                                 answer: data.answer,
                                 players: [data.playerName],
@@ -1025,14 +1047,13 @@
                                 points: 0,
                                 index: currentGame.currentAnswerGroups.length
                             });
-                            console.log(`📝 Created new answer group for ${data.playerName}: "${data.answer}"`);
                         }
                     }
                     
                     // Sort by player count (most popular first)
                     currentGame.currentAnswerGroups.sort((a, b) => b.count - a.count);
                     
-                    // Update the interface immediately
+                    // Update the interface immediately (moves card between groups as needed)
                     handleAnswerDirectly(data.playerName, data.answer);
                 }
             });
@@ -2929,13 +2950,17 @@
                 console.log(`🔄 Found existing answer for ${playerName}, updating it (clarification)`);
                 console.log(`🔄 Existing card found:`, existingCard);
                 updatePlayerAnswerCard(existingCard, answerText);
+                // Auto-place into correct bucket if it now matches
+                autoPlaceCardIfCorrect(existingCard, answerText);
                 return; // Don't add a new card
             }
             
             console.log(`📝 No existing card found for ${playerName}, adding new card`);
             
             // 2. Add the new answer card to uncategorized
-            addAnswerCardToUncategorized(playerName, answerText);
+            const newCard = addAnswerCardToUncategorized(playerName, answerText);
+            // Auto-place into correct bucket if it matches a correct answer
+            autoPlaceCardIfCorrect(newCard, answerText);
             
             console.log(`✅ Answer added directly: ${playerName} → "${answerText}"`);
         }
@@ -2995,7 +3020,7 @@
             const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
             if (!uncategorizedContainer) {
                 console.error('❌ Uncategorized container not found');
-                return;
+                return null;
             }
             
             // Create answer card with proper structure
@@ -3023,6 +3048,35 @@
             setupDragAndDrop();
             
             console.log(`📝 Added answer card: "${answerText}" by ${playerName}`);
+            return answerCard;
+        }
+
+        function autoPlaceCardIfCorrect(answerCard, answerText) {
+            try {
+                const correctAnswers = (currentGame && currentGame.currentQuestionData && Array.isArray(currentGame.currentQuestionData.correct_answers))
+                    ? currentGame.currentQuestionData.correct_answers
+                    : [];
+                const normalized = String(answerText || '').toLowerCase().trim();
+                const match = correctAnswers.find(c => String(c || '').toLowerCase().trim() === normalized);
+                if (!match) {
+                    console.log('ℹ️ No exact correct-answer match for', answerText);
+                    return;
+                }
+                const bucketId = `bucket-${match.toLowerCase().replace(/\s+/g, '-')}`;
+                const bucket = document.getElementById(bucketId);
+                const dropZone = bucket ? bucket.querySelector('.answer-items') : null;
+                if (!dropZone) {
+                    console.log('⚠️ Target bucket drop zone not found for', bucketId);
+                    return;
+                }
+                if (answerCard.parentElement !== dropZone) {
+                    dropZone.appendChild(answerCard);
+                    updateCountBadges();
+                    console.log(`✅ Auto-matched "${answerText}" to correct bucket "${match}"`);
+                }
+            } catch (e) {
+                console.error('❌ autoPlaceCardIfCorrect failed:', e);
+            }
         }
 
         // Re-sync function to refresh game data
