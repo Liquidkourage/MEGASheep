@@ -820,10 +820,6 @@
             
             socket.on('gameStateUpdate', (data) => {
                 console.log('🔄 Game state update received:', data);
-                console.log('🔄 Current game code:', currentGame?.gameCode);
-                console.log('🔄 Data game code:', data.gameCode);
-                console.log('🔄 Answer groups in data:', data.currentAnswerGroups?.length || 0);
-                console.log('🔄 Answer groups details:', data.currentAnswerGroups);
                 
                 // Auto-open grading interface when question starts or grading begins
                 if ((data.gameState === 'playing' || data.gameState === 'grading') && data.gameCode) {
@@ -831,27 +827,18 @@
                 }
                 
                 if (!currentGame || data.gameCode !== currentGame.gameCode) {
-                    console.log('🔄 Skipping update - game mismatch or no current game');
                     return;
                 }
                 
-                // Update only lightweight parts to avoid wiping manual categorizations
-                // Preserve local DOM placements; refresh pending edits banner
+                // SIMPLE: Just update everything from the server state
                 currentGame.pendingEdits = data.pendingEdits || [];
                 currentGame.currentQuestionIndex = data.currentQuestionIndex;
                 currentGame.currentQuestionData = data.currentQuestionData || currentGame.currentQuestionData;
+                currentGame.currentAnswerGroups = data.currentAnswerGroups || [];
                 
-                // CRITICAL FIX: Update answer groups when they change (like after clarifications)
-                if (data.currentAnswerGroups && Array.isArray(data.currentAnswerGroups)) {
-                    console.log('🔄 Updating answer groups from gameStateUpdate:', data.currentAnswerGroups.length, 'groups');
-                    currentGame.currentAnswerGroups = data.currentAnswerGroups;
-                    
-                    // SIMPLE FIX: Just rebuild the entire grading interface
-                    console.log('🔄 Rebuilding grading interface with new answer groups');
-                    updateGradingInterface();
-                } else {
-                    console.log('🔄 No answer groups in gameStateUpdate data');
-                }
+                // ALWAYS rebuild the interface when we get a gameStateUpdate
+                console.log('🔄 Rebuilding grading interface with server state');
+                updateGradingInterface();
                 
                 // CRITICAL FIX: Show pending edits in grading interface
                 try {
@@ -971,104 +958,11 @@
                 } catch (_) {}
             });
 
-            // Real-time answer updates
+                        // Real-time answer updates - SIMPLIFIED
             socket.on('newAnswerSubmitted', (data) => {
-                console.log('📝 New answer submitted in real-time:', data);
-                console.log('📝 Socket ID receiving event:', socket.id);
-                console.log('📝 Current game state:', currentGame ? currentGame.gameCode : 'none');
-                console.log('📝 Current answer groups:', currentGame ? currentGame.currentAnswerGroups : 'none');
-                console.log('📝 Event data gameCode:', data.gameCode);
-                console.log('📝 Event data playerName:', data.playerName);
-                console.log('📝 Event data answer:', data.answer);
-                
-                // Treat this submission as clearing any pending clarification for this player
-                try {
-                    if (currentGame && Array.isArray(currentGame.pendingEdits)) {
-                        const before = currentGame.pendingEdits.length;
-                        currentGame.pendingEdits = currentGame.pendingEdits.filter(p => String(p.playerName || '').toLowerCase() !== String(data.playerName || '').toLowerCase());
-                        if (currentGame.pendingEdits.length !== before) {
-                            const n = document.getElementById('pendingEditsNotice');
-                            const listEl = document.getElementById('pendingEditsList');
-                            if (currentGame.pendingEdits.length === 0) {
-                                if (n && n.parentNode) n.parentNode.removeChild(n);
-                            } else if (listEl) {
-                                listEl.textContent = currentGame.pendingEdits.map(p=>`${p.playerName} ("${p.originalAnswer}")`).join(', ');
-                            }
-                        }
-                    }
-                } catch (_) {}
-
-                // Update the current game with the new answer WITHOUT resetting manual categorizations
-                if (currentGame && currentGame.currentAnswerGroups) {
-                    // Find any existing group(s) that already contain this player's name (case-insensitive)
-                    const lowerName = String(data.playerName || '').toLowerCase();
-                    const groupsWithPlayer = (currentGame.currentAnswerGroups || []).filter(g =>
-                        Array.isArray(g.players) && g.players.some(p => String(p).toLowerCase() === lowerName)
-                    );
-
-                    if (groupsWithPlayer.length === 0) {
-                        // Add new group for this player's first submission
-                        console.log('➕ Adding new answer group for player:', data.playerName);
-                        currentGame.currentAnswerGroups.push({
-                            answer: data.answer,
-                            players: [data.playerName],
-                            count: 1,
-                            points: 0,
-                            index: currentGame.currentAnswerGroups.length
-                        });
-                    } else {
-                        // Update the text on the player's existing group, but do not drop other players in that group
-                        // If multiple groups already exist for the same normalized text due to prior consolidation,
-                        // consolidate them first to avoid overwriting counts.
-                        const norm = (txt) => String(txt || '').toLowerCase().trim();
-                        let targetGroup = groupsWithPlayer[0];
-                        try {
-                            const sameTextGroups = (currentGame.currentAnswerGroups || []).filter(g => norm(g.answer) === norm(targetGroup.answer));
-                            if (sameTextGroups.length > 1) {
-                                const mergedPlayers = Array.from(new Set(sameTextGroups.flatMap(g => g.players || [])));
-                                sameTextGroups[0].players = mergedPlayers;
-                                sameTextGroups[0].count = mergedPlayers.length;
-                                // Remove duplicates from data list
-                                currentGame.currentAnswerGroups = currentGame.currentAnswerGroups.filter(g => g === sameTextGroups[0] || norm(g.answer) !== norm(targetGroup.answer));
-                                targetGroup = sameTextGroups[0];
-                            }
-                        } catch (_) {}
-                        console.log('🔄 Updating existing player answer text without altering grouped players:', data.playerName);
-                        targetGroup.answer = data.answer;
-                    }
-                    
-                    // Update only the affected DOM bucket if it exists; otherwise place in Uncategorized
-                    try {
-                        const affectedName = data.playerName;
-                        const group = currentGame.currentAnswerGroups.find(g => g.players && g.players.includes(affectedName));
-                        const correctAnswers = (currentGame.currentQuestionData?.correct_answers || []).slice();
-                        const normalized = (group?.answer || '').toLowerCase().trim();
-                        const matchingCorrect = correctAnswers.find(c => c.toLowerCase().trim() === normalized);
-                        if (matchingCorrect) {
-                            // Ensure correct bucket exists and reflect updated players/answer
-                        const bucketId = `bucket-${matchingCorrect.toLowerCase().replace(/\s+/g, '-')}`;
-                            let bucket = document.getElementById(bucketId);
-                            if (!bucket) {
-                                bucket = createAnswerBucket(matchingCorrect, group || { players:[affectedName], count:1 });
-                                bucket.id = bucketId;
-                                document.getElementById('correctAnswers').appendChild(bucket);
-                            }
-                            // Consolidate groups for the same normalized answer into a single combined players list
-                            try {
-                                const norm = (txt) => String(txt || '').toLowerCase().trim();
-                                const sameGroups = (currentGame.currentAnswerGroups || []).filter(g => norm(g.answer) === norm(group?.answer));
-                            // Merge player lists across groups without dropping anyone
-                            const combinedPlayers = Array.from(new Set(sameGroups.flatMap(g => g.players || []).map(p => String(p))));
-                                // Update one canonical group and remove duplicates from data
-                                if (sameGroups.length > 0) {
-                                    sameGroups[0].players = combinedPlayers;
-                                    sameGroups[0].count = combinedPlayers.length;
-                                    currentGame.currentAnswerGroups = currentGame.currentAnswerGroups.filter(g => g === sameGroups[0] || norm(g.answer) !== norm(group?.answer));
-                                    group = sameGroups[0];
-                                } else {
-                                    group.players = combinedPlayers.length ? combinedPlayers : (group.players || [affectedName]);
-                                    group.count = group.players.length;
-                                }
+                console.log('📝 New answer submitted:', data);
+                // Do nothing - let gameStateUpdate handle all updates
+            });
                             } catch(_) {}
                             // Remove this player from uncategorized DOM if present
                             try {
