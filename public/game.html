@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Game</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-16T14-41-25">
+    <link rel="stylesheet" href="styles.css?v=2025-08-16T15-07-12">
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     <style>
@@ -324,6 +324,21 @@
                 updateGameState(data);
                 showScreen('questionScreen');
                 startQuestion(data);
+                // Reflect prior submission on refresh if present
+                try {
+                    const groups = data?.currentAnswerGroups || data?.gameState?.currentAnswerGroups || [];
+                    const myGroup = Array.isArray(groups) ? groups.find(g => Array.isArray(g.players) && g.players.includes(playerName)) : null;
+                    if (myGroup) {
+                        const input = document.getElementById('answerInput');
+                        if (input) input.value = myGroup.answer || '';
+                        // Lock the form if already submitted
+                        const btn = document.getElementById('submitBtn');
+                        input.disabled = true;
+                        btn.disabled = true;
+                        btn.setAttribute('aria-disabled', 'true');
+                        btn.classList.add('disabled');
+                    }
+                } catch(_) {}
             });
             
             socket.on('nextQuestion', (data) => {
@@ -331,6 +346,8 @@
                 updateGameState(data);
                 startQuestion(data);
                 showScreen('questionScreen');
+                try { localStorage.removeItem(storageKeyForCurrentQuestion(gameCode, data)); } catch(_) {}
+                applySubmittedLock();
                 // Clear any lingering edit prompts for the new question
                 try {
                         const existing = document.getElementById('editRequestNotice');

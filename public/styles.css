@@ -290,6 +290,21 @@ body {
     box-shadow: none !important;
 }
 
+/* Inputs: clearer disabled state */
+#answerInput:disabled,
+input[disabled],
+textarea[disabled] {
+    background: rgba(255,255,255,0.10) !important;
+    border: 1px dashed rgba(255,255,255,0.35) !important;
+    color: #9aa7bd !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+}
+
+#answerInput:disabled::placeholder {
+    color: #9aa7bd !important;
+}
+
 .btn-secondary {
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     color: #000000;
