@@ -220,18 +220,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const keepAwakeFab = document.getElementById('keepAwakeFab');
   if (keepAwakeFab) {
+    // Restore preference and auto-activate on first user gesture
+    try {
+      const pref = localStorage.getItem('player.keepAwake');
+      if (pref === '1') {
+        keepAwakeEnabled = true;
+        keepAwakeFab.textContent = '🛌 Keep Awake: On';
+        const activator = async () => { await attemptEnableKeepAwake(); removeActivators(); };
+        const removeActivators = () => {
+          window.removeEventListener('click', activator, { capture: true });
+          window.removeEventListener('touchstart', activator, { capture: true });
+          window.removeEventListener('keydown', activator, { capture: true });
+        };
+        window.addEventListener('click', activator, { capture: true, once: true });
+        window.addEventListener('touchstart', activator, { capture: true, once: true });
+        window.addEventListener('keydown', activator, { capture: true, once: true });
+      }
+    } catch(_) {}
+
     keepAwakeFab.addEventListener('click', async () => {
       keepAwakeEnabled = !keepAwakeEnabled;
       if (keepAwakeEnabled) {
-        let ok = await requestWakeLock();
-        if (!ok) {
-          try { if (!noSleep && window.NoSleep) noSleep = new NoSleep(); if (noSleep) { noSleep.enable(); ok = true; } } catch(_) {}
-        }
+        const ok = await attemptEnableKeepAwake();
         if (!ok) keepAwakeEnabled = false;
       } else {
         releaseWakeLock();
         try { if (noSleep) noSleep.disable(); } catch(_) {}
       }
+      try { localStorage.setItem('player.keepAwake', keepAwakeEnabled ? '1' : '0'); } catch(_) {}
       keepAwakeFab.textContent = `🛌 Keep Awake: ${keepAwakeEnabled ? 'On' : 'Off'}`;
     });
     keepAwakeFab.textContent = '🛌 Keep Awake: Off';
@@ -242,6 +258,14 @@ document.addEventListener('DOMContentLoaded', () => {
     try { wakeLock = await navigator.wakeLock.request('screen'); return true; } catch(_) { return false; }
   }
   function releaseWakeLock() { try { if (wakeLock) wakeLock.release(); } catch(_) {} wakeLock = null; }
+
+  async function attemptEnableKeepAwake() {
+    let ok = await requestWakeLock();
+    if (!ok) {
+      try { if (!noSleep && window.NoSleep) noSleep = new NoSleep(); if (noSleep) { noSleep.enable(); ok = true; } } catch(_) {}
+    }
+    return ok;
+  }
 
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'visible' && keepAwakeEnabled) {

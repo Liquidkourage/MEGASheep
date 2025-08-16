@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Game</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-16T13-18-03">
+    <link rel="stylesheet" href="styles.css?v=2025-08-16T13-24-31">
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     <style>
@@ -910,6 +910,23 @@
                 keepAwakeBtn.addEventListener('click', toggleKeepAwake);
                 updateKeepAwakeButtonUI();
             }
+            // Persisted preference: if previously enabled, arm auto-activation on first gesture
+            try {
+                const pref = localStorage.getItem('player.keepAwake');
+                if (pref === '1') {
+                    keepAwakeEnabled = true;
+                    updateKeepAwakeButtonUI();
+                    const activate = async () => {
+                        await attemptEnableKeepAwake();
+                        window.removeEventListener('click', activate, { capture: true });
+                        window.removeEventListener('touchstart', activate, { capture: true });
+                        window.removeEventListener('keydown', activate, { capture: true });
+                    };
+                    window.addEventListener('click', activate, { capture: true, once: true });
+                    window.addEventListener('touchstart', activate, { capture: true, once: true });
+                    window.addEventListener('keydown', activate, { capture: true, once: true });
+                }
+            } catch(_) {}
         });
         
         function submitAnswer() {
@@ -1060,30 +1077,35 @@
         async function toggleKeepAwake() {
             keepAwakeEnabled = !keepAwakeEnabled;
             if (keepAwakeEnabled) {
-                let ok = await requestWakeLock();
-                if (!ok) {
-                    // Fallback to NoSleep (works on iOS and others)
-                    try {
-                        if (!noSleep && window.NoSleep) noSleep = new NoSleep();
-                        if (noSleep) {
-                            // Must be triggered by user gesture; we're inside a click handler
-                            noSleep.enable();
-                            ok = true;
-                            console.log('✅ NoSleep enabled as fallback');
-                        }
-                    } catch (e) {
-                        console.warn('⚠️ NoSleep enable failed:', e?.message || e);
-                    }
-                }
-                if (!ok) {
-                    showToast('Keep Awake not supported on this device', 'warning');
-                    keepAwakeEnabled = false;
-                }
+                await attemptEnableKeepAwake();
             } else {
                 releaseWakeLock();
                 try { if (noSleep) noSleep.disable(); } catch(_) {}
             }
+            try { localStorage.setItem('player.keepAwake', keepAwakeEnabled ? '1' : '0'); } catch(_) {}
             updateKeepAwakeButtonUI();
+        }
+
+        async function attemptEnableKeepAwake() {
+            let ok = await requestWakeLock();
+            if (!ok) {
+                // Fallback to NoSleep (works on iOS and others)
+                try {
+                    if (!noSleep && window.NoSleep) noSleep = new NoSleep();
+                    if (noSleep) {
+                        noSleep.enable();
+                        ok = true;
+                        console.log('✅ NoSleep enabled as fallback');
+                    }
+                } catch (e) {
+                    console.warn('⚠️ NoSleep enable failed:', e?.message || e);
+                }
+            }
+            if (!ok) {
+                showToast('Keep Awake not supported on this device', 'warning');
+                keepAwakeEnabled = false;
+            }
+            return ok;
         }
 
         // Re-acquire Wake Lock and re-sync when returning to the app
