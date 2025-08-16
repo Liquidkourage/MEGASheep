@@ -342,10 +342,8 @@ class Game {
             // Capture any carried answer BEFORE removing old mappings
             let carriedAnswer = null;
             try {
-                if (oldSocketId && this.answers.has(oldSocketId)) {
+                if (oldSocketId && this.answers && this.answers.has(oldSocketId)) {
                     carriedAnswer = this.answers.get(oldSocketId);
-                } else if (this.answersByStableId.has(stableId)) {
-                    carriedAnswer = this.answersByStableId.get(stableId);
                 }
             } catch (_) {}
 
@@ -377,12 +375,13 @@ class Game {
                 }
             } catch (_) {}
 
-            // Restore the player's answer for the current question to the new socket, if one existed
+            // Restore/move the player's answer for the current question to the new socket, if one existed
             try {
-                if (carriedAnswer) {
+                if (carriedAnswer !== null && carriedAnswer !== undefined) {
                     this.answers.set(newSocketId, String(carriedAnswer));
-                    // Keep the per-stableId record intact
-                    this.answersByStableId.set(stableId, String(carriedAnswer));
+                    if (oldSocketId && this.answers.has(oldSocketId)) {
+                        this.answers.delete(oldSocketId);
+                    }
                 }
             } catch (_) {}
 
@@ -423,10 +422,16 @@ class Game {
             const stableId = player.stableId || socketId;
             if (!isClarification) {
                 // If any existing answer is from the same stableId, block
-                const priorAnswered = Array.from(this.answers.keys()).some(existingSid => {
-                    const existingPlayer = this.players.get(existingSid);
-                    return existingPlayer && (existingPlayer.stableId || existingSid) === stableId;
-                });
+                let priorAnswered = false;
+                try {
+                    for (const [existingSid] of this.answers.entries()) {
+                        const existingPlayer = this.players.get(existingSid);
+                        if (existingPlayer && (existingPlayer.stableId || existingSid) === stableId) {
+                            priorAnswered = true;
+                            break;
+                        }
+                    }
+                } catch(_) {}
                 if (priorAnswered) {
                     logger.warn(`submitAnswer: Blocked duplicate submission for stableId ${stableId} (${player.name})`);
                     return false;
