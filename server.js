@@ -2933,12 +2933,13 @@ io.on('connection', (socket) => {
 
     // Get specific game state by game code
     socket.on('getGameState', (data) => {
-        if (!data) {
+        if (data === undefined || data === null) {
             console.log('⚠️ getGameState event received with no data');
             return;
         }
         
-        const { gameCode } = data;
+        // Support both legacy string payloads and object payloads
+        const gameCode = (typeof data === 'string') ? data : data.gameCode;
         
         if (!gameCode) {
             console.log('⚠️ getGameState event received with no gameCode');

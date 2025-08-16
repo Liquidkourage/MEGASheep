@@ -275,7 +275,20 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Heartbeat ping every 30s to keep connection warm
-  setInterval(() => { try { if (window.socket && window.socket.connected) window.socket.emit('ping', { t: Date.now() }); } catch(_) {} }, 30000);
+  setInterval(() => {
+    try {
+      if (window.socket && window.socket.connected) {
+        window.socket.emit('ping', { t: Date.now() });
+        if (localStorage.getItem('player.keepAwake') === '1') {
+          // Redundant state refresh keeps client in sync if host restarted
+          const code = sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode');
+          if (code) {
+            window.socket.emit('getGameState', { gameCode: code });
+          }
+        }
+      }
+    } catch(_) {}
+  }, 30000);
     const IS_HOST_ROUTE = window.location.pathname === '/host';
     initializeSocket();
     setupEventListeners();
