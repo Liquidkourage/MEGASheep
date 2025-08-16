@@ -264,6 +264,32 @@ body {
     background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
 }
 
+/* Strong disabled state overrides (prevents hover/active visual changes) */
+.btn:disabled,
+.btn[disabled],
+.btn.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.btn-primary:disabled,
+.btn-primary[disabled],
+.btn-primary.disabled {
+    background: linear-gradient(135deg, #8ba3d0 0%, #8ba3d0 100%) !important;
+    color: #ffffff !important;
+    border-color: #8ba3d0 !important;
+}
+
+.btn:disabled:hover,
+.btn[disabled]:hover,
+.btn.disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
 .btn-secondary {
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     color: #000000;
