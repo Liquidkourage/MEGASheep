@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Game</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-15T21-18-07">
+    <link rel="stylesheet" href="styles.css?v=2025-08-16T12-45-46">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* Player interface enhancements */
@@ -47,6 +47,9 @@
             <div class="status-item">
                 <span class="label">Connection:</span>
                 <span class="connection-pill"><span id="connectionDot" class="dot warn"></span><span id="connectionText">Connecting…</span></span>
+            </div>
+            <div class="status-item">
+                <button id="keepAwakeBtn" class="btn-inline" type="button" title="Prevent screen from sleeping">🛌 Keep Awake: Off</button>
             </div>
             <div class="status-item">
                 <button id="leaveGameBtn" class="btn-inline" onclick="leaveGame()" title="Leave game and return to join screen">
@@ -183,6 +186,8 @@
         let reconnectionTimeoutId = null;
         let awaitingAnswerAck = false;
         let answerAckTimerId = null;
+        let wakeLock = null;
+        let keepAwakeEnabled = false;
         
         // Check session data on load - CRITICAL FIX: Check URL params first for mobile refresh persistence
         window.addEventListener('load', function() {
@@ -875,6 +880,7 @@
             const submitBtn = document.getElementById('submitBtn');
             const askHostBtn = document.getElementById('askHostBtn');
             const answerStatus = document.getElementById('answerStatus');
+            const keepAwakeBtn = document.getElementById('keepAwakeBtn');
             
             if (answerForm) {
                 answerForm.addEventListener('submit', function(e) {
@@ -897,6 +903,10 @@
                         sendMessageToHost();
                     }
                 });
+            }
+            if (keepAwakeBtn) {
+                keepAwakeBtn.addEventListener('click', toggleKeepAwake);
+                updateKeepAwakeButtonUI();
             }
         });
         
@@ -1014,6 +1024,73 @@
                 retryBtn.addEventListener('click', retrySubmission);
             }
         });
+
+        function canUseWakeLock() {
+            return typeof navigator !== 'undefined' && 'wakeLock' in navigator;
+        }
+
+        async function requestWakeLock() {
+            if (!canUseWakeLock()) return false;
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                wakeLock.addEventListener('release', () => {
+                    console.log('🔌 Wake Lock released');
+                });
+                console.log('✅ Wake Lock acquired');
+                return true;
+            } catch (e) {
+                console.warn('⚠️ Wake Lock request failed:', e?.message || e);
+                return false;
+            }
+        }
+
+        function releaseWakeLock() {
+            try { if (wakeLock) { wakeLock.release(); } } catch(_) {}
+            wakeLock = null;
+        }
+
+        function updateKeepAwakeButtonUI() {
+            const btn = document.getElementById('keepAwakeBtn');
+            if (!btn) return;
+            btn.textContent = `🛌 Keep Awake: ${keepAwakeEnabled ? 'On' : 'Off'}`;
+        }
+
+        async function toggleKeepAwake() {
+            keepAwakeEnabled = !keepAwakeEnabled;
+            if (keepAwakeEnabled) {
+                const ok = await requestWakeLock();
+                if (!ok) {
+                    showToast('Keep Awake not supported on this device', 'warning');
+                    keepAwakeEnabled = false;
+                }
+            } else {
+                releaseWakeLock();
+            }
+            updateKeepAwakeButtonUI();
+        }
+
+        // Re-acquire Wake Lock and re-sync when returning to the app
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible') {
+                if (keepAwakeEnabled) {
+                    await requestWakeLock();
+                }
+                try {
+                    if (socket && socket.connected) {
+                        socket.emit('getGameState', gameCode);
+                    }
+                } catch(_) {}
+            }
+        });
+
+        // Lightweight heartbeat to keep connections/NATs warm
+        setInterval(() => {
+            try {
+                if (socket && socket.connected) {
+                    socket.emit('ping', { t: Date.now() });
+                }
+            } catch(_) {}
+        }, 30000);
     </script>
 </body>
 </html>
