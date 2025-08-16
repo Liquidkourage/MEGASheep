@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Game</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-16T15-07-12">
+    <link rel="stylesheet" href="styles.css?v=2025-08-16T15-15-21">
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     <style>
@@ -326,17 +326,19 @@
                 startQuestion(data);
                 // Reflect prior submission on refresh if present
                 try {
-                    const groups = data?.currentAnswerGroups || data?.gameState?.currentAnswerGroups || [];
-                    const myGroup = Array.isArray(groups) ? groups.find(g => Array.isArray(g.players) && g.players.includes(playerName)) : null;
-                    if (myGroup) {
+                    const submitKey = `player.submitted.${gameCode}.q${(data?.currentQuestion ?? 0)}`;
+                    const answerKey = `player.answer.${gameCode}.q${(data?.currentQuestion ?? 0)}`;
+                    if (localStorage.getItem(submitKey) === '1') {
                         const input = document.getElementById('answerInput');
-                        if (input) input.value = myGroup.answer || '';
-                        // Lock the form if already submitted
                         const btn = document.getElementById('submitBtn');
-                        input.disabled = true;
-                        btn.disabled = true;
-                        btn.setAttribute('aria-disabled', 'true');
-                        btn.classList.add('disabled');
+                        const storedAnswer = localStorage.getItem(answerKey);
+                        if (input && storedAnswer) input.value = storedAnswer;
+                        if (input && btn) {
+                            input.disabled = true;
+                            btn.disabled = true;
+                            btn.setAttribute('aria-disabled', 'true');
+                            btn.classList.add('disabled');
+                        }
                     }
                 } catch(_) {}
             });
@@ -984,6 +986,13 @@
             
             // Store for results display
             window.lastSubmittedAnswer = answer;
+            // Persist for refresh prefill
+            try {
+                const submitKey = `player.submitted.${gameCode}.q${(gameState?.currentQuestion ?? 0)}`;
+                const answerKey = `player.answer.${gameCode}.q${(gameState?.currentQuestion ?? 0)}`;
+                localStorage.setItem(submitKey, '1');
+                localStorage.setItem(answerKey, answer);
+            } catch(_) {}
             
             // Send answer
             socket.emit('submitAnswer', { answer, gameCode });
