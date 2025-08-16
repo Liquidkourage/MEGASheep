@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep Trivia</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-16T13-07-09">
+    <link rel="stylesheet" href="styles.css?v=2025-08-16T13-18-03">
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     <script>
       // Unregister any old service worker so '/' never shows stale content
       if ('serviceWorker' in navigator) {
@@ -336,7 +337,13 @@
 
     </div>
 
-    <script src="script.js?v=2025-08-16T13-07-09"></script>
+    <!-- Keep Awake floating toggle (visible on all screens) -->
+    <button id="keepAwakeFab" type="button" title="Prevent screen from sleeping"
+            style="position: fixed; bottom: 16px; right: 16px; z-index: 9999; padding: 8px 10px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.5); color: #fff; cursor: pointer;">
+      🛌 Keep Awake: Off
+    </button>
+
+    <script src="script.js?v=2025-08-16T13-18-03"></script>
   <!-- Removed sticky player footer -->
 </body>
 </html> 

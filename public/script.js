@@ -213,6 +213,45 @@ const screens = {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
+  // Keep Awake (Wake Lock + NoSleep fallback)
+  let keepAwakeEnabled = false;
+  let wakeLock = null;
+  let noSleep = null;
+
+  const keepAwakeFab = document.getElementById('keepAwakeFab');
+  if (keepAwakeFab) {
+    keepAwakeFab.addEventListener('click', async () => {
+      keepAwakeEnabled = !keepAwakeEnabled;
+      if (keepAwakeEnabled) {
+        let ok = await requestWakeLock();
+        if (!ok) {
+          try { if (!noSleep && window.NoSleep) noSleep = new NoSleep(); if (noSleep) { noSleep.enable(); ok = true; } } catch(_) {}
+        }
+        if (!ok) keepAwakeEnabled = false;
+      } else {
+        releaseWakeLock();
+        try { if (noSleep) noSleep.disable(); } catch(_) {}
+      }
+      keepAwakeFab.textContent = `🛌 Keep Awake: ${keepAwakeEnabled ? 'On' : 'Off'}`;
+    });
+    keepAwakeFab.textContent = '🛌 Keep Awake: Off';
+  }
+
+  async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) return false;
+    try { wakeLock = await navigator.wakeLock.request('screen'); return true; } catch(_) { return false; }
+  }
+  function releaseWakeLock() { try { if (wakeLock) wakeLock.release(); } catch(_) {} wakeLock = null; }
+
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && keepAwakeEnabled) {
+      let ok = await requestWakeLock();
+      if (!ok && noSleep) { try { noSleep.enable(); } catch(_) {} }
+    }
+  });
+
+  // Heartbeat ping every 30s to keep connection warm
+  setInterval(() => { try { if (window.socket && window.socket.connected) window.socket.emit('ping', { t: Date.now() }); } catch(_) {} }, 30000);
     const IS_HOST_ROUTE = window.location.pathname === '/host';
     initializeSocket();
     setupEventListeners();
