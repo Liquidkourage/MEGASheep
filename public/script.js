@@ -1155,9 +1155,15 @@ function submitAnswer() {
         return;
     }
     
-    // Store the submitted answer for later display
+    // Store the submitted answer for later display and refresh persistence
     window.lastSubmittedAnswer = answer;
     localStorage.setItem('lastSubmittedAnswer', answer);
+    try {
+      const code = gameState?.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
+      const qIndex = gameState?.currentQuestion ?? 0;
+      localStorage.setItem(`player.submitted.${code}.q${qIndex}`, '1');
+      localStorage.setItem(`player.answer.${code}.q${qIndex}`, answer);
+    } catch(_) {}
     console.log('💾 Stored submitted answer:', answer);
     
     console.log('🚨 Emitting submitAnswer with:', { gameCode: gameCodeToUse, answer });
@@ -1169,6 +1175,8 @@ function submitAnswer() {
     const submitAnswerBtn = document.getElementById('submitAnswerBtn');
     if (submitAnswerBtn) {
         submitAnswerBtn.disabled = true;
+        submitAnswerBtn.setAttribute('aria-disabled', 'true');
+        submitAnswerBtn.classList.add('disabled');
     }
     answerInput.disabled = true;
 }
@@ -2760,6 +2768,23 @@ function displayCurrentQuestion() {
         document.getElementById('answerInput').value = '';
         document.getElementById('answerInput').disabled = false;
         document.getElementById('submitAnswerBtn').disabled = false;
+
+        // Prefill/lock if already submitted for this question (refresh-safe)
+        try {
+            const code = gameState?.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
+            const qIndex = currentQuestionIndex;
+            const submitted = localStorage.getItem(`player.submitted.${code}.q${qIndex}`) === '1';
+            const storedAnswer = localStorage.getItem(`player.answer.${code}.q${qIndex}`);
+            const input = document.getElementById('answerInput');
+            const btn = document.getElementById('submitAnswerBtn');
+            if (submitted && input && btn) {
+                if (storedAnswer && !input.value) input.value = storedAnswer;
+                input.disabled = true;
+                btn.disabled = true;
+                btn.setAttribute('aria-disabled', 'true');
+                btn.classList.add('disabled');
+            }
+        } catch(_) {}
     }
     
     // Update players list
