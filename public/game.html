@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Game</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-16T12-45-46">
+    <link rel="stylesheet" href="styles.css?v=2025-08-16T13-07-09">
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     <style>
         /* Player interface enhancements */
         .connection-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
@@ -188,6 +189,7 @@
         let answerAckTimerId = null;
         let wakeLock = null;
         let keepAwakeEnabled = false;
+        let noSleep = null;
         
         // Check session data on load - CRITICAL FIX: Check URL params first for mobile refresh persistence
         window.addEventListener('load', function() {
@@ -1058,13 +1060,28 @@
         async function toggleKeepAwake() {
             keepAwakeEnabled = !keepAwakeEnabled;
             if (keepAwakeEnabled) {
-                const ok = await requestWakeLock();
+                let ok = await requestWakeLock();
+                if (!ok) {
+                    // Fallback to NoSleep (works on iOS and others)
+                    try {
+                        if (!noSleep && window.NoSleep) noSleep = new NoSleep();
+                        if (noSleep) {
+                            // Must be triggered by user gesture; we're inside a click handler
+                            noSleep.enable();
+                            ok = true;
+                            console.log('✅ NoSleep enabled as fallback');
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ NoSleep enable failed:', e?.message || e);
+                    }
+                }
                 if (!ok) {
                     showToast('Keep Awake not supported on this device', 'warning');
                     keepAwakeEnabled = false;
                 }
             } else {
                 releaseWakeLock();
+                try { if (noSleep) noSleep.disable(); } catch(_) {}
             }
             updateKeepAwakeButtonUI();
         }
@@ -1073,7 +1090,10 @@
         document.addEventListener('visibilitychange', async () => {
             if (document.visibilityState === 'visible') {
                 if (keepAwakeEnabled) {
-                    await requestWakeLock();
+                    let ok = await requestWakeLock();
+                    if (!ok && noSleep) {
+                        try { noSleep.enable(); } catch(_) {}
+                    }
                 }
                 try {
                     if (socket && socket.connected) {
