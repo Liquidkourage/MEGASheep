@@ -320,6 +320,9 @@ class Game {
     });
         this.scores.set(socketId, this.scoresByStableId.get(playerIdentity) || 0);
         this.seenPlayerNames.add(playerName);
+
+        // Track who has answered per question (by stable identity)
+        this.answeredStableIds = this.answeredStableIds || new Set();
         
         console.log(`👤 Player ${playerName} added to game ${this.gameCode}`);
     }
@@ -421,7 +424,12 @@ class Game {
             // HARD SERVER-SIDE LOCK by stable identity
             const stableId = player.stableId || socketId;
             if (!isClarification) {
-                // If any existing answer is from the same stableId, block
+                // First use the per-question set if available
+                if (this.answeredStableIds && this.answeredStableIds.has(stableId)) {
+                    logger.warn(`submitAnswer: Blocked duplicate submission for stableId ${stableId} (${player.name}) via answeredStableIds set`);
+                    return false;
+                }
+                // Fallback scan of current answers map
                 let priorAnswered = false;
                 try {
                     for (const [existingSid] of this.answers.entries()) {
@@ -440,6 +448,8 @@ class Game {
 
             // Set the answer - this replaces any existing answer
             this.answers.set(socketId, trimmed);
+            // Mark this stableId as answered for this question
+            try { this.answeredStableIds = this.answeredStableIds || new Set(); this.answeredStableIds.add(stableId); } catch(_) {}
             logger.info(`📝 ${player.name} submitted: "${trimmed}"${isClarification ? ' (clarification)' : ''}`);
             
             // If this was a clarification, clear the edit flag
@@ -1062,6 +1072,8 @@ class Game {
             // Increment to next question
             this.currentQuestion++;
             this.answers.clear();
+            // Reset per-question answered stableIds set
+            try { this.answeredStableIds = new Set(); } catch(_) {}
             
             // Reset question scoring state for the new question (also mark previous question as not scored)
             this.resetQuestionScoring();
