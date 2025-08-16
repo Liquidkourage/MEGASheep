@@ -418,12 +418,19 @@ class Game {
 
             // Check if this is a clarification submission
             const isClarification = this.answersNeedingEdit.has(socketId);
-            
-            // For clarifications, always allow submission (replaces original)
-            // For regular submissions, only allow if not already submitted
-            if (!isClarification && this.gameState === 'playing' && this.answers.has(socketId)) {
-                logger.warn(`submitAnswer: Player ${player.name} already submitted answer`);
-                return false; // Already submitted, locked
+
+            // HARD SERVER-SIDE LOCK by stable identity
+            const stableId = player.stableId || socketId;
+            if (!isClarification) {
+                // If any existing answer is from the same stableId, block
+                const priorAnswered = Array.from(this.answers.keys()).some(existingSid => {
+                    const existingPlayer = this.players.get(existingSid);
+                    return existingPlayer && (existingPlayer.stableId || existingSid) === stableId;
+                });
+                if (priorAnswered) {
+                    logger.warn(`submitAnswer: Blocked duplicate submission for stableId ${stableId} (${player.name})`);
+                    return false;
+                }
             }
 
             // Set the answer - this replaces any existing answer
