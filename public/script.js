@@ -517,7 +517,24 @@ function initializeSocket() {
             const input = document.getElementById('answerInput');
             const btn = document.getElementById('submitAnswerBtn');
             if (input) input.disabled = false;
-            if (btn) btn.disabled = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.removeAttribute('aria-disabled');
+                btn.classList.remove('disabled');
+            }
+
+            // Clear per-question submission lock so refresh won't re-lock
+            try {
+                const code = (gameState && gameState.gameCode) || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
+                const qIndex = (typeof gameState?.currentQuestion === 'number') ? gameState.currentQuestion : (typeof currentQuestionIndex === 'number' ? currentQuestionIndex : 0);
+                if (code) {
+                    localStorage.removeItem(`player.submitted.${code}.q${qIndex}`);
+                    // Keep or update stored answer to show in the box
+                    if (data && data.originalAnswer) {
+                        localStorage.setItem(`player.answer.${code}.q${qIndex}`, data.originalAnswer);
+                    }
+                }
+            } catch (_) {}
 
             // Prefill with original answer if provided
             if (input && data && data.originalAnswer && !input.value) {
@@ -2531,7 +2548,22 @@ function handleGameStateUpdate(data) {
                     input.value = myPendingEdit.originalAnswer || '';
                     input.focus();
                 }
-                if (btn) btn.disabled = false;
+                if (btn) {
+                    btn.disabled = false;
+                    btn.removeAttribute('aria-disabled');
+                    btn.classList.remove('disabled');
+                }
+                // Clear per-question submission lock to allow resubmission on refresh
+                try {
+                    const code = (gameState && gameState.gameCode) || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
+                    const qIndex = (typeof gameState?.currentQuestion === 'number') ? gameState.currentQuestion : (typeof currentQuestionIndex === 'number' ? currentQuestionIndex : 0);
+                    if (code) {
+                        localStorage.removeItem(`player.submitted.${code}.q${qIndex}`);
+                        if (myPendingEdit.originalAnswer) {
+                            localStorage.setItem(`player.answer.${code}.q${qIndex}`, myPendingEdit.originalAnswer);
+                        }
+                    }
+                } catch (_) {}
                 showToast(`✏️ Edit requested: ${myPendingEdit.reason}`, 'warning');
             }
         }
