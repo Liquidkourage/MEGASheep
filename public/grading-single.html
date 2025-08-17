@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-17T14-35-13">
+    <link rel="stylesheet" href="styles.css?v=2025-08-17T14-48-07">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -1347,10 +1347,14 @@
             if (currentGame.currentAnswerGroups && currentGame.currentAnswerGroups.length > 0) {
                 console.log('🔄 Clearing and repopulating interface with', currentGame.currentAnswerGroups.length, 'answer groups');
             
-            // Clear all buckets
+            // Clear all buckets, but preserve any existing uncategorized/wrong items if server has no groups yet
             document.getElementById('correctAnswers').innerHTML = '';
-            document.getElementById('wrongAnswers').innerHTML = '';
-            document.getElementById('uncategorizedAnswers').innerHTML = '';
+            // Only clear wrong/uncategorized if we have groups to repopulate
+            const hasGroups = currentGame.currentAnswerGroups && currentGame.currentAnswerGroups.length > 0;
+            if (hasGroups) {
+                document.getElementById('wrongAnswers').innerHTML = '';
+                document.getElementById('uncategorizedAnswers').innerHTML = '';
+            }
             
             // Reset count badges
             document.getElementById('wrongAnswersCount').textContent = '0';
@@ -1362,6 +1366,12 @@
                 console.log('🔄 This prevents clearing answers that just appeared');
                 // Still ensure buckets are present for graders
                 try { ensureCorrectBucketsExist(); } catch (_) {}
+                // Also try to re-request server state shortly to recover missing unbucketed answers
+                try {
+                    if (currentGame && currentGame.gameCode) {
+                        setTimeout(() => socket.emit('getGameState', { gameCode: currentGame.gameCode }), 200);
+                    }
+                } catch (_) {}
             }
         }
 

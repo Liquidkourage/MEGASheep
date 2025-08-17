@@ -2282,6 +2282,17 @@ function handleGameStarted(gameStateData) {
     console.log('🚨 EMERGENCY: After showScreen - active screen:', document.querySelector('.screen.active')?.id || 'none');
     console.log('🚨 EMERGENCY: About to display current question');
     displayCurrentQuestion();
+    // Force-enable submit controls at start of first question
+    try {
+        const input = document.getElementById('answerInput');
+        const btn = document.getElementById('submitAnswerBtn');
+        if (input && btn) {
+            input.disabled = false;
+            btn.disabled = false;
+            btn.removeAttribute('aria-disabled');
+            btn.classList.remove('disabled');
+        }
+    } catch(_) {}
     console.log('🚨 EMERGENCY: About to start timer');
     startTimer();
     console.log('🚨 EMERGENCY: handleGameStarted completed');
@@ -2337,6 +2348,22 @@ function handleNextQuestion(gameStateData) {
     
     showScreen('game');
     displayCurrentQuestion();
+    // Force-enable submit controls at the start of each question
+    try {
+        const input = document.getElementById('answerInput');
+        const btn = document.getElementById('submitAnswerBtn');
+        if (input && btn) {
+            input.disabled = false;
+            btn.disabled = false;
+            btn.removeAttribute('aria-disabled');
+            btn.classList.remove('disabled');
+            // Clear any prior input text unless a per-question stored answer exists
+            const code = gameState?.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode');
+            const key = code ? `player.answer.${code}.q${currentQuestionIndex}` : null;
+            const stored = key ? localStorage.getItem(key) : '';
+            input.value = stored || '';
+        }
+    } catch(_) {}
     startTimer();
     // Auto-generate virtual responses for next question if testing
     scheduleVirtualQuestionFlow();
