@@ -2974,6 +2974,8 @@ io.on('connection', (socket) => {
         
         const game = activeGames.get(gameCode);
         if (game) {
+            // Ensure answer groups are fresh on explicit state requests (e.g., grader refresh)
+            try { game.rebuildCurrentAnswerGroups(); } catch (_) {}
             const gameState = game.getGameState();
             
             // ENHANCED DEBUG: Log the actual state being sent to grading interface
