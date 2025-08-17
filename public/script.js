@@ -537,9 +537,21 @@ function initializeSocket() {
             } catch (_) {}
 
             // Prefill with original answer if provided
-            if (input && data && data.originalAnswer && !input.value) {
+            if (input && data && data.originalAnswer) {
                 input.value = data.originalAnswer;
             }
+
+            // Ensure we have a valid gameCode persisted for immediate resubmission
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlCode = urlParams.get('game') || urlParams.get('code') || urlParams.get('gameCode') || urlParams.get('room');
+                const code = gameState?.gameCode || urlCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode');
+                if (code) {
+                    // Normalize primary storage key
+                    sessionStorage.setItem('gameCode', String(code));
+                    localStorage.setItem('player.gameCode', String(code));
+                }
+            } catch(_) {}
 
             // Show a toast notification for edit request
             showToast(`✏️ Edit requested by host: ${reason}`, 'warning');
@@ -1159,10 +1171,12 @@ function submitAnswer() {
     console.log('🚨 sessionStorage gameCode:', sessionStorage.getItem('gameCode'));
     console.log('🚨 localStorage gameCode:', localStorage.getItem('gameCode'));
     
-    // Fallback for missing gameCode
+    // Fallback for missing gameCode (robust)
     let gameCodeToUse = gameState?.gameCode;
     if (!gameCodeToUse) {
-        gameCodeToUse = sessionStorage.getItem('gameCode') || localStorage.getItem('gameCode');
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlCode = urlParams.get('game') || urlParams.get('code') || urlParams.get('gameCode') || urlParams.get('room');
+        gameCodeToUse = urlCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || localStorage.getItem('gameCode');
         console.log('🚨 Using fallback gameCode:', gameCodeToUse);
     }
     
@@ -2760,7 +2774,15 @@ function displayCurrentQuestion() {
     console.log('🔍 Debug: Current question object:', question);
     console.log('🔍 Debug: Question prompt:', question?.prompt);
     
-    document.getElementById('questionText').textContent = question.prompt;
+    const qt = document.getElementById('questionText');
+    if (qt) {
+        qt.textContent = question.prompt;
+        // Remove any inline max-height clamps injected by other flows
+        qt.style.maxHeight = 'none';
+        qt.style.overflow = 'visible';
+        qt.style.webkitLineClamp = 'unset';
+        qt.style.display = 'block';
+    }
     
     // Calculate round and question within round
     const questionNumber = currentQuestionIndex + 1;

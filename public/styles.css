@@ -1284,6 +1284,20 @@ textarea[disabled] {
     line-height: 1.4;
 }
 
+/* Ensure full question text visibility on player UIs (override any generic clamps) */
+#gameScreen .question-text,
+#questionScreen #questionText,
+#gameScreen #questionText {
+    max-height: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    display: block !important;
+    -webkit-line-clamp: unset !important;
+    -webkit-box-orient: initial !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+}
+
 .answer-form {
     display: flex;
     gap: 15px;
