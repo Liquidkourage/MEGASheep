@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-17T14-00-18">
+    <link rel="stylesheet" href="styles.css?v=2025-08-17T14-15-12">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -845,11 +845,6 @@
                 currentGame.currentQuestionData = data.currentQuestionData || currentGame.currentQuestionData;
                 
                 console.log('🔄 Game state updated, but skipping interface rebuild (using direct DOM updates)');
-
-                // If server provided authoritative groups, adopt them to fix stale or missing clarifications
-                if (Array.isArray(data.currentAnswerGroups) && data.currentAnswerGroups.length >= 0) {
-                    currentGame.currentAnswerGroups = data.currentAnswerGroups;
-                }
                 
                 // CRITICAL FIX: Show pending edits in grading interface
                 try {
@@ -932,9 +927,13 @@
                     } catch (_) {}
                     
                     console.log('📨 About to call updateGradingInterface() with currentGame.currentAnswerGroups:', currentGame.currentAnswerGroups?.length || 0);
+                    // Guard against empty groups: if server returned none but raw answers exist, request again shortly
+                    if (!currentGame.currentAnswerGroups || currentGame.currentAnswerGroups.length === 0) {
+                        setTimeout(() => {
+                            try { socket.emit('getGameState', { gameCode: currentGame.gameCode }); } catch(_) {}
+                        }, 200);
+                    }
                     updateGradingInterface();
-                    // Also trigger a fresh state fetch after a short delay to reconcile any missed events
-                    try { setTimeout(() => { if (currentGame?.gameCode) socket.emit('getGameState', { gameCode: currentGame.gameCode }); }, 300); } catch (_) {}
                 } else {
                     // If no game found, fall back to showing available games
                     console.log('No specific game found, showing available games');
@@ -1062,6 +1061,12 @@
                     
                     // Update the interface immediately (moves card between groups as needed)
                     handleAnswerDirectly(data.playerName, data.answer, data.isClarification === true);
+                    // On clarified answers, schedule a lightweight re-sync to avoid drift
+                    if (data.isClarification === true) {
+                        try {
+                            setTimeout(() => socket.emit('getGameState', { gameCode: data.gameCode }), 150);
+                        } catch(_) {}
+                    }
                 }
             });
 
