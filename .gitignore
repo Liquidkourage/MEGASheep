@@ -103,4 +103,7 @@ tmp/
 temp/
 
 # Uploaded files (optional - remove if you want to track uploads)
-uploads/ 
+uploads/
+
+# Live game snapshots (runtime, not source)
+snapshots/ 

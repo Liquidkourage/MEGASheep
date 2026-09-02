@@ -138,6 +138,7 @@ process.on('SIGTERM', () => {
 });
 
 // Middleware
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
 // Note: express.static moved after routes to allow custom routing
@@ -1296,6 +1297,10 @@ function normalizeText(text) {
 
 
 // Routes
+app.get('/health', (req, res) => {
+    res.status(200).json({ ok: true, uptime: process.uptime() });
+});
+
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -1520,6 +1525,8 @@ app.post('/api/create-game', (req, res) => {
     // Create new game
     const game = new Game(finalHostName, gameCode);
     activeGames.set(gameCode, game);
+    try { persistSnapshot(game, 'game_created'); } catch (_) {}
+    try { sbInsert(SB_TABLES.games, { game_code: gameCode, host_name: finalHostName, created_at: sbNow() }); } catch (_) {}
     
     console.log(`🎮 New game created: ${gameCode} by ${finalHostName}`);
     
@@ -3357,9 +3364,10 @@ app.get('/api/load-questions', async (req, res) => {
 
 // Route handlers (duplicate routes removed - they're defined above)
 
-// Start server
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`🚀 MEGASheep server running on port ${PORT}`);
-    console.log(`🌐 Visit http://localhost:${PORT} to play!`);
+// Start server — bind 0.0.0.0 so Railway (and LAN) can reach it
+const PORT = Number(process.env.PORT) || 3001;
+const HOST = process.env.HOST || '0.0.0.0';
+server.listen(PORT, HOST, () => {
+    console.log(`🚀 MEGASheep listening on ${HOST}:${PORT}`);
+    console.log(`🌐 Local: http://localhost:${PORT}`);
 }); 
