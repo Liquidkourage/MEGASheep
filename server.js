@@ -284,6 +284,7 @@ class Game {
         this.seenPlayerNames = new Set(); // Track any name that has ever joined this game
         this.expectedResponders = new Set(); // socketIds expected to answer current question
         this.processedEventIds = new Set(); // de-duplication of critical events
+        this.answeredStableIds = new Set();
     }
 
     addPlayer(socketId, playerName, stablePlayerId = null) {
@@ -925,6 +926,7 @@ class Game {
         players: Array.from(this.players?.values() || []),
         currentRound: this.currentRound || 0,
         currentQuestion: this.currentQuestion || 0,
+        currentQuestionIndex: this.currentQuestion || 0,
         currentQuestionData: (this.questions && this.questions[this.currentQuestion]) ? this.questions[this.currentQuestion] : null,
         gameState: this.gameState || 'waiting',
         scores: this.scores ? Object.fromEntries(this.scores) : {},
@@ -1040,6 +1042,7 @@ class Game {
     }
 
     nextQuestion() {
+        if (!Array.isArray(this.roundAnswerGroups)) this.roundAnswerGroups = [];
         // Before moving to next question, save current answer groups to round history
         if (this.currentAnswerGroups && this.currentAnswerGroups.length > 0) {
             this.roundAnswerGroups.push(...this.currentAnswerGroups);
@@ -1051,18 +1054,16 @@ class Game {
         }
         
         // Check if we're starting a new round
-        const currentRound = Math.ceil((this.currentQuestion + 1) / this.settings.questionsPerRound);
-        const nextQuestionInRound = ((this.currentQuestion) % this.settings.questionsPerRound) + 1;
+        const questionsPerRound = this.settings?.questionsPerRound || 5;
+        const currentRound = Math.ceil((this.currentQuestion + 1) / questionsPerRound);
+        const questionJustFinished = ((this.currentQuestion) % questionsPerRound) + 1;
         
-        // DEVELOPMENT: For testing, trigger round complete after 2 questions instead of 5
-        const questionsForRoundComplete = process.env.NODE_ENV === 'development' ? 2 : this.settings.questionsPerRound;
+        console.log(`🔍 Round logic debug: currentQuestion=${this.currentQuestion}, currentRound=${currentRound}, questionJustFinished=${questionJustFinished}, questionsPerRound=${questionsPerRound}`);
         
-        console.log(`🔍 Round logic debug: currentQuestion=${this.currentQuestion}, currentRound=${currentRound}, nextQuestionInRound=${nextQuestionInRound}, questionsForRoundComplete=${questionsForRoundComplete}, NODE_ENV=${process.env.NODE_ENV}`);
-        console.log(`🔍 Round complete condition check: nextQuestionInRound (${nextQuestionInRound}) === questionsForRoundComplete (${questionsForRoundComplete}) = ${nextQuestionInRound === questionsForRoundComplete}`);
-        
-        // If the next question would be the last question of the current round, complete the round instead
-        if (nextQuestionInRound === questionsForRoundComplete) {
-        logger.debug(`🎯 Triggering round complete: nextQuestionInRound (${nextQuestionInRound}) === questionsForRoundComplete (${questionsForRoundComplete})`);
+        // After the last question of the round (or the last question in the set), complete the round
+        const noMoreQuestions = this.currentQuestion + 1 >= (this.questions?.length || 0);
+        if (questionJustFinished === questionsPerRound || noMoreQuestions) {
+            logger.debug(`🎯 Triggering round complete after question ${questionJustFinished} of ${questionsPerRound}`);
             this.completeRound();
         } else if (this.currentQuestion >= this.questions.length) {
             logger.info(`🎯 Game finished: currentQuestion (${this.currentQuestion}) >= questions.length (${this.questions.length})`);
@@ -1597,6 +1598,12 @@ io.on('connection', (socket) => {
         isHost: false
     });
 
+    function canControlGame(gameCode) {
+        const info = connectedPlayers.get(socket.id);
+        if (!info || info.gameCode !== gameCode) return false;
+        return !!(info.isHost || info.isGradingInterface);
+    }
+
     // Host reconnection
     socket.on('reconnectHost', (data) => {
         const { gameCode, hostName } = data;
@@ -1805,17 +1812,6 @@ io.on('connection', (socket) => {
             console.log(`🔍 joinGame: Final response data:`, JSON.stringify(responseData, null, 2));
             
             socket.emit('gameJoined', responseData);
-            
-            // Send a test event to the room to verify event delivery
-            setTimeout(() => {
-                console.log(`🧪 Sending test event to room ${gameCode} to verify event delivery`);
-                io.to(gameCode).emit('testEvent', { 
-                    message: 'Test event from server',
-                    timestamp: Date.now(),
-                    gameCode: gameCode
-                });
-            }, 2000); // Send test event 2 seconds after player joins
-    
         } catch (error) {
             console.error('❌ joinGame error:', error);
             socket.emit('gameError', { message: error.message });
@@ -1825,8 +1821,7 @@ io.on('connection', (socket) => {
   // SIMPLIFIED: Host requests a player's answer edit ("Send Back")
     socket.on('hostRequestEdit', (data) => {
         const { gameCode, playerSocketId, playerName, reason } = data || {};
-        const hostInfo = connectedPlayers.get(socket.id);
-        if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) {
+        if (!canControlGame(gameCode)) {
             return;
         }
         
@@ -2045,17 +2040,6 @@ io.on('connection', (socket) => {
             console.log(`🚨 Emitting gameStarted to room ${gameCode}`);
             
             io.to(gameCode).emit('gameStarted', gameStateToSend);
-            
-            // Also emit directly to each player socket as backup
-            for (const [socketId, player] of game.players.entries()) {
-                try {
-                    console.log(`🚨 BACKUP: Sending gameStarted directly to ${player.name} (${socketId})`);
-                    io.to(socketId).emit('gameStarted', gameStateToSend);
-                } catch (e) {
-                    console.log(`🚨 BACKUP FAILED for ${player.name}: ${e.message}`);
-                }
-            }
-            
         } catch (error) {
             console.error('Error starting game:', {
                 message: error.message,
@@ -2086,14 +2070,21 @@ io.on('connection', (socket) => {
             
             if (!gameCode || answer === undefined || answer === null) {
                 logger.warn('submitAnswer event received with missing gameCode or answer');
+                socket.emit('answerError', { message: 'Missing game code or answer' });
                 return;
             }
             
             const playerInfo = connectedPlayers.get(socket.id);
-            if (!playerInfo || playerInfo.gameCode !== gameCode) return;
+            if (!playerInfo || playerInfo.gameCode !== gameCode) {
+                socket.emit('answerError', { message: 'Not connected to this game. Refresh and rejoin.' });
+                return;
+            }
             
             const game = activeGames.get(gameCode);
-            if (!game) return;
+            if (!game) {
+                socket.emit('answerError', { message: 'Game not found.' });
+                return;
+            }
             
             // Check if this is a clarification submission BEFORE calling submitAnswer
             const wasClarity = game.answersNeedingEdit.has(socket.id);
@@ -2219,9 +2210,8 @@ io.on('connection', (socket) => {
         
         const { gameCode, categorizedAnswers } = data;
         
-        const playerInfo = connectedPlayers.get(socket.id);
-        if (!playerInfo || !playerInfo.isHost) {
-            console.log('⚠️ completeGrading rejected - not host');
+        if (!canControlGame(gameCode)) {
+            console.log('⚠️ completeGrading rejected - not host or grader');
             return;
         }
         
@@ -2321,11 +2311,6 @@ io.on('connection', (socket) => {
                 io.to(gameCode).emit('gradingComplete', gameStateToSend);
                 console.log(`✅ Successfully emitted gradingComplete event`);
                 console.log(`📝 Host completed grading for game ${gameCode}`);
-                
-                // Also send to host specifically as backup
-                socket.emit('gradingComplete', gameStateToSend);
-                console.log(`✅ Sent gradingComplete to host as backup`);
-                
             } catch (emitError) {
                 console.error(`❌ CRITICAL ERROR emitting gradingComplete:`, emitError);
                 console.error(`❌ Error stack:`, emitError.stack);
@@ -2392,9 +2377,8 @@ io.on('connection', (socket) => {
             
             console.log(`🎯 Processing nextQuestion for game: ${gameCode}`);
             
-            const playerInfo = connectedPlayers.get(socket.id);
-            if (!playerInfo || !playerInfo.isHost) {
-                console.log(`⚠️ nextQuestion rejected - not host. PlayerInfo:`, playerInfo);
+            if (!canControlGame(gameCode)) {
+                console.log(`⚠️ nextQuestion rejected - not host or grader`);
                 return;
             }
             
@@ -3127,7 +3111,9 @@ io.on('connection', (socket) => {
         if (playerInfo && playerInfo.gameCode) {
             const game = activeGames.get(playerInfo.gameCode);
             if (game) {
-                if (!playerInfo.isDisplay) {
+                if (playerInfo.isDisplay || playerInfo.isGradingInterface) {
+                    console.log(`${playerInfo.isDisplay ? '📺 Display' : '📝 Grading'} disconnected from game ${playerInfo.gameCode}`);
+                } else {
                     // Delay removal to tolerate brief reconnects; defer deletion check until after grace
                     setTimeout(() => {
                         // If the same socket id has re-appeared, skip removal
@@ -3149,8 +3135,6 @@ io.on('connection', (socket) => {
                             }, 5000);
                         }
                     }, 3000);
-                } else {
-                    console.log(`📺 Display disconnected from game ${playerInfo.gameCode}`);
                 }
             }
         }

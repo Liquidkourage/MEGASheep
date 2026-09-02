@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-17T14-48-07">
+    <link rel="stylesheet" href="styles.css?v=2026-09-02T15-40-00">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -743,6 +743,7 @@
         let currentGame = null;
         let activeGames = [];
         let draggedElement = null;
+        let lastRenderedQuestionIndex = null;
 
         function initializeConnection() {
             socket = io({
@@ -798,19 +799,6 @@
                         loadActiveGames();
                     }
                 }
-                
-                // Set up periodic check to ensure grading interface opens
-                setTimeout(() => {
-                    const gradingInterface = document.getElementById('gradingInterface');
-                    if (gradingInterface && gradingInterface.style.display === 'none') {
-                        console.log('🔄 Periodic check: Grading interface not visible, attempting to open');
-                        const urlParams = new URLSearchParams(window.location.search);
-                        const gameCode = urlParams.get('gameCode');
-                        if (gameCode) {
-                            autoOpenGradingInterface(gameCode);
-                        }
-                    }
-                }, 3000);
             });
             
             socket.on('disconnect', () => {
@@ -826,25 +814,28 @@
                 console.log('🔄 Game state update received:', data);
                 console.log('🔄 Data contains answer groups:', data.currentAnswerGroups?.length || 0);
                 console.log('🔄 Current local answer groups:', currentGame?.currentAnswerGroups?.length || 0);
-                
-                // Auto-open grading interface when question starts or grading begins
-                if ((data.gameState === 'playing' || data.gameState === 'grading') && data.gameCode) {
-                    autoOpenGradingInterface(data.gameCode);
-                }
-                
-                if (!currentGame || data.gameCode !== currentGame.gameCode) {
+
+                // Do not request getGameState here — that rebuild race wipes live cards.
+                if (!data || !data.gameCode) return;
+                if (!currentGame) {
+                    currentGame = data;
+                    document.getElementById('gameSelection').style.display = 'none';
+                    document.getElementById('noGamesMessage').style.display = 'none';
+                    document.getElementById('gradingInterface').style.display = 'block';
+                } else if (data.gameCode !== currentGame.gameCode) {
                     return;
                 }
                 
-                // SIMPLIFIED: Update game state but NO interface rebuilds
-                // We handle answer display via direct DOM updates now
-                
-                // Update game state from server
+                if (Array.isArray(data.currentAnswerGroups)) {
+                    currentGame.currentAnswerGroups = data.currentAnswerGroups;
+                }
                 currentGame.pendingEdits = data.pendingEdits || [];
-                currentGame.currentQuestionIndex = data.currentQuestionIndex !== undefined ? data.currentQuestionIndex : (currentGame.currentQuestionIndex || 0);
+                currentGame.currentQuestion = data.currentQuestion !== undefined ? data.currentQuestion : currentGame.currentQuestion;
+                currentGame.currentQuestionIndex = data.currentQuestionIndex !== undefined ? data.currentQuestionIndex : (data.currentQuestion !== undefined ? data.currentQuestion : (currentGame.currentQuestionIndex || 0));
                 currentGame.currentQuestionData = data.currentQuestionData || currentGame.currentQuestionData;
-                
-                console.log('🔄 Game state updated, but skipping interface rebuild (using direct DOM updates)');
+                if (typeof data.gameState === 'string') currentGame.gameState = data.gameState;
+
+                try { syncMissingAnswerCards(); } catch (_) {}
                 
                 // CRITICAL FIX: Show pending edits in grading interface
                 try {
@@ -927,12 +918,6 @@
                     } catch (_) {}
                     
                     console.log('📨 About to call updateGradingInterface() with currentGame.currentAnswerGroups:', currentGame.currentAnswerGroups?.length || 0);
-                    // Guard against empty groups: if server returned none but raw answers exist, request again shortly
-                    if (!currentGame.currentAnswerGroups || currentGame.currentAnswerGroups.length === 0) {
-                        setTimeout(() => {
-                            try { socket.emit('getGameState', { gameCode: currentGame.gameCode }); } catch(_) {}
-                        }, 200);
-                    }
                     updateGradingInterface();
                 } else {
                     // If no game found, fall back to showing available games
@@ -1061,12 +1046,6 @@
                     
                     // Update the interface immediately (moves card between groups as needed)
                     handleAnswerDirectly(data.playerName, data.answer, data.isClarification === true);
-                    // On clarified answers, schedule a lightweight re-sync to avoid drift
-                    if (data.isClarification === true) {
-                        try {
-                            setTimeout(() => socket.emit('getGameState', { gameCode: data.gameCode }), 150);
-                        } catch(_) {}
-                    }
                 }
             });
 
@@ -1101,23 +1080,14 @@
             console.log('🔗 Connecting to host game:', gameCode);
             console.log('🔗 Socket ID:', socket.id);
             
-            // First, identify as the host for this game
-            console.log('🔗 Emitting host-reconnect for game:', gameCode);
-            socket.emit('host-reconnect', { gameCode: gameCode });
-            
-            // Join the game room to receive real-time updates
+            // Join the game room as a grader — do not claim host identity
+            console.log('🔗 Grading joining room (not host-reconnect):', gameCode);
             console.log('🔗 Emitting joinGameRoom for game:', gameCode);
             socket.emit('joinGameRoom', { gameCode: gameCode });
             
             // Then request the specific game state
             console.log('🔗 Emitting getGameState for game:', gameCode);
             socket.emit('getGameState', { gameCode: gameCode });
-            
-            // Also try to get active games as a fallback
-            setTimeout(() => {
-                console.log('🔗 Emitting getActiveGames as fallback');
-                socket.emit('getActiveGames');
-            }, 1000);
         }
 
         function updateConnectionStatus(connected) {
@@ -1326,52 +1296,40 @@
                 return;
             }
             
-            console.log('✅ updateGradingInterface PROCEEDING - updating grading interface for question:', currentGame.currentQuestionIndex);
+            const qIndex = currentGame.currentQuestion ?? currentGame.currentQuestionIndex ?? 0;
+            const questionChanged = lastRenderedQuestionIndex !== qIndex;
+            console.log('✅ updateGradingInterface PROCEEDING - question:', qIndex, 'changed:', questionChanged);
             console.log('✅ Current answer groups available:', currentGame.currentAnswerGroups?.length || 0);
             
-            // CRITICAL: Clear grading states from previous questions to prevent wrong answers from persisting
             clearPreviousGradingStates();
-            
-            // Update question display
             updateQuestionDisplay();
-            // Ensure correct answer buckets exist even if there are no answers yet
             try { ensureCorrectBucketsExist(); } catch (_) {}
-            
-            // CRITICAL FIX: Only clear buckets if we actually have answers to repopulate
-            // Also, if we just updated a card in the last 500ms, skip the bulk clear once
-            if (window.recentCardUpdateAt && Date.now() - window.recentCardUpdateAt < 500) {
+
+            if (window.recentCardUpdateAt && Date.now() - window.recentCardUpdateAt < 800) {
                 console.log('⏭️ Skipping full rebuild due to recent direct DOM update');
-                window.recentCardUpdateAt = 0;
                 return;
             }
+
+            // Same question: keep existing cards; fill in any the live event missed.
+            if (!questionChanged && lastRenderedQuestionIndex !== null) {
+                console.log('⏭️ Same question — not wiping buckets');
+                try { syncMissingAnswerCards(); } catch (_) {}
+                return;
+            }
+
+            lastRenderedQuestionIndex = qIndex;
+
             if (currentGame.currentAnswerGroups && currentGame.currentAnswerGroups.length > 0) {
                 console.log('🔄 Clearing and repopulating interface with', currentGame.currentAnswerGroups.length, 'answer groups');
-            
-            // Clear all buckets, but preserve any existing uncategorized/wrong items if server has no groups yet
-            document.getElementById('correctAnswers').innerHTML = '';
-            // Only clear wrong/uncategorized if we have groups to repopulate
-            const hasGroups = currentGame.currentAnswerGroups && currentGame.currentAnswerGroups.length > 0;
-            if (hasGroups) {
+                document.getElementById('correctAnswers').innerHTML = '';
                 document.getElementById('wrongAnswers').innerHTML = '';
                 document.getElementById('uncategorizedAnswers').innerHTML = '';
-            }
-            
-            // Reset count badges
-            document.getElementById('wrongAnswersCount').textContent = '0';
-            document.getElementById('uncategorizedAnswersCount').textContent = '0';
-            
-            await populateGradingInterface();
+                document.getElementById('wrongAnswersCount').textContent = '0';
+                document.getElementById('uncategorizedAnswersCount').textContent = '0';
+                await populateGradingInterface();
             } else {
-                console.log('🔄 No answer groups available - keeping current interface state');
-                console.log('🔄 This prevents clearing answers that just appeared');
-                // Still ensure buckets are present for graders
+                console.log('🔄 No answer groups yet — leaving buckets ready, no wipe/retry');
                 try { ensureCorrectBucketsExist(); } catch (_) {}
-                // Also try to re-request server state shortly to recover missing unbucketed answers
-                try {
-                    if (currentGame && currentGame.gameCode) {
-                        setTimeout(() => socket.emit('getGameState', { gameCode: currentGame.gameCode }), 200);
-                    }
-                } catch (_) {}
             }
         }
 
@@ -2974,6 +2932,28 @@
         }
         
         // SIMPLE APPROACH: Direct DOM manipulation for answers
+        function playerCardExists(playerName) {
+            const items = document.querySelectorAll('.answer-item, .answer-card');
+            const target = String(playerName || '').toLowerCase();
+            for (const el of items) {
+                const label = (el.dataset.playerName || el.getAttribute('data-player') || el.textContent || '').toLowerCase();
+                if (label.includes(target)) return true;
+            }
+            return false;
+        }
+
+        function syncMissingAnswerCards() {
+            if (!currentGame || !Array.isArray(currentGame.currentAnswerGroups)) return;
+            currentGame.currentAnswerGroups.forEach((group) => {
+                const answer = group.answer;
+                (group.players || []).forEach((playerName) => {
+                    if (!playerCardExists(playerName)) {
+                        handleAnswerDirectly(playerName, answer, false);
+                    }
+                });
+            });
+        }
+
         function handleAnswerDirectly(playerName, answerText, isClarification = false) {
             console.log(`📝 Direct answer handling: ${playerName} → "${answerText}"`);
             // Mark a very recent DOM update so bulk rebuilds won't wipe it
@@ -3193,7 +3173,7 @@
                 resyncBtn.textContent = '🔄 Syncing...';
                 resyncBtn.disabled = true;
 
-                // Re-request game data from server
+                lastRenderedQuestionIndex = null;
                 socket.emit('getGameState', currentGame.gameCode);
                 
                 // Also try to get active games as a fallback
