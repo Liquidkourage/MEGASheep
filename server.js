@@ -288,7 +288,7 @@ class Game {
         this.answeredStableIds = new Set();
     }
 
-    addPlayer(socketId, playerName, stablePlayerId = null) {
+    addPlayer(socketId, playerName, stablePlayerId = null, options = {}) {
         if (this.settings.maxPlayers > 0 && this.players.size >= this.settings.maxPlayers) {
             throw new Error('Game is full');
         }
@@ -318,7 +318,8 @@ class Game {
             stableId: playerIdentity,
       name: playerName,
             score: this.scoresByStableId.get(playerIdentity) || 0,
-            answers: []
+            answers: [],
+            isVirtual: !!options.isVirtual
     });
         this.scores.set(socketId, this.scoresByStableId.get(playerIdentity) || 0);
         this.seenPlayerNames.add(playerName);
@@ -1117,6 +1118,7 @@ class Game {
                 
                 io.to(this.gameCode).emit('nextQuestion', gameState);
                 console.log(`✅ Successfully emitted nextQuestion event`);
+                try { scheduleVirtualAnswersForGame(this); } catch (_) {}
             } catch (error) {
                 console.error(`❌ CRITICAL ERROR emitting nextQuestion:`, error);
                 console.error(`❌ Error stack:`, error.stack);
@@ -1278,6 +1280,7 @@ class Game {
         this.gameState = 'playing';
         this.startTimer();
         io.to(this.gameCode).emit('nextQuestion', this.getGameState());
+        try { scheduleVirtualAnswersForGame(this); } catch (_) {}
     }
 
     cleanup() {
@@ -1592,6 +1595,185 @@ app.get('/api/game/:gameCode', (req, res) => {
 // Global tracking for duplicate startGame requests
 const recentStartGameRequests = new Map();
 
+const VIRTUAL_PLAYER_NAMES = [
+    'Emma Thompson', 'James Wilson', 'Sophia Rodriguez', 'Michael Chen', 'Olivia Davis',
+    'David Martinez', 'Ava Johnson', 'Christopher Lee', 'Isabella Brown', 'Daniel Garcia',
+    'Mia Anderson', 'Matthew Taylor', 'Charlotte White', 'Andrew Clark', 'Amelia Hall',
+    'Joshua Lewis', 'Harper Walker', 'Ryan Allen', 'Evelyn Young', 'Nathan King',
+    'Abigail Wright', 'Tyler Green', 'Emily Baker', 'Kevin Adams', 'Sofia Nelson',
+    'Justin Carter', 'Avery Mitchell', 'Brandon Perez', 'Ella Roberts', 'Steven Turner',
+    'Madison Phillips', 'Jonathan Campbell', 'Scarlett Parker', 'Robert Evans', 'Grace Edwards',
+    'Thomas Collins', 'Chloe Stewart', 'Samuel Morris', 'Lily Rogers', 'Benjamin Cook',
+    'Hannah Morgan', 'Christian Reed', 'Layla Bell', 'Isaac Murphy', 'Riley Bailey',
+    'Jack Cooper', 'Zoe Richardson', 'Owen Cox', 'Nora Howard', 'Gavin Ward',
+    'Luna Torres', 'Caleb Peterson', 'Violet Gray', 'Isaac Ramirez', 'Penelope James',
+    'Mason Watson', 'Hazel Brooks', 'Ethan Kelly', 'Aurora Sanders', 'Logan Price'
+];
+const VIRTUAL_WRONG_ANSWERS = ['banana', 'sheep', 'mars', 'idk', 'no idea', 'pass', 'maybe', '42', 'october', 'caterpillar'];
+const virtualJoinJobs = new Map();
+const virtualAnswerJobs = new Map();
+let virtualPlayerSeq = 0;
+
+function nextVirtualPlayerName(game) {
+    const used = new Set(Array.from(game.players.values()).map(p => p.name));
+    for (let n = 0; n < VIRTUAL_PLAYER_NAMES.length * 4; n++) {
+        const base = VIRTUAL_PLAYER_NAMES[n % VIRTUAL_PLAYER_NAMES.length];
+        const suffix = Math.floor(n / VIRTUAL_PLAYER_NAMES.length) + 1;
+        const name = suffix > 1 ? `${base} ${suffix}` : base;
+        if (!used.has(name)) return name;
+    }
+    return `Virtual ${Date.now()}`;
+}
+
+function stopVirtualJoinJob(gameCode) {
+    const job = virtualJoinJobs.get(gameCode);
+    if (job) {
+        clearInterval(job);
+        virtualJoinJobs.delete(gameCode);
+    }
+}
+
+function clearVirtualAnswerJobs(gameCode) {
+    const jobs = virtualAnswerJobs.get(gameCode);
+    if (jobs) {
+        jobs.forEach((id) => clearTimeout(id));
+        virtualAnswerJobs.delete(gameCode);
+    }
+}
+
+function pickVirtualAnswer(question) {
+    const correct = Array.isArray(question?.correct_answers)
+        ? question.correct_answers.filter(Boolean).map(String)
+        : [];
+    const roll = Math.random();
+    if (correct.length && roll < 0.7) {
+        let answer = correct[Math.floor(Math.random() * correct.length)];
+        if (Math.random() < 0.2) {
+            answer = Math.random() < 0.5 ? `${answer}!` : `${answer}s`;
+        }
+        return answer;
+    }
+    if (correct.length && roll < 0.85) {
+        const answer = correct[Math.floor(Math.random() * correct.length)];
+        return answer.charAt(0).toUpperCase() + answer.slice(1);
+    }
+    return VIRTUAL_WRONG_ANSWERS[Math.floor(Math.random() * VIRTUAL_WRONG_ANSWERS.length)];
+}
+
+function broadcastAcceptedAnswer(game, playerSocketId, answer, playerName, wasClarity) {
+    try { game.rebuildCurrentAnswerGroups(); } catch (e) {
+        logger.error('Failed to rebuild answer groups after virtual answer:', e?.message);
+    }
+    const gameStateToSend = game.getGameState();
+    const hostSocket = Array.from(connectedPlayers.entries())
+        .find(([, info]) => info.gameCode === game.gameCode && info.isHost);
+    if (hostSocket) {
+        io.to(hostSocket[0]).emit('answerSubmitted', { playerName, answer });
+    }
+    io.to(game.gameCode).emit('gameStateUpdate', gameStateToSend);
+    io.to(game.gameCode).emit('newAnswerSubmitted', {
+        playerName,
+        answer,
+        gameCode: game.gameCode,
+        at: Date.now(),
+        isClarification: !!wasClarity
+    });
+    const totalExpected = (game.gameState === 'playing' && game.expectedResponders instanceof Set)
+        ? game.expectedResponders.size
+        : game.players.size;
+    const stableAnswered = new Set();
+    const rawAnswers = {};
+    for (const [sid, ans] of game.answers.entries()) {
+        const p = game.players.get(sid);
+        stableAnswered.add(p?.stableId || sid);
+        rawAnswers[sid] = ans;
+    }
+    io.to(game.gameCode).emit('answerUpdate', {
+        answersReceived: stableAnswered.size,
+        totalPlayers: totalExpected,
+        answers: rawAnswers
+    });
+}
+
+function acceptVirtualAnswer(game, playerId, answer, playerName) {
+    const player = game.players.get(playerId);
+    if (!player || !player.isVirtual) return false;
+    const wasClarity = game.answersNeedingEdit.has(playerId);
+    if (!game.submitAnswer(playerId, answer)) return false;
+    if (wasClarity && game.answersNeedingEdit.has(playerId)) {
+        game.answersNeedingEdit.delete(playerId);
+    }
+    broadcastAcceptedAnswer(game, playerId, String(answer).trim(), playerName || player.name, wasClarity);
+    return true;
+}
+
+function addOneVirtualPlayer(game) {
+    virtualPlayerSeq += 1;
+    const playerName = nextVirtualPlayerName(game);
+    const playerId = `virtual_${game.gameCode}_${virtualPlayerSeq}`;
+    game.addPlayer(playerId, playerName, playerId, { isVirtual: true });
+    if (game.gameState === 'playing' && game.expectedResponders instanceof Set) {
+        try { game.expectedResponders.add(playerId); } catch (_) {}
+    }
+    const payload = {
+        playerId,
+        playerName,
+        gameState: game.getGameState()
+    };
+    io.to(game.gameCode).emit('virtualPlayerJoined', payload);
+    io.to(game.gameCode).emit('playerJoined', game.getGameState());
+    if (game.gameState === 'playing') {
+        scheduleOneVirtualAnswer(game, playerId);
+    }
+    return { playerId, playerName };
+}
+
+function scheduleOneVirtualAnswer(game, playerId) {
+    const player = game.players.get(playerId);
+    if (!player || !player.isVirtual) return;
+    const questionIndex = game.currentQuestion;
+    const question = Array.isArray(game.questions) ? game.questions[questionIndex] : null;
+    const delay = 400 + Math.floor(Math.random() * 7000);
+    const timeoutId = setTimeout(() => {
+        const live = activeGames.get(game.gameCode);
+        if (!live || live.gameState !== 'playing' || live.currentQuestion !== questionIndex) return;
+        if (live.answers.has(playerId)) return;
+        try { acceptVirtualAnswer(live, playerId, pickVirtualAnswer(question), player.name); } catch (_) {}
+    }, delay);
+    const existing = virtualAnswerJobs.get(game.gameCode) || [];
+    existing.push(timeoutId);
+    virtualAnswerJobs.set(game.gameCode, existing);
+}
+
+function scheduleVirtualAnswersForGame(game) {
+    if (!game || !game.gameCode) return;
+    clearVirtualAnswerJobs(game.gameCode);
+    if (game.gameState !== 'playing') return;
+    for (const [playerId, player] of game.players.entries()) {
+        if (player && player.isVirtual) scheduleOneVirtualAnswer(game, playerId);
+    }
+}
+
+function startAddingVirtualPlayers(game, playerCount) {
+    stopVirtualJoinJob(game.gameCode);
+    game.isTestMode = true;
+    let added = 0;
+    const addNext = () => {
+        if (!activeGames.has(game.gameCode) || added >= playerCount) {
+            stopVirtualJoinJob(game.gameCode);
+            return;
+        }
+        try { addOneVirtualPlayer(game); } catch (e) {
+            logger.warn('Failed to add virtual player:', e?.message);
+        }
+        added += 1;
+    };
+    addNext();
+    if (added >= playerCount) return;
+    const interval = setInterval(addNext, 80);
+    virtualJoinJobs.set(game.gameCode, interval);
+}
+
 // Socket.IO Connection Handler
 io.on('connection', (socket) => {
     // console.log('🔌 User connected:', socket.id);
@@ -1900,6 +2082,69 @@ io.on('connection', (socket) => {
         socket.emit('pong', { message: 'Server pong', timestamp: Date.now() });
     });
 
+    socket.on('startVirtualPlayerSimulation', (data) => {
+        const gameCode = data && data.gameCode;
+        const requested = Number(data && data.playerCount);
+        if (!gameCode) {
+            socket.emit('gameError', { message: 'Game code is required for virtual players' });
+            return;
+        }
+        if (!canControlGame(gameCode)) {
+            socket.emit('gameError', { message: 'Only the host can start a virtual player test' });
+            return;
+        }
+        const game = activeGames.get(gameCode);
+        if (!game) {
+            socket.emit('gameError', { message: 'Game not found. Create a game first.' });
+            return;
+        }
+        const playerCount = Math.max(1, Math.min(100, Math.floor(requested) || 10));
+        startAddingVirtualPlayers(game, playerCount);
+        socket.emit('virtualSimulationStarted', { gameCode, playerCount });
+        logger.info(`🎭 Virtual simulation: adding ${playerCount} players to ${gameCode}`);
+    });
+
+    socket.on('virtualAnswerSubmitted', (data) => {
+        try {
+            if (!data || !data.gameCode || !data.playerId || data.answer === undefined || data.answer === null) return;
+            const game = activeGames.get(data.gameCode);
+            if (!game) return;
+            const player = game.players.get(data.playerId);
+            if (!player || !player.isVirtual) return;
+            acceptVirtualAnswer(game, data.playerId, data.answer, data.playerName || player.name);
+        } catch (e) {
+            logger.warn('virtualAnswerSubmitted failed:', e?.message);
+        }
+    });
+
+    socket.on('virtualPlayerJoined', (data) => {
+        try {
+            if (!data || !data.gameCode || !data.playerName) return;
+            if (!canControlGame(data.gameCode)) return;
+            const game = activeGames.get(data.gameCode);
+            if (!game) return;
+            const playerName = String(data.playerName).trim();
+            if (!playerName) return;
+            const already = Array.from(game.players.values()).some(p => p.name === playerName);
+            if (already) return;
+            const playerId = data.playerId || `virtual_${game.gameCode}_${++virtualPlayerSeq}`;
+            game.addPlayer(playerId, playerName, playerId, { isVirtual: true });
+            game.isTestMode = true;
+            if (game.gameState === 'playing' && game.expectedResponders instanceof Set) {
+                try { game.expectedResponders.add(playerId); } catch (_) {}
+            }
+            io.to(game.gameCode).emit('virtualPlayerJoined', {
+                playerId,
+                playerName,
+                gameState: game.getGameState()
+            });
+            io.to(game.gameCode).emit('playerJoined', game.getGameState());
+            if (game.gameState === 'playing') scheduleOneVirtualAnswer(game, playerId);
+        } catch (e) {
+            logger.warn('virtualPlayerJoined failed:', e?.message);
+        }
+    });
+
     // Start game
     socket.on('startGame', async (data) => {
         // console.log('🎮 startGame event received from socket:', socket.id);
@@ -2047,6 +2292,7 @@ io.on('connection', (socket) => {
             console.log(`🚨 Emitting gameStarted to room ${gameCode}`);
             
             io.to(gameCode).emit('gameStarted', gameStateToSend);
+            try { scheduleVirtualAnswersForGame(game); } catch (_) {}
         } catch (error) {
             console.error('Error starting game:', {
                 message: error.message,

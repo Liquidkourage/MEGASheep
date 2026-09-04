@@ -1102,7 +1102,8 @@
             });
             
             socket.on('playerJoined', (data) => {
-                currentGame = data;
+                const state = unwrapGameState(data) || data;
+                if (state) currentGame = state;
                 updatePlayerList();
                 updateGameDisplay();
             });
@@ -1110,12 +1111,21 @@
             // Ensure host reflects server-side virtual players (fallback mode)
             socket.on('virtualPlayerJoined', (data) => {
                 try {
-                    if (data && data.gameState) {
-                        currentGame = data.gameState;
-                    }
+                    const state = unwrapGameState(data && data.gameState) || unwrapGameState(data);
+                    if (state) currentGame = state;
                     updatePlayerListWithResponses();
                     updateGameDisplay();
                 } catch (_) {}
+            });
+
+            socket.on('virtualSimulationStarted', (data) => {
+                const count = data && data.playerCount ? data.playerCount : 'some';
+                console.log(`🎭 Server adding ${count} virtual players`);
+                const btn = document.getElementById('virtualTestBtn');
+                if (btn) btn.textContent = `🎭 ADDING ${count} VIRTUAL PLAYERS...`;
+                setTimeout(() => {
+                    if (btn) btn.textContent = '🎭 VIRTUAL TEST (100 players)';
+                }, 4000);
             });
             
             socket.on('gameError', (error) => {
@@ -2226,12 +2236,11 @@
             console.log(`🎭 Starting virtual player simulation with ${playerCount} players`);
             
             // Emit the virtual player simulation event
+            const count = parseInt(playerCount, 10);
             socket.emit('startVirtualPlayerSimulation', {
                 gameCode: currentGame.gameCode,
-                playerCount: parseInt(playerCount)
+                playerCount: count
             });
-
-            alert(`Starting virtual player simulation with ${playerCount} players. Check the display and player interfaces to see the virtual players in action!`);
         }
     </script>
 </body>
