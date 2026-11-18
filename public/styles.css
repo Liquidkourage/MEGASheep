@@ -7718,10 +7718,10 @@ body.player-app #lobbyScreen .lobby-header h2 {
 
 body.player-app:has(#scoringScreen.active) .keep-awake-fab,
 body.player-app:has(#gameOverScreen.active) .keep-awake-fab {
-    top: auto;
+    top: max(10px, calc(env(safe-area-inset-top, 0px) + 6px));
     right: auto;
-    left: max(8px, env(safe-area-inset-left, 0px));
-    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    left: max(10px, calc(env(safe-area-inset-left, 0px) + 6px));
+    bottom: auto;
 }
 
 body.player-app #joinGameScreen .screen-content {
@@ -7939,6 +7939,7 @@ body.player-app #scoringScreen .screen-content h2 {
     font-size: 1.2rem;
     margin-bottom: 8px;
     padding-right: 96px;
+    padding-left: 52px;
 }
 
 body.player-app #scoringScreen .answers-display {
@@ -7961,6 +7962,123 @@ body.player-app #scoringScreen #answersList {
 body.player-app #scoringScreen .scores-fab {
     top: 8px;
     right: 8px;
+    min-height: 44px;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+body.player-app #scoringScreen #standardAnswersDisplay > h3,
+body.player-app #scoringScreen .scoring-actions,
+body.player-app #scoringScreen #hostAnswerCategorization {
+    display: none;
+}
+
+body.player-app #scoringScreen .question-results-mobile {
+    min-height: 0;
+    gap: 10px;
+}
+
+body.player-app #scoringScreen .personal-result-card {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+}
+
+body.player-app #scoringScreen .personal-result-header {
+    margin-bottom: 8px;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+body.player-app #scoringScreen .personal-result-header h3 {
+    font-size: 1.05rem;
+}
+
+body.player-app #scoringScreen .personal-answer,
+body.player-app #scoringScreen .personal-stats {
+    margin-bottom: 8px;
+}
+
+body.player-app #scoringScreen .answer-text {
+    font-size: 1.05rem;
+}
+
+body.player-app #scoringScreen .answer-category {
+    margin-bottom: 8px;
+}
+
+body.player-app #scoringScreen .category-header h4 {
+    font-size: 0.95rem;
+}
+
+body.player-app #scoresModal.modal {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    box-sizing: border-box;
+}
+
+body.player-app #scoresModal.modal[style*="display: block"],
+body.player-app #scoresModal.modal[style*="display:block"] {
+    display: flex !important;
+}
+
+body.player-app #scoresModal .scores-modal {
+    max-width: 100% !important;
+    width: 100%;
+    max-height: calc(var(--vvh, 100dvh) - 24px);
+    display: flex;
+    flex-direction: column;
+    margin: 0 !important;
+    animation: none;
+    transform: none;
+}
+
+body.player-app #scoresModal .modal-header {
+    flex-shrink: 0;
+    padding: 12px 14px;
+}
+
+body.player-app #scoresModal .modal-header h4 {
+    font-size: 1.05rem;
+}
+
+body.player-app #scoresModal .close {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body.player-app #scoresModal .modal-body {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 12px 16px;
+}
+
+body.player-app #gameOverScreen .screen-content {
+    padding: 12px;
+}
+
+body.player-app #gameOverScreen .screen-content h2 {
+    font-size: 1.25rem;
+    margin-bottom: 6px;
+    padding-left: 52px;
+    padding-right: 52px;
+}
+
+body.player-app #gameOverScreen .final-scores h3 {
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+}
+
+body.player-app #finalScoresList .score-item {
+    padding: 8px 10px;
     min-height: 44px;
 }
 
@@ -8027,6 +8145,7 @@ body.player-app #finalScoresList {
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
 }
 
 @media (max-width: 430px) {

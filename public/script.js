@@ -3185,7 +3185,7 @@ function displayRoundResults() {
         answersList.style.setProperty('min-height', '0', 'important');
         answersList.style.setProperty('max-height', 'none', 'important');
         answersList.style.setProperty('height', 'auto', 'important');
-        answersList.style.setProperty('overflow', 'visible', 'important');
+        answersList.style.setProperty('overflow', IS_PLAYER_ROUTE ? 'auto' : 'visible', 'important');
         answersList.style.setProperty('display', 'block', 'important');
     } catch (_) {}
 
@@ -3564,7 +3564,7 @@ function showScoresModal() {
     }
     
     // Show modal with animation
-    scoresModal.style.display = 'block';
+    scoresModal.style.display = IS_PLAYER_ROUTE ? 'flex' : 'block';
     setTimeout(() => {
         scoresModal.style.opacity = '1';
     }, 10);
@@ -4283,7 +4283,7 @@ function showWaitingForGrading() {
     // Update title for players
     const scoringTitle = document.getElementById('scoringTitle');
     if (scoringTitle) {
-        scoringTitle.textContent = '⏳ Waiting for Host Grading';
+        scoringTitle.textContent = 'Waiting for grading';
     }
     
     // Hide answer results until grading is complete
