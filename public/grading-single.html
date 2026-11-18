@@ -384,7 +384,12 @@
             padding: 8px;
             margin-bottom: 6px;
             cursor: move;
+            user-select: none;
             transition: all 0.3s ease;
+        }
+
+        #uncategorizedAnswers .answer-item[data-semantic-match] {
+            cursor: pointer;
         }
 
         .answer-item:hover {
@@ -1964,8 +1969,107 @@
                 <div class="answer-players">${group.players ? group.players.join(', ') : ''}</div>
                 ${confidenceDisplay}
             `;
+            applyGuessToChip(item, group.answer, group.semanticMatch, group.semanticConfidence);
             
             return item;
+        }
+
+        const GUESS_ACCEPT_MIN = 50;
+
+        function guessForAnswer(answerText) {
+            const correctAnswerList = currentGame?.currentQuestionData?.correct_answers || [];
+            let bestConfidence = 0;
+            let bestMatch = null;
+            correctAnswerList.forEach((correctAnswer) => {
+                const confidence = calculateSemanticConfidence(answerText, correctAnswer);
+                if (confidence > bestConfidence) {
+                    bestConfidence = confidence;
+                    bestMatch = correctAnswer;
+                }
+            });
+            return { bestMatch, bestConfidence };
+        }
+
+        function applyGuessToChip(chip, answerText, knownMatch, knownConfidence) {
+            if (!chip) return null;
+            let bestMatch = knownMatch || chip.dataset.semanticMatch || '';
+            let bestConfidence = knownConfidence != null && knownConfidence !== ''
+                ? Number(knownConfidence)
+                : (chip.dataset.semanticConfidence ? Number(chip.dataset.semanticConfidence) : NaN);
+            if (!bestMatch || !Number.isFinite(bestConfidence)) {
+                const guessed = guessForAnswer(answerText || chipAnswerText(chip));
+                bestMatch = guessed.bestMatch;
+                bestConfidence = guessed.bestConfidence;
+            }
+            if (!bestMatch || !Number.isFinite(bestConfidence) || bestConfidence <= 0) {
+                delete chip.dataset.semanticMatch;
+                delete chip.dataset.semanticConfidence;
+                chip.removeAttribute('title');
+                return null;
+            }
+            chip.dataset.semanticMatch = bestMatch;
+            chip.dataset.semanticConfidence = String(bestConfidence);
+            chip.title = bestConfidence >= GUESS_ACCEPT_MIN
+                ? `Double-click to file as "${bestMatch}"`
+                : `Guess "${bestMatch}" is too weak to auto-file`;
+            const confidenceEl = chip.querySelector('.answer-confidence');
+            if (confidenceEl) {
+                const color = bestConfidence >= 80 ? '#27ae60' : bestConfidence >= 50 ? '#f39c12' : '#e74c3c';
+                confidenceEl.style.color = color;
+                confidenceEl.textContent = `🧠 ${bestConfidence}% → "${bestMatch}"`;
+            }
+            return { bestMatch, bestConfidence };
+        }
+
+        function correctBucketDropZoneFor(name) {
+            if (!name) return null;
+            try { ensureCorrectBucketsExist(); } catch (_) {}
+            const slug = String(name).toLowerCase().replace(/\s+/g, '-');
+            const bucket = document.getElementById(`bucket-${slug}`);
+            if (bucket) return bucket.querySelector('.answer-items');
+            const dataBucket = `correct_${String(name).toLowerCase().replace(/\s+/g, '_')}`;
+            const zone = document.querySelector(`#correctAnswers .answer-items[data-bucket="${dataBucket}"]`);
+            if (zone) return zone;
+            const wanted = normalizeAnswerText(name);
+            for (const itemZone of document.querySelectorAll('#correctAnswers .answer-items')) {
+                const id = itemZone.dataset.bucket || '';
+                if (normalizeAnswerText(id.replace(/^correct_/, '').replace(/_/g, ' ')) === wanted) {
+                    return itemZone;
+                }
+            }
+            return null;
+        }
+
+        function acceptUncategorizedGuess(chip) {
+            if (!chip || !chip.closest('#uncategorizedAnswers')) return false;
+            const guess = applyGuessToChip(chip, chipAnswerText(chip));
+            if (!guess || guess.bestConfidence < GUESS_ACCEPT_MIN) {
+                chip.style.outline = '2px solid #e74c3c';
+                setTimeout(() => { chip.style.outline = ''; }, 500);
+                showToast('No strong guessed bucket for this answer', 'info');
+                return false;
+            }
+            const dropZone = correctBucketDropZoneFor(guess.bestMatch);
+            if (!dropZone) {
+                showToast(`No bucket for "${guess.bestMatch}"`, 'info');
+                return false;
+            }
+            dropZone.appendChild(chip);
+            const bucket = dropZone.closest('.answer-bucket');
+            if (dropZone.classList.contains('collapsed')) {
+                dropZone.classList.remove('collapsed');
+                const toggle = bucket?.querySelector('.bucket-toggle');
+                if (toggle) toggle.classList.remove('collapsed');
+            }
+            updateConfidenceForMovedElement(chip, dropZone);
+            mergeIdenticalAnswerChipsIn(dropZone);
+            mergeIdenticalAnswerChipsEverywhere();
+            updateCountBadges();
+            autoSave();
+            chip.style.background = 'rgba(76, 175, 80, 0.35)';
+            setTimeout(() => { chip.style.background = ''; }, 700);
+            console.log(`✅ Double-click filed "${chipAnswerText(chip)}" as "${guess.bestMatch}"`);
+            return true;
         }
 
         function setupDragAndDrop() {
@@ -2879,6 +2983,13 @@
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
             initializeConnection();
+
+            document.addEventListener('dblclick', (e) => {
+                const chip = e.target.closest('#uncategorizedAnswers .answer-item');
+                if (!chip) return;
+                e.preventDefault();
+                acceptUncategorizedGuess(chip);
+            });
             
             // Auto-save on page unload
             window.addEventListener('beforeunload', () => {
@@ -3201,10 +3312,19 @@
             answerCard.dataset.answerText = answerText;
             answerCard.dataset.playerNames = playerName;
 
+            const guess = guessForAnswer(answerText);
+            const confidenceColor = (guess.bestConfidence || 0) >= 80 ? '#27ae60' :
+                (guess.bestConfidence || 0) >= 50 ? '#f39c12' : '#e74c3c';
+            const confidenceDisplay = guess.bestMatch
+                ? `<div class="answer-confidence" style="color: ${confidenceColor}; font-size: 11px; margin-top: 3px;">🧠 ${guess.bestConfidence}% → "${guess.bestMatch}"</div>`
+                : '';
+
             answerCard.innerHTML = `
                 <div class="answer-text">"${answerText}" <span class="answer-count-badge">1</span></div>
                 <div class="answer-players">${playerName}</div>
+                ${confidenceDisplay}
             `;
+            applyGuessToChip(answerCard, answerText, guess.bestMatch, guess.bestConfidence);
 
             uncategorizedContainer.appendChild(answerCard);
             setupDragAndDrop();
