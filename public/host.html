@@ -786,21 +786,15 @@
         }
 
         #panelResults .answer-group.is-not-given {
-            border: 3px solid transparent;
+            border: 2px solid transparent;
+            background-color: #2a2a33;
             background-image:
-                linear-gradient(135deg,
-                    rgba(255, 59, 59, 0.2),
-                    rgba(255, 193, 7, 0.16),
-                    rgba(40, 167, 69, 0.16),
-                    rgba(0, 188, 212, 0.16),
-                    rgba(124, 77, 255, 0.2),
-                    rgba(233, 30, 99, 0.18)),
-                linear-gradient(90deg, #ff3b3b, #ffc107, #28a745, #00bcd4, #7c4dff, #e91e63, #ff3b3b);
+                linear-gradient(#2a2a33, #2a2a33),
+                linear-gradient(90deg, #e57373, #ffd54f, #81c784, #4dd0e1, #9575cd, #f06292, #e57373);
             background-origin: padding-box, border-box;
             background-clip: padding-box, border-box;
             background-size: 100% 100%, 240% 100%;
-            animation: results-rainbow 3.2s linear infinite;
-            box-shadow: 0 0 10px rgba(124, 77, 255, 0.28);
+            animation: results-rainbow 7s linear infinite;
         }
 
         @keyframes results-rainbow {
@@ -838,23 +832,20 @@
             color: #f4c48c;
         }
 
-        #panelResults .not-given-badge {
-            border: none;
-            color: #fff;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
-            background-image: linear-gradient(90deg, #ff3b3b, #ffc107, #28a745, #00bcd4, #7c4dff, #e91e63, #ff3b3b);
-            background-size: 240% 100%;
-            animation: results-rainbow-badge 2.4s linear infinite;
+        #panelResults .many-match-badge {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            color: #d4d4d4;
         }
 
-        @keyframes results-rainbow-badge {
-            0% { background-position: 0% 50%; }
-            100% { background-position: 100% 50%; }
+        #panelResults .not-given-badge {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            color: #d4d4d4;
         }
 
         @media (prefers-reduced-motion: reduce) {
-            #panelResults .answer-group.is-not-given,
-            #panelResults .not-given-badge {
+            #panelResults .answer-group.is-not-given {
                 animation: none;
             }
         }
@@ -2440,6 +2431,7 @@
         }
 
         function createResultCard(answer, players, points, options = {}) {
+            const matchCount = Math.max(0, Number(options.matchCount) || 0);
             const rarity = options.notGiven ? 'not-given' : (options.rarity || null);
             const rarityClass = {
                 'not-given': 'is-not-given',
@@ -2447,11 +2439,13 @@
                 'one-match': 'is-one-match',
                 'two-match': 'is-two-match'
             }[rarity];
+            const matchLabel = matchCount === 1 ? '1 match' : `${matchCount} matches`;
             const badgeSpec = {
                 'not-given': { className: 'rarity-badge not-given-badge', text: 'Not given' },
                 unique: { className: 'rarity-badge unique-badge', text: 'Unique' },
-                'one-match': { className: 'rarity-badge one-match-badge', text: '1 match' },
-                'two-match': { className: 'rarity-badge two-match-badge', text: '2 matches' }
+                'one-match': { className: 'rarity-badge one-match-badge', text: matchLabel },
+                'two-match': { className: 'rarity-badge two-match-badge', text: matchLabel },
+                'many-match': { className: 'rarity-badge many-match-badge', text: matchLabel }
             }[rarity];
 
             const answerGroup = document.createElement('div');
@@ -2500,10 +2494,12 @@
                     if (count === 1) rarity = 'unique';
                     else if (count === 2) rarity = 'one-match';
                     else if (count === 3) rarity = 'two-match';
+                    else if (count > 3) rarity = 'many-match';
                 }
                 section.appendChild(createResultCard(answer.answer, answer.players, answer.points, {
                     rarity,
-                    notGiven
+                    notGiven,
+                    matchCount: notGiven ? 0 : Math.max(0, count - 1)
                 }));
             });
             
