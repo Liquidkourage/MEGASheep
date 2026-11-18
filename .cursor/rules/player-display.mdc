@@ -18,4 +18,4 @@ alwaysApply: true
 11. When screen space is insufficient, redesign the layout rather than remove functionality.
 12. Do not consider player-facing UI work complete without responsive validation.
 
-This rule applies to all existing and future player-facing screens in this project.
+This rule applies to all existing and future player-facing screens in this project. It does not apply to the host console or other operator tools; those are desktop-first.

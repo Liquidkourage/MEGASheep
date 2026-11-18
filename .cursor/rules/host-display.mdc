@@ -1,0 +1,15 @@
+---
+description: Host console is desktop-first; only player screens need phone sizes
+alwaysApply: true
+---
+
+# Host Console Is Desktop
+
+The host console is an operator tool used on a laptop or desktop. Desktop layout is the intended target.
+
+- Do not redesign host screens for phone widths, phone resolution, or mobile-first stacking.
+- Do not treat host work as incomplete without 320–430px validation or 44px touch targets.
+- Phone size and resolution requirements apply only to player-facing screens.
+- A typical laptop should still fit without horizontal page scrolling, but host does not need a phone layout.
+
+Player-facing screens remain mobile-first under Universal Player Display Standards.
