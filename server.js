@@ -1729,6 +1729,12 @@ function clearVirtualAnswerJobs(gameCode) {
     }
 }
 
+function trackVirtualTimeout(gameCode, timeoutId) {
+    const existing = virtualAnswerJobs.get(gameCode) || [];
+    existing.push(timeoutId);
+    virtualAnswerJobs.set(gameCode, existing);
+}
+
 function pickVirtualAnswer(question) {
     const correct = Array.isArray(question?.correct_answers)
         ? question.correct_answers.filter(Boolean).map(String)
@@ -1828,9 +1834,35 @@ function scheduleOneVirtualAnswer(game, playerId) {
         if (live.answers.has(playerId)) return;
         try { acceptVirtualAnswer(live, playerId, pickVirtualAnswer(question), player.name); } catch (_) {}
     }, delay);
-    const existing = virtualAnswerJobs.get(game.gameCode) || [];
-    existing.push(timeoutId);
-    virtualAnswerJobs.set(game.gameCode, existing);
+    trackVirtualTimeout(game.gameCode, timeoutId);
+}
+
+function clarifyVirtualAnswer(original, game) {
+    const question = Array.isArray(game.questions) ? game.questions[game.currentQuestion] : null;
+    const correct = Array.isArray(question?.correct_answers)
+        ? question.correct_answers.filter(Boolean).map(String)
+        : [];
+    const orig = String(original || '').trim();
+    const others = correct.filter(a => a.toLowerCase() !== orig.toLowerCase());
+    if (others.length && Math.random() < 0.75) {
+        return others[Math.floor(Math.random() * others.length)];
+    }
+    if (orig) return `${orig} (more specific)`;
+    return pickVirtualAnswer(question);
+}
+
+function scheduleVirtualClarification(game, playerId) {
+    const player = game.players.get(playerId);
+    if (!player || !player.isVirtual) return;
+    const original = game.answers.get(playerId) || '';
+    const delay = 400 + Math.floor(Math.random() * 1600);
+    const timeoutId = setTimeout(() => {
+        const live = activeGames.get(game.gameCode);
+        if (!live || !live.answersNeedingEdit.has(playerId)) return;
+        try { acceptVirtualAnswer(live, playerId, clarifyVirtualAnswer(original, live), player.name); } catch (_) {}
+    }, delay);
+    trackVirtualTimeout(game.gameCode, timeoutId);
+    logger.info(`🎭 Virtual ${player.name} will resubmit a clarification`);
 }
 
 function scheduleVirtualAnswersForGame(game) {
@@ -2138,6 +2170,11 @@ io.on('connection', (socket) => {
     if (connectedPlayers.has(targetSocketId)) {
     io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });
         logger.info(`✏️ Clarification sent to ${game.players.get(targetSocketId)?.name}`);
+    }
+
+    const targetPlayer = game.players.get(targetSocketId);
+    if (targetPlayer && targetPlayer.isVirtual) {
+        scheduleVirtualClarification(game, targetSocketId);
     }
     
     // Broadcast updated game state to grading interface (shows pending edits banner)
