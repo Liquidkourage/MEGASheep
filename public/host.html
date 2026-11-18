@@ -876,7 +876,7 @@
                         <button id="showOverallLbBtn" class="control-btn secondary">🏆 SHOW OVERALL LEADERBOARD</button>
                         <button id="historyBtn" class="control-btn secondary">📚 HISTORY</button>
                         <button id="showEndDemoBtn" class="control-btn secondary">🎉 SHOW END DEMO</button>
-                        <div class="host-info" style="grid-column: 1 / -1; text-align:left; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); padding:10px 12px; border-radius:8px;">
+                        <div id="answerProgressPanel" class="host-info" style="display:none; grid-column: 1 / -1; text-align:left; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); padding:10px 12px; border-radius:8px;">
                             <div class="answer-status" style="margin-bottom:6px;">
                                 <span id="answersReceived">0</span> / <span id="totalPlayers">0</span> answers received
                             </div>
@@ -1597,16 +1597,24 @@
         function updatePlayerListWithResponses() {
             try {
                 updatePlayerList();
-                // Update awaiting names panel during playing
-                if (!currentGame) return;
+                const panel = document.getElementById('answerProgressPanel');
                 const awaitingNamesEl = document.getElementById('awaitingNames');
                 const awaitingCountEl = document.getElementById('awaitingCount');
                 const totalPlayersEl = document.getElementById('totalPlayers');
                 const answersReceivedEl = document.getElementById('answersReceived');
+                const phase = hostPhase();
+                const questionLive = phase === 'playing' || phase === 'grading';
+                if (panel) panel.style.display = questionLive ? 'block' : 'none';
+                if (!questionLive || !currentGame) {
+                    if (awaitingNamesEl) awaitingNamesEl.textContent = '';
+                    if (awaitingCountEl) awaitingCountEl.textContent = '0';
+                    if (totalPlayersEl) totalPlayersEl.textContent = '0';
+                    if (answersReceivedEl) answersReceivedEl.textContent = '0';
+                    return;
+                }
                 if (!awaitingNamesEl || !awaitingCountEl) return;
                 const playersArr = Array.isArray(currentGame.players) ? currentGame.players : [];
                 const answeredSet = new Set();
-                // During playing, use live cache; during grading/scoring, use currentAnswerGroups
                 window._answersByName = answersByNameFromState(currentGame);
                 Object.keys(window._answersByName).forEach(name => answeredSet.add(String(name)));
                 const groups = Array.isArray(currentGame.currentAnswerGroups) ? currentGame.currentAnswerGroups : [];
