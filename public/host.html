@@ -850,6 +850,70 @@
             }
         }
 
+        #panelResults .scoring-panel {
+            font-size: 80%;
+            padding: 10px 11px;
+            border-radius: 13px;
+        }
+
+        #panelResults .scoring-header {
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+        }
+
+        #panelResults .scoring-content {
+            gap: 10px;
+        }
+
+        #panelResults .results-summary {
+            padding: 8px 11px;
+            gap: 6px 13px;
+            border-radius: 10px;
+        }
+
+        #panelResults .results-summary .stat-label {
+            font-size: 9px;
+        }
+
+        #panelResults .results-summary .stat-value {
+            font-size: 1.2em;
+        }
+
+        #panelResults .scoring-section {
+            padding: 10px;
+            gap: 6px;
+            border-radius: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(134px, 1fr));
+        }
+
+        #panelResults .answer-group {
+            padding: 6px 8px;
+            border-radius: 6px;
+            column-gap: 6px;
+            row-gap: 3px;
+        }
+
+        #panelResults .answer-players,
+        #panelResults .answer-points {
+            font-size: 10px;
+        }
+
+        #panelResults .answer-points {
+            padding: 3px 6px;
+        }
+
+        #panelResults .rarity-badge {
+            margin-left: 4px;
+            padding: 1px 5px;
+            font-size: 8px;
+        }
+
+        @media (max-width: 430px) {
+            #panelResults .scoring-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* History modal layout fixes: keep answer text horizontal and allow natural wrapping */
         #historyModal .scoring-content { display: block; }
         #historyModal .answer-group {
