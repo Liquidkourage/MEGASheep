@@ -339,7 +339,8 @@
             display: none !important;
         }
         #panelPlay.is-live-grading,
-        #panelGrade:not([hidden]) {
+        #panelGrade:not([hidden]),
+        #panelResults:not([hidden]) {
             flex: 1;
             display: flex;
             flex-direction: column;
@@ -577,81 +578,181 @@
         .scoring-panel {
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid #28a745;
-            border-radius: 20px;
+            border-radius: 16px;
             box-shadow: 0 20px 40px rgba(40, 167, 69, 0.2);
-            padding: 25px;
+            padding: 12px 14px;
             backdrop-filter: blur(10px);
-            margin-bottom: 30px;
+            margin-bottom: 0;
         }
 
         .scoring-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
             border-bottom: 1px solid rgba(40, 167, 69, 0.3);
+            flex: 0 0 auto;
         }
 
         .scoring-header h3 {
             color: #ffffff;
             margin: 0;
-            font-size: 1.5em;
+            font-size: 1.25em;
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        .scoring-content {
+        #panelResults {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #panelResults .scoring-panel {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #panelResults .scoring-content {
+            flex: 1;
+            min-width: 0;
+            min-height: 0;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            overflow: hidden;
+            align-items: stretch;
+        }
+        @media (max-width: 900px) {
+            #panelResults .scoring-content {
+                grid-template-columns: 1fr 1fr;
+                overflow: auto;
+            }
+        }
+        @media (max-width: 620px) {
+            #panelResults .scoring-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        #panelResults .results-summary,
+        #panelResults .scoring-section {
+            min-width: 0;
+            min-height: 0;
+            max-height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .results-summary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .results-summary .stat-label {
+            color: #bbb;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .results-summary .stat-value {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #fff;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         .scoring-section {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
-            padding: 20px;
+            padding: 12px;
+            min-width: 0;
         }
 
         .scoring-section h4 {
             color: #ffffff;
-            margin: 0 0 15px 0;
-            font-size: 1.2em;
+            margin: 0 0 10px 0;
+            font-size: 1.05em;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: rgba(8, 10, 16, 0.92);
+            padding: 2px 0 8px;
         }
 
-        .answer-group {
+        #panelResults .answer-group,
+        .scoring-panel .answer-group {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
             display: grid;
-            /* Slightly widen the answer card to better fit multiple player names */
-            grid-template-columns: minmax(240px, auto) 1.2fr auto; /* answer | players | points */
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-areas:
+                "text pts"
+                "players pts";
+            column-gap: 8px;
+            row-gap: 4px;
             align-items: center;
-            column-gap: 14px;
+            min-width: 0;
+            overflow: hidden;
         }
 
-        .answer-text {
+        #panelResults .answer-text,
+        .scoring-panel .answer-text {
+            grid-area: text;
             font-weight: bold;
             color: #ffffff;
-            margin: 0; /* avoid pushing content down */
-            white-space: normal; /* allow natural wrapping */
-            word-break: keep-all; /* avoid breaking every char */
-            overflow-wrap: break-word; /* wrap on long tokens */
+            margin: 0;
+            min-width: 0;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            line-height: 1.25;
         }
 
-        .answer-players {
+        #panelResults .answer-players,
+        .scoring-panel .answer-players {
+            grid-area: players;
             color: #cccccc;
             font-size: 12px;
+            min-width: 0;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            line-height: 1.3;
         }
 
-        .answer-points {
-            color: #28a745;
-            font-weight: bold;
-            font-size: 14px;
+        #panelResults .answer-points,
+        .scoring-panel .answer-points {
+            grid-area: pts;
+            color: #6ee7a0;
+            font-weight: 800;
+            font-size: 12px;
             margin: 0;
-            justify-self: end; /* keep at right */
+            justify-self: end;
+            align-self: center;
+            white-space: nowrap;
+            background: rgba(40, 167, 69, 0.16);
+            border: 1px solid rgba(40, 167, 69, 0.35);
+            border-radius: 999px;
+            padding: 4px 8px;
+            line-height: 1.2;
+            max-width: 100%;
         }
 
         /* History modal layout fixes: keep answer text horizontal and allow natural wrapping */
@@ -2185,15 +2286,16 @@
                     const correctGivenSet = new Set(groups.filter(g => g.category === 'correct').map(g => norm(g.answer)));
                     const missedCorrect = correctList.filter(ans => !correctGivenSet.has(norm(ans)));
                     const summary = document.createElement('div');
-                    summary.style.cssText = 'background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:14px; margin-bottom:16px;';
+                    summary.className = 'results-summary';
+                    const commonText = mostCommon ? `"${mostCommon.answer}" (${mostCommon.count||mostCommon.players?.length||0})` : '—';
                     summary.innerHTML = `
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:10px;">
-                            <div><div style="color:#bbb; font-size:12px;">Total responses</div><div style="font-size:20px; font-weight:800;">${totalResponses}</div></div>
-                            <div><div style="color:#bbb; font-size:12px;">Unique answers</div><div style="font-size:20px; font-weight:800;">${uniqueGroups.length}</div></div>
-                            <div><div style="color:#bbb; font-size:12px;">Most common</div><div style="font-size:16px; font-weight:700; word-break:break-word;">${mostCommon ? `"${mostCommon.answer}" (${mostCommon.count||mostCommon.players?.length||0})` : '—'}</div></div>
-                            <div><div style="color:#bbb; font-size:12px;">Missed correct</div><div style="font-size:20px; font-weight:800; color:#ffc107;">${missedCorrect.length}</div></div>
-                        </div>
+                        <div><div class="stat-label">Total responses</div><div class="stat-value">${totalResponses}</div></div>
+                        <div><div class="stat-label">Unique answers</div><div class="stat-value">${uniqueGroups.length}</div></div>
+                        <div><div class="stat-label">Most common</div><div class="stat-value"></div></div>
+                        <div><div class="stat-label">Missed correct</div><div class="stat-value" style="color:#ffc107;">${missedCorrect.length}</div></div>
                     `;
+                    const commonEl = summary.querySelectorAll('.stat-value')[2];
+                    if (commonEl) commonEl.textContent = commonText;
                     scoringContent.appendChild(summary);
                     // Unique answers section (players + answer)
                     if (uniqueGroups.length > 0) {
@@ -2204,16 +2306,7 @@
                         uniqueSection.appendChild(h);
                         uniqueGroups
                           .sort((a,b)=> (a.answer||'').localeCompare(b.answer||''))
-                          .forEach(g => {
-                              const row = document.createElement('div');
-                              row.className = 'answer-group';
-                              row.innerHTML = `
-                                  <div class="answer-text">"${g.answer}"</div>
-                                  <div class="answer-players">${(g.players||[]).join(', ')}</div>
-                                  <div class="answer-points">+${g.points||0} pts</div>
-                              `;
-                              uniqueSection.appendChild(row);
-                          });
+                          .forEach(g => uniqueSection.appendChild(createResultCard(g.answer, g.players, g.points)));
                         scoringContent.appendChild(uniqueSection);
                     }
                     // Missed correct answers section
@@ -2223,16 +2316,7 @@
                         const h = document.createElement('h4');
                         h.textContent = '⚠️ Correct Answers Not Given'; h.style.color = '#ffc107';
                         missedSection.appendChild(h);
-                        missedCorrect.forEach(ans => {
-                            const row = document.createElement('div');
-                            row.className = 'answer-group';
-                            row.innerHTML = `
-                                <div class="answer-text">"${ans}"</div>
-                                <div class="answer-players">—</div>
-                                <div class="answer-points">0 pts</div>
-                            `;
-                            missedSection.appendChild(row);
-                        });
+                        missedCorrect.forEach(ans => missedSection.appendChild(createResultCard(ans, [], 0)));
                         scoringContent.appendChild(missedSection);
                     }
                 } catch(_) {}
@@ -2270,7 +2354,30 @@
             }
         }
 
-        // Create scoring section
+        function createResultCard(answer, players, points) {
+            const answerGroup = document.createElement('div');
+            answerGroup.className = 'answer-group';
+
+            const answerText = document.createElement('div');
+            answerText.className = 'answer-text';
+            answerText.textContent = `"${answer || ''}"`;
+
+            const names = Array.isArray(players) ? players.filter(Boolean) : [];
+            const answerPlayers = document.createElement('div');
+            answerPlayers.className = 'answer-players';
+            answerPlayers.textContent = names.length ? names.join(', ') : '—';
+
+            const pts = Number(points) || 0;
+            const answerPoints = document.createElement('div');
+            answerPoints.className = 'answer-points';
+            answerPoints.textContent = pts > 0 ? `+${pts}` : `${pts}`;
+
+            answerGroup.appendChild(answerText);
+            answerGroup.appendChild(answerPlayers);
+            answerGroup.appendChild(answerPoints);
+            return answerGroup;
+        }
+
         function createScoringSection(title, answers, color) {
             const section = document.createElement('div');
             section.className = 'scoring-section';
@@ -2280,26 +2387,8 @@
             header.style.color = color;
             section.appendChild(header);
             
-            answers.forEach(answer => {
-                const answerGroup = document.createElement('div');
-                answerGroup.className = 'answer-group';
-                
-                const answerText = document.createElement('div');
-                answerText.className = 'answer-text';
-                answerText.textContent = `"${answer.answer}"`;
-                
-                const answerPlayers = document.createElement('div');
-                answerPlayers.className = 'answer-players';
-                answerPlayers.textContent = `Players: ${answer.players.join(', ')}`;
-                
-                const answerPoints = document.createElement('div');
-                answerPoints.className = 'answer-points';
-                answerPoints.textContent = `Points: ${answer.points || 0}`;
-                
-                answerGroup.appendChild(answerText);
-                answerGroup.appendChild(answerPlayers);
-                answerGroup.appendChild(answerPoints);
-                section.appendChild(answerGroup);
+            answers.forEach((answer) => {
+                section.appendChild(createResultCard(answer.answer, answer.players, answer.points));
             });
             
             return section;
