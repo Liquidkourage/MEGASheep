@@ -869,27 +869,67 @@
             padding: 10px;
             gap: 6px;
             border-radius: 10px;
-            grid-template-columns: repeat(auto-fill, minmax(134px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
         }
 
         #panelResults .answer-group {
-            padding: 6px 8px;
-            border-radius: 6px;
-            column-gap: 6px;
-            row-gap: 3px;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
+            gap: 6px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            min-height: 92px;
         }
 
-        #panelResults .answer-players,
+        #panelResults .answer-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            min-height: 18px;
+        }
+
+        #panelResults .answer-text {
+            font-size: 1.7em;
+            display: block;
+            width: 100%;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+            line-height: 1.15;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            background: none;
+            border: none;
+            border-radius: 0;
+            text-align: left;
+            text-shadow: none;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        #panelResults .answer-players {
+            margin-top: auto;
+            font-size: 10px;
+            color: #b8c0cc;
+            line-height: 1.25;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
         #panelResults .answer-points {
             font-size: 10px;
-        }
-
-        #panelResults .answer-points {
-            padding: 3px 6px;
+            padding: 2px 6px;
+            justify-self: unset;
+            align-self: unset;
         }
 
         #panelResults .rarity-badge {
-            margin-left: 4px;
+            margin-left: 0;
             padding: 1px 5px;
             font-size: 8px;
         }
@@ -2468,29 +2508,36 @@
             const answerGroup = document.createElement('div');
             answerGroup.className = 'answer-group' + (rarityClass ? ' ' + rarityClass : '');
 
-            const answerText = document.createElement('div');
-            answerText.className = 'answer-text';
-            answerText.textContent = `"${answer || ''}"`;
+            const meta = document.createElement('div');
+            meta.className = 'answer-meta';
             if (badgeSpec) {
                 const badge = document.createElement('span');
                 badge.className = badgeSpec.className;
                 badge.textContent = badgeSpec.text;
-                answerText.appendChild(badge);
+                meta.appendChild(badge);
+            } else {
+                const spacer = document.createElement('span');
+                meta.appendChild(spacer);
             }
+
+            const pts = Number(points) || 0;
+            const answerPoints = document.createElement('div');
+            answerPoints.className = 'answer-points';
+            answerPoints.textContent = pts > 0 ? `+${pts}` : `${pts}`;
+            meta.appendChild(answerPoints);
+
+            const answerText = document.createElement('div');
+            answerText.className = 'answer-text';
+            answerText.textContent = String(answer || '');
 
             const names = Array.isArray(players) ? players.filter(Boolean) : [];
             const answerPlayers = document.createElement('div');
             answerPlayers.className = 'answer-players';
             answerPlayers.textContent = names.length ? names.join(', ') : '—';
 
-            const pts = Number(points) || 0;
-            const answerPoints = document.createElement('div');
-            answerPoints.className = 'answer-points';
-            answerPoints.textContent = pts > 0 ? `+${pts}` : `${pts}`;
-
+            answerGroup.appendChild(meta);
             answerGroup.appendChild(answerText);
             answerGroup.appendChild(answerPlayers);
-            answerGroup.appendChild(answerPoints);
             return answerGroup;
         }
 
