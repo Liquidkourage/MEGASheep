@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Host Console</title>
-    <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T20-00-00">
+    <link rel="stylesheet" href="grading-board.css?v=2026-11-18T20-15-00">
     <script src="/socket.io/socket.io.js"></script>
-    <script src="apply-state.js?v=2026-11-18T14-00-00"></script>
+    <script src="apply-state.js?v=2026-11-18T20-00-00"></script>
     <style>
         /* Floating Q&A indicator */
         .qa-fab {
@@ -975,6 +976,7 @@
 
             <div class="tabs" role="tablist">
                 <button type="button" id="tabPlay" class="tab-btn active" data-host-tab="play">Play</button>
+                <button type="button" id="tabGrade" class="tab-btn" data-host-tab="grade">Grade</button>
                 <button type="button" id="tabQuestions" class="tab-btn" data-host-tab="questions">Questions</button>
                 <button type="button" id="tabQa" class="tab-btn" data-host-tab="qa">Q&amp;A <span id="qaBadge" class="tab-count" style="display:none">0</span></button>
                 <button type="button" id="tabResults" class="tab-btn" data-host-tab="results">Results</button>
@@ -1013,6 +1015,70 @@
                             <h3>👥 Players (<span id="playerCount" data-player-count>0</span>)</h3>
                         </div>
                         <div class="player-list" id="playerList"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="panelGrade" class="tab-panel" data-host-panel="grade" hidden>
+                <div id="gradeIdleNote" class="live-question-card is-idle">
+                    <div class="live-q-meta">Grade</div>
+                    <p class="live-q-prompt">When a question ends, answers land here. Drag them into correct, wrong, or send-back, then complete grading.</p>
+                </div>
+                <div id="gradingInterface" class="grading-interface grading-board" style="display: none;">
+                    <div class="grading-header-controls">
+                        <h3 class="grading-title">📝 Categorize Answers</h3>
+                        <button id="resyncBtn" class="control-btn secondary" type="button" onclick="resyncGameData()">🔄 Re-sync</button>
+                    </div>
+                    <div class="grading-controls-top">
+                        <button id="applyCategorizationBtn" class="control-btn success" type="button">Complete Grading</button>
+                        <button id="nextQuestionBtn" class="control-btn primary" type="button" style="display: none;">Next Question</button>
+                    </div>
+                    <div class="grading-layout">
+                        <div class="question-section">
+                            <div id="questionDisplay" class="question-display" style="display: none;">
+                                <div class="question-card">
+                                    <h4>📋 Current Question</h4>
+                                    <p id="questionText" class="question-text"></p>
+                                    <div class="question-meta">
+                                        <span id="questionNumber" class="question-number"></span>
+                                        <span id="answerCount" class="answer-count"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="answer-buckets-section">
+                            <div class="correct-answers-section">
+                                <h4>✅ Correct Answers (from database)</h4>
+                                <div id="correctAnswers"></div>
+                            </div>
+                        </div>
+                        <div class="categorization-section">
+                            <div class="wrong-uncategorized-section">
+                                <h4>❌ Wrong &amp; 📦 Uncategorized Answers</h4>
+                                <div class="wrong-uncategorized-grid">
+                                    <div class="answer-bucket uncategorized-bucket" data-bucket-id="uncategorized">
+                                        <h4 onclick="toggleBucket(this)">
+                                            <span class="bucket-toggle">▼</span>
+                                            📦 Uncategorized Answers
+                                            <span class="answer-count-badge" id="uncategorizedAnswersCount">0</span>
+                                        </h4>
+                                        <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized" data-bucket-id="uncategorized"></div>
+                                    </div>
+                                    <div class="answer-bucket wrong-bucket" data-bucket-id="wrong">
+                                        <h4 onclick="toggleBucket(this)">
+                                            <span class="bucket-toggle">▼</span>
+                                            ❌ Wrong Answers
+                                            <span class="answer-count-badge" id="wrongAnswersCount">0</span>
+                                        </h4>
+                                        <div id="wrongAnswers" class="answer-items" data-bucket="wrong" data-bucket-id="wrong"></div>
+                                    </div>
+                                    <div class="answer-bucket sendback-bucket">
+                                        <h4>✏️ Send Back (Refine)</h4>
+                                        <div id="sendBackAnswers" class="answer-items" data-bucket="sendBack" data-bucket-id="sendBack"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -1111,7 +1177,7 @@
                 </div>
             </div>
             <div class="modal-body">
-                <iframe id="gradingSingleFrame" src="/grading-single" width="100%" height="600px" frameborder="0"></iframe>
+                <iframe id="gradingSingleFrame" src="about:blank" width="100%" height="600px" frameborder="0"></iframe>
             </div>
         </div>
     </div>
@@ -1142,6 +1208,7 @@
                     <button id="showOverallLbBtn" class="control-btn secondary" type="button">🏆 OVERALL LEADERBOARD</button>
                     <button id="historyBtn" class="control-btn secondary" type="button">📚 HISTORY</button>
                     <button id="showEndDemoBtn" class="control-btn secondary" type="button">🎉 END DEMO</button>
+                    <button id="openExtraGraderBtn" class="control-btn secondary" type="button">📝 EXTRA GRADER WINDOW</button>
                 </div>
             </div>
         </div>
@@ -1177,6 +1244,8 @@
         </div>
     </div>
 
+    <script>window.MEGASHEEP_GRADING_EMBEDDED = true;</script>
+    <script src="grading-board.js?v=2026-11-18T20-15-00"></script>
     <script>
         // Socket.IO connection
         let socket = null;
@@ -1186,6 +1255,7 @@
         let qpSelectedIds = new Set();
         let creatingNewGame = false;
         let lastOpenedGradingQuestion = null;
+        let lastAutoGradeEpoch = '';
         const lockstepCtx = { lastSeq: -1, lastEpoch: '' };
 
         function unwrapGameState(data) {
@@ -1248,17 +1318,24 @@
                     }
                 }
 
-                if (result.epochChanged) {
-                    if (phase === 'scoring' || phase === 'roundComplete' || phase === 'overallLeaderboard') {
-                        try { switchHostTab('results'); } catch (_) {}
-                    } else if (phase === 'playing' || phase === 'waiting') {
-                        try { switchHostTab('play'); } catch (_) {}
+                if (phase === 'scoring' || phase === 'roundComplete' || phase === 'overallLeaderboard') {
+                    lastAutoGradeEpoch = '';
+                    try { switchHostTab('results'); } catch (_) {}
+                } else if (phase === 'grading') {
+                    const gradeEpoch = state.epoch || ('grading:' + String(state.currentQuestion ?? 0));
+                    if (result.epochChanged || lastAutoGradeEpoch !== gradeEpoch) {
+                        lastAutoGradeEpoch = gradeEpoch;
+                        try { switchHostTab('grade'); } catch (_) {}
                     }
+                } else if (result.epochChanged && (phase === 'playing' || phase === 'waiting')) {
+                    lastAutoGradeEpoch = '';
+                    try { switchHostTab('play'); } catch (_) {}
                 }
+
+                syncHostGradingBoard(state, result);
 
                 if (phase === 'grading') {
                     hideScoringPanel();
-                    openGradingSingleModal();
                 } else if (phase === 'scoring') {
                     try { closeGradingSingleModal(); } catch (_) {}
                     showScoringPanel(state);
@@ -1344,6 +1421,7 @@
                 maxReconnectionAttempts: 25,
                 autoConnect: true
             });
+            try { window.MEGASheepGrading && window.MEGASheepGrading.attach({ socket }); } catch (_) {}
             
             socket.on('connect', () => {
                 updateConnectionStatus(true);
@@ -1644,6 +1722,25 @@
                 const match = panel.getAttribute('data-host-panel') === tab;
                 panel.hidden = !match;
             });
+        }
+
+        function syncHostGradingBoard(state, result) {
+            const idle = document.getElementById('gradeIdleNote');
+            const board = document.getElementById('gradingInterface');
+            const phase = state && state.gameState;
+            if (phase === 'grading') {
+                if (idle) idle.hidden = true;
+                if (board) board.style.display = 'block';
+                try { window.MEGASheepGrading && window.MEGASheepGrading.apply(state, result); } catch (e) {
+                    console.warn('host grading apply failed', e);
+                }
+                return;
+            }
+            if (idle) idle.hidden = false;
+            if (board) board.style.display = 'none';
+            if (result && result.epochChanged) {
+                try { window.MEGASheepGrading && window.MEGASheepGrading.discard(); } catch (_) {}
+            }
         }
 
         function openShowToolsModal() {
@@ -2179,6 +2276,16 @@
             socket.emit('showEndGameDemo', { gameCode: currentGame.gameCode });
             closeShowToolsModal();
         });
+        const extraGraderBtn = document.getElementById('openExtraGraderBtn');
+        if (extraGraderBtn) extraGraderBtn.addEventListener('click', () => {
+            const code = currentGame && currentGame.gameCode;
+            const q = Number(currentGame?.currentQuestion ?? currentGame?.currentQuestionIndex ?? 0);
+            const url = code
+                ? `/grading-single?gameCode=${encodeURIComponent(code)}&q=${q}`
+                : '/grading-single';
+            window.open(url, 'megasheep-grader', 'noopener');
+            closeShowToolsModal();
+        });
 
         // Grading modal functions
         function openGradingSingleModal() {
@@ -2281,7 +2388,7 @@
 
         // Grading interface buttons
         document.getElementById('gradingBtn').addEventListener('click', () => {
-            openGradingSingleModal();
+            switchHostTab('grade');
         });
 
         // Removed multi-user grading button and binding
