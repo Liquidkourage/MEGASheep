@@ -315,7 +315,7 @@
         }
         .play-actions {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 12px;
         }
         .play-actions .control-btn {
@@ -1088,9 +1088,8 @@
                         </div>
                         <div class="play-actions">
                             <button id="startGameBtn" class="control-btn success">START GAME</button>
-                            <button id="endQuestionNowBtn" class="control-btn warning">⏹️ END QUESTION</button>
+                            <button id="endQuestionNowBtn" class="control-btn warning" title="Stop this question now. Players can no longer submit.">Close answering</button>
                             <button id="gradingBtn" class="control-btn secondary">📝 GRADE</button>
-                            <button id="endGameMainBtn" class="control-btn warning">🛑 END GAME</button>
                         </div>
                         <div id="answerProgressPanel" class="host-info" style="display:none; margin-top:14px; text-align:left; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); padding:10px 12px; border-radius:8px;">
                             <div class="answer-status" style="margin-bottom:6px;">
@@ -1120,10 +1119,8 @@
                         </div>
                         <div class="grade-strip-timer" id="gradeStripTimer" hidden aria-live="polite">0:00</div>
                         <div class="grade-strip-actions">
-                            <button id="endQuestionGradeBtn" class="control-btn warning" type="button" title="Stop this question now. Players can no longer submit. You can keep sorting, then press Complete.">End question</button>
-                            <button id="applyCategorizationBtn" class="control-btn success" type="button" title="Lock in your sorting and score this question. Available after the question ends.">Complete</button>
-                            <button id="endGameGradeBtn" class="control-btn warning" type="button" title="End the entire game for every player. This is not just this question.">End game</button>
-                            <button id="resyncBtn" class="control-btn secondary" type="button" title="Reload the latest game snapshot if this board looks out of date." onclick="resyncGameData()">Re-sync</button>
+                            <button id="endQuestionGradeBtn" class="control-btn warning" type="button" title="Stop this question now. Players can no longer submit. You can keep sorting, then press Score question.">Close answering</button>
+                            <button id="applyCategorizationBtn" class="control-btn success" type="button" title="Lock in your sorting and score this question. Available after answering is closed.">Score question</button>
                             <button id="nextQuestionBtn" class="control-btn primary" type="button" style="display: none;">Next Question</button>
                         </div>
                     </div>
@@ -1309,6 +1306,8 @@
                     <button id="historyBtn" class="control-btn secondary" type="button">📚 HISTORY</button>
                     <button id="showEndDemoBtn" class="control-btn secondary" type="button">🎉 END DEMO</button>
                     <button id="openExtraGraderBtn" class="control-btn secondary" type="button">📝 EXTRA GRADER WINDOW</button>
+                    <button id="resyncBtn" class="control-btn secondary" type="button" title="Reload the latest game snapshot if this board looks out of date." onclick="resyncGameData()">Re-sync</button>
+                    <button id="endGameMainBtn" class="control-btn warning" type="button" title="End the entire game for every player. This is not just this question.">End game</button>
                 </div>
             </div>
         </div>
@@ -1845,12 +1844,12 @@
             if (!btn) return;
             if (phase === 'playing') {
                 btn.disabled = true;
-                btn.textContent = 'Complete';
-                btn.title = 'Keep sorting answers now. Complete grading after the question ends.';
+                btn.textContent = 'Score question';
+                btn.title = 'Keep sorting answers now. Score the question after answering is closed.';
             } else {
                 btn.disabled = false;
-                btn.textContent = 'Complete';
-                btn.title = '';
+                btn.textContent = 'Score question';
+                btn.title = 'Lock in your sorting and score this question.';
             }
         }
 
@@ -2408,7 +2407,7 @@
             }
         });
 
-        document.getElementById('endGameMainBtn').addEventListener('click', () => {
+        document.getElementById('endGameMainBtn')?.addEventListener('click', () => {
             try {
                 if (!currentGame || !currentGame.gameCode) {
                     alert('No active game to end.');
@@ -2416,10 +2415,8 @@
                 }
                 if (!confirm('End the current game for all players?')) return;
                 socket.emit('endGame', { gameCode: currentGame.gameCode });
+                try { closeShowToolsModal(); } catch (_) {}
             } catch (e) { console.warn('Failed to emit endGame', e); }
-        });
-        document.getElementById('endGameGradeBtn')?.addEventListener('click', () => {
-            document.getElementById('endGameMainBtn')?.click();
         });
 
         // End question now (host manual control)
