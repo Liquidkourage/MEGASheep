@@ -605,6 +605,13 @@
             gap: 10px;
         }
 
+        #panelResults .scoring-header .control-btn {
+            flex: 0 0 auto;
+            font-size: 13px;
+            padding: 8px 14px;
+            min-height: 32px;
+        }
+
         #panelResults {
             flex: 1;
             min-height: 0;
@@ -1455,7 +1462,7 @@
             <section id="panelGrade" class="tab-panel" data-host-panel="grade" hidden>
                 <div id="gradeIdleNote" class="live-question-card is-idle">
                     <div class="live-q-meta">Grade</div>
-                    <p class="live-q-prompt">Live answers appear on Play while the question is running. Use this tab for a full-board view.</p>
+                    <p class="live-q-prompt">Start a question to grade live answers here.</p>
                 </div>
                 <div id="gradeTabMount" class="host-grade-mount"></div>
             </section>
@@ -1496,6 +1503,7 @@
                 <div class="scoring-panel" id="scoringPanel">
                     <div class="scoring-header">
                         <h3>🏆 Question Results</h3>
+                        <button id="resultsNextQuestionBtn" class="control-btn success" type="button" hidden>Next Question</button>
                     </div>
                     <div class="scoring-content" id="scoringContent">
                         <div class="answer-group">Score a question to see results here.</div>
@@ -1700,14 +1708,12 @@
                 if (phase === 'scoring' || phase === 'roundComplete' || phase === 'overallLeaderboard') {
                     lastAutoGradeEpoch = '';
                     try { switchHostTab('results'); } catch (_) {}
-                } else if (phase === 'playing' || phase === 'waiting') {
+                } else if (phase === 'playing' || phase === 'grading') {
                     const tab = document.querySelector('.tab-btn.active')?.getAttribute('data-host-tab') || 'play';
-                    const jumpToPlay = result.epochChanged
-                        || tab === 'results'
-                        || (phase === 'playing' && (tab === 'settings' || tab === 'questions'));
-                    if (jumpToPlay) {
+                    const jumpToGrade = result.epochChanged || tab === 'results' || tab === 'play';
+                    if (jumpToGrade) {
                         lastAutoGradeEpoch = '';
-                        try { switchHostTab('play'); } catch (_) {}
+                        try { switchHostTab('grade'); } catch (_) {}
                     }
                 }
 
@@ -2359,42 +2365,72 @@
             });
         }
 
+        function hostAdvanceLabel() {
+            const phase = hostPhase();
+            const qpr = Number(currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5);
+            const currentIdx = Number(currentGame?.currentQuestion || 0);
+            const questionNumber = currentIdx + 1;
+            const totalQs = Array.isArray(currentGame?.questions) ? currentGame.questions.length : 0;
+            const totalRounds = Math.max(1, Math.ceil(totalQs / qpr));
+            const currentRound = Math.ceil(((currentIdx) + 1) / qpr);
+            if (phase === 'scoring') {
+                const isEndOfRound = (questionNumber % qpr === 0) || (currentIdx + 1 >= totalQs);
+                return { text: isEndOfRound ? 'END ROUND' : 'NEXT QUESTION', disabled: false, show: true };
+            }
+            if (phase === 'roundComplete') {
+                if (currentRound >= totalRounds) {
+                    return { text: 'END OF GAME', disabled: true, show: true };
+                }
+                return { text: 'START NEXT ROUND', disabled: false, show: true };
+            }
+            return { text: 'NEXT QUESTION', disabled: true, show: false };
+        }
+
+        function advanceFromResults() {
+            if (!currentGame) return;
+            const phase = hostPhase();
+            if (phase === 'scoring') {
+                socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
+            } else if (phase === 'roundComplete') {
+                const qpr = Number(currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5);
+                const totalRounds = Math.ceil((currentGame?.questions?.length || 0) / qpr);
+                const currentRound = Math.ceil(((currentGame?.currentQuestion || 0) + 1) / qpr);
+                if (currentRound >= totalRounds) return;
+                socket.emit('continueToNextRound', { gameCode: currentGame.gameCode });
+            } else if (phase === 'grading') {
+                alert('Finish grading this question before going to the next one.');
+            }
+        }
+
         // Update game controls
         function updateGameControls() {
             const startBtn = document.getElementById('startGameBtn');
             const endBtnMain = document.getElementById('endGameMainBtn');
+            const resultsNext = document.getElementById('resultsNextQuestionBtn');
             const phase = hostPhase();
+            const advance = hostAdvanceLabel();
             
             if (phase === 'waiting') {
                 startBtn.textContent = 'START GAME';
                 startBtn.className = 'control-btn success';
                 startBtn.disabled = false;
                 if (endBtnMain) endBtnMain.disabled = false;
-            } else if (phase === 'playing') {
+            } else if (phase === 'playing' || phase === 'grading') {
                 startBtn.textContent = 'GAME IN PROGRESS';
                 startBtn.className = 'control-btn secondary';
                 startBtn.disabled = true;
                 if (endBtnMain) endBtnMain.disabled = false;
-            } else if (phase === 'scoring') {
-                // While scoring, show END ROUND on boundary, otherwise NEXT QUESTION
-                try {
-                    const qpr = Number(currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5);
-                    const currentIdx = Number(currentGame?.currentQuestion || 0);
-                    const questionNumber = currentIdx + 1;
-                    const isEndOfRound = (questionNumber % qpr === 0);
-                    startBtn.textContent = isEndOfRound ? 'END ROUND' : 'NEXT QUESTION';
-                } catch (_) {
-                    startBtn.textContent = 'NEXT QUESTION';
-                }
-                startBtn.className = 'control-btn success';
-                startBtn.disabled = false;
+            } else if (phase === 'scoring' || phase === 'roundComplete') {
+                startBtn.textContent = advance.text;
+                startBtn.className = advance.disabled ? 'control-btn secondary' : 'control-btn success';
+                startBtn.disabled = advance.disabled;
                 if (endBtnMain) endBtnMain.disabled = false;
-            } else if (phase === 'roundComplete') {
-                // At round-complete, always show START NEXT ROUND
-                startBtn.textContent = 'START NEXT ROUND';
-                startBtn.className = 'control-btn success';
-                startBtn.disabled = false;
-                if (endBtnMain) endBtnMain.disabled = false;
+            }
+            if (resultsNext) {
+                resultsNext.textContent = advance.text;
+                resultsNext.hidden = !advance.show;
+                resultsNext.disabled = advance.disabled;
+                resultsNext.className = advance.disabled ? 'control-btn secondary' : 'control-btn success';
             }
             updateGamePhaseBanner();
             updateLiveQuestionPrompt();
@@ -2445,6 +2481,7 @@
             const scoringContent = document.getElementById('scoringContent');
             if (!scoringContent) return;
             try { switchHostTab('results'); } catch (_) {}
+            try { updateGameControls(); } catch (_) {}
             
             if (data && data.currentAnswerGroups) {
                 scoringContent.innerHTML = '';
@@ -2683,25 +2720,15 @@
             const phase = hostPhase();
             if (phase === 'waiting') {
                 socket.emit('startGame', { gameCode: currentGame.gameCode });
-            } else if (phase === 'scoring') {
-                socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
-            } else if (phase === 'roundComplete') {
-                const totalRounds = Math.ceil((currentGame?.questions?.length || 0) / (currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5));
-                const currentRound = Math.ceil(((currentGame?.currentQuestion || 0) + 1) / (currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5));
-                if (currentRound >= totalRounds) {
-                    const btn = document.getElementById('startGameBtn');
-                    if (btn) { btn.disabled = true; btn.textContent = 'END OF GAME'; btn.className = 'control-btn secondary'; }
-                } else {
-                    socket.emit('continueToNextRound', { gameCode: currentGame.gameCode });
-                }
+            } else if (phase === 'scoring' || phase === 'roundComplete' || phase === 'grading') {
+                advanceFromResults();
             } else if (phase === 'playing') {
                 console.log('Start button clicked during playing; ignoring to prevent premature nextQuestion');
-            } else if (phase === 'grading') {
-                alert('Finish grading this question before going to the next one.');
             } else {
                 socket.emit('startGame', { gameCode: currentGame.gameCode });
             }
         });
+        document.getElementById('resultsNextQuestionBtn')?.addEventListener('click', advanceFromResults);
 
         document.getElementById('endGameMainBtn')?.addEventListener('click', () => {
             try {
