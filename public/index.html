@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
     <title>MEGASheep Trivia</title>
-    <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T21-20-00">
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     <script>
@@ -114,12 +114,15 @@
             </div>
 
             <div class="question-container">
-                <h2 id="questionText" class="question-text"></h2>
-                
-                <!-- Player Answer Form (hidden for host) -->
-                <div id="playerAnswerForm" class="answer-form" style="display: none;">
-                    <input type="text" id="answerInput" placeholder="Type your answer..." maxlength="100" autocomplete="off" enterkeyhint="send" inputmode="text">
-                    <button id="submitAnswerBtn" class="btn btn-primary">Submit Answer</button>
+                <div class="player-play-stage">
+                    <h2 id="questionText" class="question-text"></h2>
+                    <div id="playerAnswerForm" class="answer-form" style="display: none;">
+                        <div id="editRequestNotice" class="player-edit-banner" hidden></div>
+                        <label for="answerInput" class="player-answer-label">Your answer</label>
+                        <input type="text" id="answerInput" placeholder="Type your answer" maxlength="100" autocomplete="off" enterkeyhint="send" inputmode="text" aria-describedby="playerAnswerHint">
+                        <button id="submitAnswerBtn" class="btn btn-primary">Submit answer</button>
+                        <p id="playerAnswerHint" class="player-answer-hint">Rarer correct answers score more.</p>
+                    </div>
                 </div>
                 <div id="playerCommPanel" class="player-comm-panel" hidden>
                     <div id="playerCommRow" class="player-comm-row">
@@ -347,8 +350,8 @@
       <span class="keep-awake-label">Off</span>
     </button>
 
-    <script src="apply-state.js?v=2026-11-18T14-00-00"></script>
-    <script src="script.js?v=2026-11-18T14-00-00"></script>
+    <script src="apply-state.js?v=2026-11-18T21-20-00"></script>
+    <script src="script.js?v=2026-11-18T21-20-00"></script>
   <!-- Removed sticky player footer -->
 </body>
 </html> 

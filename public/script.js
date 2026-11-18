@@ -133,6 +133,37 @@ function unwrapGameState(data) {
     return null;
 }
 
+function setPlayerAnswerChrome({ locked = false, editing = false, reason = '' } = {}) {
+    window._playerEditing = !!editing;
+    const stage = document.querySelector('#gameScreen .player-play-stage');
+    const btn = document.getElementById('submitAnswerBtn');
+    const hint = document.getElementById('playerAnswerHint');
+    const banner = document.getElementById('editRequestNotice');
+    if (stage) {
+        stage.classList.toggle('is-locked', !!locked && !editing);
+        stage.classList.toggle('is-editing', !!editing);
+    }
+    if (btn) {
+        btn.textContent = editing ? 'Submit new answer' : (locked ? 'Locked in' : 'Submit answer');
+    }
+    if (hint) {
+        hint.textContent = editing
+            ? 'The host sent this back. Make it more specific, then submit again.'
+            : (locked
+                ? 'Answer received. Hang tight while the host finishes this question.'
+                : 'Rarer correct answers score more.');
+    }
+    if (banner) {
+        if (editing) {
+            banner.hidden = false;
+            banner.textContent = reason || 'The host wants a more specific answer.';
+        } else {
+            banner.hidden = true;
+            banner.textContent = '';
+        }
+    }
+}
+
 function setPlayerSubmitEnabled(enabled) {
     const form = document.getElementById('playerAnswerForm');
     const input = document.getElementById('answerInput');
@@ -148,6 +179,13 @@ function setPlayerSubmitEnabled(enabled) {
             btn.setAttribute('aria-disabled', 'true');
             btn.classList.add('disabled');
         }
+    }
+    if (!isHost) {
+        setPlayerAnswerChrome({
+            locked: !enabled,
+            editing: !!window._playerEditing && enabled,
+            reason: window._playerEditReason || ''
+        });
     }
 }
 
@@ -219,10 +257,13 @@ function clearPlayerQuestionLocks(code) {
 
 function presentSendBack(reason, originalAnswer) {
     window._submitInFlight = false;
+    window._playerEditing = true;
+    window._playerEditReason = reason || 'The host wants a more specific answer.';
     showScreen('game');
     const form = document.getElementById('playerAnswerForm');
     if (form) form.style.display = 'flex';
     setPlayerSubmitEnabled(true);
+    setPlayerAnswerChrome({ locked: false, editing: true, reason: window._playerEditReason });
     try {
         const code = (gameState && gameState.gameCode) || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
         const qIndex = (typeof gameState?.currentQuestion === 'number') ? gameState.currentQuestion : (typeof currentQuestionIndex === 'number' ? currentQuestionIndex : 0);
@@ -412,6 +453,20 @@ document.addEventListener('DOMContentLoaded', () => {
     window.visualViewport.addEventListener('scroll', applyViewport);
     applyViewport();
   }
+
+  const markKeyboardState = () => {
+    try {
+      const vv = window.visualViewport;
+      const leftover = vv ? (window.innerHeight - vv.height) : 0;
+      document.body.classList.toggle('keyboard-open', leftover > 120);
+    } catch (_) {}
+  };
+  window.addEventListener('resize', markKeyboardState);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', markKeyboardState);
+    window.visualViewport.addEventListener('scroll', markKeyboardState);
+  }
+  markKeyboardState();
 
   async function requestWakeLock() {
     if (!('wakeLock' in navigator)) return false;
@@ -2454,10 +2509,9 @@ function handleNextQuestion(gameStateData) {
     // Auto-generate virtual responses for next question if testing
     scheduleVirtualQuestionFlow();
     try {
-        const editNotice = document.getElementById('editRequestNotice');
-        if (editNotice && editNotice.parentNode) {
-            editNotice.parentNode.removeChild(editNotice);
-        }
+        window._playerEditing = false;
+        window._playerEditReason = '';
+        setPlayerAnswerChrome({ locked: alreadySubmitted, editing: false });
         const status = document.getElementById('answerStatus');
         if (status) { status.innerHTML = ''; status.className = 'answer-status'; }
         const input = document.getElementById('answerInput');
@@ -2582,6 +2636,8 @@ function handleGameFinished(gameStateData) {
 
 function handleAnswerSubmitted() {
     window._submitInFlight = false;
+    window._playerEditing = false;
+    window._playerEditReason = '';
     showToast('✅ Answer submitted! (Locked)', 'success');
     try {
         const code = gameState?.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
@@ -2961,6 +3017,7 @@ function displayCurrentQuestion() {
                 btn.setAttribute('aria-disabled', 'true');
                 btn.classList.add('disabled');
             }
+            setPlayerAnswerChrome({ locked: !!submitted, editing: false });
         } catch(_) {}
     }
     
