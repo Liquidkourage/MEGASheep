@@ -192,6 +192,8 @@ let gameStartTime = null;
 let gameDurationTimer = null;
 let autoResumeAttempted = false;
 let autoResumeInProgress = false;
+let joinedLiveGame = false;
+let hasHadSocketDisconnect = false;
 
 // Lightweight identity persistence for player auto-resume
 function savePlayerIdentity(gameCode, playerName) {
@@ -214,6 +216,7 @@ function clearPlayerIdentity() {
         sessionStorage.removeItem('playerName');
         autoResumeAttempted = true;
         autoResumeInProgress = false;
+        joinedLiveGame = false;
     } catch (_) {}
 }
 
@@ -498,29 +501,25 @@ function initializeSocket() {
     
     socket.on('disconnect', (reason) => {
         console.log('🎮 Script.js: Socket disconnected:', reason);
+        hasHadSocketDisconnect = true;
     });
     
-                socket.on('connect', () => {
+    socket.on('connect', () => {
         console.log('✅ Connected to server with ID:', socket.id);
-        console.log('🎮 Script.js: Socket connection established successfully');
-        
-        // CRITICAL FIX: Enhanced mobile refresh persistence - check all storage methods
+        if (!hasHadSocketDisconnect) return;
+        if (!joinedLiveGame) return;
+        const ident = getSavedIdentity();
+        if (!ident) return;
+        autoResumeInProgress = true;
         try {
-            // Priority: URL params > sessionStorage > localStorage for mobile compatibility
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlGameCode = urlParams.get('game') || urlParams.get('code') || urlParams.get('gameCode') || urlParams.get('room');
-            
-            const savedGameCode = urlGameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode');
-            const savedPlayerName = sessionStorage.getItem('playerName') || localStorage.getItem('player.name');
-            const savedPlayerId = localStorage.getItem('playerId');
-            
-            if (savedGameCode && savedPlayerName && !autoResumeInProgress) {
-                console.log('🔄 Auto-resuming game on reconnect (enhanced mobile):', { gameCode: savedGameCode, playerName: savedPlayerName });
-                autoResumeInProgress = true;
-                attemptAutoResume();
-            }
+            socket.emit('joinGame', {
+                gameCode: ident.gameCode,
+                playerName: ident.playerName,
+                playerId: getOrCreatePlayerId()
+            });
         } catch (e) {
-            console.warn('Auto-resume on connect failed:', e);
+            autoResumeInProgress = false;
+            console.warn('Live-session rejoin failed:', e);
         }
     });
 
@@ -556,6 +555,7 @@ function initializeSocket() {
     socket.on('roundComplete', handleRoundComplete);
     socket.on('gameFinished', handleGameFinished);
     socket.on('error', handleError);
+    socket.on('gameError', handleError);
     socket.on('answerSubmitted', handleAnswerSubmitted);
     socket.on('answerError', handleAnswerError);
     socket.on('answerUpdate', handleAnswerUpdate);
@@ -1083,6 +1083,7 @@ async function joinGame() {
             gameState.playerName = playerName;
             // Persist identity for auto-resume
             savePlayerIdentity(resolvedCode, playerName);
+            autoResumeInProgress = false;
             
             console.log('🎮 Script.js: API call successful, emitting joinGame socket event');
             console.log('🎮 Script.js: Socket connected before emit:', socket.connected);
@@ -2203,10 +2204,11 @@ function handleGameJoined(data) {
     console.log('🎮 Script.js: Client-side serialization test - players after JSON roundtrip:', testDeserialization.gameState?.players?.length || 0);
     
     gameState = data.gameState;
-    // Joining succeeded; any reconnect toast should only be shown now if we actually resumed
-    if (autoResumeInProgress) {
-        try { showToast('Rejoined your game', 'success'); } catch (_) {}
-        autoResumeInProgress = false;
+    const showResumeToast = joinedLiveGame && autoResumeInProgress && hasHadSocketDisconnect;
+    autoResumeInProgress = false;
+    joinedLiveGame = true;
+    if (showResumeToast) {
+        try { showToast('Reconnected', 'success'); } catch (_) {}
     }
     // Persist identity in case server normalized code/name
     try { savePlayerIdentity(data.gameCode || gameState.gameCode, currentPlayerName || localStorage.getItem('player.name')); } catch (_) {}
@@ -2570,11 +2572,16 @@ function handleTimerUpdate(data) {
 }
 
 function handleError(data) {
-    // Only show generic error; if it is a join failure during auto-resume, clear in-progress flag
     try {
         const msg = data && data.message ? data.message : 'An error occurred';
-        if (autoResumeInProgress && /already started|not found|cannot join|invalid|missing/i.test(msg)) {
+        const resumeFailed = autoResumeInProgress && /already started|not found|cannot join|invalid|missing/i.test(msg);
+        if (resumeFailed) {
             autoResumeInProgress = false;
+            if (!joinedLiveGame) {
+                clearPlayerIdentity();
+                showScreen('joinGame');
+                return;
+            }
         }
         showError(msg);
     } catch (_) {
