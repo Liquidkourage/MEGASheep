@@ -60,84 +60,6 @@ const logger = {
   debug: (...a) => { if (CUR_LVL >= 4) console.log(...a); },
 };
 
-// Keepalive handler for display clients
-io.on('connection', (socket) => {
-  // Player → Host: ask a private question (top-level)
-  socket.on('playerQuestion', (data) => {
-    try {
-  // console.log('💬 playerQuestion received from', socket.id);
-      if (!data || typeof data.question !== 'string') {
-        try { socket.emit('playerQuestionAck', { ok: false, reason: 'bad-payload' }); } catch (_) {}
-        return;
-      }
-      const question = data.question.trim();
-      if (question.length === 0) {
-        try { socket.emit('playerQuestionAck', { ok: false, reason: 'empty' }); } catch (_) {}
-        return;
-      }
-
-      const playerInfo = connectedPlayers.get(socket.id) || {};
-      // Prefer socket-associated gameCode; fall back to client-provided gameCode
-      const gameCode = playerInfo.gameCode || data.gameCode;
-      const playerName = playerInfo.playerName || data.playerName || 'Unknown';
-
-      if (!gameCode) {
-        console.log('💬 playerQuestion missing gameCode for socket', socket.id);
-        try { socket.emit('playerQuestionAck', { ok: false, reason: 'not-in-game' }); } catch (_) {}
-        return;
-      }
-
-      const hostEntry = Array.from(connectedPlayers.entries()).find(([_, info]) => info.gameCode === gameCode && info.isHost);
-      if (!hostEntry) {
-        console.log('💬 No host socket found for Q&A in game', gameCode);
-        try { socket.emit('playerQuestionAck', { ok: false, reason: 'no-host' }); } catch (_) {}
-        return;
-      }
-      const hostSocketId = hostEntry[0];
-      // console.log('💬 Forwarding question to host', hostSocketId, 'player:', playerName, 'game:', gameCode);
-      const at = Date.now();
-      io.to(hostSocketId).emit('playerQuestion', { gameCode, playerName, playerSocketId: socket.id, question, at });
-      sbInsert(SB_TABLES.qa, { game_code: gameCode, player_name: playerName, player_socket_id: socket.id, question, at: new Date(at).toISOString() });
-      sbLogEvent(gameCode, 'player_question', { playerName });
-      try { socket.emit('playerQuestionAck', { ok: true }); } catch (_) {}
-    } catch (e) {
-      console.warn('playerQuestion handling failed', e);
-      try { socket.emit('playerQuestionAck', { ok: false, reason: 'error' }); } catch (_) {}
-    }
-  });
-
-  // Host → Player: answer a private question (top-level)
-  socket.on('hostAnswer', (data) => {
-    try {
-  // console.log('💬 hostAnswer received from', socket.id);
-      if (!data || typeof data.answer !== 'string') return;
-      const answer = data.answer.trim();
-      const { gameCode, targetSocketId, targetPlayerName } = data;
-      if (!gameCode || answer.length === 0) return;
-      const hostInfo = connectedPlayers.get(socket.id);
-      if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) return;
-      const game = activeGames.get(gameCode);
-      if (!game) return;
-      let targetSid = targetSocketId;
-      if (!targetSid && targetPlayerName) {
-        const lower = String(targetPlayerName).toLowerCase();
-        for (const [sid, p] of game.players.entries()) {
-          if (String(p.name || '').toLowerCase() === lower) { targetSid = sid; break; }
-        }
-      }
-      if (!targetSid) return;
-      console.log('💬 Forwarding host answer to', targetSid);
-      io.to(targetSid).emit('hostAnswer', { gameCode, answer, at: Date.now() });
-      try { socket.emit('hostAnswerAck', { ok: true }); } catch (_) {}
-    } catch (e) {
-      console.warn('hostAnswer handling failed', e);
-    }
-  });
-  socket.on('displayPing', (data) => {
-    // no-op; presence keeps transport warm
-  });
-});
-
 // Cleanup on server shutdown
 process.on('SIGINT', () => {
     logger.info('\n🛑 Shutting down server...');
@@ -367,17 +289,14 @@ class Game {
             throw new Error('Game is full');
         }
         
-        // Check for duplicate names (but allow same player to reconnect)
-        const existingPlayer = Array.from(this.players.values()).find(p => p.name === playerName);
-        if (existingPlayer && existingPlayer.id !== socketId) {
-            // Check if the existing player is still connected
-            const existingPlayerInfo = connectedPlayers.get(existingPlayer.id);
-            if (existingPlayerInfo && existingPlayerInfo.playerName === playerName) {
-                throw new Error('Player name already taken');
-            } else {
-                // Remove the disconnected player with same name
-                this.removePlayer(existingPlayer.id);
+        const nameKey = String(playerName).toLowerCase();
+        const existingSameName = Array.from(this.players.entries()).find(([, p]) => p && String(p.name).toLowerCase() === nameKey);
+        if (existingSameName) {
+            const existingPlayer = existingSameName[1];
+            if (stablePlayerId && existingPlayer.stableId && existingPlayer.stableId === stablePlayerId) {
+                return;
             }
+            throw new Error('Player name already taken');
         }
         
         // If player already exists with same socket ID, just update
@@ -584,6 +503,50 @@ class Game {
     this.calculateScoresFromGroups(answerGroups, totalResponses);
   }
 
+  resolveSocketsForCategorizedAnswer(answerData) {
+    const socketIdSet = new Set();
+    const names = [];
+    if (Array.isArray(answerData?.players)) names.push(...answerData.players);
+    if (typeof answerData?.playerNames === 'string') names.push(...answerData.playerNames.split(','));
+    const nameSet = new Set(names.map(n => String(n || '').trim().toLowerCase()).filter(Boolean));
+    if (nameSet.size) {
+      for (const [sid, player] of this.players.entries()) {
+        if (player && nameSet.has(String(player.name).toLowerCase())) socketIdSet.add(sid);
+      }
+    }
+    if (socketIdSet.size === 0 && Array.isArray(this.currentAnswerGroups)) {
+      const normalizedTarget = String(answerData?.answer || '').toLowerCase().trim();
+      const originalGroup = this.currentAnswerGroups.find(group =>
+        String(group.answer || '').toLowerCase().trim() === normalizedTarget
+      );
+      if (originalGroup && Array.isArray(originalGroup.players)) {
+        for (const playerName of originalGroup.players) {
+          for (const [sid, player] of this.players.entries()) {
+            if (player && String(player.name).toLowerCase() === String(playerName).toLowerCase()) {
+              socketIdSet.add(sid);
+              break;
+            }
+          }
+        }
+      }
+      if (originalGroup && Array.isArray(originalGroup.stableIds)) {
+        for (const stableId of originalGroup.stableIds) {
+          const live = this.socketByStableId && this.socketByStableId.get(stableId);
+          if (live) socketIdSet.add(live);
+        }
+      }
+    }
+    if (socketIdSet.size === 0) {
+      const normalizedTarget = String(answerData?.answer || '').toLowerCase().trim();
+      for (const [sid, ans] of this.answers.entries()) {
+        try {
+          if (String(ans).toLowerCase().trim() === normalizedTarget) socketIdSet.add(sid);
+        } catch (_) {}
+      }
+    }
+    return Array.from(socketIdSet);
+  }
+
   calculateScoresFromCategorization() {
     const totalResponses = this.answers.size;
     const categorizationData = this.categorizationData;
@@ -591,45 +554,17 @@ class Game {
     logger.debug(`📊 Calculating scores from categorization data`);
     logger.debug(`📊 Categorization data:`, categorizationData);
     
-    // Create a map of answer groups based on categorization
     const answerGroups = new Map();
     
-    // Process correct answer buckets
     if (categorizationData.correctAnswerBuckets && Array.isArray(categorizationData.correctAnswerBuckets)) {
       for (const bucket of categorizationData.correctAnswerBuckets) {
         if (bucket.answers && Array.isArray(bucket.answers)) {
-          // Group all answers in this bucket together
           const socketIdSet = new Set();
           for (const answerData of bucket.answers) {
-            // Find the original answer group to get player names (case-insensitive)
-            const originalGroup = this.currentAnswerGroups.find(group => 
-              group.answer.toLowerCase().trim() === answerData.answer.toLowerCase().trim()
-            );
-            if (originalGroup && originalGroup.players) {
-              // Find socket IDs for these players
-              for (const playerName of originalGroup.players) {
-                for (const [socketId, player] of this.players) {
-                  if (String(player.name).toLowerCase() === String(playerName).toLowerCase()) {
-                    socketIdSet.add(socketId);
-                    break;
-                  }
-                }
-              }
-            }
-            // Fallback: if we couldn't resolve via players, include anyone whose live answer matches this text
-            const normalizedTarget = String(answerData.answer || '').toLowerCase().trim();
-            for (const [sid, ans] of this.answers.entries()) {
-              try {
-                if (String(ans).toLowerCase().trim() === normalizedTarget) {
-                  socketIdSet.add(sid);
-                }
-              } catch (_) {}
-            }
+            for (const sid of this.resolveSocketsForCategorizedAnswer(answerData)) socketIdSet.add(sid);
           }
-          
           const socketIds = Array.from(socketIdSet);
           if (socketIds.length > 0) {
-            // Use the bucket ID as the group key for scoring purposes
             answerGroups.set(bucket.id, socketIds);
             logger.debug(`📊 Grouped bucket "${bucket.id}" with ${socketIds.length} players from answers: ${bucket.answers.map(a => a.answer).join(', ')}`);
           }
@@ -637,63 +572,21 @@ class Game {
       }
     }
     
-    // Process wrong answers (each gets their own group)
     if (categorizationData.wrong && Array.isArray(categorizationData.wrong)) {
       for (const answerData of categorizationData.wrong) {
-        const normalizedTarget = String(answerData.answer || '').toLowerCase().trim();
-        const socketIdSet = new Set();
-        // Prefer original group players if available
-        const originalGroup = this.currentAnswerGroups.find(group => 
-          group.answer.toLowerCase().trim() === normalizedTarget
-        );
-        if (originalGroup && originalGroup.players) {
-          for (const playerName of originalGroup.players) {
-            for (const [socketId, player] of this.players) {
-              if (String(player.name).toLowerCase() === String(playerName).toLowerCase()) {
-                socketIdSet.add(socketId);
-                break;
-              }
-            }
-          }
-        }
-        // Fallback: include any live sockets whose answer text matches
-        for (const [sid, ans] of this.answers.entries()) {
-          try { if (String(ans).toLowerCase().trim() === normalizedTarget) socketIdSet.add(sid); } catch (_) {}
-        }
-        const socketIds = Array.from(socketIdSet);
-          if (socketIds.length > 0) {
-            answerGroups.set(answerData.answer, socketIds);
+        const socketIds = this.resolveSocketsForCategorizedAnswer(answerData);
+        if (socketIds.length > 0) {
+          answerGroups.set(answerData.answer, socketIds);
           logger.debug(`📊 Wrong answer "${answerData.answer}" with ${socketIds.length} players`);
         }
       }
     }
     
-    // Process uncategorized answers (each gets their own group)
     if (categorizationData.uncategorized && Array.isArray(categorizationData.uncategorized)) {
       for (const answerData of categorizationData.uncategorized) {
-        const normalizedTarget = String(answerData.answer || '').toLowerCase().trim();
-        const socketIdSet = new Set();
-        // Prefer original group players if available
-        const originalGroup = this.currentAnswerGroups.find(group => 
-          group.answer.toLowerCase().trim() === normalizedTarget
-        );
-        if (originalGroup && originalGroup.players) {
-          for (const playerName of originalGroup.players) {
-            for (const [socketId, player] of this.players) {
-              if (String(player.name).toLowerCase() === String(playerName).toLowerCase()) {
-                socketIdSet.add(socketId);
-                break;
-              }
-            }
-          }
-        }
-        // Fallback: include any live sockets whose answer text matches
-        for (const [sid, ans] of this.answers.entries()) {
-          try { if (String(ans).toLowerCase().trim() === normalizedTarget) socketIdSet.add(sid); } catch (_) {}
-        }
-        const socketIds = Array.from(socketIdSet);
-          if (socketIds.length > 0) {
-            answerGroups.set(answerData.answer, socketIds);
+        const socketIds = this.resolveSocketsForCategorizedAnswer(answerData);
+        if (socketIds.length > 0) {
+          answerGroups.set(answerData.answer, socketIds);
           logger.debug(`📊 Uncategorized answer "${answerData.answer}" with ${socketIds.length} players`);
         }
       }
@@ -978,6 +871,7 @@ class Game {
                 groupMap.set(normalizedAnswer, {
                     answer: String(answer), // Use original case, ensure string
                     players: [],
+                    stableIds: [],
                     count: 0,
                     points: 0,
                     index: groupMap.size
@@ -987,6 +881,11 @@ class Game {
             const group = groupMap.get(normalizedAnswer);
             if (group && group.players && !group.players.includes(player.name)) {
                 group.players.push(String(player.name)); // Ensure string
+                if (Array.isArray(group.stableIds) && player.stableId && !group.stableIds.includes(player.stableId)) {
+                    group.stableIds.push(player.stableId);
+                } else if (!Array.isArray(group.stableIds)) {
+                    group.stableIds = player.stableId ? [player.stableId] : [];
+                }
                 group.count = group.players.length;
             }
         }
@@ -1115,9 +1014,9 @@ class Game {
         logger.info(`⏰ Time up for game ${this.gameCode}`);
         
         if (this.gameState === 'playing') {
-            logger.debug(`📊 Calculating scores for game ${this.gameCode} with ${this.answers.size} answers`);
-            this.calculateScores();
-            this.gameState = 'grading'; // Changed from 'scoring' to 'grading'
+            this.stopTimer();
+            try { this.rebuildCurrentAnswerGroups(); } catch (_) {}
+            this.gameState = 'grading';
             
             logger.info(`🎯 Game ${this.gameCode} moved to grading state with ${this.currentAnswerGroups?.length || 0} answer groups`);
             
@@ -1409,16 +1308,16 @@ app.get('/display', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'display.html'));
 });
 
-app.get('/grading', (req, res) => {
-    res.redirect('/grading-single');
+app.get(['/grading', '/grading.html'], (req, res) => {
+    res.redirect(302, '/grading-single');
 });
 
 app.get('/grading-single', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'grading-single.html'));
 });
 
-app.get('/game', (req, res) => {
-    res.redirect('/');
+app.get(['/game', '/game.html'], (req, res) => {
+    res.redirect(302, '/');
 });
 
 // Static file middleware AFTER custom routes
@@ -1489,13 +1388,29 @@ app.post('/api/recover-game', async (req, res) => {
 // Snapshot persistence helpers
 function serializeGame(game) {
   try {
-                return {
+    const answersByStableId = {};
+    const pendingEditsByStableId = {};
+    for (const [sid, answer] of (game.answers || new Map()).entries()) {
+      const p = game.players.get(sid);
+      const stable = p?.stableId || sid;
+      answersByStableId[stable] = answer;
+    }
+    for (const [sid, info] of (game.answersNeedingEdit || new Map()).entries()) {
+      const p = game.players.get(sid);
+      const stable = p?.stableId || sid;
+      pendingEditsByStableId[stable] = info;
+    }
+    return {
       gameCode: game.gameCode,
       hostId: game.hostId,
       hostToken: game.hostToken || null,
       questionBankSource: game.questionBankSource || null,
       players: Array.from(game.players.entries()).map(([sid, p]) => ({ socketId: sid, stableId: p.stableId || p.id, name: p.name, score: p.score })),
       scoresByStableId: Object.fromEntries(game.scoresByStableId),
+      answersByStableId,
+      pendingEditsByStableId,
+      answeredStableIds: Array.from(game.answeredStableIds || []),
+      currentQuestionScored: !!game.currentQuestionScored,
       currentRound: game.currentRound,
       currentQuestion: game.currentQuestion,
       questions: game.questions,
@@ -1599,7 +1514,33 @@ function restoreGameFromSnapshot(snap) {
     if (s.scoresByStableId) {
       try { game.scoresByStableId = new Map(Object.entries(s.scoresByStableId)); } catch(_) {}
     }
-    // Do not repopulate live players (no sockets). Players will rebind; cumulative scores persist by stableId.
+    game.currentQuestionScored = !!s.currentQuestionScored;
+    if (Array.isArray(s.answeredStableIds)) {
+      game.answeredStableIds = new Set(s.answeredStableIds);
+    }
+    if (Array.isArray(s.players)) {
+      for (const p of s.players) {
+        const stable = p.stableId || p.id || p.socketId;
+        if (!stable || !p.name) continue;
+        const ghostId = `ghost_${stable}`;
+        const score = Number(p.score) || Number(game.scoresByStableId.get(stable)) || 0;
+        game.players.set(ghostId, { id: ghostId, stableId: stable, name: p.name, score, answers: [] });
+        game.scores.set(ghostId, score);
+        game.socketByStableId.set(stable, ghostId);
+      }
+    }
+    if (s.answersByStableId && typeof s.answersByStableId === 'object') {
+      for (const [stable, answer] of Object.entries(s.answersByStableId)) {
+        const sid = game.socketByStableId.get(stable);
+        if (sid) game.answers.set(sid, answer);
+      }
+    }
+    if (s.pendingEditsByStableId && typeof s.pendingEditsByStableId === 'object') {
+      for (const [stable, info] of Object.entries(s.pendingEditsByStableId)) {
+        const sid = game.socketByStableId.get(stable);
+        if (sid) game.answersNeedingEdit.set(sid, info);
+      }
+    }
     
     activeGames.set(game.gameCode, game);
     activeGameCodes.add(game.gameCode);
@@ -1929,6 +1870,72 @@ io.on('connection', (socket) => {
         return !!(info.isHost || info.isGradingInterface);
     }
 
+    socket.on('playerQuestion', (data) => {
+        try {
+            if (!data || typeof data.question !== 'string') {
+                try { socket.emit('playerQuestionAck', { ok: false, reason: 'bad-payload' }); } catch (_) {}
+                return;
+            }
+            const question = data.question.trim();
+            if (question.length === 0) {
+                try { socket.emit('playerQuestionAck', { ok: false, reason: 'empty' }); } catch (_) {}
+                return;
+            }
+            const playerInfo = connectedPlayers.get(socket.id) || {};
+            const gameCode = playerInfo.gameCode || data.gameCode;
+            const playerName = playerInfo.playerName || data.playerName || 'Unknown';
+            if (!gameCode) {
+                try { socket.emit('playerQuestionAck', { ok: false, reason: 'not-in-game' }); } catch (_) {}
+                return;
+            }
+            const hostEntry = Array.from(connectedPlayers.entries()).find(([_, info]) => info.gameCode === gameCode && info.isHost);
+            if (!hostEntry) {
+                try { socket.emit('playerQuestionAck', { ok: false, reason: 'no-host' }); } catch (_) {}
+                return;
+            }
+            const at = Date.now();
+            io.to(hostEntry[0]).emit('playerQuestion', { gameCode, playerName, playerSocketId: socket.id, question, at });
+            sbInsert(SB_TABLES.qa, { game_code: gameCode, player_name: playerName, player_socket_id: socket.id, question, at: new Date(at).toISOString() });
+            sbLogEvent(gameCode, 'player_question', { playerName });
+            try { socket.emit('playerQuestionAck', { ok: true }); } catch (_) {}
+        } catch (e) {
+            console.warn('playerQuestion handling failed', e);
+            try { socket.emit('playerQuestionAck', { ok: false, reason: 'error' }); } catch (_) {}
+        }
+    });
+
+    socket.on('hostAnswer', (data) => {
+        try {
+            if (!data || typeof data.answer !== 'string') return;
+            const answer = data.answer.trim();
+            const { gameCode, targetSocketId, targetPlayerName } = data;
+            if (!gameCode || answer.length === 0) return;
+            const hostInfo = connectedPlayers.get(socket.id);
+            if (!hostInfo || !hostInfo.isHost || hostInfo.gameCode !== gameCode) return;
+            const game = activeGames.get(gameCode);
+            if (!game) return;
+            let targetSid = targetSocketId;
+            if (targetSid && game.socketByStableId) {
+                const p = game.players.get(targetSid);
+                const live = p && p.stableId && game.socketByStableId.get(p.stableId);
+                if (live) targetSid = live;
+            }
+            if (!targetSid && targetPlayerName) {
+                const lower = String(targetPlayerName).toLowerCase();
+                for (const [sid, p] of game.players.entries()) {
+                    if (String(p.name || '').toLowerCase() === lower) { targetSid = sid; break; }
+                }
+            }
+            if (!targetSid) return;
+            io.to(targetSid).emit('hostAnswer', { gameCode, answer, at: Date.now() });
+            try { socket.emit('hostAnswerAck', { ok: true }); } catch (_) {}
+        } catch (e) {
+            console.warn('hostAnswer handling failed', e);
+        }
+    });
+
+    socket.on('displayPing', () => {});
+
     // Host reconnection
     socket.on('reconnectHost', (data) => {
         const { gameCode, hostName, hostToken } = data || {};
@@ -2069,64 +2076,61 @@ io.on('connection', (socket) => {
             if (playerInfo) {
                 playerInfo.gameCode = gameCode;
                 playerInfo.playerName = playerName;
-                // Check if this player is the host of the game
-                playerInfo.isHost = (playerName === game.hostId);
+                playerInfo.isHost = false;
             }
             
-            // Only add to player list if not the host
-            if (playerName !== game.hostId) {
-                const alreadyInGame = Array.from(game.players.values()).some(p => p.name === playerName);
-                if (!alreadyInGame) {
-                    // console.log(`🔍 joinGame: Adding ${playerName} to game ${gameCode}`);
-                    game.addPlayer(socket.id, playerName, playerId || null);
-                    // Log player join
-                    sbInsert(SB_TABLES.players, { game_code: gameCode, socket_id: socket.id, player_name: playerName, joined_at: sbNow() });
-                    sbLogEvent(gameCode, 'player_joined', { playerName });
-                    // If a question is currently active, INCLUDE late joiner as expected responder per preference
-                    if (game.gameState === 'playing' && game.expectedResponders instanceof Set) {
-                        try { game.expectedResponders.add(socket.id); } catch(_) {}
-                    }
-                    // If game already started, do not disturb state; just update clients
-                    io.to(gameCode).emit('playerJoined', game.getGameState());
-                } else {
-                    // Rebind returning player to new socket: replace prior socket for this stable identity
-                    const prior = Array.from(game.players.entries()).find(([sid, p]) => p.name === playerName && sid !== socket.id);
-                    const stable = (playerId || prior?.[1]?.stableId || socket.id);
-                    if (prior) {
-                        game.replacePlayerSocket(stable, prior[0], socket.id, playerName);
-                    } else {
-                        const cumulative = game.scoresByStableId.get(stable) || 0;
-                        game.players.set(socket.id, { id: socket.id, stableId: (playerId || null), name: playerName, score: cumulative, answers: [] });
-                        if (!game.scores.has(socket.id)) game.scores.set(socket.id, cumulative);
-                    }
-                    // Include rebinder in expected responders during playing
-                    if (game.gameState === 'playing' && game.expectedResponders instanceof Set) {
-                        try { game.expectedResponders.add(socket.id); } catch(_) {}
-                    }
-                    io.to(gameCode).emit('playerJoined', game.getGameState());
-                    sbLogEvent(gameCode, 'player_rebound', { playerName });
+            const nameKey = String(playerName).toLowerCase();
+            const priorByStable = playerId
+                ? Array.from(game.players.entries()).find(([, p]) => p && p.stableId === playerId)
+                : null;
+            const priorByName = Array.from(game.players.entries()).find(([, p]) => p && String(p.name).toLowerCase() === nameKey);
+            if (priorByName && playerId && priorByName[1].stableId && priorByName[1].stableId !== playerId) {
+                socket.emit('gameError', { message: 'That name is already in this game.' });
+                return;
+            }
+            const alreadyInGame = !!(priorByStable || priorByName);
+            if (!alreadyInGame) {
+                game.addPlayer(socket.id, playerName, playerId || null);
+                sbInsert(SB_TABLES.players, { game_code: gameCode, socket_id: socket.id, player_name: playerName, joined_at: sbNow() });
+                sbLogEvent(gameCode, 'player_joined', { playerName });
+                if (game.gameState === 'playing' && game.expectedResponders instanceof Set) {
+                    try { game.expectedResponders.add(socket.id); } catch(_) {}
                 }
-
-                let editInfo = game.answersNeedingEdit.get(socket.id);
-                if (!editInfo) {
-                    for (const [sid, info] of game.answersNeedingEdit.entries()) {
-                        const p = game.players.get(sid);
-                        if (p && String(p.name).toLowerCase() === String(playerName).toLowerCase()) {
-                            if (sid !== socket.id) {
-                                game.answersNeedingEdit.delete(sid);
-                                game.answersNeedingEdit.set(socket.id, info);
-                            }
-                            editInfo = info;
-                            break;
-                        }
-                    }
-                }
-                if (editInfo) {
-                    io.to(socket.id).emit('requireAnswerEdit', { reason: editInfo.reason, originalAnswer: editInfo.originalAnswer });
-                    logger.info(`✏️ Re-sent edit request to reconnecting ${playerName}`);
-                }
+                io.to(gameCode).emit('playerJoined', game.getGameState());
             } else {
-            // console.log('🏠 Host joined room', gameCode);
+                const prior = priorByStable || priorByName;
+                const stable = (playerId || prior?.[1]?.stableId || socket.id);
+                if (prior) {
+                    game.replacePlayerSocket(stable, prior[0], socket.id, playerName);
+                } else {
+                    const cumulative = game.scoresByStableId.get(stable) || 0;
+                    game.players.set(socket.id, { id: socket.id, stableId: (playerId || null), name: playerName, score: cumulative, answers: [] });
+                    if (!game.scores.has(socket.id)) game.scores.set(socket.id, cumulative);
+                }
+                if (game.gameState === 'playing' && game.expectedResponders instanceof Set) {
+                    try { game.expectedResponders.add(socket.id); } catch(_) {}
+                }
+                io.to(gameCode).emit('playerJoined', game.getGameState());
+                sbLogEvent(gameCode, 'player_rebound', { playerName });
+            }
+
+            let editInfo = game.answersNeedingEdit.get(socket.id);
+            if (!editInfo) {
+                for (const [sid, info] of game.answersNeedingEdit.entries()) {
+                    const p = game.players.get(sid);
+                    if (p && String(p.name).toLowerCase() === String(playerName).toLowerCase()) {
+                        if (sid !== socket.id) {
+                            game.answersNeedingEdit.delete(sid);
+                            game.answersNeedingEdit.set(socket.id, info);
+                        }
+                        editInfo = info;
+                        break;
+                    }
+                }
+            }
+            if (editInfo) {
+                io.to(socket.id).emit('requireAnswerEdit', { reason: editInfo.reason, originalAnswer: editInfo.originalAnswer });
+                logger.info(`✏️ Re-sent edit request to reconnecting ${playerName}`);
             }
             
             // console.log(`🔍 joinGame: Adding socket to room ${gameCode}`);
@@ -2582,8 +2586,8 @@ io.on('connection', (socket) => {
         
         if (game.gameState === 'playing') {
             try {
-                game.calculateScores();
                 game.stopTimer();
+                try { game.rebuildCurrentAnswerGroups(); } catch (_) {}
                 game.gameState = 'grading';
                 console.log('🎯 Transitioned from playing to grading state');
             } catch (e) {
@@ -2967,13 +2971,9 @@ io.on('connection', (socket) => {
         
         console.log(`🎯 Host ending question for game ${gameCode}`);
         
-        // Calculate scores for any submitted answers
-        if (game.answers.size > 0) {
-            game.calculateScores();
-        }
-        
-        game.gameState = 'grading';
         game.stopTimer();
+        try { game.rebuildCurrentAnswerGroups(); } catch (_) {}
+        game.gameState = 'grading';
         
         const gameStateToSend = game.getGameState();
         console.log('📤 Sending questionComplete from endQuestion with answer groups:', gameStateToSend.currentAnswerGroups);

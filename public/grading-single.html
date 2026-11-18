@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2026-11-18T12-00-00">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T12-40-00">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -2404,7 +2404,9 @@
                 const bucketId = bucket.querySelector('.answer-items').dataset.bucket;
                 const answers = Array.from(bucket.querySelectorAll('.answer-item')).map(item => ({
                     answer: item.dataset.answerText,
-                    index: parseInt(item.dataset.answerIndex)
+                    index: parseInt(item.dataset.answerIndex),
+                    players: (item.dataset.playerNames || item.querySelector('.answer-players')?.textContent || '')
+                        .split(',').map(n => n.trim()).filter(Boolean)
                 }));
                 
                 categorization.correctAnswerBuckets.push({
@@ -2414,16 +2416,20 @@
             });
             
             // Get wrong answers
+            const namesFromItem = (item) => (item.dataset.playerNames || item.querySelector('.answer-players')?.textContent || '')
+                .split(',').map(n => n.trim()).filter(Boolean);
             const wrongAnswers = Array.from(document.querySelectorAll('#wrongAnswers .answer-item')).map(item => ({
                 answer: item.dataset.answerText,
-                index: parseInt(item.dataset.answerIndex)
+                index: parseInt(item.dataset.answerIndex),
+                players: namesFromItem(item)
             }));
             categorization.wrong = wrongAnswers;
             
             // Get uncategorized answers
             const uncategorizedAnswers = Array.from(document.querySelectorAll('#uncategorizedAnswers .answer-item')).map(item => ({
                 answer: item.dataset.answerText,
-                index: parseInt(item.dataset.answerIndex)
+                index: parseInt(item.dataset.answerIndex),
+                players: namesFromItem(item)
             }));
             categorization.uncategorized = uncategorizedAnswers;
             
@@ -2491,6 +2497,10 @@
         function nextQuestion() {
             if (!currentGame) {
                 console.error('❌ No current game to proceed to next question');
+                return;
+            }
+            if (currentGame.gameState && currentGame.gameState !== 'scoring') {
+                alert('Finish grading this question before going to the next one.');
                 return;
             }
 

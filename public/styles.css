@@ -7608,3 +7608,26 @@ textarea[disabled] {
         margin-top: 0;
     }
 }
+
+.keep-awake-fab {
+    position: fixed;
+    left: max(12px, env(safe-area-inset-left, 0px));
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    z-index: 40;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 22px;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1.2;
+}
+#joinGameScreen,
+#lobbyScreen,
+#gameScreen,
+#scoringScreen {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}

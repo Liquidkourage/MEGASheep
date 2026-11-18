@@ -160,9 +160,12 @@ async function main() {
     const args = process.argv.slice(2);
     const filename = args[0];
     const previewOnly = args.includes('--preview');
+    const confirmReplace = args.includes('--confirm') || process.env.AUTO_CONFIRM === 'true';
     
     if (!filename) {
-        console.log('Usage: node loadQuestions.js <filename> [--preview]');
+        console.log('Usage: node loadQuestions.js <filename> [--preview|--confirm]');
+        console.log('  --preview  Parse and print only');
+        console.log('  --confirm  REPLACE the entire question bank with this file');
         console.log('');
         console.log('File format:');
         console.log('  Question prompt followed by correct answers (one per line)');
@@ -203,21 +206,16 @@ async function main() {
     // Preview questions
     await previewQuestions(questions);
     
-    if (previewOnly) {
-        console.log('👀 Preview mode - no questions were inserted');
+    if (previewOnly || !confirmReplace) {
+        console.log(previewOnly
+            ? '👀 Preview mode - no questions were inserted'
+            : '👀 Preview only. Re-run with --confirm to REPLACE the entire question bank.');
         return;
     }
-    
-    // Ask for confirmation
-    console.log('\n❓ Do you want to insert these questions into the database? (y/N)');
-    
-    // For automated scripts, you can set this environment variable
+
+    console.log('\n⚠️  This replaces EVERY question in the database.');
     if (process.env.AUTO_CONFIRM === 'true') {
         console.log('🤖 Auto-confirming due to AUTO_CONFIRM=true');
-    } else {
-        // In a real implementation, you'd want to use a proper input library
-        // For now, we'll just proceed
-        console.log('🤖 Proceeding with insertion...');
     }
     
     // Insert questions

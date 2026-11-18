@@ -124,6 +124,7 @@ function renderHistoryByQuestion() {
 // Global variables
 let socket;
 let isHost = false;
+const IS_PLAYER_ROUTE = !/^\/host(?:\/|$)/.test(window.location.pathname);
 
 function unwrapGameState(data) {
     if (!data || typeof data !== 'object') return null;
@@ -502,20 +503,6 @@ function initializeSocket() {
             console.warn('Auto-resume on connect failed:', e);
         }
     });
-    
-    // Connection debugging
-    socket.on('connect', () => {
-        console.log('✅ Connected to server with ID:', socket.id);
-    });
-    
-    socket.on('disconnect', () => {
-        console.log('❌ Disconnected from server');
-    });
-    
-    socket.on('connect_error', (error) => {
-        console.error('❌ Connection error:', error);
-        showError('Failed to connect to server');
-    });
 
     // Host-triggered: show round results on player UI
     socket.on('playerShowRoundResults', (state) => {
@@ -557,17 +544,6 @@ function initializeSocket() {
     socket.on('gameStateUpdate', handleGameStateUpdate);
 
     // Private host answer for this player
-    socket.on('hostAnswer', (data) => {
-        try {
-            const msg = data && data.answer ? data.answer : '';
-            if (!msg) return;
-            const statusEl = document.getElementById('answerStatus');
-            if (statusEl) {
-                statusEl.textContent = `💬 Host: ${msg}`;
-            }
-        } catch (_) {}
-    });
-
     socket.on('requireAnswerEdit', (data) => {
         try {
             console.log('✏️ Script.js: requireAnswerEdit received:', data);
@@ -2160,6 +2136,9 @@ function playAgain() {
 // Socket event handlers
 function handleGameCreated(data) {
     console.log('🎮 Game created:', data);
+    if (IS_PLAYER_ROUTE) {
+        return;
+    }
     gameState = data;
     isHost = true;
     showScreen('lobby');
@@ -4274,8 +4253,9 @@ function showWaitingForGrading() {
         answersList.style.display = 'flex';
         answersList.style.flexDirection = 'column';
         answersList.style.alignItems = 'center';
-        answersList.style.justifyContent = 'center';
-        answersList.style.minHeight = '400px';
+        answersList.style.justifyContent = 'flex-start';
+        answersList.style.minHeight = '0';
+        answersList.style.paddingBottom = 'calc(72px + env(safe-area-inset-bottom, 0px))';
         
         answersList.innerHTML = `
             <!-- My Submitted Answer -->
@@ -4283,7 +4263,7 @@ function showWaitingForGrading() {
                 <div style="background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 5px; color: #ffffff; font-size: 18px; font-weight: bold;">${displayAnswer}</div>
             </div>
             
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%; max-width: 500px; background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 10px; padding: 30px;">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%; max-width: 500px; background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 10px; padding: 16px;">
                 <div class="loading-spinner"></div>
                 <p style="text-align: center; margin: 15px 0; color: #ffffff; font-size: 16px; line-height: 1.4;">Host is reviewing and<br>grading answers...<br>Results will appear shortly!</p>
             </div>

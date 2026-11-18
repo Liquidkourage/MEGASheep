@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
-    <link rel="stylesheet" href="styles.css?v=2026-11-18T12-00-00">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T12-40-00">
     <style>
         /* Dynamic scaling based on screen resolution */
         :root {
@@ -1000,12 +1000,14 @@
             });
 
             socket.on('displayError', (data) => {
-                console.error('📺 Display error:', data.message);
-                // Clear stored game code and show intro screen for pairing
-                displayGameCode = null;
-                sessionStorage.removeItem('displayGameCode');
-                window.currentGameCode = null;
-                showIntroScreen();
+                const msg = (data && data.message) ? String(data.message) : '';
+                console.error('📺 Display error:', msg);
+                if (/not found|no game|unpaired|invalid code|not paired|missing game/i.test(msg)) {
+                    displayGameCode = null;
+                    sessionStorage.removeItem('displayGameCode');
+                    window.currentGameCode = null;
+                    showIntroScreen();
+                }
             });
             
             socket.on('gameCreated', (gameStateData) => {

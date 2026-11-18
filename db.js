@@ -114,6 +114,9 @@ async function fetchPostgresQuestions() {
 }
 
 async function replacePostgresQuestions(questions) {
+    if (!Array.isArray(questions) || questions.length === 0) {
+        throw new Error('Refusing to replace the question bank with an empty list');
+    }
     const p = await ensurePool();
     if (!p) throw new Error('DATABASE_URL is not set');
     const client = await p.connect();
