@@ -772,19 +772,34 @@
             background: rgba(192, 132, 252, 0.16);
         }
 
-        #panelResults .unique-badge {
+        #panelResults .answer-group.is-not-given {
+            border: 1px solid rgba(255, 193, 7, 0.75);
+            background: rgba(255, 193, 7, 0.16);
+        }
+
+        #panelResults .unique-badge,
+        #panelResults .not-given-badge {
             display: inline-block;
             margin-left: 6px;
             padding: 1px 6px;
             border-radius: 999px;
-            background: rgba(192, 132, 252, 0.28);
-            border: 1px solid rgba(192, 132, 252, 0.55);
-            color: #e9d5ff;
             font-size: 10px;
             font-weight: 800;
             letter-spacing: 0.04em;
             text-transform: uppercase;
             vertical-align: middle;
+        }
+
+        #panelResults .unique-badge {
+            background: rgba(192, 132, 252, 0.28);
+            border: 1px solid rgba(192, 132, 252, 0.55);
+            color: #e9d5ff;
+        }
+
+        #panelResults .not-given-badge {
+            background: rgba(255, 193, 7, 0.28);
+            border: 1px solid rgba(255, 193, 7, 0.6);
+            color: #ffe08a;
         }
 
         /* History modal layout fixes: keep answer text horizontal and allow natural wrapping */
@@ -2304,22 +2319,33 @@
             
             if (data && data.currentAnswerGroups) {
                 scoringContent.innerHTML = '';
+                const groups = Array.isArray(data.currentAnswerGroups) ? data.currentAnswerGroups : [];
+                const correctAnswers = [];
+                const wrongAnswers = [];
+                const uncategorizedAnswers = [];
+                groups.forEach(group => {
+                    if (group.category === 'correct') {
+                        correctAnswers.push(group);
+                    } else if (group.category === 'wrong') {
+                        wrongAnswers.push(group);
+                    } else {
+                        uncategorizedAnswers.push(group);
+                    }
+                });
+
+                let missedCorrect = [];
                 try {
-                    // Build quick highlights for host talk-track
-                    const groups = Array.isArray(data.currentAnswerGroups) ? data.currentAnswerGroups : [];
                     const totalResponses = groups.reduce((s,g)=> s + (Number(g.count)|| (Array.isArray(g.players)?g.players.length:0) || 0), 0);
                     const uniqueGroups = groups.filter((g) => {
                         const count = Number(g.count) || (Array.isArray(g.players) ? g.players.length : 0);
                         return count === 1 && g.category === 'correct';
                     });
-                    const uniquePlayers = uniqueGroups.flatMap(g => Array.isArray(g.players) ? g.players : []);
                     const mostCommon = [...groups].sort((a,b)=> (b.count||b.players?.length||0) - (a.count||a.players?.length||0))[0] || null;
-                    // Determine missed correct answers
                     const q = data.currentQuestionData || (Array.isArray(data.questions) ? data.questions[data.currentQuestion] : null);
                     const correctList = Array.isArray(q?.correct_answers) ? q.correct_answers : [];
                     const norm = s => String(s||'').toLowerCase().trim();
-                    const correctGivenSet = new Set(groups.filter(g => g.category === 'correct').map(g => norm(g.answer)));
-                    const missedCorrect = correctList.filter(ans => !correctGivenSet.has(norm(ans)));
+                    const correctGivenSet = new Set(correctAnswers.map(g => norm(g.answer)));
+                    missedCorrect = correctList.filter(ans => !correctGivenSet.has(norm(ans)));
                     const summary = document.createElement('div');
                     summary.className = 'results-summary';
                     const commonText = mostCommon ? `"${mostCommon.answer}" (${mostCommon.count||mostCommon.players?.length||0})` : '—';
@@ -2332,59 +2358,46 @@
                     const commonEl = summary.querySelectorAll('.stat-value')[2];
                     if (commonEl) commonEl.textContent = commonText;
                     scoringContent.appendChild(summary);
-                    // Missed correct answers section
-                    if (missedCorrect.length > 0) {
-                        const missedSection = document.createElement('div');
-                        missedSection.className = 'scoring-section';
-                        const h = document.createElement('h4');
-                        h.textContent = '⚠️ Correct Answers Not Given'; h.style.color = '#ffc107';
-                        missedSection.appendChild(h);
-                        missedCorrect.forEach(ans => missedSection.appendChild(createResultCard(ans, [], 0)));
-                        scoringContent.appendChild(missedSection);
-                    }
                 } catch(_) {}
-                
-                // Group answers by category
-                const correctAnswers = [];
-                const wrongAnswers = [];
-                const uncategorizedAnswers = [];
-                
-                (data.currentAnswerGroups || []).forEach(group => {
-                    if (group.category === 'correct') {
-                        correctAnswers.push(group);
-                    } else if (group.category === 'wrong') {
-                        wrongAnswers.push(group);
-                    } else {
-                        uncategorizedAnswers.push(group);
-                    }
-                });
-                
-                // Create sections for each category
-                if (correctAnswers.length > 0) {
-                    const correctSection = createScoringSection('✅ Correct Answers', correctAnswers, '#28a745', { highlightUnique: true });
-                    scoringContent.appendChild(correctSection);
+
+                const correctItems = [
+                    ...correctAnswers,
+                    ...missedCorrect.map((ans) => ({
+                        answer: ans,
+                        players: [],
+                        points: 0,
+                        count: 0,
+                        notGiven: true
+                    }))
+                ];
+                if (correctItems.length > 0) {
+                    scoringContent.appendChild(createScoringSection('✅ Correct Answers', correctItems, '#28a745', { highlightUnique: true }));
                 }
-                
                 if (wrongAnswers.length > 0) {
-                    const wrongSection = createScoringSection('❌ Wrong Answers', wrongAnswers, '#e74c3c');
-                    scoringContent.appendChild(wrongSection);
+                    scoringContent.appendChild(createScoringSection('❌ Wrong Answers', wrongAnswers, '#e74c3c'));
                 }
-                
                 if (uncategorizedAnswers.length > 0) {
-                    const uncategorizedSection = createScoringSection('📦 Uncategorized Answers', uncategorizedAnswers, '#f39c12');
-                    scoringContent.appendChild(uncategorizedSection);
+                    scoringContent.appendChild(createScoringSection('📦 Uncategorized Answers', uncategorizedAnswers, '#f39c12'));
                 }
             }
         }
 
         function createResultCard(answer, players, points, options = {}) {
             const answerGroup = document.createElement('div');
-            answerGroup.className = 'answer-group' + (options.unique ? ' is-unique' : '');
+            const flags = [];
+            if (options.notGiven) flags.push('is-not-given');
+            else if (options.unique) flags.push('is-unique');
+            answerGroup.className = 'answer-group' + (flags.length ? ' ' + flags.join(' ') : '');
 
             const answerText = document.createElement('div');
             answerText.className = 'answer-text';
             answerText.textContent = `"${answer || ''}"`;
-            if (options.unique) {
+            if (options.notGiven) {
+                const badge = document.createElement('span');
+                badge.className = 'not-given-badge';
+                badge.textContent = 'Not given';
+                answerText.appendChild(badge);
+            } else if (options.unique) {
                 const badge = document.createElement('span');
                 badge.className = 'unique-badge';
                 badge.textContent = 'Unique';
@@ -2418,8 +2431,10 @@
             
             answers.forEach((answer) => {
                 const count = Number(answer.count) || (Array.isArray(answer.players) ? answer.players.length : 0);
+                const notGiven = !!answer.notGiven;
                 section.appendChild(createResultCard(answer.answer, answer.players, answer.points, {
-                    unique: !!(options.highlightUnique && count === 1)
+                    unique: !!(options.highlightUnique && !notGiven && count === 1),
+                    notGiven
                 }));
             });
             
