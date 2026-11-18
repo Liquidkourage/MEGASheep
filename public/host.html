@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Host Console</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T20-00-00">
-    <link rel="stylesheet" href="grading-board.css?v=2026-11-18T21-45-00">
+    <link rel="stylesheet" href="grading-board.css?v=2026-11-18T21-55-00">
     <script src="/socket.io/socket.io.js"></script>
     <script src="apply-state.js?v=2026-11-18T20-00-00"></script>
     <style>
@@ -99,7 +99,48 @@
             flex: 0 0 auto;
         }
         .host-phase-strip strong { font-size: 1.05em; }
-        .host-phase-strip .phase-meta { opacity: 0.9; font-size: 14px; }
+        .host-phase-strip .phase-meta {
+            opacity: 0.95;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .host-timer,
+        .grade-strip-timer {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 64px;
+            min-height: 44px;
+            padding: 0 12px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.28);
+            color: #fff;
+            font-variant-numeric: tabular-nums;
+            font-weight: 800;
+            font-size: 1.15em;
+            letter-spacing: 0.02em;
+        }
+        .host-timer[hidden],
+        .grade-strip-timer[hidden] {
+            display: none !important;
+        }
+        .host-timer.is-warning,
+        .grade-strip-timer.is-warning {
+            background: rgba(255, 193, 7, 0.28);
+            color: #ffd24d;
+        }
+        .host-timer.is-urgent,
+        .grade-strip-timer.is-urgent {
+            background: rgba(231, 76, 60, 0.35);
+            color: #ffb4b0;
+        }
+        .host-timer.is-done,
+        .grade-strip-timer.is-done {
+            background: rgba(255, 255, 255, 0.08);
+            color: #c5d0dc;
+        }
 
         .game-created-section {
             background: rgba(0, 0, 0, 0.8);
@@ -1019,7 +1060,10 @@
 
             <div class="host-phase-strip" id="gamePhaseBanner">
                 <strong id="gamePhaseLabel">Lobby — waiting for players</strong>
-                <span class="phase-meta">Players: <span id="playerCountTop" data-player-count>0</span></span>
+                <span class="phase-meta">
+                    <span class="host-timer" id="hostTimer" hidden>0:00</span>
+                    Players: <span id="playerCountTop" data-player-count>0</span>
+                </span>
             </div>
 
             <div class="tabs" role="tablist">
@@ -1074,11 +1118,12 @@
                             <p class="grade-strip-progress" id="gradeStripProgress"></p>
                             <p class="grade-strip-hint">Click an answer, then click a target. Double-click files a strong guess. Right-click marks it wrong.</p>
                         </div>
+                        <div class="grade-strip-timer" id="gradeStripTimer" hidden aria-live="polite">0:00</div>
                         <div class="grade-strip-actions">
-                            <button id="endQuestionGradeBtn" class="control-btn warning" type="button">End question</button>
-                            <button id="applyCategorizationBtn" class="control-btn success" type="button">Complete</button>
-                            <button id="endGameGradeBtn" class="control-btn warning" type="button">End game</button>
-                            <button id="resyncBtn" class="control-btn secondary" type="button" onclick="resyncGameData()">Re-sync</button>
+                            <button id="endQuestionGradeBtn" class="control-btn warning" type="button" title="Stop this question now. Players can no longer submit. You can keep sorting, then press Complete.">End question</button>
+                            <button id="applyCategorizationBtn" class="control-btn success" type="button" title="Lock in your sorting and score this question. Available after the question ends.">Complete</button>
+                            <button id="endGameGradeBtn" class="control-btn warning" type="button" title="End the entire game for every player. This is not just this question.">End game</button>
+                            <button id="resyncBtn" class="control-btn secondary" type="button" title="Reload the latest game snapshot if this board looks out of date." onclick="resyncGameData()">Re-sync</button>
                             <button id="nextQuestionBtn" class="control-btn primary" type="button" style="display: none;">Next Question</button>
                         </div>
                     </div>
@@ -1388,6 +1433,7 @@
                 }
 
                 syncHostGradingBoard(state, result);
+                if (typeof state.timeLeft === 'number') updateHostTimer(state.timeLeft);
 
                 if (phase === 'grading') {
                     hideScoringPanel();
@@ -1746,6 +1792,9 @@
             // When all players answered, server emits questionComplete (grading phase)
             socket.on('questionComplete', (data) => applyHostState(data, 'questionComplete'));
             socket.on('nextQuestion', (data) => applyHostState(data, 'nextQuestion'));
+            socket.on('timerUpdate', (data) => {
+                if (data && typeof data.timeLeft === 'number') updateHostTimer(data.timeLeft);
+            });
             
             socket.on('error', (error) => {
                 console.error('Socket error:', error);
@@ -1925,6 +1974,31 @@
             pEl.textContent = live ? `${got} / ${tot} answers in · ${uncat} still in inbox` : '';
         }
         window.updateGradeCommandStrip = updateGradeCommandStrip;
+
+        function formatHostTimer(seconds) {
+            const n = Math.max(0, Math.floor(Number(seconds) || 0));
+            const m = Math.floor(n / 60);
+            const s = n % 60;
+            return m + ':' + String(s).padStart(2, '0');
+        }
+
+        function updateHostTimer(timeLeft) {
+            const phase = hostPhase();
+            const live = phase === 'playing';
+            const secs = Math.max(0, Math.floor(Number(timeLeft) || 0));
+            const show = live || phase === 'grading';
+            const label = live ? formatHostTimer(secs) : '0:00';
+            ['hostTimer', 'gradeStripTimer'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.hidden = !show;
+                if (!show) return;
+                el.textContent = label;
+                el.classList.toggle('is-warning', live && secs <= 30 && secs > 10);
+                el.classList.toggle('is-urgent', live && secs <= 10);
+                el.classList.toggle('is-done', !live);
+            });
+        }
 
         // Show active game interface
         function showActiveGame() {
