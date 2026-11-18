@@ -153,7 +153,8 @@ function setPlayerSubmitEnabled(enabled) {
 function findMyPendingEdit(pendingEdits) {
     const name = currentPlayerName || localStorage.getItem('player.name') || sessionStorage.getItem('playerName');
     if (!name || !Array.isArray(pendingEdits)) return null;
-    return pendingEdits.find(p => p && p.playerName === name) || null;
+    const lower = String(name).toLowerCase();
+    return pendingEdits.find(p => p && String(p.playerName || '').toLowerCase() === lower) || null;
 }
 
 function presentSendBack(reason, originalAnswer) {
@@ -199,11 +200,29 @@ function savePlayerIdentity(gameCode, playerName) {
             localStorage.setItem('player.name', String(playerName));
             sessionStorage.setItem('playerName', String(playerName));
         }
+        localStorage.setItem('player.savedAt', String(Date.now()));
+    } catch (_) {}
+}
+
+function clearPlayerIdentity() {
+    try {
+        localStorage.removeItem('player.gameCode');
+        localStorage.removeItem('player.name');
+        localStorage.removeItem('player.savedAt');
+        sessionStorage.removeItem('gameCode');
+        sessionStorage.removeItem('playerName');
+        autoResumeAttempted = true;
+        autoResumeInProgress = false;
     } catch (_) {}
 }
 
 function getSavedIdentity() {
     try {
+        const savedAt = Number(localStorage.getItem('player.savedAt') || 0);
+        if (savedAt && (Date.now() - savedAt) > 6 * 60 * 60 * 1000) {
+            clearPlayerIdentity();
+            return null;
+        }
         const savedGameCode = localStorage.getItem('player.gameCode');
         const savedPlayerName = localStorage.getItem('player.name');
         // Validate format: gameCode must be 4 digits, playerName non-empty
@@ -227,7 +246,7 @@ function attemptAutoResume() {
     const emitJoin = () => {
         try {
             console.log('🔄 Auto-resume: attempting silent rejoin', ident);
-            socket.emit('joinGame', { gameCode: ident.gameCode, playerName: ident.playerName });
+            socket.emit('joinGame', { gameCode: ident.gameCode, playerName: ident.playerName, playerId: getOrCreatePlayerId() });
         } catch (e) {
             console.warn('Auto-resume emit failed:', e);
         }
@@ -1124,6 +1143,14 @@ function startGame() {
 
 // Leave the current game
 function leaveGame() {
+    try {
+        const code = (gameState && gameState.gameCode) || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode');
+        const name = currentPlayerName || localStorage.getItem('player.name') || sessionStorage.getItem('playerName');
+        if (socket && socket.connected && code) {
+            socket.emit('leaveGame', { gameCode: code, playerName: name });
+        }
+    } catch (_) {}
+    clearPlayerIdentity();
     socket.disconnect();
     socket.connect();
     resetGameState();
@@ -2321,31 +2348,32 @@ function handleNextQuestion(gameStateData) {
         return;
     }
 
-    try {
-        const code = gameState?.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
-        if (code) localStorage.removeItem(`player.submitted.${code}.q${currentQuestionIndex}`);
-    } catch(_) {}
-    
+    const pending = findMyPendingEdit(gameStateData.pendingEdits || gameState.pendingEdits);
+    if (pending) {
+        presentSendBack(pending.reason, pending.originalAnswer);
+        return;
+    }
+
     showScreen('game');
     displayCurrentQuestion();
     setPlayerSubmitEnabled(true);
+    let restoredDraft = '';
+    let alreadySubmitted = false;
     try {
         const input = document.getElementById('answerInput');
         if (input) {
             const code = gameState?.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode');
             const key = code ? `player.answer.${code}.q${currentQuestionIndex}` : null;
-            const stored = key ? localStorage.getItem(key) : '';
-            const alreadySubmitted = code && localStorage.getItem(`player.submitted.${code}.q${currentQuestionIndex}`) === '1';
-            input.value = stored || '';
+            restoredDraft = key ? (localStorage.getItem(key) || '') : '';
+            alreadySubmitted = !!(code && localStorage.getItem(`player.submitted.${code}.q${currentQuestionIndex}`) === '1');
+            if (restoredDraft) input.value = restoredDraft;
             if (alreadySubmitted) setPlayerSubmitEnabled(false);
         }
     } catch(_) {}
     startTimer();
     // Auto-generate virtual responses for next question if testing
     scheduleVirtualQuestionFlow();
-    // Clear any lingering clarification prompt/state from previous question
     try {
-        // Remove inline edit notice banner if present
         const editNotice = document.getElementById('editRequestNotice');
         if (editNotice && editNotice.parentNode) {
             editNotice.parentNode.removeChild(editNotice);
@@ -2354,10 +2382,12 @@ function handleNextQuestion(gameStateData) {
         if (status) { status.innerHTML = ''; status.className = 'answer-status'; }
         const input = document.getElementById('answerInput');
         const btn = document.getElementById('submitAnswerBtn');
-        if (input) { input.disabled = false; input.value = ''; }
-        if (btn) { btn.disabled = false; }
-        // Only clear the answer if we're actually moving to a new question, not during grading
-        if (gameState.gameState === 'playing') {
+        if (input && !alreadySubmitted && !restoredDraft) {
+            input.disabled = false;
+            if (!input.value) input.value = '';
+        }
+        if (btn && !alreadySubmitted) { btn.disabled = false; }
+        if (gameState.gameState === 'playing' && !alreadySubmitted && !restoredDraft) {
             window.lastSubmittedAnswer = '';
             localStorage.removeItem('lastSubmittedAnswer');
         }
@@ -2440,6 +2470,12 @@ function handleGradingComplete(gameStateData) {
     console.log('✅ Game state data:', gameStateData);
     console.log('✅ Current game state:', gameStateData?.gameState);
     gameState = gameStateData;
+
+    const pending = findMyPendingEdit(gameStateData && gameStateData.pendingEdits);
+    if (pending) {
+        presentSendBack(pending.reason, pending.originalAnswer);
+        return;
+    }
     
     // Show the scoring screen first
     console.log('✅ Showing scoring screen');
@@ -2819,8 +2855,8 @@ function displayCurrentQuestion() {
             const storedAnswer = localStorage.getItem(`player.answer.${code}.q${qIndex}`);
             const input = document.getElementById('answerInput');
             const btn = document.getElementById('submitAnswerBtn');
+            if (input && storedAnswer && !input.value) input.value = storedAnswer;
             if (submitted && input && btn) {
-                if (storedAnswer && !input.value) input.value = storedAnswer;
                 input.disabled = true;
                 btn.disabled = true;
                 btn.setAttribute('aria-disabled', 'true');
@@ -4222,7 +4258,13 @@ function showWaitingForGrading() {
     const answersList = document.getElementById('answersList');
     if (answersList) {
         // Get the submitted answer from window storage (only use window, not localStorage for current question)
-        const submittedAnswer = window.lastSubmittedAnswer || '';
+        const submittedAnswer = window.lastSubmittedAnswer || (() => {
+            try {
+                const code = gameState?.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
+                const qIndex = (typeof gameState?.currentQuestion === 'number') ? gameState.currentQuestion : currentQuestionIndex;
+                return (code && localStorage.getItem(`player.answer.${code}.q${qIndex}`)) || localStorage.getItem('lastSubmittedAnswer') || '';
+            } catch (_) { return ''; }
+        })();
         const displayAnswer = submittedAnswer && submittedAnswer.trim() !== '' ? submittedAnswer : 'No Answer Received';
         console.log('🎯 Retrieved submitted answer:', submittedAnswer);
         console.log('🎯 Display answer:', displayAnswer);

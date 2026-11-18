@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2026-09-02T15-40-00">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T12-00-00">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -2438,10 +2438,20 @@
                 categorizedAnswers: categorization
             });
             
+            const pendingCount = Array.isArray(currentGame.pendingEdits) ? currentGame.pendingEdits.length : 0;
+            let forceComplete = false;
+            if (pendingCount > 0) {
+                const names = currentGame.pendingEdits.map(p => p.playerName).join(', ');
+                const ok = window.confirm(`${pendingCount} player${pendingCount === 1 ? ' is' : 's are'} still rewriting a sent-back answer (${names}). Score without them?`);
+                if (!ok) return;
+                forceComplete = true;
+            }
+
             try {
                 socket.emit('completeGrading', {
                     gameCode: currentGame.gameCode,
-                    categorizedAnswers: categorization
+                    categorizedAnswers: categorization,
+                    forceComplete
                 });
                 console.log('✅ Successfully emitted completeGrading');
             } catch (error) {
@@ -2452,6 +2462,11 @@
             // Optimistically close modal and signal completion in UI
             try {
                 showTemporaryMessage('✅ Grading submitted. Waiting for results…', 'success');
+            } catch (_) {}
+            try {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({ type: 'megasheep-grading-complete', gameCode: currentGame.gameCode }, '*');
+                }
             } catch (_) {}
             try { window.close(); } catch (_) {}
         }

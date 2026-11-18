@@ -1,0 +1,21 @@
+---
+description: Universal Player Display Standards
+alwaysApply: true
+---
+
+# Universal Player Display Standards
+
+1. All player-facing game interfaces must be designed mobile-first and meet professional responsive application standards.
+2. Every player must have access to the same gameplay information, controls, and functionality intended for them, regardless of screen size, device type, or orientation.
+3. Layouts must adapt intelligently rather than hide, truncate, overlap, or discard important content.
+4. Prioritize fitting active gameplay within the viewport. Allow vertical scrolling when genuinely necessary, but never require horizontal page scrolling.
+5. Support phones, tablets, foldables, and desktops in both portrait and landscape orientations.
+6. Maintain readable text, accessible contrast, and touch targets of at least 44x44 CSS pixels.
+7. Respect device safe areas, browser toolbars, notches, and dynamic viewport dimensions.
+8. Never rely on hover, device-specific features, or a particular orientation for essential gameplay functionality.
+9. Test responsive layouts at widths of 320, 360, 375, 390, and 430 pixels, plus tablet and desktop sizes.
+10. Whenever modifying a player-facing interface, check for overflow, clipping, inaccessible controls, and information loss.
+11. When screen space is insufficient, redesign the layout rather than remove functionality.
+12. Do not consider player-facing UI work complete without responsive validation.
+
+This rule applies to all existing and future player-facing screens in this project.

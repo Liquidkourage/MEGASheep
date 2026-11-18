@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Host Console</title>
-    <link rel="stylesheet" href="styles.css?v=2026-09-02T15-40-00">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T12-00-00">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* Floating Q&A indicator */
@@ -1042,6 +1042,43 @@
             return null;
         }
 
+        function saveHostSession(gameCode, hostToken) {
+            try {
+                if (gameCode) localStorage.setItem('gameCode', String(gameCode));
+                if (hostToken) localStorage.setItem('hostToken', String(hostToken));
+            } catch (_) {}
+        }
+
+        function getHostToken() {
+            try { return localStorage.getItem('hostToken') || ''; } catch (_) { return ''; }
+        }
+
+        function clearHostSession() {
+            try {
+                localStorage.removeItem('gameCode');
+                localStorage.removeItem('hostToken');
+            } catch (_) {}
+        }
+
+        function warnQuestionBankSource(source) {
+            let banner = document.getElementById('bankSourceWarning');
+            if (!source || source === 'database') {
+                if (banner) banner.style.display = 'none';
+                return;
+            }
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'bankSourceWarning';
+                banner.setAttribute('role', 'status');
+                banner.style.cssText = 'background:rgba(255,193,7,0.18);border:1px solid #ffc107;border-radius:8px;padding:10px 14px;margin:10px 0;color:#fff;font-weight:600;';
+                const host = document.getElementById('activeGameState');
+                if (host) host.insertBefore(banner, host.firstChild);
+            }
+            const label = source === 'demo' ? 'built-in demo questions' : (source === 'file' ? 'sample-questions.txt on disk' : source);
+            banner.textContent = 'Question bank is ' + label + ', not Railway Postgres. Scores will still work; the live show bank is not loaded.';
+            banner.style.display = 'block';
+        }
+
         // Initialize connection
         function initializeConnection() {
             socket = io({
@@ -1066,12 +1103,12 @@
                     // Add a timeout for reconnection
                     const reconnectTimeout = setTimeout(() => {
                         console.log('Reconnection timeout - clearing saved game code');
-                        localStorage.removeItem('gameCode');
+                        clearHostSession();
                         document.getElementById('noGameState').style.display = 'block';
                         document.getElementById('activeGameState').style.display = 'none';
                     }, 10000); // 10s tolerance
                     
-                    socket.emit('host-reconnect', { gameCode: savedGameCode });
+                    socket.emit('host-reconnect', { gameCode: savedGameCode, hostToken: getHostToken() });
                     
                     // Clear timeout if reconnection succeeds
                     socket.once('gameCreated', () => {
@@ -1086,6 +1123,8 @@
             
             socket.on('gameCreated', (data) => {
                 currentGame = unwrapGameState(data && data.gameState) || unwrapGameState(data) || data.gameState;
+                if (data && (data.hostToken || data.gameCode)) saveHostSession(data.gameCode || currentGame?.gameCode, data.hostToken);
+                warnQuestionBankSource(currentGame && currentGame.questionBankSource);
                 showActiveGame();
                 updateGameDisplay();
                 console.log('Game created via socket:', data);
@@ -1133,8 +1172,8 @@
                 console.error('Game error:', error);
                 
                 // If it's a reconnection error, clear the saved game code and show the create game form
-                if (error.message.includes('Game not found') || error.message.includes('No game found')) {
-                    localStorage.removeItem('gameCode');
+                if (error.message.includes('Game not found') || error.message.includes('No game found') || error.message.includes('Host credentials')) {
+                    clearHostSession();
                     document.getElementById('noGameState').style.display = 'block';
                     document.getElementById('activeGameState').style.display = 'none';
                     console.log('Cleared saved game code due to reconnection error');
@@ -1147,6 +1186,7 @@
                 const state = unwrapGameState(data);
                 if (state) currentGame = state;
                 gameState = 'playing';
+                warnQuestionBankSource(currentGame && currentGame.questionBankSource);
                 updateGameControls();
                 updatePlayerList();
             });
@@ -1776,7 +1816,7 @@
                 
                 if (data.status === 'success') {
                     // Store game info
-                    localStorage.setItem('gameCode', data.gameCode);
+                    saveHostSession(data.gameCode, data.hostToken);
                     saveQpSel();
                     
                     // Join the game room via socket
@@ -1805,10 +1845,10 @@
                 });
                 const json = await res.json();
                 if (json && json.status === 'success') {
-                    try { localStorage.setItem('gameCode', code); } catch(_) {}
+                    saveHostSession(code, json.hostToken);
                     // Ensure socket exists and connect if needed
                     if (!socket) { initializeConnection(); }
-                    const emitReconnect = () => { try { socket.emit('host-reconnect', { gameCode: code }); } catch(_) {} };
+                    const emitReconnect = () => { try { socket.emit('host-reconnect', { gameCode: code, hostToken: getHostToken() }); } catch(_) {} };
                     if (socket && socket.connected) emitReconnect(); else socket && socket.once('connect', emitReconnect);
                     alert(json.recovered ? 'Game recovered from snapshot.' : 'Game already active. Reconnected.');
                 } else {
@@ -1921,6 +1961,12 @@
             // Remove fullscreen class when closing
             document.getElementById('gradingSingleModalContent').classList.remove('fullscreen');
         }
+
+        window.addEventListener('message', (event) => {
+            const data = event && event.data;
+            if (!data || data.type !== 'megasheep-grading-complete') return;
+            try { closeGradingSingleModal(); } catch (_) {}
+        });
 
         function openGradingMultiModal() {
             document.getElementById('gradingMultiModal').style.display = 'block';

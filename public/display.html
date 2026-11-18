@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
-    <link rel="stylesheet" href="styles.css?v=2025-08-17T14-48-07">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T12-00-00">
     <style>
         /* Dynamic scaling based on screen resolution */
         :root {
@@ -2856,9 +2856,10 @@
 
         // Initialize socket connection on page load
         document.addEventListener('DOMContentLoaded', () => {
-            // Register service worker for caching stability
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/sw.js').catch(err => console.warn('SW registration failed', err));
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                    regs.forEach(r => { try { r.unregister(); } catch (_) {} });
+                }).catch(() => {});
             }
             initializeSocket();
             initializeSheepCarousel();

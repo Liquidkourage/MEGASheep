@@ -58,4 +58,6 @@ Games live in memory on one server process. A restart wipes the current lobby.
 
 Railway, one app replica plus Postgres. GitHub `master` auto-deploys. The app reads `DATABASE_URL` from the Postgres service.
 
+**Do not deploy, restart, or scale the app during a live show.** Games live in memory on a single process. A restart, redeploy, or second replica wipes the lobby and every in-progress answer.
+
 Live: [https://megasheep.liquidkourage.com](https://megasheep.liquidkourage.com)

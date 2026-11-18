@@ -21,6 +21,7 @@ const {
 } = require('./db');
 
 const fs = require('fs');
+const crypto = require('crypto');
 // Prefer Node 18+ global fetch; fallback to dynamic import for older runtimes
 const fetch = (globalThis && globalThis.fetch)
   ? globalThis.fetch.bind(globalThis)
@@ -351,8 +352,10 @@ class Game {
         this.currentQuestionScored = false; // Track if current question has been scored
         this.answersNeedingEdit = new Map(); // socketId -> { reason, requestedAt, originalAnswer }
         this.roundAnswerGroups = []; // CRITICAL FIX: Initialize roundAnswerGroups array
-        // SIMPLIFIED: Removed answersByStableId, socketByStableId, attemptsByQuestion
         // ONE source of truth: this.answers (socketId -> answer)
+        this.socketByStableId = new Map();
+        this.hostToken = null;
+        this.questionBankSource = null;
         this.seenPlayerNames = new Set(); // Track any name that has ever joined this game
         this.expectedResponders = new Set(); // socketIds expected to answer current question
         this.processedEventIds = new Set(); // de-duplication of critical events
@@ -394,6 +397,8 @@ class Game {
     });
         this.scores.set(socketId, this.scoresByStableId.get(playerIdentity) || 0);
         this.seenPlayerNames.add(playerName);
+        this.socketByStableId = this.socketByStableId || new Map();
+        this.socketByStableId.set(playerIdentity, socketId);
 
         // Track who has answered per question (by stable identity)
         this.answeredStableIds = this.answeredStableIds || new Set();
@@ -401,13 +406,16 @@ class Game {
         console.log(`👤 Player ${playerName} added to game ${this.gameCode}`);
     }
 
-    removePlayer(socketId) {
+    removePlayer(socketId, { keepAnswers = false } = {}) {
         const player = this.players.get(socketId);
         if (player) {
             this.players.delete(socketId);
             this.scores.delete(socketId);
-            this.answers.delete(socketId);
-        logger.info(`👤 Player ${player.name} removed from game ${this.gameCode}`);
+            if (!keepAnswers) this.answers.delete(socketId);
+            try {
+                if (this.socketByStableId && player.stableId) this.socketByStableId.delete(player.stableId);
+            } catch (_) {}
+            logger.info(`👤 Player ${player.name} removed from game ${this.gameCode}`);
         }
     }
 
@@ -441,7 +449,11 @@ class Game {
             const cumulative = this.scoresByStableId.get(stableId) || 0;
             this.players.set(newSocketId, { id: newSocketId, stableId, name: playerName, score: cumulative, answers: [] });
             this.scores.set(newSocketId, cumulative);
+            this.socketByStableId = this.socketByStableId || new Map();
             this.socketByStableId.set(stableId, newSocketId);
+            if (this.gameState === 'playing' && this.expectedResponders instanceof Set && oldSocketId) {
+                this.expectedResponders.delete(oldSocketId);
+            }
 
             // Transfer any pending edit flag to the new socket id
             try {
@@ -913,6 +925,11 @@ class Game {
         if (this.answersNeedingEdit && typeof this.answersNeedingEdit.clear === 'function') {
             this.answersNeedingEdit.clear();
         }
+        this.answeredStableIds = new Set();
+        this.expectedResponders = new Set();
+        try {
+            for (const sid of this.players.keys()) this.expectedResponders.add(sid);
+        } catch (_) {}
         
         logger.debug(`🔄 Reset for new question`);
     } catch (e) {
@@ -921,6 +938,8 @@ class Game {
         this.currentAnswerGroups = [];
         this.categorizationData = null;
         this.currentQuestionScored = false;
+        this.answeredStableIds = new Set();
+        this.expectedResponders = new Set();
     }
   }
 
@@ -1012,6 +1031,7 @@ class Game {
               createdAt: this.createdAt || new Date().toISOString(),
               playerCount: this.players ? this.players.size : 0,
               isTestMode: this.isTestMode || false,
+              questionBankSource: this.questionBankSource || null,
               pendingEdits: (() => {
                 try {
                   if (!this.answersNeedingEdit || this.answersNeedingEdit.size === 0) return [];
@@ -1145,18 +1165,8 @@ class Game {
         } else {
             // Increment to next question
             this.currentQuestion++;
-            this.answers.clear();
-            // Reset per-question answered stableIds set
-            try { this.answeredStableIds = new Set(); } catch(_) {}
-            
-            // Reset question scoring state for the new question (also mark previous question as not scored)
             this.resetQuestionScoring();
             this.currentQuestionScored = false;
-
-            // Clear any pending clarification flags for the new question
-            if (this.answersNeedingEdit) {
-                this.answersNeedingEdit.clear();
-            }
             
             logger.info(`🎯 Continuing to next question: currentQuestion=${this.currentQuestion}, gameState=playing`);
             this.gameState = 'playing';
@@ -1342,10 +1352,8 @@ class Game {
             return;
         }
         
-        this.answers.clear();
-        
-        // Reset question scoring state for the new question
         this.resetQuestionScoring();
+        this.currentQuestionScored = false;
         
         console.log(`🎯 Starting next round: currentQuestion=${this.currentQuestion}, gameState=playing`);
         this.gameState = 'playing';
@@ -1460,16 +1468,18 @@ app.post('/api/recover-game', async (req, res) => {
     // If game already exists, return its state
     const existing = activeGames.get(gameCode);
     if (existing) {
-      return res.json({ status: 'success', recovered: false, gameState: existing.getGameState() });
+      if (!existing.hostToken) existing.hostToken = crypto.randomBytes(24).toString('hex');
+      return res.json({ status: 'success', recovered: false, hostToken: existing.hostToken, gameState: existing.getGameState() });
     }
     const snap = await loadLatestSnapshot(String(gameCode));
     if (!snap) return res.status(404).json({ status: 'error', message: 'No snapshot found for gameCode' });
     const game = restoreGameFromSnapshot(snap);
     if (!game) return res.status(500).json({ status: 'error', message: 'Failed to restore game' });
+    if (!game.hostToken) game.hostToken = crypto.randomBytes(24).toString('hex');
     // Announce recovery in events log
     sbLogEvent(game.gameCode, 'game_recovered', { phase: snap?.phase, at: snap?.at });
     // Return state; clients will rebind via join/reconnect
-    return res.json({ status: 'success', recovered: true, gameState: game.getGameState() });
+    return res.json({ status: 'success', recovered: true, hostToken: game.hostToken, gameState: game.getGameState() });
   } catch (e) {
     console.error('❌ recover-game failed:', e?.message);
     return res.status(500).json({ status: 'error', message: 'recover failed' });
@@ -1482,6 +1492,8 @@ function serializeGame(game) {
                 return {
       gameCode: game.gameCode,
       hostId: game.hostId,
+      hostToken: game.hostToken || null,
+      questionBankSource: game.questionBankSource || null,
       players: Array.from(game.players.entries()).map(([sid, p]) => ({ socketId: sid, stableId: p.stableId || p.id, name: p.name, score: p.score })),
       scoresByStableId: Object.fromEntries(game.scoresByStableId),
       currentRound: game.currentRound,
@@ -1581,6 +1593,8 @@ function restoreGameFromSnapshot(snap) {
     game.roundHistory = Array.isArray(s.roundHistory) ? s.roundHistory : [];
     game.settings = s.settings || game.settings;
     game.createdAt = s.createdAt || Date.now();
+    game.hostToken = s.hostToken || game.hostToken;
+    game.questionBankSource = s.questionBankSource || game.questionBankSource;
     // Scores by stable ID
     if (s.scoresByStableId) {
       try { game.scoresByStableId = new Map(Object.entries(s.scoresByStableId)); } catch(_) {}
@@ -1614,6 +1628,7 @@ app.post('/api/create-game', (req, res) => {
     
     // Create new game
     const game = new Game(finalHostName, gameCode);
+    game.hostToken = crypto.randomBytes(24).toString('hex');
     activeGames.set(gameCode, game);
     try { activeGameCodes.add(gameCode); } catch (_) {}
     try { persistSnapshot(game, 'game_created'); } catch (_) {}
@@ -1624,6 +1639,7 @@ app.post('/api/create-game', (req, res) => {
     res.json({ 
         status: 'success', 
         gameCode: gameCode,
+        hostToken: game.hostToken,
         gameState: game.getGameState()
     });
 });
@@ -1915,7 +1931,7 @@ io.on('connection', (socket) => {
 
     // Host reconnection
     socket.on('reconnectHost', (data) => {
-        const { gameCode, hostName } = data;
+        const { gameCode, hostName, hostToken } = data || {};
         
         if (!gameCode || !hostName) {
             socket.emit('error', { message: 'Game code and host name are required' });
@@ -1925,6 +1941,11 @@ io.on('connection', (socket) => {
         const game = activeGames.get(gameCode);
         if (!game) {
             socket.emit('error', { message: 'Game not found. Please check the game code.' });
+            return;
+        }
+
+        if (game.hostToken && hostToken !== game.hostToken) {
+            socket.emit('error', { message: 'Host credentials do not match this game.' });
             return;
         }
         
@@ -1954,25 +1975,11 @@ io.on('connection', (socket) => {
     socket.on('createGame', (data) => {
         // Prefer explicit gameCode from client (same request cycle as REST creation)
         const requestedCode = data && data.gameCode ? String(data.gameCode) : null;
-        let hostGame = null;
-        if (requestedCode && activeGames.has(requestedCode)) {
-            hostGame = activeGames.get(requestedCode);
-        } else {
-            // Fallback: most recently created game
-            let latestGame = null;
-            let latestTime = 0;
-            for (const [, game] of activeGames) {
-                if (game.createdAt > latestTime) {
-                    latestTime = game.createdAt;
-                    latestGame = game;
-                }
-            }
-            hostGame = latestGame;
-        }
-        if (!hostGame) {
-            socket.emit('gameError', { message: 'No game found. Please create a game first.' });
+        if (!requestedCode || !activeGames.has(requestedCode)) {
+            socket.emit('gameError', { message: 'No game found. Create a game first, then join with that code.' });
             return;
         }
+        const hostGame = activeGames.get(requestedCode);
         // Update connection info securely for this host socket
         const playerInfo = connectedPlayers.get(socket.id);
         if (playerInfo) {
@@ -1983,6 +1990,7 @@ io.on('connection', (socket) => {
         socket.join(hostGame.gameCode);
         socket.emit('gameCreated', {
             gameCode: hostGame.gameCode,
+            hostToken: hostGame.hostToken,
             gameState: hostGame.getGameState()
         });
         console.log(`🏠 Host ${hostGame.hostId} joined room for game ${hostGame.gameCode}`);
@@ -1990,7 +1998,7 @@ io.on('connection', (socket) => {
 
     // Host reconnect
     socket.on('host-reconnect', (data) => {
-        const { gameCode } = data;
+        const { gameCode, hostToken } = data || {};
         
         if (!gameCode) {
             socket.emit('gameError', { message: 'Game code is required for reconnection' });
@@ -2001,6 +2009,13 @@ io.on('connection', (socket) => {
         if (!game) {
             socket.emit('gameError', { message: 'Game not found. Please check the game code.' });
             return;
+        }
+
+        if (game.hostToken) {
+            if (!hostToken || hostToken !== game.hostToken) {
+                socket.emit('gameError', { message: 'Host credentials do not match this game.' });
+                return;
+            }
         }
         
         // Update connection info
@@ -2016,6 +2031,7 @@ io.on('connection', (socket) => {
         
         socket.emit('gameCreated', {
             gameCode: gameCode,
+            hostToken: game.hostToken,
             gameState: game.getGameState()
         });
         
@@ -2091,9 +2107,21 @@ io.on('connection', (socket) => {
                     sbLogEvent(gameCode, 'player_rebound', { playerName });
                 }
 
-                // Simple: Check if returning player has pending edit
-                if (game.answersNeedingEdit.has(socket.id)) {
-                    const editInfo = game.answersNeedingEdit.get(socket.id);
+                let editInfo = game.answersNeedingEdit.get(socket.id);
+                if (!editInfo) {
+                    for (const [sid, info] of game.answersNeedingEdit.entries()) {
+                        const p = game.players.get(sid);
+                        if (p && String(p.name).toLowerCase() === String(playerName).toLowerCase()) {
+                            if (sid !== socket.id) {
+                                game.answersNeedingEdit.delete(sid);
+                                game.answersNeedingEdit.set(socket.id, info);
+                            }
+                            editInfo = info;
+                            break;
+                        }
+                    }
+                }
+                if (editInfo) {
                     io.to(socket.id).emit('requireAnswerEdit', { reason: editInfo.reason, originalAnswer: editInfo.originalAnswer });
                     logger.info(`✏️ Re-sent edit request to reconnecting ${playerName}`);
                 }
@@ -2137,15 +2165,19 @@ io.on('connection', (socket) => {
         const game = activeGames.get(gameCode);
     if (!game) return;
     
-    // Find target player by socketId or name
-    let targetSocketId = playerSocketId;
+    let targetSocketId = playerSocketId && game.players.has(playerSocketId) ? playerSocketId : null;
     if (!targetSocketId && playerName) {
       for (const [sid, p] of game.players.entries()) {
-        if (p.name.toLowerCase() === playerName.toLowerCase()) {
+        if (p.name && p.name.toLowerCase() === String(playerName).toLowerCase()) {
           targetSocketId = sid;
           break;
         }
       }
+    }
+    if (targetSocketId) {
+        const p = game.players.get(targetSocketId);
+        const live = p && p.stableId && game.socketByStableId && game.socketByStableId.get(p.stableId);
+        if (live && game.players.has(live)) targetSocketId = live;
     }
     
     if (!targetSocketId || !game.players.has(targetSocketId)) return;
@@ -2166,11 +2198,8 @@ io.on('connection', (socket) => {
         logger.error('Failed to rebuild answer groups after edit request:', e?.message);
     }
     
-    // Send edit request to player if connected
-    if (connectedPlayers.has(targetSocketId)) {
     io.to(targetSocketId).emit('requireAnswerEdit', { reason: reason || 'Please be more specific', originalAnswer: original });
-        logger.info(`✏️ Clarification sent to ${game.players.get(targetSocketId)?.name}`);
-    }
+    logger.info(`✏️ Clarification sent to ${game.players.get(targetSocketId)?.name}`);
 
     const targetPlayer = game.players.get(targetSocketId);
     if (targetPlayer && targetPlayer.isVirtual) {
@@ -2347,6 +2376,7 @@ io.on('connection', (socket) => {
                 const preferDemo = game.settings && game.settings.questionSet === 'demo';
                 const bank = await getQuestionBank(preferDemo);
                 questions = bank.questions;
+                game.questionBankSource = bank.source;
                 console.log(`📚 Using ${bank.source} question bank for game ${gameCode}: ${questions.length} questions`);
             }
             
@@ -2550,8 +2580,6 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // Allow host to complete grading even if the question hasn't been explicitly ended yet.
-        // If currently playing, finalize answers and enter grading implicitly.
         if (game.gameState === 'playing') {
             try {
                 game.calculateScores();
@@ -2562,21 +2590,16 @@ io.on('connection', (socket) => {
                 console.error('❌ Error transitioning to grading state:', e);
             }
         } else if (game.gameState !== 'grading') {
-            // For any other state, proceed conservatively by transitioning to grading
-            // if we have answer data; otherwise reject.
-            if (game.answers && game.answers.size >= 0) {
-                try {
-                    game.calculateScores();
-                    game.stopTimer();
-                    game.gameState = 'grading';
-                    console.log('🎯 Transitioned to grading state from other state');
-                } catch (e) {
-                    console.error('❌ Error transitioning to grading state:', e);
-                }
-            } else {
-                socket.emit('gameError', { message: 'Not in grading phase' });
-                return;
-            }
+            socket.emit('gameError', { message: 'Not in grading phase' });
+            return;
+        }
+
+        const pendingEditCount = game.answersNeedingEdit ? game.answersNeedingEdit.size : 0;
+        if (pendingEditCount > 0 && !data.forceComplete) {
+            socket.emit('gameError', {
+                message: `${pendingEditCount} player${pendingEditCount === 1 ? ' is' : 's are'} still rewriting a sent-back answer. Wait or send forceComplete.`
+            });
+            return;
         }
         
         try {
@@ -2719,9 +2742,13 @@ io.on('connection', (socket) => {
             
             console.log(`🎯 Game state check: ${game.gameState}, currentQuestion: ${game.currentQuestion}`);
             
-            if (game.gameState !== 'scoring' && game.gameState !== 'roundComplete') {
+            if (game.gameState !== 'scoring') {
                 console.log(`⚠️ nextQuestion rejected - invalid state: ${game.gameState}`);
                 socket.emit('gameError', { message: 'Must complete grading before proceeding' });
+                return;
+            }
+            if (game.answersNeedingEdit && game.answersNeedingEdit.size > 0) {
+                socket.emit('gameError', { message: 'Players still have unanswered send-backs' });
                 return;
             }
             
@@ -3340,20 +3367,10 @@ io.on('connection', (socket) => {
             const game = activeGames.get(gameCode);
             if (game) {
                 // Remove player immediately (no grace period for manual leave)
+                try { if (game.expectedResponders instanceof Set) game.expectedResponders.delete(socket.id); } catch (_) {}
                 game.removePlayer(socket.id);
                 console.log(`👋 Removed player ${playerName} from game ${gameCode}`);
-                
-                // Notify host about player leaving
-                const hostSocket = Array.from(connectedPlayers.entries())
-                    .find(([id, info]) => info.gameCode === gameCode && info.isHost);
-                
-                if (hostSocket) {
-                    hostSocket[1].socket?.emit('playerLeft', {
-                        playerName: playerName,
-                        gameCode: gameCode,
-                        totalPlayers: game.players.size
-                    });
-                }
+                io.to(gameCode).emit('playerLeft', game.getGameState());
             }
             
             // Remove from connected players
@@ -3372,12 +3389,20 @@ io.on('connection', (socket) => {
                 if (playerInfo.isDisplay || playerInfo.isGradingInterface) {
                     console.log(`${playerInfo.isDisplay ? '📺 Display' : '📝 Grading'} disconnected from game ${playerInfo.gameCode}`);
                 } else {
-                    // Delay removal to tolerate brief reconnects; defer deletion check until after grace
+                    // Delay removal to tolerate hall Wi-Fi reconnects
                     setTimeout(() => {
-                        // If the same socket id has re-appeared, skip removal
                         const stillConnected = connectedPlayers.has(socket.id);
                         if (stillConnected) return;
-                        // Remove from players and expected responders
+                        const player = game.players.get(socket.id);
+                        const keepSeat = !!(player && (
+                            game.answers.has(socket.id) ||
+                            game.answersNeedingEdit.has(socket.id) ||
+                            (player.stableId && game.answeredStableIds && game.answeredStableIds.has(player.stableId))
+                        ));
+                        if (keepSeat) {
+                            console.log(`⏳ Keeping seat for ${player?.name || socket.id} after disconnect`);
+                            return;
+                        }
                         try { if (game.expectedResponders instanceof Set) game.expectedResponders.delete(socket.id); } catch(_) {}
                         game.removePlayer(socket.id);
                         io.to(playerInfo.gameCode).emit('playerLeft', game.getGameState());
@@ -3392,7 +3417,7 @@ io.on('connection', (socket) => {
                                 }
                             }, 5000);
                         }
-                    }, 3000);
+                    }, 20000);
                 }
             }
         }
@@ -3400,7 +3425,7 @@ io.on('connection', (socket) => {
         // Defer deletion until after grace: mark a timestamp so rebind can be detected
         setTimeout(() => {
             connectedPlayers.delete(socket.id);
-        }, 3000);
+        }, 20000);
         // Cleanup any pairing codes issued to this socket
         for (const [code, entry] of displayPairings.entries()) {
             if (entry.socketId === socket.id) displayPairings.delete(code);
