@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2026-11-18T13-20-00">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T13-30-00">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -994,6 +994,8 @@
             
             socket.on('gradingComplete', (data) => {
                 console.log('🎯🎯🎯 GRADING COMPLETE EVENT RECEIVED! 🎯🎯🎯', data);
+                lastRenderedQuestionIndex = null;
+                try { clearGradingBuckets(); } catch (_) {}
                 
                 // Auto-close this grading interface immediately
                 console.log('🎯 About to close window...');
@@ -1134,6 +1136,7 @@
                     currentGame.currentAnswerGroups = [];
                 }
                 lastRenderedQuestionIndex = null;
+                clearGradingBuckets();
                 showGradingWorkspace();
                 try { updateGradingInterface(true); } catch (e) { console.warn('questionComplete UI update failed', e); }
             });
@@ -2490,6 +2493,11 @@
 
         function applyCategorization() {
             if (!currentGame) return;
+            const phase = currentGame.gameState;
+            if (phase && phase !== 'grading') {
+                showToast('Wait until the question ends before completing grading', 'error');
+                return;
+            }
             
             // Collect categorization data
             const categorization = {
@@ -2557,6 +2565,7 @@
                 socket.emit('completeGrading', {
                     gameCode: currentGame.gameCode,
                     categorizedAnswers: categorization,
+                    questionIndex: getCurrentQuestionIndex(),
                     forceComplete
                 });
                 console.log('✅ Successfully emitted completeGrading');
@@ -2920,6 +2929,9 @@
         // Restore grading state from localStorage
         function restoreGradingState() {
             if (!currentGame || !currentGame.currentQuestionData) return false;
+            if (currentGame.gameState && currentGame.gameState !== 'grading') return false;
+            const marked = document.getElementById('correctAnswers')?.dataset.questionIndex;
+            if (marked && marked !== String(getCurrentQuestionIndex())) return false;
             
             // Check if state restoration should be skipped (after clearing previous states)
             if (window.skipStateRestoration) {
@@ -3532,19 +3544,19 @@
                 resyncBtn.disabled = true;
 
                 lastRenderedQuestionIndex = null;
-                socket.emit('getGameState', currentGame.gameCode);
+                clearGradingBuckets();
+                socket.emit('getGameState', { gameCode: currentGame.gameCode });
                 
                 // Also try to get active games as a fallback
                 socket.emit('getActiveGames');
                 
                 console.log('🔗 Emitting getActiveGames as fallback');
                 
-                // Wait a bit for server response
+                // Wait a bit for server response; gameStateResponse rebuilds the board
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // Re-populate the interface
                 if (currentGame && currentGame.currentQuestionData) {
-                    await populateGradingInterface();
+                    await updateGradingInterface(true);
                     showToast('Game data re-synced successfully!', 'success');
                 } else {
                     showToast('Failed to re-sync game data', 'error');
@@ -3570,24 +3582,7 @@
                 return;
             }
 
-            // Fallback 1: If currentAnswerGroups is missing, try to reconstruct from other sources
-            if (!currentGame.currentAnswerGroups || currentGame.currentAnswerGroups.length === 0) {
-                console.log('🔄 Fallback: Reconstructing answer groups...');
-                
-                // Try to get from localStorage as last resort
-                const savedState = localStorage.getItem(`gradingState_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`);
-                if (savedState) {
-                    try {
-                        const parsed = JSON.parse(savedState);
-                        if (parsed.answerGroups && parsed.answerGroups.length > 0) {
-                            currentGame.currentAnswerGroups = parsed.answerGroups;
-                            console.log('✅ Restored answer groups from localStorage');
-                        }
-                    } catch (e) {
-                        console.error('❌ Failed to parse saved state:', e);
-                    }
-                }
-            }
+            // Do not reconstruct answer groups from localStorage — that rehydrates the wrong question.
 
             // Fallback 2: If question data is missing, try to get from URL or localStorage
             if (!currentGame.currentQuestionData) {

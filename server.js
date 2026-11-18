@@ -536,14 +536,6 @@ class Game {
         }
       }
     }
-    if (socketIdSet.size === 0) {
-      const normalizedTarget = String(answerData?.answer || '').toLowerCase().trim();
-      for (const [sid, ans] of this.answers.entries()) {
-        try {
-          if (String(ans).toLowerCase().trim() === normalizedTarget) socketIdSet.add(sid);
-        } catch (_) {}
-      }
-    }
     return Array.from(socketIdSet);
   }
 
@@ -916,8 +908,8 @@ class Game {
               hostId: this.hostId,
         players: Array.from(this.players?.values() || []),
         currentRound: this.currentRound || 0,
-        currentQuestion: this.currentQuestion || 0,
-        currentQuestionIndex: this.currentQuestion || 0,
+        currentQuestion: this.currentQuestion ?? 0,
+        currentQuestionIndex: this.currentQuestion ?? 0,
         currentQuestionData: (this.questions && this.questions[this.currentQuestion]) ? this.questions[this.currentQuestion] : null,
         gameState: this.gameState || 'waiting',
         scores: this.scores ? Object.fromEntries(this.scores) : {},
@@ -940,7 +932,8 @@ class Game {
                       socketId: sid,
                       playerName: player?.name || 'Unknown',
                       originalAnswer: info?.originalAnswer || '',
-                      reason: info?.reason || 'Please be more specific'
+                      reason: info?.reason || 'Please be more specific',
+                      questionIndex: this.currentQuestion ?? 0
                     };
                   });
                 } catch (error) {
@@ -977,9 +970,12 @@ class Game {
     }
     }
 
-  startTimer() {
-    this.timeLeft = this.settings.timerDuration || 30;
-        logger.info(`⏰ Starting timer with ${this.timeLeft} seconds for game ${this.gameCode}`);
+  startTimer(opts = {}) {
+    const resume = opts === true || opts?.resume === true;
+    if (!resume || !Number.isFinite(this.timeLeft) || this.timeLeft <= 0) {
+      this.timeLeft = this.settings.timerDuration || 30;
+    }
+        logger.info(`⏰ Starting timer with ${this.timeLeft} seconds for game ${this.gameCode}${resume ? ' (resume)' : ''}`);
         
         // Clear any existing timer
         this.stopTimer();
@@ -1186,6 +1182,7 @@ class Game {
         // Persist round summary
         sbInsert(SB_TABLES.rounds, { game_code: this.gameCode, round_number: currentRound, data: roundData, at: sbNow() });
         sbLogEvent(this.gameCode, 'round_complete', { round: currentRound });
+        try { this.resetQuestionScoring(); } catch (_) {}
         
         // Check if this is the final round (hard stop at 5 rounds)
         const totalRounds = Math.min(5, Math.ceil(this.questions.length / this.settings.questionsPerRound));
@@ -1405,7 +1402,7 @@ function serializeGame(game) {
       hostId: game.hostId,
       hostToken: game.hostToken || null,
       questionBankSource: game.questionBankSource || null,
-      players: Array.from(game.players.entries()).map(([sid, p]) => ({ socketId: sid, stableId: p.stableId || p.id, name: p.name, score: p.score })),
+      players: Array.from(game.players.entries()).map(([sid, p]) => ({ socketId: sid, stableId: p.stableId || p.id, name: p.name, score: p.score, isVirtual: !!p.isVirtual })),
       scoresByStableId: Object.fromEntries(game.scoresByStableId),
       answersByStableId,
       pendingEditsByStableId,
@@ -1418,6 +1415,18 @@ function serializeGame(game) {
       timeLeft: game.timeLeft,
       currentAnswerGroups: game.currentAnswerGroups,
       categorizationData: game.categorizationData,
+      roundAnswerGroups: Array.isArray(game.roundAnswerGroups) ? game.roundAnswerGroups : [],
+      pointsByStableId: (() => {
+        const out = {};
+        try {
+          for (const [sid, pts] of (game.pointsForCurrentQuestion || new Map()).entries()) {
+            const p = game.players.get(sid);
+            out[p?.stableId || sid] = pts;
+          }
+        } catch (_) {}
+        return out;
+      })(),
+      isTestMode: !!game.isTestMode,
       roundHistory: game.roundHistory,
       settings: game.settings,
       createdAt: game.createdAt
@@ -1505,6 +1514,8 @@ function restoreGameFromSnapshot(snap) {
     game.timeLeft = Number(s.timeLeft) || game.timeLeft;
     game.currentAnswerGroups = Array.isArray(s.currentAnswerGroups) ? s.currentAnswerGroups : [];
     game.categorizationData = s.categorizationData || null;
+    game.roundAnswerGroups = Array.isArray(s.roundAnswerGroups) ? s.roundAnswerGroups : [];
+    game.isTestMode = !!s.isTestMode;
     game.roundHistory = Array.isArray(s.roundHistory) ? s.roundHistory : [];
     game.settings = s.settings || game.settings;
     game.createdAt = s.createdAt || Date.now();
@@ -1524,7 +1535,7 @@ function restoreGameFromSnapshot(snap) {
         if (!stable || !p.name) continue;
         const ghostId = `ghost_${stable}`;
         const score = Number(p.score) || Number(game.scoresByStableId.get(stable)) || 0;
-        game.players.set(ghostId, { id: ghostId, stableId: stable, name: p.name, score, answers: [] });
+        game.players.set(ghostId, { id: ghostId, stableId: stable, name: p.name, score, answers: [], isVirtual: !!p.isVirtual });
         game.scores.set(ghostId, score);
         game.socketByStableId.set(stable, ghostId);
       }
@@ -1541,10 +1552,24 @@ function restoreGameFromSnapshot(snap) {
         if (sid) game.answersNeedingEdit.set(sid, info);
       }
     }
+    if (s.pointsByStableId && typeof s.pointsByStableId === 'object') {
+      for (const [stable, pts] of Object.entries(s.pointsByStableId)) {
+        const sid = game.socketByStableId.get(stable);
+        if (sid) game.pointsForCurrentQuestion.set(sid, Number(pts) || 0);
+      }
+    }
     
     activeGames.set(game.gameCode, game);
     activeGameCodes.add(game.gameCode);
     console.log(`✅ Restored game ${game.gameCode} from snapshot (state=${game.gameState})`);
+    try {
+      if (game.gameState === 'playing') {
+        if (Number(game.timeLeft) > 0) game.startTimer({ resume: true });
+        else game.handleTimeUp();
+      }
+    } catch (timerErr) {
+      console.warn('⚠️ Could not resume timer after snapshot restore:', timerErr?.message);
+    }
     return game;
   } catch (e) {
     console.error('❌ Failed to restore game from snapshot:', e?.message);
@@ -2241,6 +2266,10 @@ io.on('connection', (socket) => {
         
         const game = activeGames.get(gameCode);
     if (!game) return;
+    if (game.gameState !== 'grading') {
+        socket.emit('gameError', { message: 'Send-back is only available while grading' });
+        return;
+    }
     
     let targetSocketId = playerSocketId && game.players.has(playerSocketId) ? playerSocketId : null;
     if (!targetSocketId && playerName) {
@@ -2339,7 +2368,7 @@ io.on('connection', (socket) => {
         try {
             if (!data || !data.gameCode || !data.playerId || data.answer === undefined || data.answer === null) return;
             const game = activeGames.get(data.gameCode);
-            if (!game) return;
+            if (!game || !game.isTestMode) return;
             const player = game.players.get(data.playerId);
             if (!player || !player.isVirtual) return;
             acceptVirtualAnswer(game, data.playerId, data.answer, data.playerName || player.name);
@@ -2571,17 +2600,15 @@ io.on('connection', (socket) => {
             return;
         }
         
-        if (game.gameState === 'playing') {
-            try {
-                game.stopTimer();
-                try { game.rebuildCurrentAnswerGroups(); } catch (_) {}
-                game.gameState = 'grading';
-                console.log('🎯 Transitioned from playing to grading state');
-            } catch (e) {
-                console.error('❌ Error transitioning to grading state:', e);
-            }
-        } else if (game.gameState !== 'grading') {
-            socket.emit('gameError', { message: 'Not in grading phase' });
+        if (game.gameState !== 'grading') {
+            console.log(`⚠️ completeGrading rejected - invalid state: ${game.gameState}`);
+            socket.emit('gameError', { message: 'Finish the question before grading. Players are still answering.' });
+            return;
+        }
+        if (typeof data.questionIndex === 'number' && data.questionIndex !== game.currentQuestion) {
+            socket.emit('gameError', {
+                message: `This grading board is for question ${data.questionIndex + 1}, but the game is on question ${game.currentQuestion + 1}. Re-open grading.`
+            });
             return;
         }
 
@@ -3306,10 +3333,13 @@ io.on('connection', (socket) => {
         
         const game = activeGames.get(gameCode);
         if (game) {
-            // Ensure answer groups are freshly rebuilt for grading/display refreshes
-            try {
-                game.rebuildCurrentAnswerGroups();
-            } catch (_) {}
+            const liveAnswering = game.gameState === 'playing'
+                || (game.gameState === 'grading' && !game.currentQuestionScored);
+            if (liveAnswering) {
+                try {
+                    game.rebuildCurrentAnswerGroups();
+                } catch (_) {}
+            }
             const gameState = game.getGameState();
             
             // ENHANCED DEBUG: Log the actual state being sent to grading interface

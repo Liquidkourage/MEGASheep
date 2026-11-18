@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
-    <link rel="stylesheet" href="styles.css?v=2026-11-18T12-40-00">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T13-30-00">
     <style>
         /* Dynamic scaling based on screen resolution */
         :root {
@@ -1036,10 +1036,6 @@
 
             // Always stay attached to current game; never revert to pairing unless explicitly told
             socket.on('gameFinished', (gameStateData) => {
-                updateDisplayFromGameState(gameStateData);
-            });
-            
-            socket.on('gameFinished', (gameStateData) => {
                 try { updateDisplayFromGameState(gameStateData); } catch (_) {}
             });
             
@@ -1133,7 +1129,7 @@
             // Auto-generate virtual responses when question starts
             socket.on('questionStarted', (data) => {
                 console.log('🎭 Question started - generating virtual responses');
-                if (gameState && gameState.players) {
+                if (gameState && gameState.players && gameState.isTestMode) {
                     generateVirtualResponsesForDisplay(data.question);
                 }
             });
@@ -1400,9 +1396,9 @@
             
             updateResponseIndicator(fallbackResponseCount, gameState.players.length);
             
-            // Auto-generate virtual responses when playing screen loads
+            // Auto-generate virtual responses when playing screen loads (test rooms only)
             console.log('🎭 Playing screen loaded - triggering virtual responses');
-            if (currentQuestion && gameState.players) {
+            if (currentQuestion && gameState.players && gameState.isTestMode) {
                 // Delay slightly to ensure screen is fully loaded
                 setTimeout(() => {
                     generateVirtualResponsesForDisplay(currentQuestion);
@@ -1954,7 +1950,7 @@
         }
 
         function generateVirtualResponsesForDisplay(question) {
-            if (!gameState || !gameState.players) return;
+            if (!gameState || !gameState.players || !gameState.isTestMode) return;
             
             console.log('🎭 Generating virtual responses for display');
             

@@ -155,7 +155,65 @@ function findMyPendingEdit(pendingEdits) {
     const name = currentPlayerName || localStorage.getItem('player.name') || sessionStorage.getItem('playerName');
     if (!name || !Array.isArray(pendingEdits)) return null;
     const lower = String(name).toLowerCase();
-    return pendingEdits.find(p => p && String(p.playerName || '').toLowerCase() === lower) || null;
+    const q = currentQIndex();
+    return pendingEdits.find(p => {
+        if (!p || String(p.playerName || '').toLowerCase() !== lower) return false;
+        if (typeof p.questionIndex === 'number' && p.questionIndex !== q) return false;
+        return true;
+    }) || null;
+}
+
+function currentQIndex() {
+    if (typeof gameState?.currentQuestion === 'number') return gameState.currentQuestion;
+    if (typeof currentQuestionIndex === 'number') return currentQuestionIndex;
+    return 0;
+}
+
+function playerGameCode() {
+    return (gameState && gameState.gameCode) || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
+}
+
+function getMyAnswerForCurrentQuestion() {
+    try {
+        const q = currentQIndex();
+        const code = playerGameCode();
+        if (code) {
+            const keyed = localStorage.getItem(`player.answer.${code}.q${q}`) || '';
+            if (keyed) return keyed;
+        }
+        if (window.lastSubmittedQuestionIndex === q && window.lastSubmittedAnswer) {
+            return window.lastSubmittedAnswer;
+        }
+    } catch (_) {}
+    return '';
+}
+
+function rememberSubmittedAnswer(answer, qIndex) {
+    const q = (typeof qIndex === 'number') ? qIndex : currentQIndex();
+    window.lastSubmittedAnswer = answer;
+    window.lastSubmittedQuestionIndex = q;
+    try {
+        const code = playerGameCode();
+        if (code) localStorage.setItem(`player.answer.${code}.q${q}`, answer);
+    } catch (_) {}
+}
+
+function clearPlayerQuestionLocks(code) {
+    try {
+        const prefixSubmitted = code ? `player.submitted.${code}.` : 'player.submitted.';
+        const prefixAnswer = code ? `player.answer.${code}.` : 'player.answer.';
+        const toRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (!k) continue;
+            if (k.startsWith(prefixSubmitted) || k.startsWith(prefixAnswer) || k === 'lastSubmittedAnswer') {
+                toRemove.push(k);
+            }
+        }
+        toRemove.forEach(k => localStorage.removeItem(k));
+        window.lastSubmittedAnswer = '';
+        window.lastSubmittedQuestionIndex = null;
+    } catch (_) {}
 }
 
 function presentSendBack(reason, originalAnswer) {
@@ -209,6 +267,7 @@ function savePlayerIdentity(gameCode, playerName) {
 
 function clearPlayerIdentity() {
     try {
+        const code = localStorage.getItem('player.gameCode') || sessionStorage.getItem('gameCode') || '';
         localStorage.removeItem('player.gameCode');
         localStorage.removeItem('player.name');
         localStorage.removeItem('player.savedAt');
@@ -217,6 +276,7 @@ function clearPlayerIdentity() {
         autoResumeAttempted = true;
         autoResumeInProgress = false;
         joinedLiveGame = false;
+        clearPlayerQuestionLocks(code);
     } catch (_) {}
 }
 
@@ -1220,13 +1280,7 @@ function submitAnswer() {
     }
     
     // Store the submitted answer text, but do not persist the lock until the server accepts
-    window.lastSubmittedAnswer = answer;
-    localStorage.setItem('lastSubmittedAnswer', answer);
-    try {
-      const code = gameCodeToUse || '';
-      const qIndex = (typeof gameState?.currentQuestion === 'number') ? gameState.currentQuestion : (typeof currentQuestionIndex === 'number' ? currentQuestionIndex : 0);
-      localStorage.setItem(`player.answer.${code}.q${qIndex}`, answer);
-    } catch(_) {}
+    rememberSubmittedAnswer(answer);
     console.log('💾 Stored submitted answer:', answer);
     
     if (window._submitInFlight) return;
@@ -2223,7 +2277,7 @@ function handleGameJoined(data) {
     if (phase === 'playing') {
         // Ensure questions and index are set before rendering
         questions = gameState.questions || questions || [];
-        currentQuestionIndex = gameState.currentQuestion || 0;
+        currentQuestionIndex = gameState.currentQuestion ?? 0;
         
         // Ensure player form is properly set up
         const playerForm = document.getElementById('playerAnswerForm');
@@ -2318,7 +2372,7 @@ function handleGameStarted(gameStateData) {
     displayCurrentQuestion();
     try {
         const code = gameState?.gameCode || gameStateData?.gameCode || localStorage.getItem('player.gameCode') || '';
-        if (code) localStorage.removeItem(`player.submitted.${code}.q0`);
+        clearPlayerQuestionLocks(code);
     } catch(_) {}
     setPlayerSubmitEnabled(true);
     console.log('🚨 EMERGENCY: About to start timer');
@@ -2358,7 +2412,7 @@ function handleTestGameStarted(gameStateData) {
 
 function handleNextQuestion(gameStateData) {
     gameState = gameStateData;
-    currentQuestionIndex = gameState.currentQuestion || 0;
+    currentQuestionIndex = gameState.currentQuestion ?? 0;
     
     if (gameState.gameState === 'finished') {
         handleGameFinished(gameStateData);
@@ -2404,9 +2458,9 @@ function handleNextQuestion(gameStateData) {
             if (!input.value) input.value = '';
         }
         if (btn && !alreadySubmitted) { btn.disabled = false; }
-        if (gameState.gameState === 'playing' && !alreadySubmitted && !restoredDraft) {
+        if (window.lastSubmittedQuestionIndex !== currentQuestionIndex) {
             window.lastSubmittedAnswer = '';
-            localStorage.removeItem('lastSubmittedAnswer');
+            window.lastSubmittedQuestionIndex = currentQuestionIndex;
         }
     } catch (_) {}
     
@@ -2422,6 +2476,9 @@ function handleQuestionComplete(gameStateData) {
     console.log('📝 Game state data:', gameStateData);
     console.log('📝 Current answer groups:', gameStateData.currentAnswerGroups);
     gameState = gameStateData;
+    if (typeof gameStateData?.currentQuestion === 'number') {
+        currentQuestionIndex = gameStateData.currentQuestion;
+    }
     clearTimer();
     
     // Hide End Question button since question is complete
@@ -2487,6 +2544,9 @@ function handleGradingComplete(gameStateData) {
     console.log('✅ Game state data:', gameStateData);
     console.log('✅ Current game state:', gameStateData?.gameState);
     gameState = gameStateData;
+    if (typeof gameStateData?.currentQuestion === 'number') {
+        currentQuestionIndex = gameStateData.currentQuestion;
+    }
 
     const pending = findMyPendingEdit(gameStateData && gameStateData.pendingEdits);
     if (pending) {
@@ -2611,6 +2671,10 @@ function handleGameStateUpdate(data) {
         console.log(`🔄 Game phase changed from ${oldPhase} to ${newPhase}, updating UI`);
         if (newPhase === 'playing') {
             showScreen('game');
+            if (window.lastSubmittedQuestionIndex !== currentQuestionIndex) {
+                window.lastSubmittedAnswer = '';
+                window.lastSubmittedQuestionIndex = currentQuestionIndex;
+            }
             displayCurrentQuestion();
             startTimer();
         } else if (newPhase === 'grading') {
@@ -2809,6 +2873,11 @@ function displayCurrentQuestion() {
     console.log('🔍 Debug: questions array length:', questions.length);
     console.log('🔍 Debug: currentQuestionIndex:', currentQuestionIndex);
     console.log('🔍 Debug: questions array:', questions);
+    const qNow = currentQIndex();
+    if (window.lastSubmittedQuestionIndex !== qNow) {
+        window.lastSubmittedAnswer = '';
+        window.lastSubmittedQuestionIndex = qNow;
+    }
     
     if (questions.length === 0 || currentQuestionIndex >= questions.length) {
         console.log('🔍 Debug: No questions available or index out of bounds');
@@ -2904,8 +2973,8 @@ function displayQuestionResults() {
         console.log('📊 Scoring title element not found');
     }
     
-    // Get player's submitted answer
-    const playerAnswer = window.lastSubmittedAnswer || localStorage.getItem('lastSubmittedAnswer') || '';
+    // Get player's submitted answer for THIS question only
+    const playerAnswer = getMyAnswerForCurrentQuestion();
     const currentPlayerName = sessionStorage.getItem('playerName') || '';
     
     // Find player's answer group and ranking
@@ -4346,13 +4415,7 @@ function showWaitingForGrading() {
     const answersList = document.getElementById('answersList');
     if (answersList) {
         // Get the submitted answer from window storage (only use window, not localStorage for current question)
-        const submittedAnswer = window.lastSubmittedAnswer || (() => {
-            try {
-                const code = gameState?.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
-                const qIndex = (typeof gameState?.currentQuestion === 'number') ? gameState.currentQuestion : currentQuestionIndex;
-                return (code && localStorage.getItem(`player.answer.${code}.q${qIndex}`)) || localStorage.getItem('lastSubmittedAnswer') || '';
-            } catch (_) { return ''; }
-        })();
+        const submittedAnswer = getMyAnswerForCurrentQuestion();
         const displayAnswer = submittedAnswer && submittedAnswer.trim() !== '' ? submittedAnswer : 'No Answer Received';
         console.log('🎯 Retrieved submitted answer:', submittedAnswer);
         console.log('🎯 Display answer:', displayAnswer);
