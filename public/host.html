@@ -2288,7 +2288,10 @@
                     // Build quick highlights for host talk-track
                     const groups = Array.isArray(data.currentAnswerGroups) ? data.currentAnswerGroups : [];
                     const totalResponses = groups.reduce((s,g)=> s + (Number(g.count)|| (Array.isArray(g.players)?g.players.length:0) || 0), 0);
-                    const uniqueGroups = groups.filter(g => (Number(g.count) || (g.players?.length||0)) === 1);
+                    const uniqueGroups = groups.filter((g) => {
+                        const count = Number(g.count) || (Array.isArray(g.players) ? g.players.length : 0);
+                        return count === 1 && g.category === 'correct';
+                    });
                     const uniquePlayers = uniqueGroups.flatMap(g => Array.isArray(g.players) ? g.players : []);
                     const mostCommon = [...groups].sort((a,b)=> (b.count||b.players?.length||0) - (a.count||a.players?.length||0))[0] || null;
                     // Determine missed correct answers
