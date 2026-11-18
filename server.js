@@ -383,6 +383,11 @@ class Game {
     // Replace an existing player's socket with a new one for the same stable identity
     replacePlayerSocket(stableId, oldSocketId, newSocketId, playerName) {
         try {
+            const oldPlayer = oldSocketId ? this.players.get(oldSocketId) : null;
+            const wasVirtual = isVirtualPlayer(oldPlayer, oldSocketId)
+                || isVirtualPlayer(null, newSocketId)
+                || isVirtualPlayer(null, stableId);
+
             // Capture any carried answer BEFORE removing old mappings
             let carriedAnswer = null;
             try {
@@ -406,7 +411,7 @@ class Game {
 
             // Rebind mapping to new socket
             const cumulative = this.scoresByStableId.get(stableId) || 0;
-            this.players.set(newSocketId, { id: newSocketId, stableId, name: playerName, score: cumulative, answers: [] });
+            this.players.set(newSocketId, { id: newSocketId, stableId, name: playerName, score: cumulative, answers: [], isVirtual: wasVirtual });
             this.scores.set(newSocketId, cumulative);
             this.socketByStableId = this.socketByStableId || new Map();
             this.socketByStableId.set(stableId, newSocketId);
@@ -855,6 +860,8 @@ class Game {
         try {
             for (const sid of this.players.keys()) this.expectedResponders.add(sid);
         } catch (_) {}
+        try { clearVirtualAnswerJobs(this.gameCode); } catch (_) {}
+        try { clearVirtualClarifyJobs(this.gameCode); } catch (_) {}
         
         logger.debug(`🔄 Reset for new question`);
     } catch (e) {
@@ -1602,6 +1609,7 @@ function restoreGameFromSnapshot(snap) {
         if (Number(game.timeLeft) > 0) game.startTimer({ resume: true });
         else game.handleTimeUp();
       }
+      try { ensurePendingVirtualClarifications(game); } catch (_) {}
     } catch (timerErr) {
       console.warn('⚠️ Could not resume timer after snapshot restore:', timerErr?.message);
     }
@@ -1810,6 +1818,12 @@ function stopVirtualJoinJob(gameCode) {
     }
 }
 
+function isVirtualPlayer(player, playerId) {
+    if (player && player.isVirtual) return true;
+    const id = String(playerId || player?.id || player?.stableId || '');
+    return id.startsWith('virtual_') || id.startsWith('ghost_virtual_');
+}
+
 function clearVirtualAnswerJobs(gameCode) {
     const jobs = virtualAnswerJobs.get(gameCode);
     if (jobs) {
@@ -1818,10 +1832,28 @@ function clearVirtualAnswerJobs(gameCode) {
     }
 }
 
+const virtualClarifyJobs = new Map();
+const virtualClarifyScheduled = new Map();
+
+function clearVirtualClarifyJobs(gameCode) {
+    const jobs = virtualClarifyJobs.get(gameCode);
+    if (jobs) {
+        jobs.forEach((id) => clearTimeout(id));
+        virtualClarifyJobs.delete(gameCode);
+    }
+    virtualClarifyScheduled.delete(gameCode);
+}
+
 function trackVirtualTimeout(gameCode, timeoutId) {
     const existing = virtualAnswerJobs.get(gameCode) || [];
     existing.push(timeoutId);
     virtualAnswerJobs.set(gameCode, existing);
+}
+
+function trackVirtualClarifyTimeout(gameCode, timeoutId) {
+    const existing = virtualClarifyJobs.get(gameCode) || [];
+    existing.push(timeoutId);
+    virtualClarifyJobs.set(gameCode, existing);
 }
 
 function pickVirtualAnswer(question) {
@@ -1879,7 +1911,7 @@ function broadcastAcceptedAnswer(game, playerSocketId, answer, playerName, wasCl
 
 function acceptVirtualAnswer(game, playerId, answer, playerName) {
     const player = game.players.get(playerId);
-    if (!player || !player.isVirtual) return false;
+    if (!player || !isVirtualPlayer(player, playerId)) return false;
     const wasClarity = game.answersNeedingEdit.has(playerId);
     if (!game.submitAnswer(playerId, answer)) return false;
     if (wasClarity && game.answersNeedingEdit.has(playerId)) {
@@ -1911,7 +1943,7 @@ function addOneVirtualPlayer(game) {
 
 function scheduleOneVirtualAnswer(game, playerId) {
     const player = game.players.get(playerId);
-    if (!player || !player.isVirtual) return;
+    if (!player || !isVirtualPlayer(player, playerId)) return;
     const questionIndex = game.currentQuestion;
     const question = Array.isArray(game.questions) ? game.questions[questionIndex] : null;
     const delay = 400 + Math.floor(Math.random() * 7000);
@@ -1940,16 +1972,54 @@ function clarifyVirtualAnswer(original, game) {
 
 function scheduleVirtualClarification(game, playerId) {
     const player = game.players.get(playerId);
-    if (!player || !player.isVirtual) return;
+    if (!player || !isVirtualPlayer(player, playerId)) {
+        logger.warn(`✏️ Not scheduling virtual clarification for ${player?.name || playerId} (not virtual)`);
+        return;
+    }
+    const gameCode = game.gameCode;
+    const scheduled = virtualClarifyScheduled.get(gameCode) || new Set();
+    if (scheduled.has(playerId)) return;
+    scheduled.add(playerId);
+    virtualClarifyScheduled.set(gameCode, scheduled);
     const original = game.answers.get(playerId) || '';
+    const playerName = player.name;
     const delay = 400 + Math.floor(Math.random() * 1600);
     const timeoutId = setTimeout(() => {
-        const live = activeGames.get(game.gameCode);
-        if (!live || !live.answersNeedingEdit.has(playerId)) return;
-        try { acceptVirtualAnswer(live, playerId, clarifyVirtualAnswer(original, live), player.name); } catch (_) {}
+        scheduled.delete(playerId);
+        const live = activeGames.get(gameCode);
+        if (!live) return;
+        let sid = playerId;
+        if (!live.answersNeedingEdit.has(sid)) {
+            for (const [id, p] of live.players.entries()) {
+                if (p && String(p.name || '').toLowerCase() === String(playerName || '').toLowerCase() && live.answersNeedingEdit.has(id)) {
+                    sid = id;
+                    break;
+                }
+            }
+        }
+        if (!live.answersNeedingEdit.has(sid)) {
+            logger.warn(`✏️ Virtual clarification skipped; ${playerName} is no longer pending`);
+            return;
+        }
+        const clarified = clarifyVirtualAnswer(original, live);
+        const ok = acceptVirtualAnswer(live, sid, clarified, playerName);
+        if (!ok) logger.warn(`✏️ Virtual clarification failed for ${playerName} (${sid})`);
+        else logger.info(`🎭 Virtual ${playerName} resubmitted clarification: "${clarified}"`);
     }, delay);
-    trackVirtualTimeout(game.gameCode, timeoutId);
-    logger.info(`🎭 Virtual ${player.name} will resubmit a clarification`);
+    trackVirtualClarifyTimeout(gameCode, timeoutId);
+    logger.info(`🎭 Virtual ${playerName} will resubmit a clarification in ${delay}ms`);
+}
+
+function ensurePendingVirtualClarifications(game) {
+    if (!game || !game.answersNeedingEdit || game.answersNeedingEdit.size === 0) return;
+    if (game.gameState !== 'playing' && game.gameState !== 'grading') return;
+    for (const sid of game.answersNeedingEdit.keys()) {
+        const player = game.players.get(sid);
+        if (!isVirtualPlayer(player, sid)) continue;
+        try { scheduleVirtualClarification(game, sid); } catch (e) {
+            logger.warn('Failed to resume virtual clarification:', e?.message);
+        }
+    }
 }
 
 function scheduleVirtualAnswersForGame(game) {
@@ -1957,7 +2027,7 @@ function scheduleVirtualAnswersForGame(game) {
     clearVirtualAnswerJobs(game.gameCode);
     if (game.gameState !== 'playing') return;
     for (const [playerId, player] of game.players.entries()) {
-        if (player && player.isVirtual) scheduleOneVirtualAnswer(game, playerId);
+        if (player && isVirtualPlayer(player, playerId)) scheduleOneVirtualAnswer(game, playerId);
     }
 }
 
@@ -2100,6 +2170,7 @@ io.on('connection', (socket) => {
         }
         
         socket.join(gameCode);
+        try { ensurePendingVirtualClarifications(game); } catch (_) {}
         sendStateToSocket(socket, game, 'hostReconnected');
         
         console.log(`🔄 Host ${hostName} reconnected to game ${gameCode} and joined room`);
@@ -2268,13 +2339,18 @@ io.on('connection', (socket) => {
     socket.on('hostRequestEdit', (data) => {
         const { gameCode, playerSocketId, playerName, reason } = data || {};
         if (!canControlGame(gameCode)) {
+            socket.emit('hostRequestEditResult', { ok: false, playerName, reason: 'no-permission' });
             return;
         }
         
         const game = activeGames.get(gameCode);
-    if (!game) return;
+    if (!game) {
+        socket.emit('hostRequestEditResult', { ok: false, playerName, reason: 'no-game' });
+        return;
+    }
     if (game.gameState !== 'grading' && game.gameState !== 'playing') {
         socket.emit('gameError', { message: 'Send-back is only available while a question is live or being graded' });
+        socket.emit('hostRequestEditResult', { ok: false, playerName, reason: 'bad-phase' });
         return;
     }
     
@@ -2293,7 +2369,10 @@ io.on('connection', (socket) => {
         if (live && game.players.has(live)) targetSocketId = live;
     }
     
-    if (!targetSocketId || !game.players.has(targetSocketId)) return;
+    if (!targetSocketId || !game.players.has(targetSocketId)) {
+        socket.emit('hostRequestEditResult', { ok: false, playerName, reason: 'not-found' });
+        return;
+    }
     
     const original = game.answers.get(targetSocketId) || '';
     game.answersNeedingEdit.set(targetSocketId, { reason: reason || 'Please be more specific', originalAnswer: original });
@@ -2315,10 +2394,16 @@ io.on('connection', (socket) => {
     logger.info(`✏️ Clarification sent to ${game.players.get(targetSocketId)?.name}`);
 
     const targetPlayer = game.players.get(targetSocketId);
-    if (targetPlayer && targetPlayer.isVirtual) {
+    const virtual = isVirtualPlayer(targetPlayer, targetSocketId);
+    if (virtual) {
         scheduleVirtualClarification(game, targetSocketId);
     }
     
+    socket.emit('hostRequestEditResult', {
+        ok: true,
+        playerName: targetPlayer?.name || playerName,
+        isVirtual: virtual
+    });
     broadcastState(game, 'gameStateUpdate');
     logger.debug('📤 Sent gameStateUpdate after edit request');
   });
@@ -2375,7 +2460,7 @@ io.on('connection', (socket) => {
             const game = activeGames.get(data.gameCode);
             if (!game || !game.isTestMode) return;
             const player = game.players.get(data.playerId);
-            if (!player || !player.isVirtual) return;
+            if (!player || !isVirtualPlayer(player, data.playerId)) return;
             acceptVirtualAnswer(game, data.playerId, data.answer, data.playerName || player.name);
         } catch (e) {
             logger.warn('virtualAnswerSubmitted failed:', e?.message);

@@ -155,6 +155,99 @@
             if (root) root.dataset.questionIndex = String(qIndex);
         }
 
+        function ingestSubmittedAnswer(data) {
+            if (!data || !currentGame || !data.playerName) return;
+            if (data.gameCode && currentGame.gameCode && data.gameCode !== currentGame.gameCode) return;
+
+            if (currentGame.currentAnswerGroups) {
+                const normalizedNew = String(data.answer || '').toLowerCase().trim();
+                const playerKey = String(data.playerName).toLowerCase();
+                const playerInGroup = (grp) => Array.isArray(grp.players)
+                    && grp.players.some((n) => String(n).toLowerCase() === playerKey);
+
+                let fromGroupIndex = -1;
+                for (let i = 0; i < currentGame.currentAnswerGroups.length; i++) {
+                    if (playerInGroup(currentGame.currentAnswerGroups[i])) {
+                        fromGroupIndex = i;
+                        break;
+                    }
+                }
+
+                if (fromGroupIndex !== -1) {
+                    const fromGroup = currentGame.currentAnswerGroups[fromGroupIndex];
+                    const normalizedOld = String(fromGroup.answer || '').toLowerCase().trim();
+                    if (normalizedNew !== normalizedOld) {
+                        fromGroup.players = fromGroup.players.filter((n) => String(n).toLowerCase() !== playerKey);
+                        fromGroup.count = fromGroup.players.length;
+                        if (fromGroup.count === 0) {
+                            currentGame.currentAnswerGroups.splice(fromGroupIndex, 1);
+                        }
+                        let targetGroup = currentGame.currentAnswerGroups.find((g) => String(g.answer || '').toLowerCase().trim() === normalizedNew);
+                        if (targetGroup) {
+                            if (!playerInGroup(targetGroup)) {
+                                targetGroup.players.push(data.playerName);
+                                targetGroup.count = targetGroup.players.length;
+                            }
+                        } else {
+                            currentGame.currentAnswerGroups.push({
+                                answer: data.answer,
+                                players: [data.playerName],
+                                count: 1,
+                                points: 0,
+                                index: currentGame.currentAnswerGroups.length
+                            });
+                        }
+                    }
+                } else {
+                    let targetGroup = currentGame.currentAnswerGroups.find((g) => String(g.answer || '').toLowerCase().trim() === normalizedNew);
+                    if (targetGroup) {
+                        if (!playerInGroup(targetGroup)) {
+                            targetGroup.players.push(data.playerName);
+                            targetGroup.count = targetGroup.players.length;
+                        }
+                    } else {
+                        currentGame.currentAnswerGroups.push({
+                            answer: data.answer,
+                            players: [data.playerName],
+                            count: 1,
+                            points: 0,
+                            index: currentGame.currentAnswerGroups.length
+                        });
+                    }
+                }
+
+                currentGame.currentAnswerGroups.sort((a, b) => b.count - a.count);
+            }
+
+            if (Array.isArray(currentGame.pendingEdits)) {
+                const playerKey = String(data.playerName).toLowerCase();
+                currentGame.pendingEdits = currentGame.pendingEdits.filter((p) => String(p.playerName || '').toLowerCase() !== playerKey);
+            }
+
+            handleAnswerDirectly(data.playerName, data.answer, data.isClarification === true);
+        }
+
+        function bindLiveAnswerStream() {
+            if (!socket || socket.__megasheepAnswerBound) return;
+            socket.__megasheepAnswerBound = true;
+            socket.on('newAnswerSubmitted', (data) => {
+                try { ingestSubmittedAnswer(data); } catch (e) { console.warn('ingestSubmittedAnswer failed', e); }
+            });
+            socket.on('hostRequestEditResult', (result) => {
+                try {
+                    if (!result || result.ok) return;
+                    const name = result.playerName;
+                    if (name) {
+                        const sendBack = document.getElementById('sendBackAnswers');
+                        const chip = sendBack && Array.from(sendBack.querySelectorAll('.answer-item'))
+                            .find((item) => playerNameMatches(playerNamesFromChip(item), name));
+                        if (chip) returnChipToInbox(chip);
+                    }
+                    showToast('Could not send that answer back', 'error');
+                } catch (e) { console.warn('hostRequestEditResult failed', e); }
+            });
+        }
+
         function initializeConnection() {
             socket = io({
                 transports: ['websocket', 'polling'],
@@ -245,85 +338,7 @@
                 } catch (_) {}
             });
 
-            // Real-time answer updates - Auto-match clarified answers to groups
-            socket.on('newAnswerSubmitted', (data) => {
-                console.log('📝 New answer submitted:', data);
-                console.log('📝 Is clarification:', data.isClarification);
-                
-                if (!currentGame || data.gameCode !== currentGame.gameCode) {
-                    console.log('📝 Ignoring answer for different game');
-                    return;
-                }
-                
-                if (currentGame.currentAnswerGroups) {
-                    const normalizedNew = String(data.answer || '').toLowerCase().trim();
-                    
-                    // Locate the group this player currently belongs to (if any)
-                    let fromGroupIndex = -1;
-                    for (let i = 0; i < currentGame.currentAnswerGroups.length; i++) {
-                        const grp = currentGame.currentAnswerGroups[i];
-                        if (Array.isArray(grp.players) && grp.players.includes(data.playerName)) {
-                            fromGroupIndex = i;
-                            break;
-                        }
-                    }
-                    
-                    if (fromGroupIndex !== -1) {
-                        const fromGroup = currentGame.currentAnswerGroups[fromGroupIndex];
-                        const normalizedOld = String(fromGroup.answer || '').toLowerCase().trim();
-                        
-                        if (normalizedNew !== normalizedOld) {
-                            // Move player from old group to the appropriate target group
-                            fromGroup.players = fromGroup.players.filter(n => n !== data.playerName);
-                            fromGroup.count = fromGroup.players.length;
-                            if (fromGroup.count === 0) {
-                                currentGame.currentAnswerGroups.splice(fromGroupIndex, 1);
-                            }
-                            
-                            let targetGroup = currentGame.currentAnswerGroups.find(g => String(g.answer || '').toLowerCase().trim() === normalizedNew);
-                            if (targetGroup) {
-                                if (!targetGroup.players.includes(data.playerName)) {
-                                    targetGroup.players.push(data.playerName);
-                                    targetGroup.count = targetGroup.players.length;
-                                }
-                            } else {
-                                currentGame.currentAnswerGroups.push({
-                                    answer: data.answer,
-                                    players: [data.playerName],
-                                    count: 1,
-                                    points: 0,
-                                    index: currentGame.currentAnswerGroups.length
-                                });
-                            }
-                        } else {
-                            // Same normalized answer; nothing structural to change
-                        }
-                    } else {
-                        // Player not in any group yet; add to existing matching group or create new
-                        let targetGroup = currentGame.currentAnswerGroups.find(g => String(g.answer || '').toLowerCase().trim() === normalizedNew);
-                        if (targetGroup) {
-                            if (!targetGroup.players.includes(data.playerName)) {
-                                targetGroup.players.push(data.playerName);
-                                targetGroup.count = targetGroup.players.length;
-                            }
-                        } else {
-                            currentGame.currentAnswerGroups.push({
-                                answer: data.answer,
-                                players: [data.playerName],
-                                count: 1,
-                                points: 0,
-                                index: currentGame.currentAnswerGroups.length
-                            });
-                        }
-                    }
-                    
-                    // Sort by player count (most popular first)
-                    currentGame.currentAnswerGroups.sort((a, b) => b.count - a.count);
-                    
-                    // Update the interface immediately (moves card between groups as needed)
-                    handleAnswerDirectly(data.playerName, data.answer, data.isClarification === true);
-                }
-            });
+            bindLiveAnswerStream();
 
             socket.on('nextQuestion', (data) => applyGradingState(data, 'nextQuestion'));
             socket.on('questionComplete', (data) => applyGradingState(data, 'questionComplete'));
@@ -1488,10 +1503,33 @@
             return bucket.classList.contains('sendback-bucket') || (zone && zone.dataset.bucket === 'sendBack');
         }
 
+        function returnChipToInbox(chip) {
+            const inbox = document.getElementById('uncategorizedAnswers');
+            if (inbox && chip) inbox.appendChild(chip);
+            try { updateCountBadges(); } catch (_) {}
+        }
+
+        function markChipWaitingForEdit(chip, names) {
+            if (!chip) return;
+            chip.dataset.waitingEdit = '1';
+            let note = chip.querySelector('.sendback-waiting-note');
+            if (!note) {
+                note = document.createElement('div');
+                note.className = 'sendback-waiting-note';
+                chip.appendChild(note);
+            }
+            const who = (names || []).filter(Boolean).join(', ') || 'player';
+            note.textContent = `Waiting for ${who} to edit`;
+        }
+
         function requestSendBackForChip(chip) {
             try {
-                let names = (chip.dataset.playerNames || '').split(',').map((n) => n.trim()).filter(Boolean);
+                let names = playerNamesFromChip(chip);
                 const reason = prompt('Reason to send back (optional):', 'Please be more specific');
+                if (reason === null) {
+                    returnChipToInbox(chip);
+                    return;
+                }
                 if (!names.length) {
                     const draggedText = chip?.dataset?.answerText || '';
                     const group = (currentGame?.currentAnswerGroups || []).find((g) => (g.answer || '').toLowerCase().trim() === draggedText.toLowerCase().trim());
@@ -1507,9 +1545,23 @@
                         }).filter((g) => Array.isArray(g.players) ? g.players.length > 0 : (g.count || 0) > 0);
                     }
                 } catch (_) {}
-                if (!names.length || !currentGame?.gameCode) return;
+                if (!names.length || !currentGame?.gameCode) {
+                    returnChipToInbox(chip);
+                    return;
+                }
+                if (!socket || typeof socket.emit !== 'function') {
+                    console.warn('No socket for send-back');
+                    showToast('Not connected — could not send back', 'error');
+                    returnChipToInbox(chip);
+                    return;
+                }
+                markChipWaitingForEdit(chip, names);
                 names.forEach((name) => {
-                    socket.emit('hostRequestEdit', { gameCode: currentGame.gameCode, playerName: name, reason });
+                    socket.emit('hostRequestEdit', {
+                        gameCode: currentGame.gameCode,
+                        playerName: name,
+                        reason: reason || 'Please be more specific'
+                    });
                 });
             } catch (err) {
                 console.warn('Failed to send back request', err);
@@ -2670,6 +2722,41 @@
             setChipPlayers(chip, remaining);
         }
 
+        function pendingEditNameSet() {
+            const pending = (currentGame && Array.isArray(currentGame.pendingEdits)) ? currentGame.pendingEdits : [];
+            return new Set(pending.map((p) => String(p.playerName || '').toLowerCase().trim()).filter(Boolean));
+        }
+
+        function currentAnswerForPlayer(playerName) {
+            const key = String(playerName || '').toLowerCase().trim();
+            if (!key || !currentGame || !Array.isArray(currentGame.currentAnswerGroups)) return null;
+            for (const group of currentGame.currentAnswerGroups) {
+                const players = Array.isArray(group.players) ? group.players : [];
+                if (players.some((n) => String(n || '').toLowerCase().trim() === key)) {
+                    return group.answer;
+                }
+            }
+            return null;
+        }
+
+        function reconcileSendBackChips() {
+            const sendBack = document.getElementById('sendBackAnswers');
+            if (!sendBack || !currentGame) return;
+            const pending = pendingEditNameSet();
+            Array.from(sendBack.querySelectorAll('.answer-item')).forEach((chip) => {
+                const names = playerNamesFromChip(chip);
+                names.forEach((name) => {
+                    const key = String(name || '').toLowerCase().trim();
+                    if (pending.has(key)) {
+                        markChipWaitingForEdit(chip, names.filter((n) => pending.has(String(n).toLowerCase().trim())));
+                        return;
+                    }
+                    const answer = currentAnswerForPlayer(name);
+                    if (answer != null) handleAnswerDirectly(name, answer, true);
+                });
+            });
+        }
+
         function syncMissingAnswerCards() {
             if (!currentGame || !Array.isArray(currentGame.currentAnswerGroups)) return;
             currentGame.currentAnswerGroups = coalesceAnswerGroups(currentGame.currentAnswerGroups);
@@ -2681,6 +2768,7 @@
                     }
                 });
             });
+            try { reconcileSendBackChips(); } catch (_) {}
             mergeIdenticalAnswerChipsEverywhere();
             updateCountBadges();
         }
@@ -3012,6 +3100,7 @@
             return;
         }
         try { syncMissingAnswerCards(); } catch (_) {}
+        try { reconcileSendBackChips(); } catch (_) {}
     }
 
     global.toggleBucket = toggleBucket;
@@ -3024,12 +3113,16 @@
             if (opts && opts.socket) socket = opts.socket;
             try { setupDragAndDrop(); } catch (_) {}
             try { bindInboxClicks(); } catch (_) {}
+            try { bindLiveAnswerStream(); } catch (_) {}
         },
         apply: function (state, result) {
             applyEmbeddedState(state, result || { applied: true, epochChanged: true });
         },
         discard: function () {
             try { discardGradingDraft(); } catch (_) {}
+        },
+        handleAnswer: function (playerName, answer, isClarification) {
+            try { ingestSubmittedAnswer({ playerName, answer, isClarification: !!isClarification, gameCode: currentGame && currentGame.gameCode }); } catch (_) {}
         }
     };
 })(window);
