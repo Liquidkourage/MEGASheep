@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
     <title>MEGASheep Trivia</title>
-    <link rel="stylesheet" href="styles.css?v=2026-11-18T12-40-00">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T12-55-00">
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     <script>
@@ -20,7 +20,7 @@
       }
     </script>
 </head>
-<body>
+<body class="player-app">
     <div class="container">
         <!-- Welcome Screen removed: root should only show Join Game for players -->
 
@@ -90,9 +90,8 @@
                     </div>
                 </div>
 
-                <div class="scoring-explanation" style="margin: 20px 0; padding: 15px; background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 10px; text-align: center;">
-                    <p style="margin: 0 0 8px 0;"><strong>Scoring System:</strong> Points = Total Responses ÷ Responses with same answer (rounded up)</p>
-                    <p style="margin: 0; font-style: italic;">Rarer answers earn more points!</p>
+                <div class="scoring-explanation">
+                    <p><strong>Scoring:</strong> rarer correct answers score more. Points = total responses ÷ same-answer responses (rounded up).</p>
                 </div>
 
                 <div class="lobby-actions">
@@ -105,25 +104,30 @@
         <div id="gameScreen" class="screen">
             <div class="game-header">
                 <div class="game-info">
-                    <span class="question-counter">Round <span id="roundNumber">1</span> • Question <span id="questionNumber">1</span> of <span id="totalQuestions">5</span></span>
+                    <span class="question-counter">R<span id="roundNumber">1</span> · Q<span id="questionNumber">1</span>/<span id="totalQuestions">5</span></span>
+                    <span id="playerCompactStatus" class="player-compact-status"></span>
                 </div>
-                <div class="timer" id="timer">30</div>
+                <div class="game-header-actions">
+                    <button id="toggleHostMsgBtn" class="player-icon-btn" type="button" aria-expanded="false" aria-controls="playerCommPanel" title="Message host">💬</button>
+                    <div class="timer" id="timer">30</div>
+                </div>
             </div>
 
             <div class="question-container">
                 <h2 id="questionText" class="question-text"></h2>
                 
                 <!-- Player Answer Form (hidden for host) -->
-                <div id="playerAnswerForm" class="answer-form" style="display: none; gap: 8px !important; align-items: center; margin-top: 30px;">
-                    <input type="text" id="answerInput" placeholder="Type your answer..." maxlength="100">
+                <div id="playerAnswerForm" class="answer-form" style="display: none;">
+                    <input type="text" id="answerInput" placeholder="Type your answer..." maxlength="100" autocomplete="off" enterkeyhint="send" inputmode="text">
                     <button id="submitAnswerBtn" class="btn btn-primary">Submit Answer</button>
                 </div>
-                <!-- Multi-purpose communication: answerStatus doubles as input/display -->
-                <div id="playerCommRow" style="display:none;margin-top: 25px; gap:8px; align-items:center; display:flex;">
-                    <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Type a private message to host..." style="flex:1; min-height:38px; padding:10px 12px;"></div>
-                    <button id="askHostBtn" class="btn btn-secondary" type="button" style="white-space:nowrap;">Send to host</button>
+                <div id="playerCommPanel" class="player-comm-panel" hidden>
+                    <div id="playerCommRow" class="player-comm-row">
+                        <div id="answerStatus" class="answer-status" role="textbox" aria-multiline="true" contenteditable="true" data-placeholder="Message the host..."></div>
+                        <button id="askHostBtn" class="btn btn-secondary" type="button">Send to host</button>
+                    </div>
+                    <div id="dmHistory"></div>
                 </div>
-                <div id="dmHistory" style="margin-top:6px; font-size:13px; color: #cfd8dc;"></div>
                 
                 <!-- Host Controls (hidden for players) -->
                 <div id="hostControls" class="host-controls" style="display: none;">
@@ -140,7 +144,7 @@
                 </div>
             </div>
 
-            <div class="players-status">
+            <div class="players-status" hidden>
                 <div id="gamePlayersList" class="players-grid"></div>
             </div>
         </div>
@@ -338,11 +342,12 @@
     </div>
 
     <!-- Keep Awake floating toggle (visible on all screens) -->
-    <button id="keepAwakeFab" class="keep-awake-fab" type="button" title="Prevent screen from sleeping">
-      🛌 Keep Awake: Off
+    <button id="keepAwakeFab" class="keep-awake-fab" type="button" aria-pressed="false" title="Prevent screen from sleeping">
+      <span aria-hidden="true">🛌</span>
+      <span class="keep-awake-label">Off</span>
     </button>
 
-    <script src="script.js?v=2026-11-18T12-40-00"></script>
+    <script src="script.js?v=2026-11-18T12-55-00"></script>
   <!-- Removed sticky player footer -->
 </body>
 </html> 

@@ -295,13 +295,21 @@ document.addEventListener('DOMContentLoaded', () => {
   let noSleep = null;
 
   const keepAwakeFab = document.getElementById('keepAwakeFab');
+  function setKeepAwakeLabel(on) {
+    if (!keepAwakeFab) return;
+    keepAwakeFab.setAttribute('aria-pressed', on ? 'true' : 'false');
+    const label = keepAwakeFab.querySelector('.keep-awake-label');
+    if (label) label.textContent = on ? 'On' : 'Off';
+    else keepAwakeFab.textContent = `🛌 ${on ? 'On' : 'Off'}`;
+    keepAwakeFab.title = on ? 'Keep Awake: On' : 'Keep Awake: Off';
+  }
   if (keepAwakeFab) {
     // Restore preference and auto-activate on first user gesture
     try {
       const pref = localStorage.getItem('player.keepAwake');
       if (pref === '1') {
         keepAwakeEnabled = true;
-        keepAwakeFab.textContent = '🛌 Keep Awake: On';
+        setKeepAwakeLabel(true);
         const activator = async () => { await attemptEnableKeepAwake(); removeActivators(); };
         const removeActivators = () => {
           window.removeEventListener('click', activator, { capture: true });
@@ -324,9 +332,21 @@ document.addEventListener('DOMContentLoaded', () => {
         try { if (noSleep) noSleep.disable(); } catch(_) {}
       }
       try { localStorage.setItem('player.keepAwake', keepAwakeEnabled ? '1' : '0'); } catch(_) {}
-      keepAwakeFab.textContent = `🛌 Keep Awake: ${keepAwakeEnabled ? 'On' : 'Off'}`;
+      setKeepAwakeLabel(keepAwakeEnabled);
     });
-    keepAwakeFab.textContent = '🛌 Keep Awake: Off';
+    setKeepAwakeLabel(keepAwakeEnabled);
+  }
+
+  if (IS_PLAYER_ROUTE && window.visualViewport) {
+    const applyViewport = () => {
+      try {
+        document.documentElement.style.setProperty('--vvh', `${Math.round(window.visualViewport.height)}px`);
+        document.documentElement.style.setProperty('--vv-offset', `${Math.round(window.visualViewport.offsetTop)}px`);
+      } catch (_) {}
+    };
+    window.visualViewport.addEventListener('resize', applyViewport);
+    window.visualViewport.addEventListener('scroll', applyViewport);
+    applyViewport();
   }
 
   async function requestWakeLock() {
@@ -762,9 +782,17 @@ function setupEventListeners() {
             });
         }
         
-        // Ensure comm row visible for players
-        const commRow = document.getElementById('playerCommRow');
-        if (commRow && !isHost) commRow.style.display = 'flex';
+        const toggleHostMsgBtn = document.getElementById('toggleHostMsgBtn');
+        const hostMsgPanel = document.getElementById('playerCommPanel');
+        if (toggleHostMsgBtn && hostMsgPanel && !isHost) {
+            toggleHostMsgBtn.addEventListener('click', () => {
+                const open = hostMsgPanel.hasAttribute('hidden');
+                if (open) hostMsgPanel.removeAttribute('hidden');
+                else hostMsgPanel.setAttribute('hidden', '');
+                toggleHostMsgBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                toggleHostMsgBtn.classList.toggle('is-open', open);
+            });
+        }
         // Placeholder styling for contenteditable
         if (isMultiBoxEditable) {
             multiBox.addEventListener('input', setPlaceholderIfEmpty);
@@ -802,6 +830,13 @@ function setupEventListeners() {
                         statusEl.textContent = `💬 Host: ${msg}`;
                     }
                     appendDmHistory('Host', msg);
+                    const hostMsgPanel = document.getElementById('playerCommPanel');
+                    const toggleHostMsgBtn = document.getElementById('toggleHostMsgBtn');
+                    if (hostMsgPanel) hostMsgPanel.removeAttribute('hidden');
+                    if (toggleHostMsgBtn) {
+                        toggleHostMsgBtn.setAttribute('aria-expanded', 'true');
+                        toggleHostMsgBtn.classList.add('is-open');
+                    }
                 } catch (_) {}
             });
         } catch (_) {}
@@ -2781,11 +2816,10 @@ function displayCurrentQuestion() {
     const qt = document.getElementById('questionText');
     if (qt) {
         qt.textContent = question.prompt;
-        // Remove any inline max-height clamps injected by other flows
-        qt.style.maxHeight = 'none';
-        qt.style.overflow = 'visible';
+        qt.style.maxHeight = '';
+        qt.style.overflow = '';
         qt.style.webkitLineClamp = 'unset';
-        qt.style.display = 'block';
+        qt.style.display = '';
     }
     
     // Calculate round and question within round
@@ -3263,12 +3297,15 @@ function displayFinalResults() {
 
 function updateGamePlayersList() {
     const gamePlayersList = document.getElementById('gamePlayersList');
+    if (!gamePlayersList) return;
     gamePlayersList.innerHTML = '';
+    const compactStatus = document.getElementById('playerCompactStatus');
     
     if (gameState.players) {
         // Separate current player from others
-        const currentPlayer = gameState.players.find(player => player.id === socket.id);
-        const otherPlayers = gameState.players.filter(player => player.id !== socket.id);
+        const currentPlayer = gameState.players.find(player => player.id === socket.id)
+            || gameState.players.find(player => (player.name || '').toLowerCase() === String(currentPlayerName || '').toLowerCase());
+        const otherPlayers = gameState.players.filter(player => player !== currentPlayer);
         
         // Always show current player card first
         if (currentPlayer) {
@@ -3315,6 +3352,21 @@ function updateGamePlayersList() {
             `;
             gamePlayersList.appendChild(summaryCard);
         }
+
+        if (compactStatus) {
+            if (currentPlayer) {
+                const sortedPlayers = [...gameState.players].sort((a, b) =>
+                    (gameState.scores[b.id] || 0) - (gameState.scores[a.id] || 0)
+                );
+                const rank = sortedPlayers.findIndex(p => p.id === currentPlayer.id) + 1;
+                const pts = gameState.scores[currentPlayer.id] || 0;
+                compactStatus.textContent = `${currentPlayer.name} · ${pts} pts · #${rank}`;
+            } else {
+                compactStatus.textContent = '';
+            }
+        }
+    } else if (compactStatus) {
+        compactStatus.textContent = '';
     }
 }
 
@@ -4255,17 +4307,13 @@ function showWaitingForGrading() {
         answersList.style.alignItems = 'center';
         answersList.style.justifyContent = 'flex-start';
         answersList.style.minHeight = '0';
-        answersList.style.paddingBottom = 'calc(72px + env(safe-area-inset-bottom, 0px))';
+        answersList.style.paddingBottom = '8px';
         
         answersList.innerHTML = `
-            <!-- My Submitted Answer -->
-            <div style="background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center; width: 100%; max-width: 500px;">
-                <div style="background: rgba(255, 255, 255, 0.1); padding: 15px; border-radius: 5px; color: #ffffff; font-size: 18px; font-weight: bold;">${displayAnswer}</div>
-            </div>
-            
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; width: 100%; max-width: 500px; background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 10px; padding: 16px;">
+            <div class="player-waiting-card">
+                <div class="player-waiting-answer">${displayAnswer}</div>
                 <div class="loading-spinner"></div>
-                <p style="text-align: center; margin: 15px 0; color: #ffffff; font-size: 16px; line-height: 1.4;">Host is reviewing and<br>grading answers...<br>Results will appear shortly!</p>
+                <p>Host is grading. Results will appear here.</p>
             </div>
         `;
     }

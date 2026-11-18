@@ -7611,23 +7611,470 @@ textarea[disabled] {
 
 .keep-awake-fab {
     position: fixed;
-    left: max(12px, env(safe-area-inset-left, 0px));
-    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    left: max(8px, env(safe-area-inset-left, 0px));
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
     z-index: 40;
     min-width: 44px;
     min-height: 44px;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border-radius: 22px;
     border: 1px solid rgba(255,255,255,0.25);
     background: rgba(0,0,0,0.55);
     color: #fff;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
-#joinGameScreen,
-#lobbyScreen,
-#gameScreen,
-#scoringScreen {
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+
+/* ===== Player phone compact layout ===== */
+html:has(body.player-app),
+body.player-app {
+    height: var(--vvh, 100dvh);
+    max-height: var(--vvh, 100dvh);
+    overflow: hidden;
+}
+
+body.player-app {
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+
+body.player-app .container {
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    height: 100%;
+    padding: 6px;
+    align-items: stretch;
+    justify-content: stretch;
+    transform: translateY(var(--vv-offset, 0px));
+}
+
+body.player-app .screen {
+    max-width: none;
+    max-height: 100%;
+    height: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+body.player-app .screen.active {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+body.player-app .screen-content {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 14px;
+    overflow: hidden;
+}
+
+body.player-app .screen-content h2 {
+    margin-bottom: 10px;
+    font-size: 1.45rem;
+}
+
+body.player-app .form-group {
+    margin-bottom: 12px;
+}
+
+body.player-app .btn {
+    min-height: 44px;
+    padding: 10px 16px;
+    min-width: 0;
+}
+
+body.player-app .keep-awake-fab {
+    left: auto;
+    bottom: auto;
+    top: max(10px, calc(env(safe-area-inset-top, 0px) + 6px));
+    right: max(10px, calc(env(safe-area-inset-right, 0px) + 6px));
+    z-index: 50;
+    width: 44px;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.72);
+}
+
+body.player-app .keep-awake-label {
+    display: none;
+}
+
+body.player-app #joinGameScreen.active {
+    justify-content: center;
+}
+
+body.player-app #joinGameScreen .screen-content h2,
+body.player-app #lobbyScreen .lobby-header h2 {
+    padding-right: 52px;
+    padding-left: 52px;
+}
+
+body.player-app:has(#scoringScreen.active) .keep-awake-fab,
+body.player-app:has(#gameOverScreen.active) .keep-awake-fab {
+    top: auto;
+    right: auto;
+    left: max(8px, env(safe-area-inset-left, 0px));
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+
+body.player-app #joinGameScreen .screen-content {
+    justify-content: center;
+    overflow: auto;
+}
+
+body.player-app #lobbyScreen .lobby-header {
+    margin-bottom: 8px;
+    flex-shrink: 0;
+}
+
+body.player-app #lobbyScreen .lobby-subtitle {
+    font-size: 0.95rem;
+    margin-top: 4px;
+}
+
+body.player-app #lobbyScreen .players-header {
+    flex-shrink: 0;
+    margin-bottom: 8px;
+}
+
+body.player-app #lobbyScreen .players-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.player-app #lobbyScreen .scoring-explanation {
+    flex-shrink: 0;
+    margin: 8px 0;
+    padding: 8px 10px;
+    font-size: 0.85rem;
+}
+
+body.player-app #lobbyScreen .scoring-explanation p {
+    margin: 0;
+}
+
+body.player-app #lobbyScreen .lobby-actions {
+    flex-shrink: 0;
+    padding-top: 8px;
+}
+
+body.player-app #lobbyScreen .waiting-message {
+    min-height: 0;
+    margin: 8px auto;
+    padding: 12px;
+}
+
+body.player-app #gameScreen .game-header {
+    flex-direction: row;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 56px 8px 10px;
+}
+
+body.player-app #gameScreen .game-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    text-align: left;
+    min-width: 0;
+}
+
+body.player-app #gameScreen .question-counter {
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+body.player-app .player-compact-status {
+    font-size: 0.78rem;
+    color: #cfd8dc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+body.player-app .game-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+body.player-app .player-icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 22px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.35);
+    color: #fff;
+    font-size: 1.15rem;
+    cursor: pointer;
+}
+
+body.player-app .player-icon-btn.is-open,
+body.player-app .player-icon-btn[aria-expanded="true"] {
+    background: rgba(0, 123, 255, 0.45);
+    border-color: #8ba3d0;
+}
+
+body.player-app #gameScreen .timer {
+    padding: 6px 12px;
+    font-size: 1.15rem;
+    min-width: 48px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body.player-app #gameScreen .question-container {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 12px 12px;
+    overflow: hidden;
+    position: relative;
+    text-align: center;
+}
+
+body.player-app #gameScreen .question-text,
+body.player-app #gameScreen #questionText {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0 0 10px;
+    font-size: 1.05rem !important;
+    line-height: 1.3;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.player-app #playerAnswerForm {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px !important;
+    margin-top: 0 !important;
+    width: 100%;
+    max-width: none;
+}
+
+body.player-app #playerAnswerForm input,
+body.player-app #answerInput {
+    min-width: 0;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 16px;
+}
+
+body.player-app #submitAnswerBtn {
+    width: 100%;
+    max-width: none;
+}
+
+body.player-app #gameScreen .players-status {
+    display: none !important;
+}
+
+body.player-app .player-comm-panel {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    z-index: 6;
+    background: rgba(8, 12, 22, 0.96);
+    border: 1px solid #8ba3d0;
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.45);
+}
+
+body.player-app .player-comm-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+body.player-app #playerCommRow {
+    display: flex !important;
+    gap: 8px !important;
+}
+
+body.player-app #playerCommRow #answerStatus {
+    width: 100%;
+    min-height: 44px;
+    margin-bottom: 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(139,163,208,0.6);
+    border-radius: 10px;
+    text-align: left;
+}
+
+body.player-app #playerCommRow #askHostBtn {
+    width: 100%;
+    max-width: none;
+    white-space: nowrap;
+}
+
+body.player-app #scoringScreen .screen-content {
+    min-height: 0 !important;
+    padding: 12px 12px 12px !important;
+    position: relative;
+}
+
+body.player-app #scoringScreen .screen-content h2 {
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+    padding-right: 96px;
+}
+
+body.player-app #scoringScreen .answers-display {
+    flex: 1;
+    min-height: 0;
+    margin-bottom: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+body.player-app #scoringScreen #answersList {
+    flex: 1;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px !important;
+}
+
+body.player-app #scoringScreen .scores-fab {
+    top: 8px;
+    right: 8px;
+    min-height: 44px;
+}
+
+body.player-app .waiting-message {
+    min-height: 0;
+    margin: 8px auto;
+    padding: 12px;
+}
+
+body.player-app .player-waiting-card {
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    background: rgba(0, 123, 255, 0.1);
+    border: 1px solid rgba(0, 123, 255, 0.3);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+body.player-app .player-waiting-answer {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    word-break: break-word;
+    margin-bottom: 10px;
+}
+
+body.player-app .player-waiting-card p {
+    margin: 8px 0 0;
+    color: #ffffff;
+    font-size: 0.95rem;
+    line-height: 1.35;
+}
+
+body.player-app #answerStatus[data-placeholder]:empty::before,
+body.player-app #answerStatus[data-empty="true"]::before {
+    content: attr(data-placeholder);
+    color: #9aa7bd;
+}
+
+body.player-app .loading-spinner {
+    width: 36px;
+    height: 36px;
+    margin: 8px auto;
+}
+
+body.player-app #gameOverScreen .screen-content {
+    overflow: hidden;
+}
+
+body.player-app #gameOverScreen .final-scores {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+body.player-app #finalScoresList {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 430px) {
+    body.player-app .container {
+        padding: 4px;
+    }
+
+    body.player-app .screen {
+        border-radius: 8px;
+    }
+
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    body.player-app .container {
+        padding: 4px;
+    }
+
+    body.player-app #gameScreen .question-container {
+        flex-direction: row;
+        align-items: stretch;
+        gap: 10px;
+        text-align: left;
+    }
+
+    body.player-app #gameScreen .question-text,
+    body.player-app #gameScreen #questionText {
+        margin-bottom: 0;
+        text-align: left;
+    }
+
+    body.player-app #playerAnswerForm {
+        width: min(46vw, 280px);
+        justify-content: center;
+    }
+
+    body.player-app .player-comm-panel {
+        left: auto;
+        width: min(46vw, 280px);
+        right: 8px;
+    }
+
+    body.player-app .keep-awake-fab {
+        top: 6px;
+        right: 6px;
+    }
+
+    body.player-app #gameScreen .game-header {
+        padding-right: 64px;
+    }
 }
