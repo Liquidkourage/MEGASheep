@@ -1042,6 +1042,17 @@
             return null;
         }
 
+        function hostPhase() {
+            if (currentGame && typeof currentGame.gameState === 'string') return currentGame.gameState;
+            return gameState;
+        }
+
+        function adoptServerGame(state) {
+            if (!state) return;
+            currentGame = state;
+            if (typeof state.gameState === 'string') gameState = state.gameState;
+        }
+
         function saveHostSession(gameCode, hostToken) {
             try {
                 if (gameCode) localStorage.setItem('gameCode', String(gameCode));
@@ -1058,6 +1069,9 @@
                 localStorage.removeItem('gameCode');
                 localStorage.removeItem('hostToken');
             } catch (_) {}
+            currentGame = null;
+            gameState = 'waiting';
+            try { window._answersByName = {}; } catch (_) {}
         }
 
         function warnQuestionBankSource(source) {
@@ -1122,11 +1136,18 @@
             });
             
             socket.on('gameCreated', (data) => {
-                currentGame = unwrapGameState(data && data.gameState) || unwrapGameState(data) || data.gameState;
+                const state = unwrapGameState(data && data.gameState) || unwrapGameState(data) || data.gameState;
+                adoptServerGame(state);
+                if (!gameState) gameState = 'waiting';
+                if (creatingNewGame) {
+                    gameState = (state && state.gameState) || 'waiting';
+                    try { window._answersByName = {}; window._questionHistory = []; } catch (_) {}
+                }
                 if (data && (data.hostToken || data.gameCode)) saveHostSession(data.gameCode || currentGame?.gameCode, data.hostToken);
                 warnQuestionBankSource(currentGame && currentGame.questionBankSource);
                 showActiveGame();
                 updateGameDisplay();
+                try { updateGameControls(); } catch (_) {}
                 console.log('Game created via socket:', data);
                 // Preserve picker state across reconnect; only reset on new game
                 if (creatingNewGame) {
@@ -1238,8 +1259,9 @@
             socket.on('gameStateUpdate', (data) => {
                 const state = unwrapGameState(data);
                 if (state) {
-                    currentGame = state;
+                    adoptServerGame(state);
                     updatePlayerList();
+                    try { updateGameControls(); } catch (_) {}
                 }
             });
             
@@ -1586,18 +1608,19 @@
         function updateGameControls() {
             const startBtn = document.getElementById('startGameBtn');
             const endBtnMain = document.getElementById('endGameMainBtn');
+            const phase = hostPhase();
             
-            if (gameState === 'waiting') {
+            if (phase === 'waiting') {
                 startBtn.textContent = 'START GAME';
                 startBtn.className = 'control-btn success';
                 startBtn.disabled = false;
                 if (endBtnMain) endBtnMain.disabled = false;
-            } else if (gameState === 'playing') {
+            } else if (phase === 'playing') {
                 startBtn.textContent = 'GAME IN PROGRESS';
                 startBtn.className = 'control-btn secondary';
                 startBtn.disabled = true;
                 if (endBtnMain) endBtnMain.disabled = false;
-            } else if (gameState === 'scoring') {
+            } else if (phase === 'scoring') {
                 // While scoring, show END ROUND on boundary, otherwise NEXT QUESTION
                 try {
                     const qpr = Number(currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5);
@@ -1611,7 +1634,7 @@
                 startBtn.className = 'control-btn success';
                 startBtn.disabled = false;
                 if (endBtnMain) endBtnMain.disabled = false;
-            } else if (gameState === 'roundComplete') {
+            } else if (phase === 'roundComplete') {
                 // At round-complete, always show START NEXT ROUND
                 startBtn.textContent = 'START NEXT ROUND';
                 startBtn.className = 'control-btn success';
@@ -1811,6 +1834,8 @@
             try {
                 // Create game via API
                 creatingNewGame = true;
+                gameState = 'waiting';
+                try { window._answersByName = {}; } catch (_) {}
                 const response = await fetch('/api/create-game', {
                     method: 'POST',
                     headers: {
@@ -1869,29 +1894,26 @@
 
         document.getElementById('startGameBtn').addEventListener('click', () => {
             if (!currentGame) return;
-            if (gameState === 'waiting') {
-                // Properly start the game from lobby
+            const phase = hostPhase();
+            if (phase === 'waiting') {
                 socket.emit('startGame', { gameCode: currentGame.gameCode });
-            } else if (gameState === 'scoring') {
-                // Between questions
+            } else if (phase === 'scoring') {
                 socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
-            } else if (gameState === 'roundComplete') {
-                // End of round → begin next round
+            } else if (phase === 'roundComplete') {
                 const totalRounds = Math.ceil((currentGame?.questions?.length || 0) / (currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5));
                 const currentRound = Math.ceil(((currentGame?.currentQuestion || 0) + 1) / (currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5));
                 if (currentRound >= totalRounds) {
-                    // Disable at end of final round
                     const btn = document.getElementById('startGameBtn');
                     if (btn) { btn.disabled = true; btn.textContent = 'END OF GAME'; btn.className = 'control-btn secondary'; }
                 } else {
                     socket.emit('continueToNextRound', { gameCode: currentGame.gameCode });
                 }
-            } else if (gameState === 'playing') {
-                // Already in a question; ignore to avoid server error
+            } else if (phase === 'playing') {
                 console.log('Start button clicked during playing; ignoring to prevent premature nextQuestion');
+            } else if (phase === 'grading') {
+                alert('Finish grading this question before going to the next one.');
             } else {
-                // Fallback: try nextQuestion
-                socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
+                socket.emit('startGame', { gameCode: currentGame.gameCode });
             }
         });
 

@@ -1640,6 +1640,79 @@ app.get('/api/game/:gameCode', (req, res) => {
 // Global tracking for duplicate startGame requests
 const recentStartGameRequests = new Map();
 
+async function startHostGame(socket, gameCode) {
+    if (!gameCode) return false;
+
+    const requestKey = `${socket.id}-${gameCode}`;
+    const now = Date.now();
+    const lastRequest = recentStartGameRequests.get(requestKey);
+    if (lastRequest && (now - lastRequest) < 2000) {
+        console.log('🚫 Duplicate startGame request ignored for game:', gameCode);
+        return false;
+    }
+    recentStartGameRequests.set(requestKey, now);
+    if (recentStartGameRequests.size > 100) {
+        const cutoff = now - 10000;
+        for (const [key, timestamp] of recentStartGameRequests.entries()) {
+            if (timestamp < cutoff) recentStartGameRequests.delete(key);
+        }
+    }
+
+    const game = activeGames.get(gameCode);
+    if (!game) return false;
+
+    const playerInfo = connectedPlayers.get(socket.id);
+    if (!playerInfo || !playerInfo.isHost || playerInfo.playerName !== game.hostId) {
+        socket.emit('gameError', { message: 'Only the host can start the game.' });
+        return false;
+    }
+
+    if (game.gameState !== 'waiting') {
+        console.log(`⚠️ startGame ignored for ${gameCode} — already ${game.gameState}`);
+        return false;
+    }
+
+    try {
+        let questions = [];
+        if (Array.isArray(game.questions) && game.questions.length > 0) {
+            questions = game.questions;
+            console.log(`🗂️ Using preloaded question set for game ${gameCode}: ${questions.length} questions`);
+        } else {
+            const preferDemo = game.settings && game.settings.questionSet === 'demo';
+            const bank = await getQuestionBank(preferDemo);
+            questions = bank.questions;
+            game.questionBankSource = bank.source;
+            console.log(`📚 Using ${bank.source} question bank for game ${gameCode}: ${questions.length} questions`);
+        }
+
+        game.questions = questions;
+        game.gameState = 'playing';
+        game.currentRound = 1;
+        game.currentQuestion = 0;
+        game.resetQuestionScoring();
+        game.startTimer();
+
+        const gameStateToSend = game.getGameState();
+        io.to(gameCode).emit('gameStarted', gameStateToSend);
+        try { scheduleVirtualAnswersForGame(game); } catch (_) {}
+        return true;
+    } catch (error) {
+        console.error('Error starting game:', {
+            message: error.message,
+            details: error.stack,
+            hint: 'Check if all required services are running',
+            code: error.code || ''
+        });
+        socket.emit('gameError', {
+            message: error.message || 'Failed to start game',
+            details: error.stack,
+            hint: 'Check if all required services are running',
+            code: error.code || ''
+        });
+        return false;
+    }
+}
+
 const VIRTUAL_PLAYER_NAMES = [
     'Emma Thompson', 'James Wilson', 'Sophia Rodriguez', 'Michael Chen', 'Olivia Davis',
     'David Martinez', 'Ava Johnson', 'Christopher Lee', 'Isabella Brown', 'Daniel Garcia',
@@ -2326,97 +2399,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('startGame', async (data) => {
-        // console.log('🎮 startGame event received from socket:', socket.id);
-        
-        if (!data) {
-            console.log('⚠️ startGame event received with no data');
-            return;
-        }
-        
-        const { gameCode } = data;
-        
-        if (!gameCode) {
+        if (!data || !data.gameCode) {
             console.log('⚠️ startGame event received with no gameCode');
             return;
         }
-        
-        // Check for duplicate request within last 2 seconds
-        const requestKey = `${socket.id}-${gameCode}`;
-        const now = Date.now();
-        const lastRequest = recentStartGameRequests.get(requestKey);
-        
-        if (lastRequest && (now - lastRequest) < 2000) {
-            console.log('🚫 Duplicate startGame request ignored for game:', gameCode);
-            return;
-        }
-        
-        recentStartGameRequests.set(requestKey, now);
-        
-        // Clean up old entries every 10 seconds
-        if (recentStartGameRequests.size > 100) {
-            const cutoff = now - 10000;
-            for (const [key, timestamp] of recentStartGameRequests.entries()) {
-                if (timestamp < cutoff) {
-                    recentStartGameRequests.delete(key);
-                }
-            }
-        }
-        
-        const game = activeGames.get(gameCode);
-        if (!game) return;
-        
-        const playerInfo = connectedPlayers.get(socket.id);
-        if (!playerInfo || !playerInfo.isHost || playerInfo.playerName !== game.hostId) {
-            socket.emit('gameError', { message: 'Only the host can start the game.' });
-    return;
-  }
-  
-        try {
-            let questions = [];
-            if (Array.isArray(game.questions) && game.questions.length > 0) {
-                questions = game.questions;
-                console.log(`🗂️ Using preloaded question set for game ${gameCode}: ${questions.length} questions`);
-            } else {
-                const preferDemo = game.settings && game.settings.questionSet === 'demo';
-                const bank = await getQuestionBank(preferDemo);
-                questions = bank.questions;
-                game.questionBankSource = bank.source;
-                console.log(`📚 Using ${bank.source} question bank for game ${gameCode}: ${questions.length} questions`);
-            }
-            
-            game.questions = questions;
-            game.gameState = 'playing';
-            game.currentRound = 1;
-            game.currentQuestion = 0;
-            game.resetQuestionScoring(); // Reset scoring state for new game
-            game.startTimer();
-            
-            const gameStateToSend = game.getGameState();
-            
-            // EMERGENCY DEBUG: Log room membership when starting game
-            const roomSockets = io.sockets.adapter.rooms.get(gameCode);
-            const roomSocketArray = roomSockets ? Array.from(roomSockets) : [];
-            console.log(`🚨 EMERGENCY DEBUG: Starting game ${gameCode}`);
-            console.log(`🚨 Room ${gameCode} has ${roomSocketArray.length} sockets: ${roomSocketArray.join(', ')}`);
-            console.log(`🚨 Game has ${game.players.size} players: ${Array.from(game.players.values()).map(p => `${p.name}(${p.id})`).join(', ')}`);
-            console.log(`🚨 Emitting gameStarted to room ${gameCode}`);
-            
-            io.to(gameCode).emit('gameStarted', gameStateToSend);
-            try { scheduleVirtualAnswersForGame(game); } catch (_) {}
-        } catch (error) {
-            console.error('Error starting game:', {
-                message: error.message,
-                details: error.stack,
-                hint: 'Check if all required services are running',
-                code: error.code || ''
-            });
-            socket.emit('gameError', { 
-                message: error.message || 'Failed to start game',
-                details: error.stack,
-                hint: 'Check if all required services are running',
-                code: error.code || ''
-            });
-        }
+        await startHostGame(socket, data.gameCode);
     });
 
 
@@ -2715,7 +2702,7 @@ io.on('connection', (socket) => {
     });
 
     // Next question (only after grading is complete)
-    socket.on('nextQuestion', (data) => {
+    socket.on('nextQuestion', async (data) => {
         try {
             console.log('🎯 nextQuestion event received:', data);
             
@@ -2746,9 +2733,14 @@ io.on('connection', (socket) => {
             
             console.log(`🎯 Game state check: ${game.gameState}, currentQuestion: ${game.currentQuestion}`);
             
+            if (game.gameState === 'waiting') {
+                console.log(`🎯 nextQuestion on waiting lobby ${gameCode}; starting the game instead`);
+                await startHostGame(socket, gameCode);
+                return;
+            }
             if (game.gameState !== 'scoring') {
                 console.log(`⚠️ nextQuestion rejected - invalid state: ${game.gameState}`);
-                socket.emit('gameError', { message: 'Must complete grading before proceeding' });
+                socket.emit('gameError', { message: `Cannot go to the next question yet (${game.gameState})` });
                 return;
             }
             if (game.answersNeedingEdit && game.answersNeedingEdit.size > 0) {
