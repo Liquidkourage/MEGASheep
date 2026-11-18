@@ -2273,8 +2273,8 @@ io.on('connection', (socket) => {
         
         const game = activeGames.get(gameCode);
     if (!game) return;
-    if (game.gameState !== 'grading') {
-        socket.emit('gameError', { message: 'Send-back is only available while grading' });
+    if (game.gameState !== 'grading' && game.gameState !== 'playing') {
+        socket.emit('gameError', { message: 'Send-back is only available while a question is live or being graded' });
         return;
     }
     

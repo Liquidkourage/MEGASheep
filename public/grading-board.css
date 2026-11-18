@@ -491,7 +491,7 @@
     }
 }
 
-#panelGrade .grading-interface {
+.host-grade-mount .grading-interface {
     position: relative !important;
     top: auto !important;
     left: auto !important;
@@ -506,7 +506,7 @@
     background: rgba(0, 0, 0, 0.8) !important;
 }
 
-#panelGrade .grading-interface[style*="display: block"] {
+.host-grade-mount .grading-interface[style*="display: block"] {
     display: block !important;
     flex-direction: unset !important;
     align-items: unset !important;
@@ -514,26 +514,26 @@
     padding: 12px !important;
 }
 
-#panelGrade .grading-interface[style*="display: none"] {
+.host-grade-mount .grading-interface[style*="display: none"] {
     display: none !important;
 }
 
-#panelGrade .answer-bucket.uncategorized-bucket,
-#panelGrade .answer-bucket.wrong-bucket {
+.host-grade-mount .answer-bucket.uncategorized-bucket,
+.host-grade-mount .answer-bucket.wrong-bucket {
     min-height: 0;
 }
 
-#panelGrade .uncategorized-bucket .answer-items,
-#panelGrade .wrong-bucket .answer-items {
+.host-grade-mount .uncategorized-bucket .answer-items,
+.host-grade-mount .wrong-bucket .answer-items {
     min-height: 180px;
     max-height: min(50vh, 420px);
 }
 
-#panelGrade .correct-bucket .answer-items:not(.collapsed) {
+.host-grade-mount .correct-bucket .answer-items:not(.collapsed) {
     min-height: 80px;
 }
 
-#panelGrade .grading-controls-top {
+.host-grade-mount .grading-controls-top {
     position: sticky;
     top: 0;
     z-index: 5;
@@ -541,11 +541,11 @@
     padding: 8px 0;
 }
 
-#panelGrade .control-btn {
+.host-grade-mount .control-btn {
     min-height: 44px;
 }
 
-#panelGrade .sendback-bucket {
+.host-grade-mount .sendback-bucket {
     border-color: #9b59b6;
     background: rgba(155, 89, 182, 0.12);
 }
@@ -554,7 +554,16 @@
     margin-bottom: 12px;
 }
 
-#panelGrade {
+#playGradeMount {
+    margin-top: 16px;
+}
+
+#panelPlay .question-section,
+#panelPlay #questionDisplay {
+    display: none !important;
+}
+
+.host-grade-mount {
     overflow-x: hidden;
 }
 
@@ -564,22 +573,22 @@
 }
 
 @media (max-width: 430px) {
-    #panelGrade .grading-header-controls,
-    #panelGrade .grading-controls-top {
+    .host-grade-mount .grading-header-controls,
+    .host-grade-mount .grading-controls-top {
         flex-direction: column;
         align-items: stretch;
     }
 
-    #panelGrade .control-btn {
+    .host-grade-mount .control-btn {
         width: 100%;
     }
 
-    #panelGrade .grading-interface {
+    .host-grade-mount .grading-interface {
         padding: 10px;
     }
 
-    #panelGrade .correct-answers-section h4,
-    #panelGrade .wrong-uncategorized-section h4 {
+    .host-grade-mount .correct-answers-section h4,
+    .host-grade-mount .wrong-uncategorized-section h4 {
         font-size: 1em;
     }
 }

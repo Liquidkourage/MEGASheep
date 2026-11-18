@@ -2865,17 +2865,14 @@
             discardGradingDraft();
             return;
         }
-        if (phase !== 'grading') return;
+        if (phase !== 'playing' && phase !== 'grading') return;
 
         showGradingWorkspace();
         updatePendingEditsBanner(state);
 
-        const LS = global.MEGASheepLockstep;
-        const incomingEpoch = state.epoch || (LS && LS.gameEpoch
-            ? LS.gameEpoch(state.gameCode, getCurrentQuestionIndex(), phase)
-            : '');
-        if ((result && result.epochChanged) || (incomingEpoch && incomingEpoch !== gradingDraftEpoch)) {
-            gradingDraftEpoch = incomingEpoch;
+        const draftKey = state.gameCode + ':' + getCurrentQuestionIndex();
+        if (draftKey !== gradingDraftEpoch) {
+            gradingDraftEpoch = draftKey;
             lastRenderedQuestionIndex = null;
             clearGradingBuckets();
             try { updateGradingInterface(true); } catch (e) {

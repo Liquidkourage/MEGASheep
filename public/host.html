@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Host Console</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T20-00-00">
-    <link rel="stylesheet" href="grading-board.css?v=2026-11-18T20-15-00">
+    <link rel="stylesheet" href="grading-board.css?v=2026-11-18T20-25-00">
     <script src="/socket.io/socket.io.js"></script>
     <script src="apply-state.js?v=2026-11-18T20-00-00"></script>
     <style>
@@ -1017,13 +1017,7 @@
                         <div class="player-list" id="playerList"></div>
                     </div>
                 </div>
-            </section>
-
-            <section id="panelGrade" class="tab-panel" data-host-panel="grade" hidden>
-                <div id="gradeIdleNote" class="live-question-card is-idle">
-                    <div class="live-q-meta">Grade</div>
-                    <p class="live-q-prompt">When a question ends, answers land here. Drag them into correct, wrong, or send-back, then complete grading.</p>
-                </div>
+                <div id="playGradeMount" class="host-grade-mount">
                 <div id="gradingInterface" class="grading-interface grading-board" style="display: none;">
                     <div class="grading-header-controls">
                         <h3 class="grading-title">📝 Categorize Answers</h3>
@@ -1081,6 +1075,15 @@
                         </div>
                     </div>
                 </div>
+                </div>
+            </section>
+
+            <section id="panelGrade" class="tab-panel" data-host-panel="grade" hidden>
+                <div id="gradeIdleNote" class="live-question-card is-idle">
+                    <div class="live-q-meta">Grade</div>
+                    <p class="live-q-prompt">Live answers appear on Play while the question is running. Use this tab for a full-board view.</p>
+                </div>
+                <div id="gradeTabMount" class="host-grade-mount"></div>
             </section>
 
             <section id="panelQuestions" class="tab-panel" data-host-panel="questions" hidden>
@@ -1245,7 +1248,7 @@
     </div>
 
     <script>window.MEGASHEEP_GRADING_EMBEDDED = true;</script>
-    <script src="grading-board.js?v=2026-11-18T20-15-00"></script>
+    <script src="grading-board.js?v=2026-11-18T20-25-00"></script>
     <script>
         // Socket.IO connection
         let socket = null;
@@ -1321,15 +1324,15 @@
                 if (phase === 'scoring' || phase === 'roundComplete' || phase === 'overallLeaderboard') {
                     lastAutoGradeEpoch = '';
                     try { switchHostTab('results'); } catch (_) {}
-                } else if (phase === 'grading') {
-                    const gradeEpoch = state.epoch || ('grading:' + String(state.currentQuestion ?? 0));
-                    if (result.epochChanged || lastAutoGradeEpoch !== gradeEpoch) {
-                        lastAutoGradeEpoch = gradeEpoch;
-                        try { switchHostTab('grade'); } catch (_) {}
+                } else if (phase === 'playing' || phase === 'waiting') {
+                    const tab = document.querySelector('.tab-btn.active')?.getAttribute('data-host-tab') || 'play';
+                    const jumpToPlay = result.epochChanged
+                        || tab === 'results'
+                        || (phase === 'playing' && (tab === 'settings' || tab === 'questions'));
+                    if (jumpToPlay) {
+                        lastAutoGradeEpoch = '';
+                        try { switchHostTab('play'); } catch (_) {}
                     }
-                } else if (result.epochChanged && (phase === 'playing' || phase === 'waiting')) {
-                    lastAutoGradeEpoch = '';
-                    try { switchHostTab('play'); } catch (_) {}
                 }
 
                 syncHostGradingBoard(state, result);
@@ -1722,15 +1725,40 @@
                 const match = panel.getAttribute('data-host-panel') === tab;
                 panel.hidden = !match;
             });
+            placeGradingBoard(tab);
+        }
+
+        function placeGradingBoard(tab) {
+            const board = document.getElementById('gradingInterface');
+            const playMount = document.getElementById('playGradeMount');
+            const gradeMount = document.getElementById('gradeTabMount');
+            if (!board) return;
+            if (tab === 'grade' && gradeMount) gradeMount.appendChild(board);
+            else if (playMount) playMount.appendChild(board);
+        }
+
+        function updateCompleteGradingButton(phase) {
+            const btn = document.getElementById('applyCategorizationBtn');
+            if (!btn) return;
+            if (phase === 'playing') {
+                btn.disabled = true;
+                btn.textContent = 'End question to finish scoring';
+                btn.title = 'Keep sorting answers now. Complete grading after the question ends.';
+            } else {
+                btn.disabled = false;
+                btn.textContent = 'Complete Grading';
+                btn.title = '';
+            }
         }
 
         function syncHostGradingBoard(state, result) {
             const idle = document.getElementById('gradeIdleNote');
             const board = document.getElementById('gradingInterface');
             const phase = state && state.gameState;
-            if (phase === 'grading') {
+            if (phase === 'playing' || phase === 'grading') {
                 if (idle) idle.hidden = true;
                 if (board) board.style.display = 'block';
+                updateCompleteGradingButton(phase);
                 try { window.MEGASheepGrading && window.MEGASheepGrading.apply(state, result); } catch (e) {
                     console.warn('host grading apply failed', e);
                 }
@@ -1738,6 +1766,7 @@
             }
             if (idle) idle.hidden = false;
             if (board) board.style.display = 'none';
+            updateCompleteGradingButton(phase);
             if (result && result.epochChanged) {
                 try { window.MEGASheepGrading && window.MEGASheepGrading.discard(); } catch (_) {}
             }
@@ -2388,7 +2417,11 @@
 
         // Grading interface buttons
         document.getElementById('gradingBtn').addEventListener('click', () => {
-            switchHostTab('grade');
+            switchHostTab('play');
+            const board = document.getElementById('playGradeMount') || document.getElementById('gradingInterface');
+            if (board && typeof board.scrollIntoView === 'function') {
+                board.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         });
 
         // Removed multi-user grading button and binding
