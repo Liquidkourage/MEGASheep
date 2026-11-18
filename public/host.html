@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Host Console</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T20-00-00">
-    <link rel="stylesheet" href="grading-board.css?v=2026-11-18T21-20-00">
+    <link rel="stylesheet" href="grading-board.css?v=2026-11-18T21-35-00">
     <script src="/socket.io/socket.io.js"></script>
     <script src="apply-state.js?v=2026-11-18T20-00-00"></script>
     <style>
@@ -274,9 +274,27 @@
         #panelPlay.is-live-grading .dashboard-panel:has(#playerList) { display: none; }
         #panelPlay.is-live-grading .play-layout {
             grid-template-columns: 1fr;
+            margin-bottom: 8px;
+        }
+        #panelPlay.is-live-grading .play-layout .dashboard-panel {
+            padding: 10px 12px;
+        }
+        #panelPlay.is-live-grading .play-layout .panel-header {
+            margin-bottom: 8px;
+        }
+        #panelPlay.is-live-grading .play-layout .panel-header h3 {
+            font-size: 0.95em;
+        }
+        #panelPlay.is-live-grading #answerProgressPanel {
+            display: none !important;
         }
         #panelPlay.is-live-grading .play-actions {
             grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+        #panelPlay.is-live-grading .play-actions .control-btn {
+            min-height: 44px;
+            padding: 8px 10px;
+            font-size: 13px;
         }
         @media (max-width: 899px) {
             #panelPlay.is-live-grading .play-actions {
@@ -1264,7 +1282,7 @@
     </div>
 
     <script>window.MEGASHEEP_GRADING_EMBEDDED = true;</script>
-    <script src="grading-board.js?v=2026-11-18T21-20-00"></script>
+    <script src="grading-board.js?v=2026-11-18T21-35-00"></script>
     <script>
         // Socket.IO connection
         let socket = null;

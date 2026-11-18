@@ -1337,10 +1337,11 @@
             }
             dropZone.appendChild(chip);
             const bucket = dropZone.closest('.answer-bucket');
-            if (dropZone.classList.contains('collapsed')) {
+            if (!keepInboxCorrectCollapsed(bucket, dropZone) && dropZone.classList.contains('collapsed')) {
                 dropZone.classList.remove('collapsed');
                 const toggle = bucket?.querySelector('.bucket-toggle');
                 if (toggle) toggle.classList.remove('collapsed');
+                if (bucket) bucket.classList.add('is-open');
             }
             updateConfidenceForMovedElement(chip, dropZone);
             mergeIdenticalAnswerChipsIn(dropZone);
@@ -1515,6 +1516,19 @@
             }
         }
 
+        function isInboxLayout() {
+            return document.getElementById('gradingInterface')?.classList.contains('is-inbox');
+        }
+
+        function keepInboxCorrectCollapsed(bucket, dropZone) {
+            if (!isInboxLayout() || !bucket?.classList.contains('correct-bucket')) return false;
+            dropZone.classList.add('collapsed');
+            const toggle = bucket.querySelector('.bucket-toggle');
+            if (toggle) toggle.classList.add('collapsed');
+            bucket.classList.remove('is-open');
+            return true;
+        }
+
         function moveChipToBucket(chip, bucket) {
             if (!chip || !bucket) return false;
             const dropZone = bucket.querySelector('.answer-items');
@@ -1523,9 +1537,12 @@
                 selectGradeChip(null);
                 return false;
             }
-            dropZone.classList.remove('collapsed');
-            const toggle = bucket.querySelector('.bucket-toggle');
-            if (toggle) toggle.classList.remove('collapsed');
+            if (!keepInboxCorrectCollapsed(bucket, dropZone)) {
+                dropZone.classList.remove('collapsed');
+                const toggle = bucket.querySelector('.bucket-toggle');
+                if (toggle) toggle.classList.remove('collapsed');
+                bucket.classList.add('is-open');
+            }
             dropZone.appendChild(chip);
             try { updateConfidenceForMovedElement(chip, dropZone); } catch (_) {}
             try { mergeIdenticalAnswerChipsIn(dropZone); } catch (_) {}
@@ -1955,13 +1972,16 @@
             const bucket = headerElement.parentElement;
             const answerItems = bucket.querySelector('.answer-items');
             const toggle = headerElement.querySelector('.bucket-toggle');
-            
+            if (!answerItems) return;
+
             if (answerItems.classList.contains('collapsed')) {
                 answerItems.classList.remove('collapsed');
-                toggle.classList.remove('collapsed');
+                if (toggle) toggle.classList.remove('collapsed');
+                bucket.classList.add('is-open');
             } else {
                 answerItems.classList.add('collapsed');
-                toggle.classList.add('collapsed');
+                if (toggle) toggle.classList.add('collapsed');
+                bucket.classList.remove('is-open');
             }
         }
 
@@ -2729,12 +2749,12 @@
                 }
                 if (answerCard.parentElement !== dropZone) {
                     dropZone.appendChild(answerCard);
-                    // Ensure bucket is expanded/visible
-                    const header = bucket.querySelector('h4');
-                    const toggle = header ? header.querySelector('.bucket-toggle') : null;
-                    if (dropZone.classList.contains('collapsed')) {
+                    if (!keepInboxCorrectCollapsed(bucket, dropZone)) {
+                        const header = bucket.querySelector('h4');
+                        const toggle = header ? header.querySelector('.bucket-toggle') : null;
                         dropZone.classList.remove('collapsed');
                         if (toggle) toggle.classList.remove('collapsed');
+                        bucket.classList.add('is-open');
                     }
                     mergeIdenticalAnswerChipsIn(dropZone);
                     updateCountBadges();
