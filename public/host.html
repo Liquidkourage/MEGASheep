@@ -767,6 +767,26 @@
             max-width: 100%;
         }
 
+        #panelResults .answer-group.is-unique {
+            border: 1px solid rgba(192, 132, 252, 0.7);
+            background: rgba(192, 132, 252, 0.16);
+        }
+
+        #panelResults .unique-badge {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 1px 6px;
+            border-radius: 999px;
+            background: rgba(192, 132, 252, 0.28);
+            border: 1px solid rgba(192, 132, 252, 0.55);
+            color: #e9d5ff;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            vertical-align: middle;
+        }
+
         /* History modal layout fixes: keep answer text horizontal and allow natural wrapping */
         #historyModal .scoring-content { display: block; }
         #historyModal .answer-group {
@@ -2312,18 +2332,6 @@
                     const commonEl = summary.querySelectorAll('.stat-value')[2];
                     if (commonEl) commonEl.textContent = commonText;
                     scoringContent.appendChild(summary);
-                    // Unique answers section (players + answer)
-                    if (uniqueGroups.length > 0) {
-                        const uniqueSection = document.createElement('div');
-                        uniqueSection.className = 'scoring-section';
-                        const h = document.createElement('h4');
-                        h.textContent = '🟣 Unique Answers'; h.style.color = '#c084fc';
-                        uniqueSection.appendChild(h);
-                        uniqueGroups
-                          .sort((a,b)=> (a.answer||'').localeCompare(b.answer||''))
-                          .forEach(g => uniqueSection.appendChild(createResultCard(g.answer, g.players, g.points)));
-                        scoringContent.appendChild(uniqueSection);
-                    }
                     // Missed correct answers section
                     if (missedCorrect.length > 0) {
                         const missedSection = document.createElement('div');
@@ -2353,7 +2361,7 @@
                 
                 // Create sections for each category
                 if (correctAnswers.length > 0) {
-                    const correctSection = createScoringSection('✅ Correct Answers', correctAnswers, '#28a745');
+                    const correctSection = createScoringSection('✅ Correct Answers', correctAnswers, '#28a745', { highlightUnique: true });
                     scoringContent.appendChild(correctSection);
                 }
                 
@@ -2369,13 +2377,19 @@
             }
         }
 
-        function createResultCard(answer, players, points) {
+        function createResultCard(answer, players, points, options = {}) {
             const answerGroup = document.createElement('div');
-            answerGroup.className = 'answer-group';
+            answerGroup.className = 'answer-group' + (options.unique ? ' is-unique' : '');
 
             const answerText = document.createElement('div');
             answerText.className = 'answer-text';
             answerText.textContent = `"${answer || ''}"`;
+            if (options.unique) {
+                const badge = document.createElement('span');
+                badge.className = 'unique-badge';
+                badge.textContent = 'Unique';
+                answerText.appendChild(badge);
+            }
 
             const names = Array.isArray(players) ? players.filter(Boolean) : [];
             const answerPlayers = document.createElement('div');
@@ -2393,7 +2407,7 @@
             return answerGroup;
         }
 
-        function createScoringSection(title, answers, color) {
+        function createScoringSection(title, answers, color, options = {}) {
             const section = document.createElement('div');
             section.className = 'scoring-section';
             
@@ -2403,7 +2417,10 @@
             section.appendChild(header);
             
             answers.forEach((answer) => {
-                section.appendChild(createResultCard(answer.answer, answer.players, answer.points));
+                const count = Number(answer.count) || (Array.isArray(answer.players) ? answer.players.length : 0);
+                section.appendChild(createResultCard(answer.answer, answer.players, answer.points, {
+                    unique: !!(options.highlightUnique && count === 1)
+                }));
             });
             
             return section;
