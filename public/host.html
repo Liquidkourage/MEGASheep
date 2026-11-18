@@ -225,6 +225,37 @@
             grid-template-columns: minmax(280px, 1fr) minmax(280px, 1.1fr);
             gap: 16px;
         }
+        .live-question-card {
+            grid-column: 1 / -1;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ffc107;
+            border-radius: 16px;
+            padding: 16px 18px;
+        }
+        .live-question-card .live-q-meta {
+            color: #ffc107;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .live-question-card .live-q-prompt {
+            color: #fff;
+            font-size: clamp(1.15em, 2.2vw, 1.7em);
+            font-weight: 800;
+            line-height: 1.3;
+            margin: 0;
+        }
+        .live-question-card.is-idle {
+            border-color: rgba(255,255,255,0.12);
+        }
+        .live-question-card.is-idle .live-q-meta { color: #9ec5ff; }
+        .live-question-card.is-idle .live-q-prompt {
+            color: #bbb;
+            font-size: 1em;
+            font-weight: 600;
+        }
         .play-actions {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -953,6 +984,10 @@
 
             <section id="panelPlay" class="tab-panel" data-host-panel="play">
                 <div class="play-layout">
+                    <div id="liveQuestionCard" class="live-question-card is-idle">
+                        <div class="live-q-meta" id="liveQuestionMeta">Question</div>
+                        <p class="live-q-prompt" id="liveQuestionPrompt">Start the game to show the live question here.</p>
+                    </div>
                     <div class="dashboard-panel">
                         <div class="panel-header">
                             <h3>⏰ Live controls</h3>
@@ -1647,6 +1682,48 @@
             });
         }
 
+        function currentQuestionRecord(state) {
+            if (!state) return null;
+            if (state.currentQuestionData && state.currentQuestionData.prompt) return state.currentQuestionData;
+            const idx = Number(state.currentQuestion ?? 0);
+            if (Array.isArray(state.questions) && state.questions[idx] && state.questions[idx].prompt) {
+                return state.questions[idx];
+            }
+            return null;
+        }
+
+        function updateLiveQuestionPrompt() {
+            const card = document.getElementById('liveQuestionCard');
+            const meta = document.getElementById('liveQuestionMeta');
+            const promptEl = document.getElementById('liveQuestionPrompt');
+            if (!card || !meta || !promptEl) return;
+            const phase = hostPhase();
+            const live = phase === 'playing' || phase === 'grading' || phase === 'scoring';
+            const q = currentQuestionRecord(currentGame);
+            const total = Array.isArray(currentGame && currentGame.questions) ? currentGame.questions.length : 0;
+            const idx = Number(currentGame && currentGame.currentQuestion != null ? currentGame.currentQuestion : 0);
+            if (live && q && q.prompt) {
+                card.classList.remove('is-idle');
+                meta.textContent = total > 0 ? `Question ${idx + 1} of ${total}` : `Question ${idx + 1}`;
+                promptEl.textContent = String(q.prompt);
+            } else {
+                card.classList.add('is-idle');
+                if (phase === 'waiting') {
+                    meta.textContent = 'Waiting to start';
+                    promptEl.textContent = 'Start the game to show the live question here.';
+                } else if (phase === 'roundComplete') {
+                    meta.textContent = 'Round complete';
+                    promptEl.textContent = 'Start the next round when you are ready.';
+                } else if (phase === 'finished' || phase === 'overallLeaderboard') {
+                    meta.textContent = 'Game over';
+                    promptEl.textContent = 'No live question.';
+                } else {
+                    meta.textContent = 'Question';
+                    promptEl.textContent = 'No live question.';
+                }
+            }
+        }
+
         // Show active game interface
         function showActiveGame() {
             document.getElementById('noGameState').style.display = 'none';
@@ -1660,6 +1737,7 @@
             document.getElementById('gameCodeDisplay').textContent = currentGame.gameCode;
             setPlayerCountDisplay(Array.isArray(currentGame.players) ? currentGame.players.length : 0);
             updateGamePhaseBanner();
+            updateLiveQuestionPrompt();
             
             updatePlayerList();
 
@@ -1764,6 +1842,7 @@
                 if (endBtnMain) endBtnMain.disabled = false;
             }
             updateGamePhaseBanner();
+            updateLiveQuestionPrompt();
         }
 
         // Update player list when answers are submitted
