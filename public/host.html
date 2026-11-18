@@ -43,6 +43,49 @@
         }
 
         /* Game Created Successfully Section */
+        .host-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #007bff;
+            border-radius: 16px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+        }
+        .host-topbar .quick-actions {
+            flex: 1 1 280px;
+            justify-content: flex-end;
+        }
+        .host-code-block {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .host-code-block .game-code-label {
+            color: #9ec5ff;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .host-phase-strip {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            border-radius: 12px;
+            padding: 10px 16px;
+            margin-bottom: 12px;
+            color: #fff;
+        }
+        .host-phase-strip strong { font-size: 1.05em; }
+        .host-phase-strip .phase-meta { opacity: 0.9; font-size: 14px; }
+
         .game-created-section {
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid #007bff;
@@ -85,11 +128,11 @@
         }
 
         .game-code {
-            font-size: 2.8em;
+            font-size: clamp(1.8em, 4vw, 2.6em);
             font-weight: bold;
             color: #007bff;
             text-shadow: 2px 2px 4px rgba(0, 123, 255, 0.3);
-            letter-spacing: 4px;
+            letter-spacing: 3px;
         }
 
         .game-code-label {
@@ -174,8 +217,67 @@
         .dashboard-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .play-layout {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) minmax(280px, 1.1fr);
+            gap: 16px;
+        }
+        .play-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .play-actions .control-btn {
+            min-height: 48px;
+            padding: 14px 16px;
+            font-size: 15px;
+            border-radius: 12px;
+        }
+        .tab-panel[hidden] { display: none !important; }
+        .tab-panel { margin-bottom: 16px; }
+        .tab-btn .tab-count {
+            display: inline-flex;
+            min-width: 20px;
+            height: 20px;
+            margin-left: 6px;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: #ffc107;
+            color: #000;
+            font-size: 11px;
+        }
+        .tools-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 20px;
+        }
+        .tools-grid .control-btn { min-height: 48px; padding: 14px; }
+        .modal-content.compact {
+            width: min(640px, 94%);
+            height: auto !important;
+            max-height: 90vh;
+            margin: 0;
+            z-index: 3001;
+            background: #152238 !important;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65);
+        }
+        .modal-content.compact .modal-body {
+            height: auto !important;
+            overflow: auto;
+            padding: 0;
+        }
+        #showToolsModal { z-index: 3000; }
+        #showToolsModal.is-open {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            opacity: 1 !important;
+            visibility: visible !important;
         }
 
 
@@ -192,7 +294,7 @@
         /* Question Picker */
         .qp-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
         .qp-toolbar input { flex:1; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.35); color:#fff; }
-        .qp-list { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:10px; max-height:380px; overflow-y:auto; }
+        .qp-list { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:10px; max-height:min(64vh, 720px); overflow-y:auto; }
         .qp-item { background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; cursor:pointer; transition: background .15s ease, border-color .15s ease; }
         .qp-item:hover { background: rgba(255,255,255,0.09); }
         .qp-item.selected { border-color:#28a745; box-shadow: inset 0 0 0 2px rgba(40,167,69,0.35); }
@@ -519,8 +621,17 @@
         }
 
         /* Simple tabs */
-        .tabs { display:flex; gap:8px; margin: 10px 0 16px 0; }
-        .tab-btn { background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:700; }
+        .tabs { display:flex; gap:8px; margin: 0 0 16px 0; flex-wrap: wrap; }
+        .tab-btn {
+            background: rgba(255,255,255,0.06);
+            border:1px solid rgba(255,255,255,0.15);
+            color:#fff;
+            padding:10px 14px;
+            min-height: 44px;
+            border-radius:8px;
+            cursor:pointer;
+            font-weight:700;
+        }
         .tab-btn.active { background: linear-gradient(135deg, #007bff, #0056b3); border-color: rgba(0,123,255,0.6); }
 
         .settings-grid {
@@ -762,7 +873,10 @@
         }
 
         @media (max-width: 768px) {
-            .dashboard-grid {
+            .dashboard-grid,
+            .play-layout,
+            .play-actions,
+            .tools-grid {
                 grid-template-columns: 1fr;
             }
             
@@ -776,7 +890,7 @@
             
             .quick-actions {
                 flex-direction: column;
-                align-items: center;
+                align-items: stretch;
             }
 
             .modal-content {
@@ -809,74 +923,47 @@
 
         <!-- Active Game State -->
         <div id="activeGameState" style="display: none;">
-            <div class="tabs">
-                <button id="tabHost" class="tab-btn active">Host</button>
-                <button id="tabResults" class="tab-btn">Results</button>
-            </div>
-            <!-- Game Created Successfully Section -->
-            <div class="game-created-section">
-                <div class="game-created-content">
-                    <div class="game-created-left">
-                        <div class="game-created-header">
-                            <span style="font-size: 1.2em;">⏰</span>
-                            <h2>Game Created Successfully!</h2>
-                        </div>
-                        <div class="game-code-display">
-                            <div class="game-code-label">Share this code:</div>
-                            <div class="game-code" id="gameCodeDisplay">----</div>
-                            <button class="copy-btn" onclick="copyGameCode()">Copy Code</button>
-                        </div>
-                    </div>
-                    <div class="quick-actions">
-                        <a href="/" target="_blank" class="action-btn">👤 Player Join Page</a>
-                        <a href="/display" target="_blank" class="action-btn">📺 Display Screen</a>
-                        <div style="display:inline-flex;gap:6px;align-items:center;margin-left:8px;">
-                            <input id="displayPairCode" placeholder="DISPLAY CODE" maxlength="4" style="width:100px;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);color:#fff;text-transform:uppercase;" />
-                            <button class="action-btn" id="pairDisplayBtn" title="Pair display by code">🔗 Pair Display</button>
-                        </div>
-                    </div>
+            <div class="host-topbar">
+                <div class="host-code-block">
+                    <span class="game-code-label">Room code</span>
+                    <div class="game-code" id="gameCodeDisplay">----</div>
+                    <button class="copy-btn" type="button" onclick="copyGameCode()">Copy</button>
+                </div>
+                <div class="quick-actions">
+                    <a href="/" target="_blank" class="action-btn">👤 Players</a>
+                    <a href="/display" target="_blank" class="action-btn">📺 Display</a>
+                    <input id="displayPairCode" placeholder="TV CODE" maxlength="4" aria-label="Display pairing code" style="width:96px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);color:#fff;text-transform:uppercase;" />
+                    <button class="action-btn" id="pairDisplayBtn" type="button" title="Pair display by code">🔗 Pair TV</button>
                 </div>
             </div>
 
-            <!-- Game Lobby Section -->
-            <div class="game-lobby-section">
-                <div class="lobby-icon">🎮</div>
-                <div class="lobby-content">
-                    <h3>Game Lobby</h3>
-                    <p>Waiting for players to join...</p>
-                </div>
+            <div class="host-phase-strip" id="gamePhaseBanner">
+                <strong id="gamePhaseLabel">Lobby — waiting for players</strong>
+                <span class="phase-meta">Players: <span id="playerCountTop" data-player-count>0</span></span>
             </div>
 
-            <!-- Main Dashboard Grid (Host tab content) -->
-            <div id="hostMainGrid" class="dashboard-grid">
-                <!-- Players Panel -->
-                <div class="dashboard-panel">
-                    <div class="panel-header">
-                        <h3>👥 Players (<span id="playerCount">0</span>)</h3>
-                    </div>
-                    <div class="player-list" id="playerList">
-                        <!-- Players will be populated here -->
-                    </div>
-                </div>
+            <div class="tabs" role="tablist">
+                <button type="button" id="tabPlay" class="tab-btn active" data-host-tab="play">Play</button>
+                <button type="button" id="tabQuestions" class="tab-btn" data-host-tab="questions">Questions</button>
+                <button type="button" id="tabQa" class="tab-btn" data-host-tab="qa">Q&amp;A <span id="qaBadge" class="tab-count" style="display:none">0</span></button>
+                <button type="button" id="tabResults" class="tab-btn" data-host-tab="results">Results</button>
+                <button type="button" id="tabSettings" class="tab-btn" data-host-tab="settings">Settings</button>
+                <button type="button" id="showToolsBtn" class="tab-btn">🧰 Tools</button>
+            </div>
 
-
-
-                <!-- Host Controls Panel -->
-                <div class="dashboard-panel">
-                    <div class="panel-header">
-                        <h3>⏰ Host Controls</h3>
-                    </div>
-                    <div class="host-controls">
-                        <button id="startGameBtn" class="control-btn success">START GAME</button>
-                        <button id="endGameMainBtn" class="control-btn warning">🛑 END GAME</button>
-                        <button id="endQuestionNowBtn" class="control-btn warning">⏹️ END QUESTION NOW</button>
-                        <button id="gradingBtn" class="control-btn secondary">📝 GRADING INTERFACE</button>
-                        <button id="virtualTestBtn" class="control-btn warning">🎭 VIRTUAL TEST (100 players)</button>
-                        <button id="showRoundLbBtn" class="control-btn secondary">📊 SHOW ROUND LEADERBOARD</button>
-                        <button id="showOverallLbBtn" class="control-btn secondary">🏆 SHOW OVERALL LEADERBOARD</button>
-                        <button id="historyBtn" class="control-btn secondary">📚 HISTORY</button>
-                        <button id="showEndDemoBtn" class="control-btn secondary">🎉 SHOW END DEMO</button>
-                        <div id="answerProgressPanel" class="host-info" style="display:none; grid-column: 1 / -1; text-align:left; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); padding:10px 12px; border-radius:8px;">
+            <section id="panelPlay" class="tab-panel" data-host-panel="play">
+                <div class="play-layout">
+                    <div class="dashboard-panel">
+                        <div class="panel-header">
+                            <h3>⏰ Live controls</h3>
+                        </div>
+                        <div class="play-actions">
+                            <button id="startGameBtn" class="control-btn success">START GAME</button>
+                            <button id="endQuestionNowBtn" class="control-btn warning">⏹️ END QUESTION</button>
+                            <button id="gradingBtn" class="control-btn secondary">📝 GRADE</button>
+                            <button id="endGameMainBtn" class="control-btn warning">🛑 END GAME</button>
+                        </div>
+                        <div id="answerProgressPanel" class="host-info" style="display:none; margin-top:14px; text-align:left; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); padding:10px 12px; border-radius:8px;">
                             <div class="answer-status" style="margin-bottom:6px;">
                                 <span id="answersReceived">0</span> / <span id="totalPlayers">0</span> answers received
                             </div>
@@ -886,9 +973,16 @@
                             </div>
                         </div>
                     </div>
+                    <div class="dashboard-panel">
+                        <div class="panel-header">
+                            <h3>👥 Players (<span id="playerCount" data-player-count>0</span>)</h3>
+                        </div>
+                        <div class="player-list" id="playerList"></div>
+                    </div>
                 </div>
+            </section>
 
-                <!-- Question Picker Panel -->
+            <section id="panelQuestions" class="tab-panel" data-host-panel="questions" hidden>
                 <div class="dashboard-panel" id="questionPickerPanel">
                     <div class="panel-header">
                         <h3>🗂️ Question Picker <span id="qpCount" style="font-size:.8em;color:#bbb;margin-left:6px;">0 selected</span></h3>
@@ -903,12 +997,13 @@
                     </div>
                     <div id="qpList" class="qp-list"></div>
                 </div>
+            </section>
 
-                <!-- Questions Inbox Panel -->
+            <section id="panelQa" class="tab-panel" data-host-panel="qa" hidden>
                 <div class="dashboard-panel">
                     <div class="panel-header">
-                        <h3>💬 Questions <span id="qaBadge" class="qa-badge">0</span></h3>
-                        <div style="display:flex; align-items:center; gap:10px;">
+                        <h3>💬 Player questions</h3>
+                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                             <label style="font-size:12px; color:#bbb; display:inline-flex; align-items:center; gap:6px;">
                                 <input type="checkbox" id="qaHideAns" /> Hide answered
                             </label>
@@ -917,49 +1012,51 @@
                     </div>
                     <div id="questionsInbox"></div>
                 </div>
-            </div>
+            </section>
 
-            <!-- Scoring Panel (Results tab content) -->
-            <div class="scoring-panel" id="scoringPanel" style="display: none;">
-                <div class="scoring-header">
-                    <h3>🏆 Question Results</h3>
+            <section id="panelResults" class="tab-panel" data-host-panel="results" hidden>
+                <div class="scoring-panel" id="scoringPanel">
+                    <div class="scoring-header">
+                        <h3>🏆 Question Results</h3>
+                    </div>
+                    <div class="scoring-content" id="scoringContent">
+                        <div class="answer-group">Score a question to see results here.</div>
+                    </div>
                 </div>
-                <div class="scoring-content" id="scoringContent">
-                    <!-- Scoring results will be populated here -->
-                </div>
-            </div>
+            </section>
 
-            <!-- Game Settings Panel (Host tab content) -->
-            <div id="gameSettingsPanel" class="game-settings">
-                <div class="panel-header">
-                    <h3>⚙️ Game Settings</h3>
+            <section id="panelSettings" class="tab-panel" data-host-panel="settings" hidden>
+                <div id="gameSettingsPanel" class="game-settings">
+                    <div class="panel-header">
+                        <h3>⚙️ Game Settings</h3>
+                    </div>
+                    <div class="settings-grid">
+                        <div class="setting-group">
+                            <label for="questionSet">Question Set:</label>
+                            <select id="questionSet">
+                                <option value="supabase">Show questions (database, then file bank)</option>
+                                <option value="demo">Demo questions</option>
+                            </select>
+                            <div class="setting-description">Show questions use Supabase when reachable, otherwise sample-questions.txt</div>
+                        </div>
+                        <div class="setting-group">
+                            <label for="timerDuration">Timer Duration (seconds):</label>
+                            <input type="number" id="timerDuration" value="180" min="30" max="600">
+                            <div class="setting-description">Default: 180 seconds (3 minutes)</div>
+                        </div>
+                        <div class="setting-group">
+                            <label for="maxPlayers">Maximum Players:</label>
+                            <input type="number" id="maxPlayers" value="0" min="0" max="50">
+                            <div class="setting-description">0 = unlimited players</div>
+                        </div>
+                        <div class="setting-group">
+                            <label for="questionsPerRound">Questions per Round:</label>
+                            <input type="number" id="questionsPerRound" value="5" min="1" max="20">
+                            <div class="setting-description">Number of questions per game round</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="settings-grid">
-                    <div class="setting-group">
-                        <label for="questionSet">Question Set:</label>
-                        <select id="questionSet">
-                            <option value="supabase">Show questions (database, then file bank)</option>
-                            <option value="demo">Demo questions</option>
-                        </select>
-                        <div class="setting-description">Show questions use Supabase when reachable, otherwise sample-questions.txt</div>
-                    </div>
-                    <div class="setting-group">
-                        <label for="timerDuration">Timer Duration (seconds):</label>
-                        <input type="number" id="timerDuration" value="180" min="30" max="600">
-                        <div class="setting-description">Default: 180 seconds (3 minutes)</div>
-                    </div>
-                    <div class="setting-group">
-                        <label for="maxPlayers">Maximum Players:</label>
-                        <input type="number" id="maxPlayers" value="0" min="0" max="50">
-                        <div class="setting-description">0 = unlimited players</div>
-                    </div>
-                    <div class="setting-group">
-                        <label for="questionsPerRound">Questions per Round:</label>
-                        <input type="number" id="questionsPerRound" value="5" min="1" max="20">
-                        <div class="setting-description">Number of questions per game round</div>
-                    </div>
-                </div>
-            </div>
+            </section>
         </div>
     </div>
 
@@ -993,6 +1090,24 @@
             </div>
             <div class="modal-body">
                 <iframe id="gradingMultiFrame" src="/grading" width="100%" height="600px" frameborder="0"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <div id="showToolsModal" class="modal" style="display: none;">
+        <div class="modal-content compact">
+            <div class="modal-header">
+                <h2>🧰 Show tools</h2>
+                <span class="close" id="closeShowToolsBtn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="tools-grid">
+                    <button id="virtualTestBtn" class="control-btn warning" type="button">🎭 VIRTUAL TEST</button>
+                    <button id="showRoundLbBtn" class="control-btn secondary" type="button">📊 ROUND LEADERBOARD</button>
+                    <button id="showOverallLbBtn" class="control-btn secondary" type="button">🏆 OVERALL LEADERBOARD</button>
+                    <button id="historyBtn" class="control-btn secondary" type="button">📚 HISTORY</button>
+                    <button id="showEndDemoBtn" class="control-btn secondary" type="button">🎉 END DEMO</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1095,6 +1210,14 @@
                     }
                     if (phase !== 'grading') {
                         try { closeGradingSingleModal(); } catch (_) {}
+                    }
+                }
+
+                if (result.epochChanged) {
+                    if (phase === 'scoring' || phase === 'roundComplete' || phase === 'overallLeaderboard') {
+                        try { switchHostTab('results'); } catch (_) {}
+                    } else if (phase === 'playing' || phase === 'waiting') {
+                        try { switchHostTab('play'); } catch (_) {}
                     }
                 }
 
@@ -1331,7 +1454,10 @@
                 const hideAns = (localStorage.getItem('qaHideAnswered') || 'true') === 'true';
                 const unanswered = hostQuestions.filter(q => !q.answered);
                 const badge = document.getElementById('qaBadge');
-                if (badge) badge.textContent = unanswered.length;
+                if (badge) {
+                    badge.textContent = unanswered.length;
+                    badge.style.display = unanswered.length ? 'inline-flex' : 'none';
+                }
                 updateQaIndicators(unanswered.length);
 
                 const list = hideAns ? hostQuestions.filter(q=>!q.answered) : hostQuestions
@@ -1444,10 +1570,7 @@
                 if (fab && !fab._bound) {
                     fab._bound = true;
                     fab.addEventListener('click', ()=>{
-                        // Scroll questions panel into view
-                        try {
-                            document.getElementById('questionsInbox')?.scrollIntoView({ behavior:'smooth', block:'center' });
-                        } catch(_) {}
+                        try { switchHostTab('qa'); } catch (_) {}
                     });
                 }
             })();
@@ -1477,6 +1600,53 @@
             }
         }
 
+        function switchHostTab(which) {
+            const tab = which || 'play';
+            document.querySelectorAll('[data-host-tab]').forEach((btn) => {
+                btn.classList.toggle('active', btn.getAttribute('data-host-tab') === tab);
+            });
+            document.querySelectorAll('[data-host-panel]').forEach((panel) => {
+                const match = panel.getAttribute('data-host-panel') === tab;
+                panel.hidden = !match;
+            });
+        }
+
+        function openShowToolsModal() {
+            const modal = document.getElementById('showToolsModal');
+            if (!modal) return;
+            modal.classList.add('is-open');
+            modal.style.display = 'flex';
+        }
+
+        function closeShowToolsModal() {
+            const modal = document.getElementById('showToolsModal');
+            if (!modal) return;
+            modal.classList.remove('is-open');
+            modal.style.display = 'none';
+        }
+
+        function updateGamePhaseBanner() {
+            const label = document.getElementById('gamePhaseLabel');
+            if (!label) return;
+            const phase = hostPhase();
+            const labels = {
+                waiting: 'Lobby — waiting for players',
+                playing: 'Question live — collecting answers',
+                grading: 'Grading in progress',
+                scoring: 'Results ready',
+                roundComplete: 'Round complete',
+                overallLeaderboard: 'Overall leaderboard',
+                finished: 'Game finished'
+            };
+            label.textContent = labels[phase] || 'Game ready';
+        }
+
+        function setPlayerCountDisplay(n) {
+            document.querySelectorAll('[data-player-count]').forEach((el) => {
+                el.textContent = String(n);
+            });
+        }
+
         // Show active game interface
         function showActiveGame() {
             document.getElementById('noGameState').style.display = 'none';
@@ -1488,7 +1658,8 @@
             if (!currentGame) return;
             
             document.getElementById('gameCodeDisplay').textContent = currentGame.gameCode;
-            document.getElementById('playerCount').textContent = (Array.isArray(currentGame.players) ? currentGame.players.length : 0);
+            setPlayerCountDisplay(Array.isArray(currentGame.players) ? currentGame.players.length : 0);
+            updateGamePhaseBanner();
             
             updatePlayerList();
 
@@ -1496,7 +1667,10 @@
             const historyBtn = document.getElementById('historyBtn');
             if (historyBtn && !historyBtn._bound) {
                 historyBtn._bound = true;
-                historyBtn.addEventListener('click', openHistoryModalHost);
+                historyBtn.addEventListener('click', () => {
+                    try { closeShowToolsModal(); } catch (_) {}
+                    openHistoryModalHost();
+                });
             }
         }
 
@@ -1505,12 +1679,10 @@
             if (!currentGame) return;
             
             const playerList = document.getElementById('playerList');
-            const playerCount = document.getElementById('playerCount');
             playerList.innerHTML = '';
             
-            // Update player count
             const playerCountValue = Array.isArray(currentGame.players) ? currentGame.players.length : 0;
-            playerCount.textContent = playerCountValue;
+            setPlayerCountDisplay(playerCountValue);
             
             const playersArr = Array.isArray(currentGame.players) ? currentGame.players : [];
             playersArr.forEach((player) => {
@@ -1591,6 +1763,7 @@
                 startBtn.disabled = false;
                 if (endBtnMain) endBtnMain.disabled = false;
             }
+            updateGamePhaseBanner();
         }
 
         // Update player list when answers are submitted
@@ -1628,18 +1801,15 @@
         }
 
         function hideScoringPanel() {
-            const scoringPanel = document.getElementById('scoringPanel');
             const scoringContent = document.getElementById('scoringContent');
-            if (scoringPanel) scoringPanel.style.display = 'none';
             if (scoringContent) scoringContent.innerHTML = '';
         }
 
         // Show scoring panel
         function showScoringPanel(data) {
-            const scoringPanel = document.getElementById('scoringPanel');
             const scoringContent = document.getElementById('scoringContent');
-            
-            scoringPanel.style.display = 'block';
+            if (!scoringContent) return;
+            try { switchHostTab('results'); } catch (_) {}
             
             if (data && data.currentAnswerGroups) {
                 scoringContent.innerHTML = '';
@@ -1903,7 +2073,7 @@
         });
 
         document.getElementById('virtualTestBtn').addEventListener('click', () => {
-            // Start virtual player simulation
+            closeShowToolsModal();
             if (typeof startVirtualPlayerSimulation === 'function') {
                 startVirtualPlayerSimulation();
             } else {
@@ -1916,16 +2086,19 @@
         if (showRoundLbBtn) showRoundLbBtn.addEventListener('click', () => {
             if (!currentGame) return;
             socket.emit('showRoundLeaderboard', { gameCode: currentGame.gameCode });
+            closeShowToolsModal();
         });
         const showOverallLbBtn = document.getElementById('showOverallLbBtn');
         if (showOverallLbBtn) showOverallLbBtn.addEventListener('click', () => {
             if (!currentGame) return;
             socket.emit('showOverallLeaderboard', { gameCode: currentGame.gameCode });
+            closeShowToolsModal();
         });
         const showEndDemoBtn = document.getElementById('showEndDemoBtn');
         if (showEndDemoBtn) showEndDemoBtn.addEventListener('click', () => {
             if (!currentGame) return;
             socket.emit('showEndGameDemo', { gameCode: currentGame.gameCode });
+            closeShowToolsModal();
         });
 
         // Grading modal functions
@@ -2021,6 +2194,10 @@
             if (event.target === histModal) {
                 closeHistoryModal();
             }
+            const toolsModal = document.getElementById('showToolsModal');
+            if (event.target === toolsModal) {
+                closeShowToolsModal();
+            }
     }
 
         // Grading interface buttons
@@ -2033,26 +2210,14 @@
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
             initializeConnection();
-            // Tabs setup
-            const tabHost = document.getElementById('tabHost');
-            const tabResults = document.getElementById('tabResults');
-            const hostMainGrid = document.getElementById('hostMainGrid');
-            const gameSettings = document.getElementById('gameSettingsPanel');
-            const scoringPanel = document.getElementById('scoringPanel');
-            function switchTab(which) {
-                const hostMode = which === 'host';
-                if (tabHost && tabResults) {
-                    tabHost.classList.toggle('active', hostMode);
-                    tabResults.classList.toggle('active', !hostMode);
-                }
-                if (hostMainGrid) hostMainGrid.style.display = hostMode ? 'grid' : 'none';
-                if (gameSettings) gameSettings.style.display = hostMode ? 'block' : 'none';
-                if (scoringPanel) scoringPanel.style.display = hostMode ? 'none' : 'block';
-            }
-            if (tabHost) tabHost.addEventListener('click', ()=>switchTab('host'));
-            if (tabResults) tabResults.addEventListener('click', ()=>switchTab('results'));
-            // Default to host tab
-            switchTab('host');
+            document.querySelectorAll('[data-host-tab]').forEach((btn) => {
+                btn.addEventListener('click', () => switchHostTab(btn.getAttribute('data-host-tab')));
+            });
+            switchHostTab('play');
+            const toolsBtn = document.getElementById('showToolsBtn');
+            const closeTools = document.getElementById('closeShowToolsBtn');
+            if (toolsBtn) toolsBtn.addEventListener('click', openShowToolsModal);
+            if (closeTools) closeTools.addEventListener('click', closeShowToolsModal);
             // Pair display handlers
             const codeInput = document.getElementById('displayPairCode');
             const pairBtn = document.getElementById('pairDisplayBtn');
