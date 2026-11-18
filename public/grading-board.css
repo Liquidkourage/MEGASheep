@@ -607,11 +607,21 @@
     padding: 0 !important;
     margin: 0 0 4px 0 !important;
     text-align: left !important;
-    font-size: 15px !important;
-    line-height: 1.35 !important;
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
     text-shadow: none !important;
     white-space: normal !important;
     word-break: break-word !important;
+}
+
+.grading-board .answer-item .answer-text .answer-count-badge {
+    font-size: 11px;
+    font-weight: 800;
+    vertical-align: middle;
+    position: relative;
+    top: -3px;
+    margin-left: 8px;
 }
 
 .grading-board .answer-item .answer-players,
@@ -786,20 +796,22 @@
 }
 
 .grading-board.is-inbox .grade-inbox .answer-item {
-    padding: 6px 10px !important;
+    padding: 8px 12px !important;
     overflow: hidden !important;
-    min-height: 32px;
+    min-height: 0;
 }
 
 .grading-board.is-inbox .grade-inbox .answer-item .answer-text {
-    margin-bottom: 0 !important;
-    font-size: 14px !important;
+    margin-bottom: 2px !important;
+    font-size: 22px !important;
 }
 
 .grading-board.is-inbox .grade-inbox .answer-item .answer-players,
 .grading-board.is-inbox .grade-inbox .answer-item .answer-confidence {
     display: inline !important;
     margin-right: 10px;
+    font-size: 11px !important;
+    font-weight: 500 !important;
 }
 
 .grading-board.is-inbox .grade-targets-heading {

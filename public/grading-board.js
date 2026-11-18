@@ -1234,7 +1234,7 @@
             
             return `
                 <div class="answer-item" draggable="true" data-answer-text="${answerText}" data-player-names="${playerNames || ''}">
-                    <div class="answer-text">"${answerText}" <span class="answer-count-badge">${playerCount}</span></div>
+                    <div class="answer-text">${answerText} <span class="answer-count-badge">${playerCount}</span></div>
                     <div class="answer-players">${playerNames || ''}</div>
                     ${confidenceDisplay}
                 </div>
@@ -1261,7 +1261,7 @@
             }
             
             item.innerHTML = `
-                <div class="answer-text">"${group.answer}" <span class="answer-count-badge">${group.players ? group.players.length : group.count}</span></div>
+                <div class="answer-text">${group.answer} <span class="answer-count-badge">${group.players ? group.players.length : group.count}</span></div>
                 <div class="answer-players">${group.players ? group.players.join(', ') : ''}</div>
                 ${confidenceDisplay}
             `;
@@ -1776,7 +1776,7 @@
                 `;
                 
                 answerItem.innerHTML = `
-                    <div class="answer-text">"${answer.text}" <span class="answer-count-badge">${answer.count}</span></div>
+                    <div class="answer-text">${answer.text} <span class="answer-count-badge">${answer.count}</span></div>
                     <div class="answer-players" style="font-size: 10px; color: #666;">${answer.players || ''}</div>
                 `;
                 
@@ -2863,7 +2863,7 @@
                 : '';
 
             answerCard.innerHTML = `
-                <div class="answer-text">"${answerText}" <span class="answer-count-badge">1</span></div>
+                <div class="answer-text">${answerText} <span class="answer-count-badge">1</span></div>
                 <div class="answer-players">${playerName}</div>
                 ${confidenceDisplay}
             `;
