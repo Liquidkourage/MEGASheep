@@ -886,15 +886,25 @@
         #panelResults .answer-meta {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-start;
             gap: 6px;
             min-height: 18px;
+        }
+
+        #panelResults .answer-headline {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            min-width: 0;
         }
 
         #panelResults .answer-text {
             font-size: 1.7em;
             display: block;
-            width: 100%;
+            flex: 1 1 auto;
+            min-width: 0;
+            width: auto;
             font-weight: 800;
             letter-spacing: 0.01em;
             line-height: 1.15;
@@ -922,10 +932,24 @@
         }
 
         #panelResults .answer-points {
-            font-size: 10px;
-            padding: 2px 6px;
+            flex: 0 0 auto;
+            font-size: 1.45em;
+            font-weight: 800;
+            color: #ecfff4;
+            background: rgba(16, 185, 129, 0.38);
+            border: 1px solid rgba(167, 243, 208, 0.75);
+            padding: 3px 8px;
+            letter-spacing: 0.02em;
             justify-self: unset;
-            align-self: unset;
+            align-self: center;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+        }
+
+        #panelResults .answer-points.is-zero {
+            color: #e8edf4;
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.28);
+            text-shadow: none;
         }
 
         #panelResults .rarity-badge {
@@ -2522,13 +2546,17 @@
 
             const pts = Number(points) || 0;
             const answerPoints = document.createElement('div');
-            answerPoints.className = 'answer-points';
+            answerPoints.className = 'answer-points' + (pts > 0 ? '' : ' is-zero');
             answerPoints.textContent = pts > 0 ? `+${pts}` : `${pts}`;
-            meta.appendChild(answerPoints);
 
             const answerText = document.createElement('div');
             answerText.className = 'answer-text';
             answerText.textContent = String(answer || '');
+
+            const headline = document.createElement('div');
+            headline.className = 'answer-headline';
+            headline.appendChild(answerText);
+            headline.appendChild(answerPoints);
 
             const names = Array.isArray(players) ? players.filter(Boolean) : [];
             const answerPlayers = document.createElement('div');
@@ -2536,7 +2564,7 @@
             answerPlayers.textContent = names.length ? names.join(', ') : '—';
 
             answerGroup.appendChild(meta);
-            answerGroup.appendChild(answerText);
+            answerGroup.appendChild(headline);
             answerGroup.appendChild(answerPlayers);
             return answerGroup;
         }
