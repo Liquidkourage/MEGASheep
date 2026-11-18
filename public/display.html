@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T17-45-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T17-55-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -662,71 +662,76 @@
         }
 
         function eweBaseSize(count) {
-            if (count <= 4) return 188;
-            if (count <= 8) return 156;
-            if (count <= 16) return 128;
-            if (count <= 24) return 108;
-            if (count <= 36) return 90;
-            if (count <= 48) return 76;
-            return 64;
+            if (count <= 4) return 180;
+            if (count <= 8) return 148;
+            if (count <= 16) return 120;
+            if (count <= 24) return 104;
+            if (count <= 36) return 92;
+            return 84;
+        }
+
+        function flockRowCounts(n) {
+            if (n <= 8) return [n];
+            if (n <= 20) {
+                const back = Math.ceil(n / 2);
+                return [back, n - back];
+            }
+            if (n <= 36) {
+                const back = Math.ceil(n / 3);
+                const mid = Math.ceil((n - back) / 2);
+                return [back, mid, n - back - mid];
+            }
+            const back = Math.ceil(n / 4);
+            const midA = Math.ceil((n - back) / 3);
+            const midB = Math.ceil((n - back - midA) / 2);
+            return [back, midA, midB, n - back - midA - midB];
+        }
+
+        function flockLabel(name, allNames) {
+            const full = String(name || '').trim();
+            const parts = full.split(/\s+/).filter(Boolean);
+            if (parts.length <= 1) return full;
+            const first = parts[0];
+            const firstKey = first.toLowerCase();
+            const collisions = allNames.filter((other) =>
+                String(other || '').trim().split(/\s+/)[0].toLowerCase() === firstKey
+            ).length;
+            if (collisions <= 1) return first;
+            return `${first} ${parts[parts.length - 1].charAt(0)}.`;
         }
 
         function placeFlock(players) {
             const list = sortedFlockPlayers(players);
             const n = list.length;
-            const rows = n <= 7 ? 1 : n <= 18 ? 2 : 3;
-            const counts = [];
-            if (rows === 1) counts.push(n);
-            else if (rows === 2) {
-                const back = Math.ceil(n * 0.55);
-                counts.push(back, n - back);
-            } else {
-                const back = Math.ceil(n * 0.38);
-                const mid = Math.ceil(n * 0.34);
-                counts.push(back, mid, n - back - mid);
-            }
-            const span = n <= 3 ? 42 : n <= 6 ? 58 : n <= 10 ? 76 : 92;
-            const origin = (100 - span) / 2;
+            const counts = flockRowCounts(n);
+            const rows = counts.length;
+            const cols = Math.max.apply(null, counts.concat([1]));
+            const names = list.map((p) => p.name || 'Sheep');
             const slots = [];
             let index = 0;
-            const minGap = n <= 10 ? 12 : n <= 18 ? 9 : 7;
             for (let row = 0; row < rows; row += 1) {
                 const count = counts[row];
-                const yBase = rows === 1 ? 68 : 34 + (row / Math.max(rows - 1, 1)) * 48;
-                const scale = rows === 1 ? 1 : 0.78 + (row / Math.max(rows - 1, 1)) * 0.32;
-                const z = 8 + row * 14;
-                const stagger = row === 0 ? 0 : (span / Math.max(count, 1)) * 0.42;
-                const usable = span - stagger;
-                const rowSlots = [];
+                const start = Math.floor((cols - count) / 2) + 1;
+                const scale = rows === 1 ? 1 : 0.86 + (row / Math.max(rows - 1, 1)) * 0.14;
                 for (let col = 0; col < count; col += 1) {
                     const player = list[index];
                     index += 1;
                     if (!player) continue;
                     const hash = nameHash(player.name || player.id || String(index));
-                    const x = origin + stagger + ((col + 0.5) / Math.max(count, 1)) * usable + ((hash % 13) - 6) * 0.28;
-                    const y = yBase + (((hash >> 4) % 9) - 4) * 0.45;
-                    rowSlots.push({
+                    slots.push({
                         id: player.stableId || player.id || player.name,
                         name: player.name || 'Sheep',
-                        x,
-                        y: Math.min(78, Math.max(16, y)),
+                        label: flockLabel(player.name || 'Sheep', names),
+                        row: row + 1,
+                        col: start + col,
+                        cols,
+                        rows,
                         scale,
-                        z: z + (col % 4),
-                        flip: (hash % 3) === 0
+                        z: 8 + row * 10,
+                        jx: ((hash % 7) - 3) * 1.5,
+                        jy: (((hash >> 3) % 5) - 2) * 1.2
                     });
                 }
-                rowSlots.sort((a, b) => a.x - b.x);
-                for (let i = 1; i < rowSlots.length; i += 1) {
-                    if (rowSlots[i].x - rowSlots[i - 1].x < minGap) {
-                        rowSlots[i].x = rowSlots[i - 1].x + minGap;
-                    }
-                }
-                const overflow = rowSlots.length ? rowSlots[rowSlots.length - 1].x - 92 : 0;
-                rowSlots.forEach((slot) => {
-                    if (overflow > 0) slot.x -= overflow;
-                    slot.x = Math.min(92, Math.max(8, slot.x));
-                    slots.push(slot);
-                });
             }
             return slots;
         }
@@ -756,13 +761,16 @@
             const chorus = document.getElementById('flockChorus');
             if (!chorus) return;
             const list = sortedFlockPlayers(players);
+            const slots = placeFlock(list);
             chorus.dataset.flockKey = flockKey(list);
             chorus.dataset.dense = list.length > 28 ? '1' : '0';
             chorus.style.setProperty('--ewe-base', `${eweBaseSize(list.length)}px`);
-            chorus.innerHTML = placeFlock(list).map((slot) => `
-                <figure class="tv-ewe${slot.flip ? ' is-flip' : ''}" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" style="--x:${slot.x}%;--y:${slot.y}%;--s:${slot.scale};--z:${slot.z}">
+            chorus.style.setProperty('--flock-cols', String(slots[0] ? slots[0].cols : 1));
+            chorus.style.setProperty('--flock-rows', String(slots[0] ? slots[0].rows : 1));
+            chorus.innerHTML = slots.map((slot) => `
+                <figure class="tv-ewe" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" style="grid-column:${slot.col};grid-row:${slot.row};--s:${slot.scale};--z:${slot.z};--jx:${slot.jx}px;--jy:${slot.jy}px">
                     ${EWE_ART}
-                    <figcaption>${escapeDisplayText(slot.name)}</figcaption>
+                    <figcaption>${escapeDisplayText(slot.label)}</figcaption>
                 </figure>
             `).join('');
         }
