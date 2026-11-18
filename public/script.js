@@ -3077,16 +3077,17 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
     if (IS_PLAYER_ROUTE) {
         const peers = likeMindedPeers.length
             ? `with ${sanitize(likeMindedPeers.slice(0, 3).join(', '))}${likeMindedPeers.length > 3 ? '…' : ''}`
-            : 'Only ewe';
-        const rankBit = playerRank > 0 && totalPlayers > 0 ? `#${playerRank}/${totalPlayers}` : '';
+            : 'Only ewe!';
+        const rankBit = playerRank > 0 && totalPlayers > 0 ? `#${playerRank} of ${totalPlayers}` : '';
         return `
-            <div class="player-result-strip ${statusClass}">
-                <span class="status-icon">${statusIcon}</span>
-                <span class="player-result-answer">${displayAnswer}</span>
-                <span class="points-chip">${pointsNumber} pts</span>
-                ${rankBit ? `<span class="player-result-rank">${rankBit}</span>` : ''}
+            <div class="player-outcome ${statusClass}">
+                <div class="player-outcome-banner">
+                    <span class="player-outcome-status">${statusIcon} ${statusText}</span>
+                    <span class="player-outcome-points">${pointsNumber} pts</span>
+                </div>
+                <div class="player-outcome-answer">${displayAnswer}</div>
+                <div class="player-outcome-meta">${rankBit ? `${rankBit} · ` : ''}${peers}</div>
             </div>
-            <div class="player-result-peers">${peers}</div>
         `;
     }
 
