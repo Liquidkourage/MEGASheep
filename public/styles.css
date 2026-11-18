@@ -7954,9 +7954,10 @@ body.player-app #scoringScreen .answers-display {
 body.player-app #scoringScreen #answersList {
     flex: 1;
     min-height: 0 !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 8px !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column;
+    padding-bottom: 0 !important;
 }
 
 body.player-app #scoringScreen .scores-fab {
@@ -7975,7 +7976,146 @@ body.player-app #scoringScreen #hostAnswerCategorization {
 
 body.player-app #scoringScreen .question-results-mobile {
     min-height: 0;
-    gap: 10px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
+}
+
+body.player-app .player-result-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    min-height: 44px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+}
+
+body.player-app .player-result-strip.correct {
+    border-color: rgba(40, 167, 69, 0.55);
+    background: rgba(40, 167, 69, 0.12);
+}
+
+body.player-app .player-result-strip.incorrect {
+    border-color: rgba(220, 53, 69, 0.55);
+    background: rgba(220, 53, 69, 0.12);
+}
+
+body.player-app .player-result-answer {
+    font-weight: 800;
+    flex: 1 1 auto;
+    min-width: 0;
+    word-break: break-word;
+}
+
+body.player-app .player-result-rank {
+    font-size: 0.85rem;
+    color: #cfd8dc;
+    white-space: nowrap;
+}
+
+body.player-app .player-result-peers {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    color: #cfd8dc;
+    padding: 0 2px 2px;
+}
+
+body.player-app .player-answers-board {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+body.player-app .player-answers-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #9aa7bd;
+    padding: 2px 2px 0;
+}
+
+body.player-app .player-answers-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: none;
+    overflow: visible;
+}
+
+body.player-app #scoringScreen .compact-answer {
+    padding: 6px 8px;
+    min-height: 36px;
+    border-radius: 8px;
+    gap: 6px;
+}
+
+body.player-app #scoringScreen .compact-answer .text {
+    font-size: 0.92rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+body.player-app #scoringScreen .points-pill {
+    padding: 2px 8px;
+    font-size: 0.75rem;
+}
+
+body.player-app #scoringScreen .score-item.single-line {
+    padding: 6px 8px;
+    min-height: 36px;
+}
+
+body.player-app #scoresModal .scores-grid,
+body.player-app #scoresModal .scores-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+body.player-app #scoresModal .score-item,
+body.player-app #scoresModal .score-item.single-line {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 6px 10px !important;
+    min-height: 36px !important;
+    height: auto !important;
+    margin: 0 !important;
+    border-radius: 8px;
+    transform: none !important;
+}
+
+body.player-app #scoresModal .score-item .player-name,
+body.player-app #scoresModal .score-item .player-score {
+    display: block !important;
+    font-size: 0.9rem !important;
+    line-height: 1.2 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: none !important;
+    border: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+}
+
+body.player-app #scoresModal .modal-body {
+    padding: 8px 10px 12px;
 }
 
 body.player-app #scoringScreen .personal-result-card {
@@ -8037,7 +8177,7 @@ body.player-app #scoresModal .scores-modal {
 
 body.player-app #scoresModal .modal-header {
     flex-shrink: 0;
-    padding: 12px 14px;
+    padding: 8px 10px;
 }
 
 body.player-app #scoresModal .modal-header h4 {
@@ -8058,7 +8198,7 @@ body.player-app #scoresModal .modal-body {
     max-height: none;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding: 10px 12px 16px;
+    padding: 8px 10px 12px;
 }
 
 body.player-app #gameOverScreen .screen-content {

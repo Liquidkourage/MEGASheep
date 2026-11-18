@@ -2969,9 +2969,11 @@ function displayQuestionResults() {
     // Create two-column layout for desktop, single column for mobile
     const isMobile = window.innerWidth <= 768;
     
-    if (isMobile) {
-        // Mobile: Single column layout
-        answersList.style.display = 'block';
+    if (IS_PLAYER_ROUTE || isMobile) {
+        answersList.style.display = 'flex';
+        answersList.style.flexDirection = 'column';
+        answersList.style.minHeight = '0';
+        answersList.style.overflow = 'hidden';
         answersList.innerHTML = `
             <div class="question-results-mobile">
                 ${createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank, totalPlayers, playerPoints)}
@@ -3072,7 +3074,22 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
         : [];
     const likeMindedSheep = likeMindedPeers.length > 0 ? likeMindedPeers.join(', ') : 'Only ewe!';
     
-    const youBadge = '';
+    if (IS_PLAYER_ROUTE) {
+        const peers = likeMindedPeers.length
+            ? `with ${sanitize(likeMindedPeers.slice(0, 3).join(', '))}${likeMindedPeers.length > 3 ? '…' : ''}`
+            : 'Only ewe';
+        const rankBit = playerRank > 0 && totalPlayers > 0 ? `#${playerRank}/${totalPlayers}` : '';
+        return `
+            <div class="player-result-strip ${statusClass}">
+                <span class="status-icon">${statusIcon}</span>
+                <span class="player-result-answer">${displayAnswer}</span>
+                <span class="points-chip">${pointsNumber} pts</span>
+                ${rankBit ? `<span class="player-result-rank">${rankBit}</span>` : ''}
+            </div>
+            <div class="player-result-peers">${peers}</div>
+        `;
+    }
+
     return `
         <div class="personal-result-card ${statusClass}">
             <div class="personal-result-header">
@@ -3106,9 +3123,6 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
     // Categorize answers
     const correctAnswers = answerGroups.filter(group => group.points > 0);
     const incorrectAnswers = answerGroups.filter(group => group.points === 0);
-    
-    let html = '<div class="all-answers-container">';
-    
     const myNameLower = (sessionStorage.getItem('playerName') || '').toLowerCase();
     const playerAnswerLower = (playerAnswer || '').toLowerCase();
     const isGroupMine = (group) => {
@@ -3121,6 +3135,32 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
         }
         return false;
     };
+    
+    if (IS_PLAYER_ROUTE) {
+        const chip = (group, isCorrect, rank) => {
+            const mine = isGroupMine(group) ? ' mine' : '';
+            const pts = isCorrect ? `<span class="points-pill">${group.points}</span>` : '';
+            const text = String(group.answer || '').replace(/[&<>"']/g, (c)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+            return `<div class="compact-answer${mine}${isCorrect ? ' correct' : ' incorrect'}"><span class="rank">${rank ? '#'+rank : ''}</span><span class="text">${text}</span>${pts}</div>`;
+        };
+        const sortedCorrect = [...correctAnswers].sort((a, b) => b.points - a.points);
+        const sortedIncorrect = [...incorrectAnswers].sort((a, b) => {
+            const countA = (typeof a.count === 'number') ? a.count : (Array.isArray(a.players) ? a.players.length : 0);
+            const countB = (typeof b.count === 'number') ? b.count : (Array.isArray(b.players) ? b.players.length : 0);
+            return countB - countA;
+        });
+        let board = '<div class="player-answers-board">';
+        if (sortedCorrect.length) {
+            board += `<div class="player-answers-label">Correct</div><div class="player-answers-chips">${sortedCorrect.map((g, i) => chip(g, true, i + 1)).join('')}</div>`;
+        }
+        if (sortedIncorrect.length) {
+            board += `<div class="player-answers-label">Other</div><div class="player-answers-chips">${sortedIncorrect.map((g, i) => chip(g, false, i + 1)).join('')}</div>`;
+        }
+        board += '</div>';
+        return board;
+    }
+
+    let html = '<div class="all-answers-container">';
 
     // Correct answers section with ultra-compact layout (mobile-friendly)
     if (correctAnswers.length > 0) {
@@ -3192,8 +3232,9 @@ function displayRoundResults() {
         answersList.style.setProperty('min-height', '0', 'important');
         answersList.style.setProperty('max-height', 'none', 'important');
         answersList.style.setProperty('height', 'auto', 'important');
-        answersList.style.setProperty('overflow', IS_PLAYER_ROUTE ? 'auto' : 'visible', 'important');
-        answersList.style.setProperty('display', 'block', 'important');
+        answersList.style.setProperty('overflow', IS_PLAYER_ROUTE ? 'hidden' : 'visible', 'important');
+        answersList.style.setProperty('display', IS_PLAYER_ROUTE ? 'flex' : 'block', 'important');
+        if (IS_PLAYER_ROUTE) answersList.style.setProperty('flex-direction', 'column', 'important');
     } catch (_) {}
 
     const myName = (sessionStorage.getItem('playerName') || '').trim();
@@ -3226,7 +3267,12 @@ function displayRoundResults() {
     const upDown = rankChange > 0 ? `⬆️ +${rankChange}` : (rankChange < 0 ? `⬇️ ${rankChange}` : '—');
     const rankLine = (myRankAfter && totalPlayers) ? `You are now #${myRankAfter} of ${totalPlayers} (${upDown})` : '';
     const totalAfterText = myAfter ? myAfter.total : 0;
-    const personalSummaryHtml = `
+    const personalSummaryHtml = IS_PLAYER_ROUTE ? `
+        <div class="player-result-strip correct">
+            <span class="player-result-answer">+${myRoundDelta} this round</span>
+            <span class="points-chip">${totalAfterText} total</span>
+            ${myRankAfter ? `<span class="player-result-rank">#${myRankAfter}/${totalPlayers} ${upDown}</span>` : ''}
+        </div>` : `
         <div class="personal-result-card correct">
             <div class="personal-result-header">
                 <h3>Round Summary</h3>
@@ -3250,7 +3296,9 @@ function displayRoundResults() {
             </div>
         `;
     }).join('');
-    const leaderboardHtml = `<div class="scores-display"><h3>Leaderboard</h3><div class="scores-list">${leaderboardRows}</div></div>`;
+    const leaderboardHtml = IS_PLAYER_ROUTE
+        ? `<div class="player-answers-board"><div class="player-answers-label">Leaderboard</div><div class="player-answers-chips scores-list">${leaderboardRows}</div></div>`
+        : `<div class="scores-display"><h3>Leaderboard</h3><div class="scores-list">${leaderboardRows}</div></div>`;
 
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {
@@ -3554,7 +3602,7 @@ function showScoresModal() {
             .forEach((player, index) => {
                 const scoreItem = document.createElement('div');
                 const isMe = String(player.name || '').toLowerCase() === myNameLower;
-                scoreItem.className = 'score-item' + (isMe ? ' mine' : '');
+                scoreItem.className = 'score-item single-line' + (isMe ? ' mine' : '');
                 
                 // Add rank indicator for top 3
                 let rankIcon = '';
