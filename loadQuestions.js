@@ -3,9 +3,11 @@ const path = require('path');
 require('dotenv').config();
 
 const { createClient } = require('@supabase/supabase-js');
+const { postgresEnabled, initPostgres, replacePostgresQuestions } = require('./db');
 
-// Initialize Supabase client
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+const supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY)
+    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
+    : null;
 
 // Question file format:
 // Question prompt followed by correct answers (one per line)
@@ -96,6 +98,17 @@ async function loadQuestionsFromFile(filename) {
 
 async function insertQuestionsToDatabase(questions) {
     try {
+        if (postgresEnabled()) {
+            console.log('🗄️  Inserting questions into Railway Postgres...');
+            await initPostgres();
+            await replacePostgresQuestions(questions);
+            console.log(`✅ Successfully inserted ${questions.length} questions`);
+            return true;
+        }
+        if (!supabase) {
+            console.error('❌ No DATABASE_URL or Supabase credentials');
+            return false;
+        }
         console.log('🗄️  Inserting questions into Supabase...');
         
         // First, clear existing questions (optional - comment out if you want to keep existing)
@@ -175,9 +188,8 @@ async function main() {
     console.log('🚀 MEGASheep Question Loader');
     console.log('='.repeat(30));
     
-    // Check Supabase connection
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-        console.error('❌ Supabase credentials not found in .env file');
+    if (!postgresEnabled() && (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY)) {
+        console.error('❌ Set DATABASE_URL (Railway Postgres) or Supabase credentials in .env');
         return;
     }
     
@@ -213,7 +225,7 @@ async function main() {
     
     if (success) {
         console.log('\n🎉 Questions loaded successfully!');
-        console.log('You can now start a game and select "Supabase Database" as the question set.');
+        console.log('You can now start a game with the show question set.');
     } else {
         console.log('\n❌ Failed to load questions');
     }

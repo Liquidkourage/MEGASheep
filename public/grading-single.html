@@ -1049,45 +1049,47 @@
                 }
             });
 
-            // Auto-open grading interface when question starts
             socket.on('nextQuestion', (data) => {
-                console.log('🎯 Question started, auto-opening grading interface:', data);
-                console.log('🎯 nextQuestion event received with gameCode:', data?.gameCode);
-                if (data && data.gameCode) {
-                    console.log('🎯 Calling autoOpenGradingInterface for gameCode:', data.gameCode);
-                    autoOpenGradingInterface(data.gameCode);
-                } else {
-                    console.log('⚠️ nextQuestion event missing gameCode:', data);
-                }
+                if (!data || !data.gameCode) return;
+                if (currentGame && currentGame.gameCode && data.gameCode !== currentGame.gameCode) return;
+                currentGame = data;
+                if (!Array.isArray(currentGame.currentAnswerGroups)) currentGame.currentAnswerGroups = [];
+                lastRenderedQuestionIndex = null;
+                showGradingWorkspace();
+                try { updateGradingInterface(true); } catch (e) { console.warn('nextQuestion UI update failed', e); }
             });
 
-            // Auto-open grading interface when game starts (first question)
             socket.on('gameStarted', (data) => {
-                console.log('🎮 Game started, auto-opening grading interface for first question:', data);
-                console.log('🎮 gameStarted event received with gameCode:', data?.gameCode);
-                if (data && data.gameCode) {
-                    console.log('🎮 Calling autoOpenGradingInterface for gameCode:', data.gameCode);
-                    autoOpenGradingInterface(data.gameCode);
-                } else {
-                    console.log('⚠️ gameStarted event missing gameCode:', data);
-                }
+                if (!data || !data.gameCode) return;
+                if (currentGame && currentGame.gameCode && data.gameCode !== currentGame.gameCode) return;
+                currentGame = data;
+                if (!Array.isArray(currentGame.currentAnswerGroups)) currentGame.currentAnswerGroups = [];
+                lastRenderedQuestionIndex = null;
+                showGradingWorkspace();
+                try { updateGradingInterface(true); } catch (e) { console.warn('gameStarted UI update failed', e); }
             });
 
 
         }
 
+        function showGradingWorkspace() {
+            const gradingInterface = document.getElementById('gradingInterface');
+            const gameSelection = document.getElementById('gameSelection');
+            const noGamesMessage = document.getElementById('noGamesMessage');
+            if (gradingInterface) gradingInterface.style.display = 'block';
+            if (gameSelection) gameSelection.style.display = 'none';
+            if (noGamesMessage) noGamesMessage.style.display = 'none';
+        }
+
         function connectToHostGame(gameCode) {
+            if (!gameCode) return;
             console.log('🔗 Connecting to host game:', gameCode);
-            console.log('🔗 Socket ID:', socket.id);
-            
-            // Join the game room as a grader — do not claim host identity
-            console.log('🔗 Grading joining room (not host-reconnect):', gameCode);
-            console.log('🔗 Emitting joinGameRoom for game:', gameCode);
             socket.emit('joinGameRoom', { gameCode: gameCode });
-            
-            // Then request the specific game state
-            console.log('🔗 Emitting getGameState for game:', gameCode);
-            socket.emit('getGameState', { gameCode: gameCode });
+            const alreadyLoaded = currentGame && currentGame.gameCode === gameCode;
+            if (!alreadyLoaded) {
+                socket.emit('getGameState', { gameCode: gameCode });
+            }
+            showGradingWorkspace();
         }
 
         function updateConnectionStatus(connected) {
@@ -1195,27 +1197,8 @@
 
         function autoOpenGradingInterface(gameCode) {
             console.log('🔄 Auto-opening grading interface for game:', gameCode);
-            
-            // Connect to the game and open grading interface automatically
             connectToHostGame(gameCode);
-            
-            // Force the grading interface to be visible
-            const gradingInterface = document.getElementById('gradingInterface');
-            const gameSelection = document.getElementById('gameSelection');
-            const noGamesMessage = document.getElementById('noGamesMessage');
-            
-            if (gradingInterface) {
-                gradingInterface.style.display = 'block';
-                console.log('✅ Grading interface made visible');
-            }
-            
-            if (gameSelection) {
-                gameSelection.style.display = 'none';
-            }
-            
-            if (noGamesMessage) {
-                noGamesMessage.style.display = 'none';
-            }
+            showGradingWorkspace();
             
             // Focus the window to bring attention to the grading interface
             if (window.focus) {

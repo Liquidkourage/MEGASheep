@@ -829,7 +829,6 @@
                     <div class="quick-actions">
                         <a href="/" target="_blank" class="action-btn">👤 Player Join Page</a>
                         <a href="/display" target="_blank" class="action-btn">📺 Display Screen</a>
-                        <a href="/grading" target="_blank" class="action-btn">📝 Grading Console</a>
                         <div style="display:inline-flex;gap:6px;align-items:center;margin-left:8px;">
                             <input id="displayPairCode" placeholder="DISPLAY CODE" maxlength="4" style="width:100px;padding:6px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);color:#fff;text-transform:uppercase;" />
                             <button class="action-btn" id="pairDisplayBtn" title="Pair display by code">🔗 Pair Display</button>
@@ -891,9 +890,10 @@
                 <!-- Question Picker Panel -->
                 <div class="dashboard-panel" id="questionPickerPanel">
                     <div class="panel-header">
-                        <h3>🗂️ Question Picker <span id="qpCount" style="font-size:.8em;color:#bbb;margin-left:6px;">0 / 25</span></h3>
+                        <h3>🗂️ Question Picker <span id="qpCount" style="font-size:.8em;color:#bbb;margin-left:6px;">0 selected</span></h3>
                         <div>
-                            <button id="qpLoadBtn" class="control-btn secondary">Load from DB</button>
+                            <span id="qpSource" style="font-size:.8em;color:#bbb;margin-right:8px;">—</span>
+                            <button id="qpLoadBtn" class="control-btn secondary">Load Questions</button>
                             <button id="qpUseBtn" class="control-btn success" disabled>Use Selected (0)</button>
                         </div>
                     </div>
@@ -937,11 +937,10 @@
                     <div class="setting-group">
                         <label for="questionSet">Question Set:</label>
                         <select id="questionSet">
-                            <option value="supabase">Supabase Database (Recommended)</option>
-                            <option value="demo">Demo Questions</option>
-                            <option value="custom">Custom Questions</option>
+                            <option value="supabase">Show questions (database, then file bank)</option>
+                            <option value="demo">Demo questions</option>
                         </select>
-                        <div class="setting-description">Supabase provides a large question database</div>
+                        <div class="setting-description">Show questions use Supabase when reachable, otherwise sample-questions.txt</div>
                     </div>
                     <div class="setting-group">
                         <label for="timerDuration">Timer Duration (seconds):</label>
@@ -1086,7 +1085,7 @@
             });
             
             socket.on('gameCreated', (data) => {
-                currentGame = data.gameState;
+                currentGame = unwrapGameState(data && data.gameState) || unwrapGameState(data) || data.gameState;
                 showActiveGame();
                 updateGameDisplay();
                 console.log('Game created via socket:', data);
@@ -1099,6 +1098,8 @@
                     restoreQpSel();
                 }
                 renderQp();
+                emitGameSettings();
+                qpLoad();
             });
             
             socket.on('playerJoined', (data) => {
@@ -1143,11 +1144,11 @@
             });
             
             socket.on('gameStarted', (data) => {
+                const state = unwrapGameState(data);
+                if (state) currentGame = state;
                 gameState = 'playing';
                 updateGameControls();
                 updatePlayerList();
-                // Auto-open grading UI for host convenience
-                try { openGradingSingleModal(); } catch (_) {}
             });
             
             socket.on('gameEnded', (data) => {
@@ -1418,23 +1419,21 @@
             // When all players answered, server emits questionComplete (grading phase)
             socket.on('questionComplete', (data) => {
                 try {
-                    currentGame = data;
+                    const state = unwrapGameState(data) || data;
+                    if (state) currentGame = state;
                     gameState = 'grading';
-                    // Ensure grading UI is visible
                     openGradingSingleModal();
                 } catch (e) { console.warn('Failed to auto-open grading on questionComplete', e); }
             });
 
-            // Auto-open grading interface when a new question starts
             socket.on('nextQuestion', (data) => {
                 try {
-                    currentGame = data;
+                    const state = unwrapGameState(data) || data;
+                    if (state) currentGame = state;
                     gameState = 'playing';
                     updateGameControls();
-                    openGradingSingleModal();
-                    // Reset live answers cache for new question
                     try { window._answersByName = {}; updatePlayerListWithResponses(); } catch(_) {}
-                } catch (e) { console.warn('Failed to auto-open grading on nextQuestion', e); }
+                } catch (e) { console.warn('Failed to handle nextQuestion', e); }
             });
             
             socket.on('error', (error) => {
@@ -1781,7 +1780,7 @@
                     saveQpSel();
                     
                     // Join the game room via socket
-                    socket.emit('createGame');
+                    socket.emit('createGame', { gameCode: data.gameCode });
                     
                     console.log('Game created successfully:', data);
                 } else {
@@ -1902,12 +1901,14 @@
                 return;
             }
             document.getElementById('gradingSingleModal').style.display = 'block';
-            // Apply fullscreen by default
             document.getElementById('gradingSingleModalContent').classList.add('fullscreen');
-            // Refresh the iframe content with game code parameter
             const gameCode = currentGame.gameCode;
             const url = `/grading-single?gameCode=${gameCode}`;
-            document.getElementById('gradingSingleFrame').src = url;
+            const frame = document.getElementById('gradingSingleFrame');
+            const currentSrc = frame ? (frame.getAttribute('src') || '') : '';
+            if (frame && !currentSrc.includes(`gameCode=${gameCode}`)) {
+                frame.src = url;
+            }
         }
 
         // Function to get current game code for the grading interface
@@ -2022,21 +2023,41 @@
         });
 
         // Question Picker logic
+        function questionSourceLabel(source, count) {
+            if (source === 'database') return `Database · ${count}`;
+            if (source === 'file') return `Show bank · ${count}`;
+            return `Demo · ${count}`;
+        }
+
+        function emitGameSettings() {
+            if (!socket || !currentGame || !currentGame.gameCode) return;
+            socket.emit('updateGameSettings', {
+                gameCode: currentGame.gameCode,
+                questionSet: document.getElementById('questionSet')?.value,
+                timerDuration: Number(document.getElementById('timerDuration')?.value),
+                maxPlayers: Number(document.getElementById('maxPlayers')?.value),
+                questionsPerRound: Number(document.getElementById('questionsPerRound')?.value)
+            });
+        }
+
         async function qpLoad() {
             try {
                 const btn = document.getElementById('qpLoadBtn');
+                const sourceEl = document.getElementById('qpSource');
                 if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
-                const res = await fetch('/api/load-questions');
+                const preferDemo = document.getElementById('questionSet')?.value === 'demo';
+                const res = await fetch('/api/load-questions' + (preferDemo ? '?source=demo' : ''));
                 const json = await res.json();
                 qpAll = Array.isArray(json.questions) ? json.questions : [];
+                if (sourceEl) sourceEl.textContent = questionSourceLabel(json.source, json.count || qpAll.length);
                 restoreQpSel();
                 renderQp();
             } catch (e) {
                 console.warn('Failed to load questions', e);
-                alert('Failed to load questions from DB');
+                alert('Failed to load questions');
             } finally {
                 const btn = document.getElementById('qpLoadBtn');
-                if (btn) { btn.disabled = false; btn.textContent = 'Load from DB'; }
+                if (btn) { btn.disabled = false; btn.textContent = 'Load Questions'; }
             }
         }
 
@@ -2060,14 +2081,14 @@
                 list.appendChild(div);
             });
             const selectedCount = qpSelectedIds.size;
-            if (count) count.textContent = `${selectedCount} / 25`;
-            if (useBtn) { useBtn.disabled = selectedCount !== 25; useBtn.textContent = `Use Selected (${selectedCount})`; }
+            if (count) count.textContent = `${selectedCount} selected`;
+            if (useBtn) { useBtn.disabled = selectedCount < 1; useBtn.textContent = `Use Selected (${selectedCount})`; }
             saveQpSel();
         }
 
         function toggleSelectQ(id) {
             if (qpSelectedIds.has(id)) qpSelectedIds.delete(id);
-            else if (qpSelectedIds.size < 25) qpSelectedIds.add(id);
+            else qpSelectedIds.add(id);
             renderQp();
         }
 
@@ -2089,13 +2110,20 @@
 
         const qpLoadBtn = document.getElementById('qpLoadBtn');
         if (qpLoadBtn) qpLoadBtn.addEventListener('click', qpLoad);
+        ['questionSet', 'timerDuration', 'maxPlayers', 'questionsPerRound'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', () => {
+                emitGameSettings();
+                if (id === 'questionSet') qpLoad();
+            });
+        });
         const qpSearch = document.getElementById('qpSearch');
         if (qpSearch) qpSearch.addEventListener('input', renderQp);
         const qpUseBtn = document.getElementById('qpUseBtn');
         if (qpUseBtn) qpUseBtn.addEventListener('click', () => {
             try {
                 if (!currentGame || !currentGame.gameCode) { alert('No active game'); return; }
-                if (qpSelectedIds.size !== 25) { alert('Select exactly 25 questions.'); return; }
+                if (qpSelectedIds.size < 1) { alert('Select at least one question.'); return; }
                 const byId = new Map(qpAll.map(q=>[q.id,q]));
                 const selected = Array.from(qpSelectedIds).map(id => byId.get(id)).filter(Boolean);
                 socket.emit('loadQuestions', { gameCode: currentGame.gameCode, questions: selected });

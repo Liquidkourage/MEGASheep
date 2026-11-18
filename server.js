@@ -3,11 +3,22 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
-
+const dns = require('dns');
+try { dns.setDefaultResultOrder('ipv4first'); } catch (_) {}
 
 require('dotenv').config();
 
 const { createClient } = require('@supabase/supabase-js');
+const { loadQuestionsFromFile } = require('./loadQuestions');
+const {
+    postgresEnabled,
+    initPostgres,
+    fetchPostgresQuestions,
+    replacePostgresQuestions,
+    insertPostgresSnapshot,
+    loadLatestPostgresSnapshot,
+    listPostgresSnapshots
+} = require('./db');
 
 const fs = require('fs');
 // Prefer Node 18+ global fetch; fallback to dynamic import for older runtimes
@@ -143,14 +154,13 @@ app.use(cors());
 app.use(express.json());
 // Note: express.static moved after routes to allow custom routing
 
-// Supabase configuration
+// Supabase configuration — keep the client even if the first probe fails
 let supabase = null;
 let supabaseConfigured = false;
 
-if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && 
-    process.env.SUPABASE_URL !== 'your_supabase_url_here' && 
+if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY &&
+    process.env.SUPABASE_URL !== 'your_supabase_url_here' &&
     process.env.SUPABASE_ANON_KEY !== 'your_supabase_anon_key_here') {
-    
     try {
         supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY, {
             auth: {
@@ -163,41 +173,15 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY &&
                 }
             }
         });
-        
-        supabase.from('questions').select('count').limit(1)
-            .then(({ data, error }) => {
-                if (error && error.message.includes('relation "questions" does not exist')) {
-    logger.info('✅ Supabase configured successfully (table will be created when needed)');
-                    supabaseConfigured = true;
-                } else if (error) {
-                    logger.warn('⚠️  Supabase connection issue:', error.message);
-                    logger.warn('🔄 Falling back to demo mode');
-                    supabase = null;
-                    supabaseConfigured = false;
-                } else {
-                    logger.info('✅ Supabase configured and connected successfully');
-                    supabaseConfigured = true;
-                }
-            })
-            .catch(err => {
-                logger.warn('⚠️  Supabase connection failed:', err.message);
-                if (err.message.includes('fetch failed') || err.message.includes('network') || err.message.includes('ENOTFOUND')) {
-                    logger.warn('🌐 Network issue detected - this is common on public WiFi');
-                    logger.warn('🔄 Falling back to demo mode due to network restrictions');
-                } else {
-                    logger.warn('🔄 Falling back to demo mode');
-                }
-                supabase = null;
-                supabaseConfigured = false;
-            });
+        supabaseConfigured = true;
+        logger.info('🔑 Supabase keys present — will use the database when reachable');
     } catch (error) {
         logger.warn('⚠️  Supabase configuration error:', error.message);
-        logger.warn('🔄 Falling back to demo mode');
         supabase = null;
         supabaseConfigured = false;
     }
 } else {
-    logger.info('⚠️  Supabase not configured - running in demo mode with sample questions');
+    logger.info('⚠️  Supabase not configured — using the on-disk show bank, then demo questions');
 }
 
 // Supabase logging helpers (best-effort, never block game flow)
@@ -227,6 +211,93 @@ async function sbInsert(table, row) {
 
 function sbLogEvent(gameCode, type, data) {
   return sbInsert(SB_TABLES.events, { game_code: gameCode, type, data, at: sbNow() });
+}
+
+const QUESTIONS_FILE = path.join(__dirname, 'sample-questions.txt');
+const DEMO_QUESTIONS = [
+    { id: 1, prompt: "Name a food that starts with the letter 'P'", correct_answers: ["pizza", "pasta", "potato", "pear", "peach", "pineapple", "pancake", "popcorn"], round: 1, question_order: 1 },
+    { id: 2, prompt: "Name a movie that won an Oscar", correct_answers: ["titanic", "forrest gump", "the godfather", "schindler's list", "casablanca", "gone with the wind"], round: 1, question_order: 2 },
+    { id: 3, prompt: "Name a country in Europe", correct_answers: ["france", "germany", "italy", "spain", "england", "netherlands", "belgium", "switzerland"], round: 1, question_order: 3 },
+    { id: 4, prompt: "Name a famous scientist", correct_answers: ["einstein", "newton", "darwin", "curie", "tesla", "galileo", "hawking", "edison"], round: 2, question_order: 1 },
+    { id: 5, prompt: "Name a type of music genre", correct_answers: ["rock", "jazz", "pop", "classical", "hip hop", "country", "blues", "electronic"], round: 2, question_order: 2 }
+];
+
+function normalizeQuestions(list) {
+    return (Array.isArray(list) ? list : []).map((q, i) => ({
+        id: q.id != null ? q.id : i + 1,
+        prompt: q.prompt,
+        round: q.round || 1,
+        question_order: q.question_order || i + 1,
+        correct_answers: Array.isArray(q.correct_answers)
+            ? q.correct_answers.map(String)
+            : [q.correct_answers].filter(Boolean).map(String)
+    })).filter(q => q.prompt);
+}
+
+async function fetchDatabaseQuestions() {
+    const fromPg = await fetchPostgresQuestions();
+    if (fromPg.length) return fromPg;
+    if (!supabase || !supabaseConfigured) return [];
+    try {
+        const { data, error } = await supabase
+            .from('questions')
+            .select('*')
+            .order('round', { ascending: true })
+            .order('question_order', { ascending: true });
+        if (error) {
+            logger.warn('Supabase questions query failed:', error.message);
+            return [];
+        }
+        return normalizeQuestions(data);
+    } catch (e) {
+        logger.warn('Supabase questions fetch failed:', e.message);
+        return [];
+    }
+}
+
+async function seedPostgresFromFileBank() {
+    if (!postgresEnabled()) return;
+    const existing = await fetchPostgresQuestions();
+    if (existing.length) return;
+    const fromFile = await loadFileQuestionBank();
+    if (!fromFile.length) return;
+    await replacePostgresQuestions(fromFile);
+    liveQuestionBankCache = { at: 0, value: null };
+    logger.info(`🌱 Seeded Railway Postgres with ${fromFile.length} show questions`);
+}
+
+async function loadFileQuestionBank() {
+    try {
+        if (!fs.existsSync(QUESTIONS_FILE)) return [];
+        const parsed = await loadQuestionsFromFile(QUESTIONS_FILE);
+        return normalizeQuestions(parsed);
+    } catch (e) {
+        logger.warn('Failed to read show question bank:', e.message);
+        return [];
+    }
+}
+
+let liveQuestionBankCache = { at: 0, value: null };
+
+async function getQuestionBank(preferDemo = false) {
+    if (preferDemo) {
+        return { questions: DEMO_QUESTIONS, source: 'demo', count: DEMO_QUESTIONS.length };
+    }
+    if (liveQuestionBankCache.value && Date.now() - liveQuestionBankCache.at < 30000) {
+        return liveQuestionBankCache.value;
+    }
+    const fromDb = await fetchDatabaseQuestions();
+    let result;
+    if (fromDb.length) {
+        result = { questions: fromDb, source: 'database', count: fromDb.length };
+    } else {
+        const fromFile = await loadFileQuestionBank();
+        result = fromFile.length
+            ? { questions: fromFile, source: 'file', count: fromFile.length }
+            : { questions: DEMO_QUESTIONS, source: 'demo', count: DEMO_QUESTIONS.length };
+    }
+    liveQuestionBankCache = { at: Date.now(), value: result };
+    return result;
 }
 
 // Game state management
@@ -1300,8 +1371,18 @@ function normalizeText(text) {
 
 
 // Routes
-app.get('/health', (req, res) => {
-    res.status(200).json({ ok: true, uptime: process.uptime() });
+app.get('/health', async (req, res) => {
+    const bank = await getQuestionBank(false);
+    res.status(200).json({
+        ok: true,
+        uptime: process.uptime(),
+        questions: {
+            source: bank.source,
+            count: bank.count,
+            supabase: !!supabaseConfigured,
+            postgres: postgresEnabled()
+        }
+    });
 });
 
 app.get('/', (req, res) => {
@@ -1321,7 +1402,7 @@ app.get('/display', (req, res) => {
 });
 
 app.get('/grading', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'grading.html'));
+    res.redirect('/grading-single');
 });
 
 app.get('/grading-single', (req, res) => {
@@ -1329,8 +1410,7 @@ app.get('/grading-single', (req, res) => {
 });
 
 app.get('/game', (req, res) => {
-    console.log('🎯 /game route hit - serving game.html');
-    res.sendFile(path.join(__dirname, 'public', 'game.html'));
+    res.redirect('/');
 });
 
 // Static file middleware AFTER custom routes
@@ -1346,7 +1426,10 @@ app.get('/upload', (req, res) => {
 app.get('/api/snapshots/:gameCode', async (req, res) => {
   const gameCode = String(req.params.gameCode || '').trim();
   if (!gameCode) return res.json({ status: 'error', message: 'Missing game code' });
-  const results = { status: 'success', gameCode, supabase: [], disk: [] };
+  const results = { status: 'success', gameCode, supabase: [], postgres: [], disk: [] };
+  try {
+    results.postgres = await listPostgresSnapshots(gameCode);
+  } catch (_) {}
   try {
     if (supabase && supabaseConfigured) {
       const { data, error } = await supabase
@@ -1426,6 +1509,7 @@ async function persistSnapshot(game, phase) {
       snapshot: serializeGame(game)
     };
     sbInsert(SB_TABLES.snapshots, payload);
+    try { await insertPostgresSnapshot(payload); } catch (_) {}
     try { await writeSnapshotToDisk(payload); } catch(_) {}
   } catch (_) {}
 }
@@ -1447,7 +1531,10 @@ async function writeSnapshotToDisk(payload) {
 }
 
 async function loadLatestSnapshot(gameCode) {
-  // Prefer Supabase when configured
+  try {
+    const pgSnap = await loadLatestPostgresSnapshot(gameCode);
+    if (pgSnap) return pgSnap;
+  } catch (_) {}
   if (supabase && supabaseConfigured) {
     try {
       const { data, error } = await supabase
@@ -1528,6 +1615,7 @@ app.post('/api/create-game', (req, res) => {
     // Create new game
     const game = new Game(finalHostName, gameCode);
     activeGames.set(gameCode, game);
+    try { activeGameCodes.add(gameCode); } catch (_) {}
     try { persistSnapshot(game, 'game_created'); } catch (_) {}
     try { sbInsert(SB_TABLES.games, { game_code: gameCode, host_name: finalHostName, created_at: sbNow() }); } catch (_) {}
     
@@ -2146,6 +2234,27 @@ io.on('connection', (socket) => {
     });
 
     // Start game
+    socket.on('updateGameSettings', (data) => {
+        const gameCode = data && data.gameCode;
+        if (!gameCode || !canControlGame(gameCode)) return;
+        const game = activeGames.get(gameCode);
+        if (!game) return;
+        game.settings = game.settings || {};
+        if (data.questionSet) game.settings.questionSet = String(data.questionSet);
+        if (data.timerDuration != null) {
+            const n = Number(data.timerDuration);
+            if (Number.isFinite(n) && n >= 10) game.settings.timerDuration = n;
+        }
+        if (data.maxPlayers != null) {
+            const n = Number(data.maxPlayers);
+            if (Number.isFinite(n) && n >= 0) game.settings.maxPlayers = n;
+        }
+        if (data.questionsPerRound != null) {
+            const n = Number(data.questionsPerRound);
+            if (Number.isFinite(n) && n >= 1) game.settings.questionsPerRound = n;
+        }
+    });
+
     socket.on('startGame', async (data) => {
         // console.log('🎮 startGame event received from socket:', socket.id);
         
@@ -2194,84 +2303,14 @@ io.on('connection', (socket) => {
   
         try {
             let questions = [];
-
-            // Prefer any preloaded question set (e.g., from host Question Picker)
             if (Array.isArray(game.questions) && game.questions.length > 0) {
                 questions = game.questions;
                 console.log(`🗂️ Using preloaded question set for game ${gameCode}: ${questions.length} questions`);
-            } else if (supabase && supabaseConfigured) {
-                try {
-                    const { data: dbQuestions, error } = await supabase
-                        .from('questions')
-                        .select('*')
-                        .order('round', { ascending: true })
-                        .order('question_order', { ascending: true });
-
-                    if (error) throw error;
-                    if (!dbQuestions || dbQuestions.length === 0) {
-                        throw new Error('No questions found in database. Please upload sample questions first.');
-                    }
-                    
-            // Reduced verbose debug logging in production
-                    
-                    // Map database fields to expected format
-                    questions = dbQuestions.map(q => ({
-                        id: q.id,
-                        prompt: q.prompt,  // Database field is already called 'prompt'
-                        round: q.round,
-                        question_order: q.question_order,
-                        correct_answers: Array.isArray(q.correct_answers) ? q.correct_answers : [q.correct_answers].filter(Boolean)
-                    }));
-                    
-                    // Reduced verbose debug logging in production
-                } catch (dbError) {
-                    console.log('⚠️ Database query failed:', dbError.message);
-                    if (dbError.message.includes('fetch failed') || dbError.message.includes('network') || dbError.message.includes('ENOTFOUND')) {
-                        console.log('🌐 Network issue detected with database - falling back to demo questions');
-                    }
-                    // Fall back to demo questions
-                    console.log('📚 Falling back to demo questions due to database error');
-                    supabaseConfigured = false;
-                }
             } else {
-                // Demo questions
-                questions = [
-      { 
-        id: 1, 
-        prompt: "Name a food that starts with the letter 'P'", 
-        correct_answers: ["pizza", "pasta", "potato", "pear", "peach", "pineapple", "pancake", "popcorn"],
-        round: 1, 
-        question_order: 1 
-      },
-      { 
-        id: 2, 
-        prompt: "Name a movie that won an Oscar", 
-        correct_answers: ["titanic", "forrest gump", "the godfather", "schindler's list", "casablanca", "gone with the wind"],
-        round: 1, 
-        question_order: 2 
-      },
-      { 
-        id: 3, 
-        prompt: "Name a country in Europe", 
-        correct_answers: ["france", "germany", "italy", "spain", "england", "netherlands", "belgium", "switzerland"],
-        round: 1, 
-        question_order: 3 
-      },
-      { 
-        id: 4, 
-        prompt: "Name a famous scientist", 
-        correct_answers: ["einstein", "newton", "darwin", "curie", "tesla", "galileo", "hawking", "edison"],
-        round: 2, 
-        question_order: 1 
-      },
-      { 
-        id: 5, 
-        prompt: "Name a type of music genre", 
-        correct_answers: ["rock", "jazz", "pop", "classical", "hip hop", "country", "blues", "electronic"],
-        round: 2, 
-        question_order: 2 
-      }
-    ];
+                const preferDemo = game.settings && game.settings.questionSet === 'demo';
+                const bank = await getQuestionBank(preferDemo);
+                questions = bank.questions;
+                console.log(`📚 Using ${bank.source} question bank for game ${gameCode}: ${questions.length} questions`);
             }
             
             game.questions = questions;
@@ -3233,96 +3272,25 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Load questions into a game
     socket.on('loadQuestions', async (data) => {
-        if (!data) {
-            console.log('⚠️ loadQuestions event received with no data');
-            return;
-        }
-        
-        const { gameCode, questions, loadFromDatabase } = data;
-        
-        if (!gameCode) {
-            console.log('⚠️ loadQuestions event received with no gameCode');
-            return;
-        }
-        
-        console.log('📚 Socket request to load questions into game:', gameCode, 'loadFromDatabase:', loadFromDatabase);
-        
-        const game = activeGames.get(gameCode);
+        if (!data || !data.gameCode) return;
+        if (!canControlGame(data.gameCode)) return;
+        const game = activeGames.get(data.gameCode);
         if (!game) {
-            console.log(`❌ Game ${gameCode} not found for loading questions`);
-            socket.emit('error', { message: 'Game not found' });
+            socket.emit('gameError', { message: 'Game not found' });
             return;
         }
-        
-        let questionsToLoad = questions;
-        
-        // If loadFromDatabase flag is set, load from database
-        if (loadFromDatabase || !questionsToLoad || questionsToLoad.length === 0) {
-            console.log('📚 No questions provided, loading from database...');
-            try {
-                if (supabase && supabaseConfigured) {
-                    console.log('📚 Loading questions from Supabase database...');
-                    const { data: dbQuestions, error } = await supabase
-                        .from('questions')
-                        .select('*')
-                        .order('round', { ascending: true })
-                        .order('question_order', { ascending: true });
-
-                    if (error) {
-                        console.error('❌ Supabase error:', error);
-                        throw error;
-                    }
-
-                    if (dbQuestions && dbQuestions.length > 0) {
-                                        questionsToLoad = dbQuestions.map(q => ({
-                    id: q.id,
-                    prompt: q.prompt,  // Database field is already called 'prompt'
-                    round: q.round,
-                    question_order: q.question_order,
-                    correct_answers: Array.isArray(q.correct_answers) ? q.correct_answers : [q.correct_answers].filter(Boolean)
-                }));
-                        console.log(`✅ Loaded ${questionsToLoad.length} questions from database`);
-                    } else {
-                        console.log('📭 No questions found in database, using demo questions');
-                        questionsToLoad = [
-                            { id: 1, prompt: "Name an animal in the Chinese zodiac", correct_answers: ["rat", "ox", "tiger", "rabbit", "dragon", "snake", "horse", "goat", "monkey", "rooster", "dog", "pig"] },
-                            { id: 2, prompt: "Name a primary color", correct_answers: ["red", "blue", "yellow"] },
-                            { id: 3, prompt: "Name a planet in our solar system", correct_answers: ["mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune"] },
-                            { id: 4, prompt: "Name a day of the week", correct_answers: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] },
-                            { id: 5, prompt: "Name a season", correct_answers: ["spring", "summer", "fall", "autumn", "winter"] }
-                        ];
-                    }
-                } else {
-                    console.log('📭 Database not configured, using demo questions');
-                    questionsToLoad = [
-                        { id: 1, prompt: "Name an animal in the Chinese zodiac", correct_answers: ["rat", "ox", "tiger", "rabbit", "dragon", "snake", "horse", "goat", "monkey", "rooster", "dog", "pig"] },
-                        { id: 2, prompt: "Name a primary color", correct_answers: ["red", "blue", "yellow"] },
-                        { id: 3, prompt: "Name a planet in our solar system", correct_answers: ["mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune"] },
-                        { id: 4, prompt: "Name a day of the week", correct_answers: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] },
-                        { id: 5, prompt: "Name a season", correct_answers: ["spring", "summer", "fall", "autumn", "winter"] }
-                    ];
-                }
-            } catch (error) {
-                console.error('❌ Error loading questions from database:', error);
-                socket.emit('error', { message: 'Failed to load questions from database' });
-                return;
-            }
+        let questionsToLoad = Array.isArray(data.questions) ? normalizeQuestions(data.questions) : [];
+        if (data.loadFromDatabase || questionsToLoad.length === 0) {
+            const bank = await getQuestionBank(game.settings && game.settings.questionSet === 'demo');
+            questionsToLoad = bank.questions;
         }
-        
-        // Store questions in the game
         game.questions = questionsToLoad;
-        console.log(`✅ Loaded ${questionsToLoad.length} questions into game ${gameCode}`);
-        
-        // Notify all players in the game
-        io.to(gameCode).emit('questionsLoaded', {
-            gameCode: gameCode,
+        io.to(data.gameCode).emit('questionsLoaded', {
+            gameCode: data.gameCode,
             questionsCount: questionsToLoad.length,
             questions: questionsToLoad
         });
-        
-        console.log(`📤 Emitted questionsLoaded event for game ${gameCode}`);
     });
 
     // Player leave game handler for manual disconnect
@@ -3425,179 +3393,16 @@ function tryAutoAnswer(sock, state, gameCode) {
   } catch(_) {}
 }
 
-// API Endpoints
-app.post('/api/create-game', (req, res) => {
-    const { hostName } = req.body;
-    
-    // Use default host name if not provided
-    const finalHostName = hostName || 'Host';
-    
-    try {
-        const game = new Game(finalHostName);
-        activeGames.set(game.gameCode, game);
-        // Persist game created
-        sbInsert(SB_TABLES.games, { game_code: game.gameCode, host_name: finalHostName, created_at: sbNow() });
-        try { persistSnapshot(game, 'game_created'); } catch(_) {}
-        sbLogEvent(game.gameCode, 'game_created', { host: finalHostName });
-        
-        console.log(`🎮 Created new game: ${game.gameCode} by ${finalHostName}`);
-        
-        res.json({
-            status: 'success',
-            gameCode: game.gameCode,
-            hostName: finalHostName,
-            message: `Game created with code: ${game.gameCode}`
-        });
-    } catch (error) {
-        console.error('Error creating game:', error);
-        res.status(500).json({
-            status: 'error',
-            message: 'Failed to create game'
-        });
-    }
-});
-
-app.post('/api/join-game', (req, res) => {
-    const { gameCode, playerName } = req.body;
-    
-    if (!gameCode || !playerName || playerName.trim() === '') {
-        return res.status(400).json({ 
-            status: 'error', 
-            message: 'Game code and player name are required' 
-        });
-    }
-    
-    const game = activeGames.get(gameCode);
-    if (!game) {
-        return res.status(404).json({ 
-            status: 'error', 
-            message: 'Game not found. Please check the game code.' 
-        });
-    }
-    
-    // Use authoritative gameState instead of non-existent game.status
-    if (game.gameState !== 'waiting') {
-        return res.status(400).json({ 
-            status: 'error', 
-            message: 'Game has already started' });
-    }
-    
-    // Check if game is full
-    if (game.settings.maxPlayers > 0 && game.players.size >= game.settings.maxPlayers) {
-        return res.status(400).json({ status: 'error', message: 'Game is full' });
-    }
-    
-    // Check for duplicate names (only among connected players)
-    const existingPlayer = Array.from(game.players.values()).find(p => p.name === playerName);
-    if (existingPlayer) {
-        // Check if this player is still connected
-        const existingPlayerInfo = connectedPlayers.get(existingPlayer.id);
-        if (existingPlayerInfo && existingPlayerInfo.playerName === playerName) {
-            return res.status(400).json({ status: 'error', message: 'Player name already taken' });
-        }
-    }
-    
-    res.json({ 
-        status: 'success', 
-        message: 'Ready to join game',
-        // Include gameCode so clients can reliably emit join over sockets
-        gameCode: game.gameCode,
-        gameState: game.getGameState()
-    });
-});
-
-app.get('/api/game/:gameCode', (req, res) => {
-    const { gameCode } = req.params;
-    
-    const game = activeGames.get(gameCode);
-    if (!game) {
-        return res.status(404).json({ status: 'error', message: 'Game not found' });
-    }
-    
-    res.json({ 
-        status: 'success', 
-        gameState: game.getGameState()
-    });
-});
-
-// Static files are already served above
-
-// Load questions API endpoint
 app.get('/api/load-questions', async (req, res) => {
     try {
-        let questions = [];
-        
-        if (supabase && supabaseConfigured) {
-            console.log('📚 Loading questions from Supabase database...');
-            const { data: dbQuestions, error } = await supabase
-                .from('questions')
-                .select('*')
-                .order('round', { ascending: true })
-                .order('question_order', { ascending: true });
-
-            if (error) {
-                console.error('❌ Database error:', error);
-                throw error;
-            }
-            
-            if (!dbQuestions || dbQuestions.length === 0) {
-                console.log('⚠️ No questions found in database, using demo questions');
-                // Fall through to demo questions
-            } else {
-                questions = dbQuestions;
-                console.log(`✅ Loaded ${questions.length} questions from database`);
-            }
-        }
-        
-        // If no database questions, use demo questions
-        if (questions.length === 0) {
-            console.log('📚 Using demo questions...');
-            questions = [
-                { 
-                    id: 1, 
-                    prompt: "Name a food that starts with the letter 'P'", 
-                    correct_answers: ["pizza", "pasta", "potato", "pear", "peach", "pineapple", "pancake", "popcorn"],
-                    round: 1, 
-                    question_order: 1 
-                },
-                { 
-                    id: 2, 
-                    prompt: "Name a movie that won an Oscar", 
-                    correct_answers: ["titanic", "forrest gump", "the godfather", "schindler's list", "casablanca", "gone with the wind"],
-                    round: 1, 
-                    question_order: 2 
-                },
-                { 
-                    id: 3, 
-                    prompt: "Name a country in Europe", 
-                    correct_answers: ["france", "germany", "italy", "spain", "england", "netherlands", "belgium", "switzerland"],
-                    round: 1, 
-                    question_order: 3 
-                },
-                { 
-                    id: 4, 
-                    prompt: "Name a famous scientist", 
-                    correct_answers: ["einstein", "newton", "darwin", "curie", "tesla", "galileo", "hawking", "edison"],
-                    round: 2, 
-                    question_order: 1 
-                },
-                { 
-                    id: 5, 
-                    prompt: "Name a type of music genre", 
-                    correct_answers: ["rock", "jazz", "pop", "classical", "hip hop", "country", "blues", "electronic"],
-                    round: 2, 
-                    question_order: 2 
-                }
-            ];
-        }
-        
+        const preferDemo = String(req.query.source || '') === 'demo';
+        const bank = await getQuestionBank(preferDemo);
         res.json({
             status: 'success',
-            questions: questions,
-            count: questions.length,
-            source: supabase && supabaseConfigured && questions.length > 0 ? 'database' : 'demo'
+            questions: bank.questions,
+            count: bank.count,
+            source: bank.source
         });
-        
     } catch (error) {
         console.error('❌ Error loading questions:', error);
         res.status(500).json({
@@ -3616,4 +3421,10 @@ const HOST = process.env.HOST || '0.0.0.0';
 server.listen(PORT, HOST, () => {
     console.log(`🚀 MEGASheep listening on ${HOST}:${PORT}`);
     console.log(`🌐 Local: http://localhost:${PORT}`);
+    initPostgres()
+        .then(() => seedPostgresFromFileBank())
+        .then(() => {
+            if (postgresEnabled()) console.log('🗄️  Railway Postgres ready');
+        })
+        .catch((e) => console.warn('⚠️  Postgres init skipped:', e.message));
 }); 
