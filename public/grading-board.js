@@ -1567,11 +1567,41 @@
             return moved;
         }
 
+        function gradeListBucket(name) {
+            const root = document.getElementById('gradingInterface');
+            if (!root || !name) return null;
+            return root.querySelector(`.answer-bucket[data-grade-list="${name}"]`);
+        }
+
+        function showGradeList(name) {
+            const root = document.getElementById('gradingInterface');
+            if (!root || !name) return;
+            root.querySelectorAll('.grade-list-tab').forEach((tab) => {
+                const on = tab.dataset.gradeList === name;
+                tab.classList.toggle('is-active', on);
+                tab.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            root.querySelectorAll('.grade-list-panels .answer-bucket').forEach((bucket) => {
+                bucket.classList.toggle('is-active-list', bucket.dataset.gradeList === name);
+            });
+        }
+
         function bindInboxClicks() {
             const root = document.getElementById('gradingInterface');
             if (!root || root.dataset.inboxClicks === '1') return;
             root.dataset.inboxClicks = '1';
             root.addEventListener('click', (e) => {
+                const tab = e.target.closest('.grade-list-tab');
+                if (tab) {
+                    e.preventDefault();
+                    const name = tab.dataset.gradeList;
+                    const bucket = gradeListBucket(name);
+                    if (selectedGradeChip && bucket && !selectedGradeChip.closest(`[data-grade-list="${name}"]`)) {
+                        moveChipToBucket(selectedGradeChip, bucket);
+                    }
+                    showGradeList(name);
+                    return;
+                }
                 if (e.target.closest('button, input, select, textarea, a')) return;
                 const chip = e.target.closest('.answer-item');
                 const bucket = e.target.closest('.answer-bucket');
@@ -1583,6 +1613,27 @@
                 if (bucket && selectedGradeChip) {
                     e.preventDefault();
                     moveChipToBucket(selectedGradeChip, bucket);
+                }
+            });
+            root.addEventListener('dragover', (e) => {
+                const tab = e.target.closest('.grade-list-tab');
+                if (!tab) return;
+                e.preventDefault();
+                tab.classList.add('is-drop-ready');
+            });
+            root.addEventListener('dragleave', (e) => {
+                const tab = e.target.closest('.grade-list-tab');
+                if (tab) tab.classList.remove('is-drop-ready');
+            });
+            root.addEventListener('drop', (e) => {
+                const tab = e.target.closest('.grade-list-tab');
+                if (!tab) return;
+                e.preventDefault();
+                tab.classList.remove('is-drop-ready');
+                const bucket = gradeListBucket(tab.dataset.gradeList);
+                if (draggedElement && bucket) {
+                    moveChipToBucket(draggedElement, bucket);
+                    showGradeList(tab.dataset.gradeList);
                 }
             });
             root.addEventListener('contextmenu', (e) => {
@@ -1967,6 +2018,10 @@
             // Update uncategorized answers count
             const uncategorizedAnswersCount = document.querySelectorAll('#uncategorizedAnswers .answer-item').length;
             document.getElementById('uncategorizedAnswersCount').textContent = uncategorizedAnswersCount;
+            const sendBackCountEl = document.getElementById('sendBackAnswersCount');
+            if (sendBackCountEl) {
+                sendBackCountEl.textContent = document.querySelectorAll('#sendBackAnswers .answer-item').length;
+            }
             
             // Update correct answer bucket counts by unique players across all items
             document.querySelectorAll('#correctAnswers .answer-bucket').forEach(bucket => {

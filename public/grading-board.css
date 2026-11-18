@@ -729,22 +729,72 @@
     overflow: hidden;
 }
 
-.grading-board.is-inbox .grade-inbox .uncategorized-bucket {
-    flex: 1;
+.grading-board.is-inbox .grade-list-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    flex: 0 0 auto;
+    margin-bottom: 8px;
+}
+
+.grading-board.is-inbox .grade-list-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.04);
+    color: #d7dee8;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.grading-board.is-inbox .grade-list-tab.is-active {
+    background: rgba(255, 193, 7, 0.16);
+    border-color: rgba(255, 193, 7, 0.55);
+    color: #fff;
+}
+
+.grading-board.is-inbox .grade-list-tab[data-grade-list="wrong"].is-active {
+    background: rgba(231, 76, 60, 0.18);
+    border-color: rgba(231, 76, 60, 0.55);
+}
+
+.grading-board.is-inbox .grade-list-tab[data-grade-list="sendback"].is-active {
+    background: rgba(155, 89, 182, 0.18);
+    border-color: rgba(155, 89, 182, 0.55);
+}
+
+.grading-board.is-inbox .grade-list-tab.is-drop-ready {
+    box-shadow: 0 0 0 2px #ffc107;
+}
+
+.grading-board.is-inbox .grade-list-panels {
+    flex: 1 1 auto;
     min-height: 0;
-    min-width: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    justify-content: flex-start;
-    padding: 8px;
 }
 
-.grading-board.is-inbox .grade-inbox .uncategorized-bucket h4 {
+.grading-board.is-inbox .grade-list-panels .answer-bucket {
+    display: none !important;
+    min-height: 0 !important;
     height: auto;
-    min-height: 32px;
-    margin-bottom: 6px;
-    font-size: 14px;
+    padding: 8px;
+    overflow: hidden;
+    justify-content: flex-start;
+}
+
+.grading-board.is-inbox .grade-list-panels .answer-bucket.is-active-list {
+    display: flex !important;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0 !important;
 }
 
 .grading-board.is-inbox .grade-inbox .answer-items {
@@ -866,36 +916,6 @@
     border: 2px dashed rgba(39, 174, 96, 0.5) !important;
 }
 
-.grading-board.is-inbox .grade-targets-docks {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    margin-top: 6px;
-    flex: 0 0 auto;
-}
-
-.grading-board.is-inbox .wrong-bucket,
-.grading-board.is-inbox .sendback-bucket {
-    min-height: 0;
-    overflow: hidden;
-    justify-content: flex-start;
-    padding: 6px 8px;
-}
-
-.grading-board.is-inbox .wrong-bucket h4,
-.grading-board.is-inbox .sendback-bucket h4 {
-    height: auto;
-    min-height: 28px;
-    margin-bottom: 4px;
-    font-size: 13px;
-}
-
-.grading-board.is-inbox .wrong-bucket .answer-items,
-.grading-board.is-inbox .sendback-bucket .answer-items {
-    min-height: 44px !important;
-    max-height: 88px !important;
-}
-
 .grading-board .answer-item.is-selected {
     outline: 2px solid #ffc107;
     box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.25);
@@ -914,7 +934,6 @@
 
     .grading-board.is-inbox .grade-command-strip,
     .grading-board.is-inbox .grade-inbox-layout,
-    .grading-board.is-inbox .grade-targets-docks,
     .grading-board.is-inbox #correctAnswers {
         grid-template-columns: 1fr;
     }
