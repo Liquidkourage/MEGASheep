@@ -482,13 +482,7 @@
 
 
 .grading-board .wrong-uncategorized-grid {
-    grid-template-columns: 1fr;
-}
-
-@media (min-width: 900px) {
-    .grading-board .wrong-uncategorized-grid {
-        grid-template-columns: 1fr 1fr 1fr;
-    }
+    grid-template-columns: 1fr 1fr 1fr;
 }
 
 .host-grade-mount .grading-interface {
@@ -559,7 +553,7 @@
 }
 
 .host-grade-mount .control-btn {
-    min-height: 44px;
+    min-height: 32px;
 }
 
 .host-grade-mount .sendback-bucket {
@@ -597,8 +591,8 @@
     overflow: visible !important;
     height: auto !important;
     max-height: none !important;
-    min-height: 44px;
-    padding: 10px 12px !important;
+    min-height: 32px;
+    padding: 8px 10px !important;
     background: rgba(8, 12, 22, 0.92) !important;
     border: 1px solid rgba(255, 255, 255, 0.28) !important;
     border-radius: 8px !important;
@@ -634,29 +628,8 @@
 }
 
 .grading-board .grading-header-controls {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 10px;
-}
-
-@media (max-width: 430px) {
-    .host-grade-mount .grading-header-controls,
-    .host-grade-mount .grading-controls-top {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .host-grade-mount .control-btn {
-        width: 100%;
-    }
-
-    .host-grade-mount .grading-interface {
-        padding: 10px;
-    }
-
-    .host-grade-mount .correct-answers-section h4,
-    .host-grade-mount .wrong-uncategorized-section h4 {
-        font-size: 1em;
-    }
 }
 
 .grading-board.is-inbox {
@@ -692,7 +665,7 @@
 
 .grade-strip-question {
     color: #fff;
-    font-size: clamp(0.95em, 1.4vw, 1.15em);
+    font-size: 1.05em;
     font-weight: 800;
     line-height: 1.25;
     margin: 0 0 2px;
@@ -707,14 +680,14 @@
 
 .grade-strip-actions {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 6px;
     justify-content: flex-end;
 }
 
 .grade-strip-actions .control-btn {
-    min-height: 44px;
-    padding: 8px 12px;
+    min-height: 32px;
+    padding: 6px 12px;
     font-size: 13px;
 }
 
@@ -749,8 +722,8 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    min-height: 44px;
-    padding: 8px 10px;
+    min-height: 32px;
+    padding: 6px 10px;
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.16);
     background: rgba(255, 255, 255, 0.04);
@@ -815,7 +788,7 @@
 .grading-board.is-inbox .grade-inbox .answer-item {
     padding: 6px 10px !important;
     overflow: hidden !important;
-    min-height: 44px;
+    min-height: 32px;
 }
 
 .grading-board.is-inbox .grade-inbox .answer-item .answer-text {
@@ -849,7 +822,7 @@
 .grading-board.is-inbox #correctAnswers {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-    grid-auto-rows: minmax(44px, auto);
+    grid-auto-rows: minmax(32px, auto);
     align-content: start;
     gap: 4px;
     flex: 1 1 auto;
@@ -861,7 +834,7 @@
 }
 
 .grading-board.is-inbox .correct-bucket {
-    min-height: 44px !important;
+    min-height: 32px !important;
     height: auto;
     padding: 0 !important;
     margin: 0;
@@ -875,8 +848,8 @@
 }
 
 .grading-board.is-inbox .correct-bucket h4 {
-    min-height: 44px;
-    height: 44px;
+    min-height: 32px;
+    height: 32px;
     margin: 0;
     padding: 0 10px;
     justify-content: flex-start;
@@ -910,7 +883,7 @@
 
 .grading-board.is-inbox .correct-bucket.is-open {
     grid-column: 1 / -1;
-    min-height: 44px !important;
+    min-height: 32px !important;
 }
 
 .grading-board.is-inbox .correct-bucket.is-open .answer-items {
@@ -932,33 +905,3 @@
     box-shadow: 0 0 0 2px #ffc107;
 }
 
-@media (max-width: 899px) {
-    .host-grade-mount .grading-interface.is-inbox,
-    .host-grade-mount .grading-interface.is-inbox[style*="display: block"] {
-        max-height: none !important;
-        overflow: visible !important;
-    }
-
-    .grading-board.is-inbox .grade-command-strip,
-    .grading-board.is-inbox .grade-inbox-layout,
-    .grading-board.is-inbox #correctAnswers {
-        grid-template-columns: 1fr;
-    }
-
-    .grading-board.is-inbox .grade-inbox-layout,
-    .grading-board.is-inbox .grade-inbox,
-    .grading-board.is-inbox .grade-targets {
-        height: auto;
-        overflow: visible;
-    }
-
-    .grading-board.is-inbox .grade-inbox .answer-items {
-        min-height: 160px !important;
-        max-height: min(42vh, 320px) !important;
-    }
-
-    .grading-board.is-inbox #correctAnswers {
-        max-height: min(38vh, 280px);
-        overflow-y: auto;
-    }
-}
