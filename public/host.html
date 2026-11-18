@@ -768,17 +768,47 @@
         }
 
         #panelResults .answer-group.is-unique {
-            border: 1px solid rgba(192, 132, 252, 0.7);
-            background: rgba(192, 132, 252, 0.16);
+            border: 2px solid #f5c542;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.28), rgba(184, 134, 11, 0.18));
+            box-shadow: inset 0 0 0 1px rgba(255, 236, 153, 0.25);
+        }
+
+        #panelResults .answer-group.is-one-match {
+            border: 2px solid #c5cdd6;
+            background: linear-gradient(135deg, rgba(226, 232, 240, 0.24), rgba(148, 163, 184, 0.16));
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+        }
+
+        #panelResults .answer-group.is-two-match {
+            border: 2px solid #cd7f32;
+            background: linear-gradient(135deg, rgba(205, 127, 50, 0.32), rgba(139, 69, 19, 0.2));
+            box-shadow: inset 0 0 0 1px rgba(244, 196, 140, 0.22);
         }
 
         #panelResults .answer-group.is-not-given {
-            border: 1px solid rgba(255, 193, 7, 0.75);
-            background: rgba(255, 193, 7, 0.16);
+            border: 3px solid transparent;
+            background-image:
+                linear-gradient(135deg,
+                    rgba(255, 59, 59, 0.2),
+                    rgba(255, 193, 7, 0.16),
+                    rgba(40, 167, 69, 0.16),
+                    rgba(0, 188, 212, 0.16),
+                    rgba(124, 77, 255, 0.2),
+                    rgba(233, 30, 99, 0.18)),
+                linear-gradient(90deg, #ff3b3b, #ffc107, #28a745, #00bcd4, #7c4dff, #e91e63, #ff3b3b);
+            background-origin: padding-box, border-box;
+            background-clip: padding-box, border-box;
+            background-size: 100% 100%, 240% 100%;
+            animation: results-rainbow 3.2s linear infinite;
+            box-shadow: 0 0 10px rgba(124, 77, 255, 0.28);
         }
 
-        #panelResults .unique-badge,
-        #panelResults .not-given-badge {
+        @keyframes results-rainbow {
+            0% { background-position: 0 0, 0% 50%; }
+            100% { background-position: 0 0, 100% 50%; }
+        }
+
+        #panelResults .rarity-badge {
             display: inline-block;
             margin-left: 6px;
             padding: 1px 6px;
@@ -791,15 +821,42 @@
         }
 
         #panelResults .unique-badge {
-            background: rgba(192, 132, 252, 0.28);
-            border: 1px solid rgba(192, 132, 252, 0.55);
-            color: #e9d5ff;
+            background: rgba(255, 215, 0, 0.28);
+            border: 1px solid rgba(245, 197, 66, 0.85);
+            color: #ffe58a;
+        }
+
+        #panelResults .one-match-badge {
+            background: rgba(226, 232, 240, 0.28);
+            border: 1px solid rgba(197, 205, 214, 0.85);
+            color: #e8eef5;
+        }
+
+        #panelResults .two-match-badge {
+            background: rgba(205, 127, 50, 0.32);
+            border: 1px solid rgba(205, 127, 50, 0.85);
+            color: #f4c48c;
         }
 
         #panelResults .not-given-badge {
-            background: rgba(255, 193, 7, 0.28);
-            border: 1px solid rgba(255, 193, 7, 0.6);
-            color: #ffe08a;
+            border: none;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+            background-image: linear-gradient(90deg, #ff3b3b, #ffc107, #28a745, #00bcd4, #7c4dff, #e91e63, #ff3b3b);
+            background-size: 240% 100%;
+            animation: results-rainbow-badge 2.4s linear infinite;
+        }
+
+        @keyframes results-rainbow-badge {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #panelResults .answer-group.is-not-given,
+            #panelResults .not-given-badge {
+                animation: none;
+            }
         }
 
         /* History modal layout fixes: keep answer text horizontal and allow natural wrapping */
@@ -2383,24 +2440,30 @@
         }
 
         function createResultCard(answer, players, points, options = {}) {
+            const rarity = options.notGiven ? 'not-given' : (options.rarity || null);
+            const rarityClass = {
+                'not-given': 'is-not-given',
+                unique: 'is-unique',
+                'one-match': 'is-one-match',
+                'two-match': 'is-two-match'
+            }[rarity];
+            const badgeSpec = {
+                'not-given': { className: 'rarity-badge not-given-badge', text: 'Not given' },
+                unique: { className: 'rarity-badge unique-badge', text: 'Unique' },
+                'one-match': { className: 'rarity-badge one-match-badge', text: '1 match' },
+                'two-match': { className: 'rarity-badge two-match-badge', text: '2 matches' }
+            }[rarity];
+
             const answerGroup = document.createElement('div');
-            const flags = [];
-            if (options.notGiven) flags.push('is-not-given');
-            else if (options.unique) flags.push('is-unique');
-            answerGroup.className = 'answer-group' + (flags.length ? ' ' + flags.join(' ') : '');
+            answerGroup.className = 'answer-group' + (rarityClass ? ' ' + rarityClass : '');
 
             const answerText = document.createElement('div');
             answerText.className = 'answer-text';
             answerText.textContent = `"${answer || ''}"`;
-            if (options.notGiven) {
+            if (badgeSpec) {
                 const badge = document.createElement('span');
-                badge.className = 'not-given-badge';
-                badge.textContent = 'Not given';
-                answerText.appendChild(badge);
-            } else if (options.unique) {
-                const badge = document.createElement('span');
-                badge.className = 'unique-badge';
-                badge.textContent = 'Unique';
+                badge.className = badgeSpec.className;
+                badge.textContent = badgeSpec.text;
                 answerText.appendChild(badge);
             }
 
@@ -2432,8 +2495,14 @@
             answers.forEach((answer) => {
                 const count = Number(answer.count) || (Array.isArray(answer.players) ? answer.players.length : 0);
                 const notGiven = !!answer.notGiven;
+                let rarity = null;
+                if (options.highlightUnique && !notGiven) {
+                    if (count === 1) rarity = 'unique';
+                    else if (count === 2) rarity = 'one-match';
+                    else if (count === 3) rarity = 'two-match';
+                }
                 section.appendChild(createResultCard(answer.answer, answer.players, answer.points, {
-                    unique: !!(options.highlightUnique && !notGiven && count === 1),
+                    rarity,
                     notGiven
                 }));
             });
