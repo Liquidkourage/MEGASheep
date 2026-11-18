@@ -840,7 +840,7 @@
             bucket.innerHTML = `
                 <h4 onclick="toggleBucket(this)">
                     <span class="bucket-toggle collapsed">▶</span>
-                    ✅ ${correctAnswer} <span class="answer-count-badge">${playerCount}</span>
+                    ${correctAnswer} <span class="answer-count-badge">${playerCount}</span>
                 </h4>
                 <div class="answer-items collapsed" data-bucket="${correctAnswer.toLowerCase().replace(/\s+/g, '-')}">
                     ${playerCount > 0 ? 
@@ -1039,7 +1039,7 @@
                 bucketDiv.innerHTML = `
                     <h4 onclick="toggleBucket(this)">
                         <span class="bucket-toggle collapsed">▶</span>
-                        ✅ ${bucket.name}
+                        ${bucket.name}
                         <span class="answer-count-badge">${totalPlayerCount}</span>
                     </h4>
                     <div class="answer-items collapsed" data-bucket="${bucket.id}">
@@ -1115,14 +1115,14 @@
                     const bucketId = `bucket-${name.toLowerCase().replace(/\s+/g, '-')}`;
                     if (existingIds.has(bucketId)) return;
                     const bucketDiv = document.createElement('div');
-                    bucketDiv.className = 'answer-bucket correct-bucket';
+                    bucketDiv.className = 'answer-bucket correct-bucket empty';
                     bucketDiv.id = bucketId;
                     bucketDiv.innerHTML = `
                         <h4 onclick="toggleBucket(this)">
-                            <span class="bucket-toggle">▼</span>
-                            ✅ ${name} <span class="answer-count-badge">0</span>
+                            <span class="bucket-toggle collapsed">▶</span>
+                            ${name} <span class="answer-count-badge">0</span>
                         </h4>
-                        <div class="answer-items" data-bucket="correct_${name.toLowerCase().replace(/\s+/g, '_')}"></div>
+                        <div class="answer-items collapsed" data-bucket="correct_${name.toLowerCase().replace(/\s+/g, '_')}"></div>
                     `;
                     correctAnswersRoot.appendChild(bucketDiv);
                 });
@@ -1461,88 +1461,117 @@
 
         function handleDropOnBucket(e) {
             e.preventDefault();
-            console.log('🎯 Drop on bucket event:', e.target);
             const bucket = e.target.closest('.answer-bucket');
-            const dropZone = bucket.querySelector('.answer-items');
-            console.log('🎯 Bucket drop zone found:', dropZone);
-            console.log('🎯 Dragged element:', draggedElement);
-            console.log('🎯 Dragged element data-answer-text:', draggedElement?.dataset.answerText);
-            
-            // Remove drag-over class from any elements
             document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-            
-            if (draggedElement && dropZone) {
-                console.log('🎯 Moving element to bucket drop zone');
-                
-                // Get bucket name for consolidation
-                const bucketName = bucket.querySelector('h4')?.textContent?.replace(/[▼▶]\s*/, '').trim() || 'Unknown';
-                const draggedAnswer = draggedElement.dataset.answerText;
-                
-                console.log(`🎯 Consolidating "${draggedAnswer}" into "${bucketName}" bucket`);
-                
-                // Add the dragged element first
-                dropZone.appendChild(draggedElement);
-                
-                // Update confidence display for moved element
-                updateConfidenceForMovedElement(draggedElement, dropZone);
-                
-                // Consolidate all answers in this bucket
-                consolidateBucketAnswers(dropZone, bucketName);
-                mergeIdenticalAnswerChipsIn(dropZone);
+            if (draggedElement && bucket) moveChipToBucket(draggedElement, bucket);
+        }
 
-                // If this is the Send Back bucket, request edits from players
-                if (bucketName === '✏️ Send Back (Refine)') {
-                    try {
-                        let names = (draggedElement.dataset.playerNames || '').split(',').map(n => n.trim()).filter(Boolean);
-                        const reason = prompt('Reason to send back (optional):', 'Please be more specific');
-                        // Fallback: if no names were embedded on the chip, derive from current answer groups by text
-                        if (!names || names.length === 0) {
-                            try {
-                                const draggedText = draggedElement?.dataset?.answerText || '';
-                                const group = (currentGame?.currentAnswerGroups || []).find(g => (g.answer || '').toLowerCase().trim() === draggedText.toLowerCase().trim());
-                                if (group && Array.isArray(group.players) && group.players.length > 0) {
-                                    names = group.players.slice();
-                                }
-                            } catch (_) {}
-                        }
-                        // Locally remove these players from the corresponding answer group to prevent reappearance
-                        try {
-                            const draggedText = (draggedElement?.dataset?.answerText || '').toLowerCase().trim();
-                            if (currentGame && Array.isArray(currentGame.currentAnswerGroups)) {
-                                currentGame.currentAnswerGroups = currentGame.currentAnswerGroups.map(g => {
-                                    if ((g.answer || '').toLowerCase().trim() !== draggedText) return g;
-                                    const remaining = (g.players || []).filter(p => !names.includes(p));
-                                    return { ...g, players: remaining, count: remaining.length };
-                                }).filter(g => Array.isArray(g.players) ? g.players.length > 0 : (g.count || 0) > 0);
-                            }
-                        } catch (_) {}
-                        if (!names || names.length === 0) {
-                            console.warn('✏️ Could not resolve player names for send-back; no event emitted');
-                            return;
-                        }
-                        console.log('✏️ Sending back for refinement:', { names, reason, gameCode: currentGame?.gameCode });
-                        names.forEach(name => {
-                            // Try to resolve socketId if helper exists; otherwise rely on server name resolution
-                            let socketId;
-                            try {
-                                if (typeof getSocketIdByPlayerName === 'function') {
-                                    socketId = getSocketIdByPlayerName(name);
-                                }
-                            } catch (_) {}
-                            console.log('✏️ Emitting hostRequestEdit', { gameCode: currentGame?.gameCode, playerSocketId: socketId, playerName: name, reason });
-                            socket.emit('hostRequestEdit', { gameCode: currentGame.gameCode, playerSocketId: socketId || undefined, playerName: name, reason });
-                        });
-                    } catch (err) { console.warn('Failed to send back request', err); }
+        let selectedGradeChip = null;
+
+        function selectGradeChip(chip) {
+            document.querySelectorAll('.answer-item.is-selected').forEach((el) => el.classList.remove('is-selected'));
+            document.querySelectorAll('.answer-bucket.is-drop-ready').forEach((el) => el.classList.remove('is-drop-ready'));
+            selectedGradeChip = chip || null;
+            if (!chip) return;
+            chip.classList.add('is-selected');
+            document.querySelectorAll('.grading-board .answer-bucket').forEach((bucket) => {
+                if (!chip.closest('.answer-bucket') || bucket !== chip.closest('.answer-bucket')) {
+                    bucket.classList.add('is-drop-ready');
                 }
-                
-                updateCountBadges();
-                
-                // Auto-save after drop
-                console.log('🎯 Triggering auto-save after drop');
-                autoSave();
-            } else {
-                console.log('🎯 Bucket drop failed:', { draggedElement: !!draggedElement, dropZone: !!dropZone });
+            });
+        }
+
+        function isSendBackBucket(bucket) {
+            if (!bucket) return false;
+            const zone = bucket.querySelector('.answer-items');
+            return bucket.classList.contains('sendback-bucket') || (zone && zone.dataset.bucket === 'sendBack');
+        }
+
+        function requestSendBackForChip(chip) {
+            try {
+                let names = (chip.dataset.playerNames || '').split(',').map((n) => n.trim()).filter(Boolean);
+                const reason = prompt('Reason to send back (optional):', 'Please be more specific');
+                if (!names.length) {
+                    const draggedText = chip?.dataset?.answerText || '';
+                    const group = (currentGame?.currentAnswerGroups || []).find((g) => (g.answer || '').toLowerCase().trim() === draggedText.toLowerCase().trim());
+                    if (group && Array.isArray(group.players) && group.players.length > 0) names = group.players.slice();
+                }
+                try {
+                    const draggedText = (chip?.dataset?.answerText || '').toLowerCase().trim();
+                    if (currentGame && Array.isArray(currentGame.currentAnswerGroups)) {
+                        currentGame.currentAnswerGroups = currentGame.currentAnswerGroups.map((g) => {
+                            if ((g.answer || '').toLowerCase().trim() !== draggedText) return g;
+                            const remaining = (g.players || []).filter((p) => !names.includes(p));
+                            return { ...g, players: remaining, count: remaining.length };
+                        }).filter((g) => Array.isArray(g.players) ? g.players.length > 0 : (g.count || 0) > 0);
+                    }
+                } catch (_) {}
+                if (!names.length || !currentGame?.gameCode) return;
+                names.forEach((name) => {
+                    socket.emit('hostRequestEdit', { gameCode: currentGame.gameCode, playerName: name, reason });
+                });
+            } catch (err) {
+                console.warn('Failed to send back request', err);
             }
+        }
+
+        function moveChipToBucket(chip, bucket) {
+            if (!chip || !bucket) return false;
+            const dropZone = bucket.querySelector('.answer-items');
+            if (!dropZone) return false;
+            if (chip.parentElement === dropZone) {
+                selectGradeChip(null);
+                return false;
+            }
+            dropZone.classList.remove('collapsed');
+            const toggle = bucket.querySelector('.bucket-toggle');
+            if (toggle) toggle.classList.remove('collapsed');
+            dropZone.appendChild(chip);
+            try { updateConfidenceForMovedElement(chip, dropZone); } catch (_) {}
+            try { mergeIdenticalAnswerChipsIn(dropZone); } catch (_) {}
+            if (isSendBackBucket(bucket)) requestSendBackForChip(chip);
+            updateCountBadges();
+            try { autoSave(); } catch (_) {}
+            selectGradeChip(null);
+            return true;
+        }
+
+        function bindInboxClicks() {
+            const root = document.getElementById('gradingInterface');
+            if (!root || root.dataset.inboxClicks === '1') return;
+            root.dataset.inboxClicks = '1';
+            root.addEventListener('click', (e) => {
+                if (e.target.closest('button, input, select, textarea, a')) return;
+                const chip = e.target.closest('.answer-item');
+                const bucket = e.target.closest('.answer-bucket');
+                if (chip) {
+                    e.preventDefault();
+                    selectGradeChip(chip);
+                    return;
+                }
+                if (bucket && selectedGradeChip) {
+                    e.preventDefault();
+                    moveChipToBucket(selectedGradeChip, bucket);
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (!selectedGradeChip) return;
+                if (e.target && e.target.closest && e.target.closest('input, textarea, select')) return;
+                if (e.key === 'Escape') {
+                    selectGradeChip(null);
+                    return;
+                }
+                if (e.key === '1') {
+                    acceptUncategorizedGuess(selectedGradeChip);
+                    selectGradeChip(null);
+                } else if (e.key === '2') {
+                    const wrong = document.querySelector('.wrong-bucket');
+                    if (wrong) moveChipToBucket(selectedGradeChip, wrong);
+                } else if (e.key === '3') {
+                    const sendBack = document.querySelector('.sendback-bucket');
+                    if (sendBack) moveChipToBucket(selectedGradeChip, sendBack);
+                }
+            });
         }
 
         function consolidateBucketAnswers(dropZone, bucketName) {
@@ -1904,20 +1933,25 @@
             // Update correct answer bucket counts by unique players across all items
             document.querySelectorAll('#correctAnswers .answer-bucket').forEach(bucket => {
                 const countBadge = bucket.querySelector('.answer-count-badge');
-                if (countBadge) {
-                    // Calculate total unique player count for this bucket
-                    const uniquePlayers = new Set();
-                    const playerEls = bucket.querySelectorAll('.answer-players');
-                    playerEls.forEach(el => {
-                        const names = (el.textContent || '').split(',').map(s=>s.trim()).filter(Boolean);
-                        names.forEach(n => uniquePlayers.add(n));
-                    });
-                    countBadge.textContent = uniquePlayers.size;
-                }
+                const uniquePlayers = new Set();
+                const playerEls = bucket.querySelectorAll('.answer-players');
+                playerEls.forEach(el => {
+                    const names = (el.textContent || '').split(',').map(s=>s.trim()).filter(Boolean);
+                    names.forEach(n => uniquePlayers.add(n));
+                });
+                const chipCount = bucket.querySelectorAll('.answer-item').length;
+                if (countBadge) countBadge.textContent = uniquePlayers.size || chipCount;
+                bucket.classList.toggle('empty', chipCount === 0);
             });
+            try {
+                if (typeof window.updateGradeCommandStrip === 'function') {
+                    window.updateGradeCommandStrip();
+                }
+            } catch (_) {}
         }
 
         function toggleBucket(headerElement) {
+            if (selectedGradeChip) return;
             const bucket = headerElement.parentElement;
             const answerItems = bucket.querySelector('.answer-items');
             const toggle = headerElement.querySelector('.bucket-toggle');
@@ -2307,6 +2341,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             if (!isEmbedded()) initializeConnection();
             else setupDragAndDrop();
+            bindInboxClicks();
 
             document.addEventListener('dblclick', (e) => {
                 const chip = e.target.closest('#uncategorizedAnswers .answer-item');
@@ -2675,14 +2710,14 @@
                     const correctAnswersRoot = document.getElementById('correctAnswers');
                     if (correctAnswersRoot) {
                         bucket = document.createElement('div');
-                        bucket.className = 'answer-bucket correct-bucket';
+                        bucket.className = 'answer-bucket correct-bucket empty';
                         bucket.id = bucketDomId;
                         bucket.innerHTML = `
                             <h4 onclick="toggleBucket(this)">
-                                <span class="bucket-toggle">▼</span>
-                                ✅ ${match} <span class="answer-count-badge">0</span>
+                                <span class="bucket-toggle collapsed">▶</span>
+                                ${match} <span class="answer-count-badge">0</span>
                             </h4>
-                            <div class="answer-items" data-bucket="correct_${match.toLowerCase().replace(/\s+/g, '_')}"></div>
+                            <div class="answer-items collapsed" data-bucket="correct_${match.toLowerCase().replace(/\s+/g, '_')}"></div>
                         `;
                         correctAnswersRoot.appendChild(bucket);
                         dropZone = bucket.querySelector('.answer-items');
@@ -2892,6 +2927,7 @@
         attach: function (opts) {
             if (opts && opts.socket) socket = opts.socket;
             try { setupDragAndDrop(); } catch (_) {}
+            try { bindInboxClicks(); } catch (_) {}
         },
         apply: function (state, result) {
             applyEmbeddedState(state, result || { applied: true, epochChanged: true });

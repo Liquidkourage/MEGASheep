@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Host Console</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T20-00-00">
-    <link rel="stylesheet" href="grading-board.css?v=2026-11-18T20-40-00">
+    <link rel="stylesheet" href="grading-board.css?v=2026-11-18T21-20-00">
     <script src="/socket.io/socket.io.js"></script>
     <script src="apply-state.js?v=2026-11-18T20-00-00"></script>
     <style>
@@ -270,6 +270,19 @@
         }
         .tab-panel[hidden] { display: none !important; }
         .tab-panel { margin-bottom: 16px; }
+        #panelPlay.is-live-grading .live-question-card { display: none; }
+        #panelPlay.is-live-grading .dashboard-panel:has(#playerList) { display: none; }
+        #panelPlay.is-live-grading .play-layout {
+            grid-template-columns: 1fr;
+        }
+        #panelPlay.is-live-grading .play-actions {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+        @media (max-width: 899px) {
+            #panelPlay.is-live-grading .play-actions {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
         .tab-btn .tab-count {
             display: inline-flex;
             min-width: 20px;
@@ -1018,58 +1031,61 @@
                     </div>
                 </div>
                 <div id="playGradeMount" class="host-grade-mount">
-                <div id="gradingInterface" class="grading-interface grading-board" style="display: none;">
-                    <div class="grading-header-controls">
-                        <h3 class="grading-title">📝 Categorize Answers</h3>
-                        <button id="resyncBtn" class="control-btn secondary" type="button" onclick="resyncGameData()">🔄 Re-sync</button>
+                <div id="gradingInterface" class="grading-interface grading-board is-inbox" style="display: none;">
+                    <div class="grade-command-strip">
+                        <div class="grade-strip-copy">
+                            <div class="grade-strip-kicker" id="gradeStripKicker">Live grading</div>
+                            <p class="grade-strip-question" id="gradeStripQuestion">Waiting for a question</p>
+                            <p class="grade-strip-progress" id="gradeStripProgress"></p>
+                            <p class="grade-strip-hint">Click an answer, then click a target. Double-click files a strong guess.</p>
+                        </div>
+                        <div class="grade-strip-actions">
+                            <button id="endQuestionGradeBtn" class="control-btn warning" type="button">End question</button>
+                            <button id="applyCategorizationBtn" class="control-btn success" type="button">Complete Grading</button>
+                            <button id="resyncBtn" class="control-btn secondary" type="button" onclick="resyncGameData()">Re-sync</button>
+                            <button id="nextQuestionBtn" class="control-btn primary" type="button" style="display: none;">Next Question</button>
+                        </div>
                     </div>
-                    <div class="grading-controls-top">
-                        <button id="applyCategorizationBtn" class="control-btn success" type="button">Complete Grading</button>
-                        <button id="nextQuestionBtn" class="control-btn primary" type="button" style="display: none;">Next Question</button>
-                    </div>
-                    <div class="grading-layout">
-                        <div class="question-section">
-                            <div id="questionDisplay" class="question-display" style="display: none;">
-                                <div class="question-card">
-                                    <h4>📋 Current Question</h4>
-                                    <p id="questionText" class="question-text"></p>
-                                    <div class="question-meta">
-                                        <span id="questionNumber" class="question-number"></span>
-                                        <span id="answerCount" class="answer-count"></span>
-                                    </div>
+                    <div class="question-section">
+                        <div id="questionDisplay" class="question-display" style="display: none;">
+                            <div class="question-card">
+                                <h4>📋 Current Question</h4>
+                                <p id="questionText" class="question-text"></p>
+                                <div class="question-meta">
+                                    <span id="questionNumber" class="question-number"></span>
+                                    <span id="answerCount" class="answer-count"></span>
                                 </div>
                             </div>
                         </div>
-                        <div class="answer-buckets-section">
-                            <div class="correct-answers-section">
-                                <h4>✅ Correct Answers (from database)</h4>
-                                <div id="correctAnswers"></div>
+                    </div>
+                    <div class="grade-inbox-layout">
+                        <div class="grade-inbox">
+                            <div class="answer-bucket uncategorized-bucket" data-bucket-id="uncategorized">
+                                <h4 onclick="toggleBucket(this)">
+                                    <span class="bucket-toggle">▼</span>
+                                    Inbox
+                                    <span class="answer-count-badge" id="uncategorizedAnswersCount">0</span>
+                                </h4>
+                                <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized" data-bucket-id="uncategorized"></div>
                             </div>
                         </div>
-                        <div class="categorization-section">
-                            <div class="wrong-uncategorized-section">
-                                <h4>❌ Wrong &amp; 📦 Uncategorized Answers</h4>
-                                <div class="wrong-uncategorized-grid">
-                                    <div class="answer-bucket uncategorized-bucket" data-bucket-id="uncategorized">
-                                        <h4 onclick="toggleBucket(this)">
-                                            <span class="bucket-toggle">▼</span>
-                                            📦 Uncategorized Answers
-                                            <span class="answer-count-badge" id="uncategorizedAnswersCount">0</span>
-                                        </h4>
-                                        <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized" data-bucket-id="uncategorized"></div>
-                                    </div>
-                                    <div class="answer-bucket wrong-bucket" data-bucket-id="wrong">
-                                        <h4 onclick="toggleBucket(this)">
-                                            <span class="bucket-toggle">▼</span>
-                                            ❌ Wrong Answers
-                                            <span class="answer-count-badge" id="wrongAnswersCount">0</span>
-                                        </h4>
-                                        <div id="wrongAnswers" class="answer-items" data-bucket="wrong" data-bucket-id="wrong"></div>
-                                    </div>
-                                    <div class="answer-bucket sendback-bucket">
-                                        <h4>✏️ Send Back (Refine)</h4>
-                                        <div id="sendBackAnswers" class="answer-items" data-bucket="sendBack" data-bucket-id="sendBack"></div>
-                                    </div>
+                        <div class="grade-targets">
+                            <div class="grade-targets-correct">
+                                <h4 class="grade-targets-heading">Correct targets</h4>
+                                <div id="correctAnswers"></div>
+                            </div>
+                            <div class="grade-targets-docks">
+                                <div class="answer-bucket wrong-bucket" data-bucket-id="wrong">
+                                    <h4 onclick="toggleBucket(this)">
+                                        <span class="bucket-toggle">▼</span>
+                                        Wrong
+                                        <span class="answer-count-badge" id="wrongAnswersCount">0</span>
+                                    </h4>
+                                    <div id="wrongAnswers" class="answer-items" data-bucket="wrong" data-bucket-id="wrong"></div>
+                                </div>
+                                <div class="answer-bucket sendback-bucket">
+                                    <h4>Send back</h4>
+                                    <div id="sendBackAnswers" class="answer-items" data-bucket="sendBack" data-bucket-id="sendBack"></div>
                                 </div>
                             </div>
                         </div>
@@ -1248,7 +1264,7 @@
     </div>
 
     <script>window.MEGASHEEP_GRADING_EMBEDDED = true;</script>
-    <script src="grading-board.js?v=2026-11-18T20-25-00"></script>
+    <script src="grading-board.js?v=2026-11-18T21-20-00"></script>
     <script>
         // Socket.IO connection
         let socket = null;
@@ -1739,6 +1755,8 @@
 
         function updateCompleteGradingButton(phase) {
             const btn = document.getElementById('applyCategorizationBtn');
+            const endGrade = document.getElementById('endQuestionGradeBtn');
+            if (endGrade) endGrade.disabled = phase !== 'playing';
             if (!btn) return;
             if (phase === 'playing') {
                 btn.disabled = true;
@@ -1762,6 +1780,7 @@
                 try { window.MEGASheepGrading && window.MEGASheepGrading.apply(state, result); } catch (e) {
                     console.warn('host grading apply failed', e);
                 }
+                try { updateGradeCommandStrip(); } catch (_) {}
                 return;
             }
             if (idle) idle.hidden = false;
@@ -1848,7 +1867,28 @@
                     promptEl.textContent = 'No live question.';
                 }
             }
+            updateGradeCommandStrip();
         }
+
+        function updateGradeCommandStrip() {
+            const play = document.getElementById('panelPlay');
+            const qEl = document.getElementById('gradeStripQuestion');
+            const pEl = document.getElementById('gradeStripProgress');
+            const kicker = document.getElementById('gradeStripKicker');
+            const phase = hostPhase();
+            const live = phase === 'playing' || phase === 'grading';
+            if (play) play.classList.toggle('is-live-grading', live);
+            if (!qEl) return;
+            const prompt = document.getElementById('liveQuestionPrompt')?.textContent || '';
+            qEl.textContent = live ? prompt : 'Waiting for a question';
+            if (kicker) kicker.textContent = phase === 'grading' ? 'Finish scoring' : 'Live grading';
+            if (!pEl) return;
+            const got = document.getElementById('answersReceived')?.textContent || '0';
+            const tot = document.getElementById('totalPlayers')?.textContent || '0';
+            const uncat = document.getElementById('uncategorizedAnswersCount')?.textContent || '0';
+            pEl.textContent = live ? `${got} / ${tot} answers in · ${uncat} still in inbox` : '';
+        }
+        window.updateGradeCommandStrip = updateGradeCommandStrip;
 
         // Show active game interface
         function showActiveGame() {
@@ -2002,6 +2042,7 @@
                 awaitingCountEl.textContent = String(awaiting.length);
                 if (totalPlayersEl) totalPlayersEl.textContent = String(playersArr.length);
                 if (answersReceivedEl) answersReceivedEl.textContent = String(playersArr.length - awaiting.length);
+                try { updateGradeCommandStrip(); } catch (_) {}
             } catch (_) {}
         }
 
@@ -2269,13 +2310,16 @@
         });
 
         // End question now (host manual control)
-        const endQuestionNowBtn = document.getElementById('endQuestionNowBtn');
-        if (endQuestionNowBtn) endQuestionNowBtn.addEventListener('click', () => {
+        function emitEndQuestion() {
             try {
                 if (!currentGame || !currentGame.gameCode) { alert('No active game'); return; }
                 socket.emit('endQuestion', { gameCode: currentGame.gameCode });
             } catch (e) { console.warn('Failed to emit endQuestion', e); }
-        });
+        }
+        const endQuestionNowBtn = document.getElementById('endQuestionNowBtn');
+        if (endQuestionNowBtn) endQuestionNowBtn.addEventListener('click', emitEndQuestion);
+        const endQuestionGradeBtn = document.getElementById('endQuestionGradeBtn');
+        if (endQuestionGradeBtn) endQuestionGradeBtn.addEventListener('click', emitEndQuestion);
 
         document.getElementById('virtualTestBtn').addEventListener('click', () => {
             closeShowToolsModal();
