@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-05-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-10-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -852,7 +852,8 @@
                         display:flex;
                         flex-direction:column;
                         justify-content:center;
-                        align-items:center;
+                        align-items:stretch;
+                        overflow:hidden;
                         background:linear-gradient(135deg, rgba(0, 123, 255, 0.2), rgba(0, 86, 179, 0.15));
                         border:2px solid rgba(0, 123, 255, 0.4);
                         ${isNewCard ? `animation:cardSlideIn 0.45s ease-out forwards;animation-delay:${animationDelay}ms;opacity:0;` : 'opacity:1;'}

@@ -305,17 +305,32 @@ html, body {
 .display-mode .modern-player-card {
     width: 100% !important;
     height: 100% !important;
+    min-width: 0 !important;
     min-height: 0 !important;
     aspect-ratio: auto !important;
-    padding: 14px 16px !important;
+    overflow: hidden !important;
+    align-items: stretch !important;
+    padding: 8px 10px !important;
     border-radius: 14px !important;
+    container-type: size;
 }
 
 .display-mode .modern-player-name {
-    font-size: clamp(1.35rem, 2.8vh, 2.15rem) !important;
-    white-space: nowrap !important;
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    width: 100% !important;
+    min-width: 0 !important;
     overflow: hidden !important;
-    text-overflow: ellipsis !important;
+    white-space: normal !important;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    text-align: center;
+    line-height: 1.15;
+    hyphens: none;
+    font-size: clamp(1rem, 2.2vh, 2.15rem) !important;
+    font-size: clamp(1rem, 11cqi, 2.15rem) !important;
 }
 
 .display-mode .modern-player-card:hover {
