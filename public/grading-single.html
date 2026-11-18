@@ -827,7 +827,7 @@
                 }
                 
                 if (Array.isArray(data.currentAnswerGroups)) {
-                    currentGame.currentAnswerGroups = data.currentAnswerGroups;
+                    currentGame.currentAnswerGroups = coalesceAnswerGroups(data.currentAnswerGroups);
                 }
                 currentGame.pendingEdits = data.pendingEdits || [];
                 currentGame.currentQuestion = data.currentQuestion !== undefined ? data.currentQuestion : currentGame.currentQuestion;
@@ -890,6 +890,9 @@
                 
                 if (data && data.gameCode) {
                     currentGame = data;
+                    if (Array.isArray(currentGame.currentAnswerGroups)) {
+                        currentGame.currentAnswerGroups = coalesceAnswerGroups(currentGame.currentAnswerGroups);
+                    }
                     
                     // CRITICAL DEBUG: Verify currentGame has the data after assignment
                     console.log('📨 AFTER ASSIGNMENT - currentGame.currentAnswerGroups length:', currentGame.currentAnswerGroups?.length || 0);
@@ -1054,6 +1057,7 @@
                 if (currentGame && currentGame.gameCode && data.gameCode !== currentGame.gameCode) return;
                 currentGame = data;
                 if (!Array.isArray(currentGame.currentAnswerGroups)) currentGame.currentAnswerGroups = [];
+                else currentGame.currentAnswerGroups = coalesceAnswerGroups(currentGame.currentAnswerGroups);
                 lastRenderedQuestionIndex = null;
                 showGradingWorkspace();
                 try { updateGradingInterface(true); } catch (e) { console.warn('nextQuestion UI update failed', e); }
@@ -1064,6 +1068,7 @@
                 if (currentGame && currentGame.gameCode && data.gameCode !== currentGame.gameCode) return;
                 currentGame = data;
                 if (!Array.isArray(currentGame.currentAnswerGroups)) currentGame.currentAnswerGroups = [];
+                else currentGame.currentAnswerGroups = coalesceAnswerGroups(currentGame.currentAnswerGroups);
                 lastRenderedQuestionIndex = null;
                 showGradingWorkspace();
                 try { updateGradingInterface(true); } catch (e) { console.warn('gameStarted UI update failed', e); }
@@ -1879,15 +1884,21 @@
                     console.log(`🧠 Calculated confidence for uncategorized "${answerGroup.answer}": ${bestConfidence}% → "${bestMatch}"`);
                 }
             });
+
+            const alreadyPlaced = answerTextsPlacedOutsideUncategorized();
+            const coalescedUncategorized = coalesceAnswerGroups(uncategorizedAnswers).filter(group => {
+                const key = normalizeAnswerText(group.answer);
+                return key && !alreadyPlaced.has(key);
+            });
             
             const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
             
             if (uncategorizedContainer) {
-                console.log('🔄 Populating', uncategorizedAnswers.length, 'uncategorized answers');
-                if (uncategorizedAnswers.length > 0) {
+                console.log('🔄 Populating', coalescedUncategorized.length, 'uncategorized answers');
+                if (coalescedUncategorized.length > 0) {
                     // Replace with newly computed uncategorized set
                     uncategorizedContainer.innerHTML = '';
-                    uncategorizedAnswers.forEach((group, index) => {
+                    coalescedUncategorized.forEach((group, index) => {
                         try {
                             const answerItem = createAnswerItem(group, index);
                             uncategorizedContainer.appendChild(answerItem);
@@ -1900,6 +1911,7 @@
                     console.log('🔄 No uncategorized answers to display - preserving existing content');
                     // Do not clear; keep any manually placed items
                 }
+                mergeIdenticalAnswerChipsIn(uncategorizedContainer);
             }
             
             // Setup drag and drop after populating
@@ -1934,6 +1946,7 @@
             item.draggable = true;
             item.dataset.answerIndex = index;
             item.dataset.answerText = group.answer;
+            item.dataset.playerNames = Array.isArray(group.players) ? group.players.join(', ') : '';
             
             let confidenceDisplay = '';
             if (group.semanticConfidence !== undefined) {
@@ -2003,11 +2016,13 @@
         }
 
         function handleDragStart(e) {
-            console.log('🎯 Drag start:', e.target);
-            draggedElement = e.target;
-            e.target.classList.add('dragging');
+            const item = e.target.closest('.answer-item');
+            if (!item) return;
+            console.log('🎯 Drag start:', item);
+            draggedElement = item;
+            item.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', e.target.outerHTML);
+            e.dataTransfer.setData('text/html', item.outerHTML);
         }
 
         function handleDragEnd(e) {
@@ -2048,6 +2063,7 @@
                 
                 // Update confidence display for moved element
                 updateConfidenceForMovedElement(draggedElement, dropZone);
+                mergeIdenticalAnswerChipsIn(dropZone);
                 
                 updateCountBadges();
                 
@@ -2087,6 +2103,7 @@
                 
                 // Consolidate all answers in this bucket
                 consolidateBucketAnswers(dropZone, bucketName);
+                mergeIdenticalAnswerChipsIn(dropZone);
 
                 // If this is the Send Back bucket, request edits from players
                 if (bucketName === '✏️ Send Back (Refine)') {
@@ -2579,7 +2596,7 @@
                     const answerText = item.dataset.answerText;
                     const playerCount = parseInt(item.querySelector('.answer-count-badge')?.textContent || '1');
                     const confidence = item.querySelector('.answer-confidence')?.textContent || '';
-                    const playerNames = item.dataset.playerNames || '';
+                    const playerNames = item.dataset.playerNames || item.querySelector('.answer-players')?.textContent || '';
                     
                     items.push({
                         answerText: answerText,
@@ -2603,7 +2620,7 @@
                         answerText: item.dataset.answerText,
                         playerCount: parseInt(item.querySelector('.answer-count-badge')?.textContent || '1'),
                         confidence: item.querySelector('.answer-confidence')?.textContent || '',
-                        playerNames: item.dataset.playerNames || ''
+                        playerNames: item.dataset.playerNames || item.querySelector('.answer-players')?.textContent || ''
                     });
                 });
                 
@@ -2620,7 +2637,7 @@
                         answerText: item.dataset.answerText,
                         playerCount: parseInt(item.querySelector('.answer-count-badge')?.textContent || '1'),
                         confidence: item.querySelector('.answer-confidence')?.textContent || '',
-                        playerNames: item.dataset.playerNames || ''
+                        playerNames: item.dataset.playerNames || item.querySelector('.answer-players')?.textContent || ''
                     });
                 });
                 
@@ -2842,23 +2859,9 @@
         `;
         document.head.appendChild(style);
         
-        // Remove duplicate answers that might exist after state restoration
+        // Collapse identical answer chips (keep players, do not drop them)
         function removeDuplicateAnswers() {
-            const seenAnswers = new Set();
-            const allAnswerItems = document.querySelectorAll('.answer-item');
-            
-            allAnswerItems.forEach(item => {
-                const answerText = item.dataset.answerText;
-                if (seenAnswers.has(answerText)) {
-                    // This is a duplicate - remove it
-                    console.log(`🧹 Removing duplicate answer: "${answerText}"`);
-                    item.remove();
-                } else {
-                    seenAnswers.add(answerText);
-                }
-            });
-            
-            // Update counts after cleanup
+            mergeIdenticalAnswerChipsEverywhere();
             updateCountBadges();
         }
 
@@ -2914,19 +2917,196 @@
             // For now, just log to console. Could be enhanced with actual UI toast later.
         }
         
-        // SIMPLE APPROACH: Direct DOM manipulation for answers
-        function playerCardExists(playerName) {
-            const items = document.querySelectorAll('.answer-item, .answer-card');
-            const target = String(playerName || '').toLowerCase();
-            for (const el of items) {
-                const label = (el.dataset.playerName || el.getAttribute('data-player') || el.textContent || '').toLowerCase();
-                if (label.includes(target)) return true;
+        function normalizeAnswerText(text) {
+            return String(text || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        }
+
+        function uniquePlayerNames(names) {
+            const unique = [];
+            const seen = new Set();
+            (names || []).forEach((name) => {
+                const trimmed = String(name || '').trim();
+                if (!trimmed) return;
+                const key = trimmed.toLowerCase();
+                if (seen.has(key)) return;
+                seen.add(key);
+                unique.push(trimmed);
+            });
+            return unique;
+        }
+
+        function chipAnswerText(chip) {
+            return chip?.dataset?.answerText || '';
+        }
+
+        function playerNamesFromChip(chip) {
+            if (!chip) return [];
+            const fromData = String(chip.dataset.playerNames || '').split(',').map((s) => s.trim()).filter(Boolean);
+            if (fromData.length) return uniquePlayerNames(fromData);
+            const el = chip.querySelector('.answer-players');
+            if (!el) return [];
+            return uniquePlayerNames(String(el.textContent || '').split(','));
+        }
+
+        function setChipPlayers(chip, names) {
+            if (!chip) return;
+            const unique = uniquePlayerNames(names);
+            chip.dataset.playerNames = unique.join(', ');
+            const playersEl = chip.querySelector('.answer-players');
+            if (playersEl) playersEl.textContent = unique.join(', ');
+            const badge = chip.querySelector('.answer-count-badge');
+            if (badge) badge.textContent = String(unique.length);
+        }
+
+        function playerNameMatches(list, playerName) {
+            const target = String(playerName || '').trim().toLowerCase();
+            if (!target) return false;
+            return (list || []).some((name) => String(name).trim().toLowerCase() === target);
+        }
+
+        function coalesceAnswerGroups(groups) {
+            const map = new Map();
+            (groups || []).forEach((group) => {
+                const key = normalizeAnswerText(group?.answer);
+                if (!key) return;
+                if (!map.has(key)) {
+                    const players = uniquePlayerNames(group.players || []);
+                    map.set(key, {
+                        ...group,
+                        answer: group.answer,
+                        players,
+                        count: players.length || group.count || 0
+                    });
+                    return;
+                }
+                const keeper = map.get(key);
+                keeper.players = uniquePlayerNames([...(keeper.players || []), ...(group.players || [])]);
+                keeper.count = keeper.players.length;
+            });
+            return Array.from(map.values());
+        }
+
+        function answerItemContainers() {
+            return [
+                document.getElementById('correctAnswers'),
+                document.getElementById('wrongAnswers'),
+                document.getElementById('uncategorizedAnswers'),
+                document.getElementById('sendBackAnswers')
+            ].filter(Boolean);
+        }
+
+        function answerTextsPlacedOutsideUncategorized() {
+            const keys = new Set();
+            ['wrongAnswers', 'correctAnswers', 'sendBackAnswers'].forEach((id) => {
+                const root = document.getElementById(id);
+                if (!root) return;
+                root.querySelectorAll('.answer-item').forEach((item) => {
+                    const key = normalizeAnswerText(chipAnswerText(item));
+                    if (key) keys.add(key);
+                });
+            });
+            return keys;
+        }
+
+        function mergeIdenticalAnswerChipsIn(container) {
+            if (!container) return;
+            const byKey = new Map();
+            Array.from(container.querySelectorAll('.answer-item')).forEach((item) => {
+                const key = normalizeAnswerText(chipAnswerText(item));
+                if (!key) return;
+                if (!byKey.has(key)) {
+                    byKey.set(key, item);
+                    return;
+                }
+                const keeper = byKey.get(key);
+                setChipPlayers(keeper, [...playerNamesFromChip(keeper), ...playerNamesFromChip(item)]);
+                item.remove();
+            });
+        }
+
+        function mergeIdenticalAnswerChipsEverywhere() {
+            mergeIdenticalAnswerChipsIn(document.getElementById('uncategorizedAnswers'));
+            mergeIdenticalAnswerChipsIn(document.getElementById('wrongAnswers'));
+            mergeIdenticalAnswerChipsIn(document.getElementById('sendBackAnswers'));
+            document.querySelectorAll('#correctAnswers .answer-items').forEach((zone) => mergeIdenticalAnswerChipsIn(zone));
+            absorbIdenticalChipsIntoJudgedBuckets();
+        }
+
+        function absorbIdenticalChipsIntoJudgedBuckets() {
+            const uncategorized = document.getElementById('uncategorizedAnswers');
+            const wrong = document.getElementById('wrongAnswers');
+            const correctRoot = document.getElementById('correctAnswers');
+            if (!uncategorized) return;
+
+            const absorbFrom = (source, targetChip, key) => {
+                if (!source || !targetChip) return;
+                Array.from(source.querySelectorAll('.answer-item')).forEach((item) => {
+                    if (item === targetChip) return;
+                    if (normalizeAnswerText(chipAnswerText(item)) !== key) return;
+                    setChipPlayers(targetChip, [...playerNamesFromChip(targetChip), ...playerNamesFromChip(item)]);
+                    item.remove();
+                });
+            };
+
+            if (correctRoot) {
+                correctRoot.querySelectorAll('.answer-item').forEach((chip) => {
+                    const key = normalizeAnswerText(chipAnswerText(chip));
+                    if (!key) return;
+                    absorbFrom(uncategorized, chip, key);
+                    absorbFrom(wrong, chip, key);
+                });
             }
-            return false;
+            if (wrong) {
+                wrong.querySelectorAll('.answer-item').forEach((chip) => {
+                    const key = normalizeAnswerText(chipAnswerText(chip));
+                    if (!key) return;
+                    absorbFrom(uncategorized, chip, key);
+                });
+            }
+        }
+
+        function findChipWithAnswer(normalized) {
+            const key = normalizeAnswerText(normalized);
+            if (!key) return null;
+            const preferred = [
+                document.getElementById('correctAnswers'),
+                document.getElementById('wrongAnswers'),
+                document.getElementById('uncategorizedAnswers')
+            ].filter(Boolean);
+            for (const root of preferred) {
+                for (const item of root.querySelectorAll('.answer-item')) {
+                    if (normalizeAnswerText(chipAnswerText(item)) === key) return item;
+                }
+            }
+            return null;
+        }
+
+        function findPlayerAnswerCard(playerName) {
+            for (const root of answerItemContainers()) {
+                for (const item of root.querySelectorAll('.answer-item')) {
+                    if (playerNameMatches(playerNamesFromChip(item), playerName)) return item;
+                }
+            }
+            return null;
+        }
+
+        function playerCardExists(playerName) {
+            return !!findPlayerAnswerCard(playerName);
+        }
+
+        function removePlayerFromChip(chip, playerName) {
+            if (!chip) return;
+            const remaining = playerNamesFromChip(chip).filter((name) => !playerNameMatches([name], playerName));
+            if (remaining.length === 0) {
+                chip.remove();
+                return;
+            }
+            setChipPlayers(chip, remaining);
         }
 
         function syncMissingAnswerCards() {
             if (!currentGame || !Array.isArray(currentGame.currentAnswerGroups)) return;
+            currentGame.currentAnswerGroups = coalesceAnswerGroups(currentGame.currentAnswerGroups);
             currentGame.currentAnswerGroups.forEach((group) => {
                 const answer = group.answer;
                 (group.players || []).forEach((playerName) => {
@@ -2935,151 +3115,99 @@
                     }
                 });
             });
+            mergeIdenticalAnswerChipsEverywhere();
+            updateCountBadges();
         }
 
         function handleAnswerDirectly(playerName, answerText, isClarification = false) {
             console.log(`📝 Direct answer handling: ${playerName} → "${answerText}"`);
-            // Mark a very recent DOM update so bulk rebuilds won't wipe it
             window.recentCardUpdateAt = Date.now();
-            
-            // 1. Check if this player already has an answer card (clarification case)
-            const existingCard = findPlayerAnswerCard(playerName);
-            if (existingCard) {
-                console.log(`🔄 Found existing answer for ${playerName}, updating it (clarification)`);
-                console.log(`🔄 Existing card found:`, existingCard);
-                updatePlayerAnswerCard(existingCard, answerText);
-                // Clear any stale copy in send-back
-                removeFromSendBack(playerName);
-                // Auto-place into correct bucket if it now matches; otherwise move to uncategorized
-                const placed = autoPlaceCardIfCorrect(existingCard, answerText);
-                if (!placed) {
-                    const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
-                    if (uncategorizedContainer) {
-                        uncategorizedContainer.appendChild(existingCard);
-                    }
+            const normalized = normalizeAnswerText(answerText);
+            removeFromSendBack(playerName);
+
+            const existingForPlayer = findPlayerAnswerCard(playerName);
+            if (existingForPlayer) {
+                const oldNorm = normalizeAnswerText(chipAnswerText(existingForPlayer));
+                if (oldNorm === normalized) {
+                    mergeIdenticalAnswerChipsEverywhere();
+                    updateCountBadges();
+                    window.recentCardUpdateAt = Date.now();
+                    return;
                 }
+                removePlayerFromChip(existingForPlayer, playerName);
+            }
+
+            const existingSameText = findChipWithAnswer(normalized);
+            if (existingSameText) {
+                setChipPlayers(existingSameText, [...playerNamesFromChip(existingSameText), playerName]);
+                autoPlaceCardIfCorrect(existingSameText, answerText);
+                mergeIdenticalAnswerChipsEverywhere();
                 updateCountBadges();
                 window.recentCardUpdateAt = Date.now();
-                return; // Don't add a new card
+                console.log(`✅ Merged "${answerText}" from ${playerName} into existing chip`);
+                return;
             }
-            
-            console.log(`📝 No existing card found for ${playerName}, adding new card`);
-            
-            // 2. Add the new answer card to uncategorized
-            // Clear any stale copy in send-back first
-            removeFromSendBack(playerName);
+
             const newCard = addAnswerCardToUncategorized(playerName, answerText);
-            // Auto-place into correct bucket if it matches a correct answer
-            const placedNew = autoPlaceCardIfCorrect(newCard, answerText);
-            if (!placedNew) {
-                // stays in uncategorized
-            }
+            autoPlaceCardIfCorrect(newCard, answerText);
+            mergeIdenticalAnswerChipsEverywhere();
             updateCountBadges();
             window.recentCardUpdateAt = Date.now();
-            
             console.log(`✅ Answer added directly: ${playerName} → "${answerText}"`);
         }
-        
-        function findPlayerAnswerCard(playerName) {
-            // Search all buckets for a card containing this player name
-            const allAnswerItems = document.querySelectorAll('.answer-item');
-            console.log(`🔍 Searching for player "${playerName}" in ${allAnswerItems.length} answer items`);
-            
-            for (const item of allAnswerItems) {
-                const playersElement = item.querySelector('.answer-players');
-                if (playersElement) {
-                    console.log(`🔍 Checking item with players: "${playersElement.textContent}"`);
-                    if (playersElement.textContent.includes(playerName)) {
-                        console.log(`✅ Found player "${playerName}" in answer item`);
-                        return item;
-                    }
-                }
-            }
-            console.log(`❌ Player "${playerName}" not found in any answer items`);
-            return null;
-        }
-        
-        // Remove any cards for this player from send-back bucket
+
         function removeFromSendBack(playerName) {
             try {
                 const sendBack = document.getElementById('sendBackAnswers');
                 if (!sendBack) return;
-                const items = Array.from(sendBack.querySelectorAll('.answer-item'));
-                for (const item of items) {
-                    const playersEl = item.querySelector('.answer-players');
-                    if (playersEl && playersEl.textContent.includes(playerName)) {
-                        item.remove();
+                Array.from(sendBack.querySelectorAll('.answer-item')).forEach((item) => {
+                    if (playerNameMatches(playerNamesFromChip(item), playerName)) {
+                        removePlayerFromChip(item, playerName);
                         console.log('🧹 Removed old send-back card for', playerName);
                     }
-                }
+                });
             } catch (e) {
                 console.warn('removeFromSendBack failed:', e);
             }
         }
-        
+
         function updatePlayerAnswerCard(answerCard, newAnswerText) {
-            // Update the answer text
             const answerTextElement = answerCard.querySelector('.answer-text');
             if (answerTextElement) {
-                // Preserve the count badge if it exists
                 const countBadge = answerTextElement.querySelector('.answer-count-badge');
                 const countText = countBadge ? countBadge.textContent : '1';
                 answerTextElement.innerHTML = `"${newAnswerText}" <span class="answer-count-badge">${countText}</span>`;
             }
-            
-            // Update the data attribute
             answerCard.dataset.answerText = newAnswerText;
-            
-            console.log(`✅ Updated answer card for player: "${newAnswerText}"`);
         }
-        
-        function removePlayerAnswerCard(answerCard) {
-            const playersElement = answerCard.querySelector('.answer-players');
-            const answerPlayers = playersElement.textContent.split(',').map(p => p.trim());
-            
-            if (answerPlayers.length === 1) {
-                // Only one player, remove entire card
-                answerCard.remove();
-                console.log('🗑️ Removed entire answer card (only player)');
-            } else {
-                // Multiple players, just remove this player's name
-                // This is more complex, for now just remove the whole card for simplicity
-                answerCard.remove();
-                console.log('🗑️ Removed answer card (had multiple players)');
-            }
-        }
-        
+
         function addAnswerCardToUncategorized(playerName, answerText) {
             const uncategorizedContainer = document.getElementById('uncategorizedAnswers');
             if (!uncategorizedContainer) {
                 console.error('❌ Uncategorized container not found');
                 return null;
             }
-            
-            // Create answer card with proper structure
+
+            const existing = Array.from(uncategorizedContainer.querySelectorAll('.answer-item'))
+                .find((item) => normalizeAnswerText(chipAnswerText(item)) === normalizeAnswerText(answerText));
+            if (existing) {
+                setChipPlayers(existing, [...playerNamesFromChip(existing), playerName]);
+                return existing;
+            }
+
             const answerCard = document.createElement('div');
             answerCard.className = 'answer-item';
             answerCard.draggable = true;
             answerCard.dataset.answerText = answerText;
             answerCard.dataset.playerNames = playerName;
-            
+
             answerCard.innerHTML = `
                 <div class="answer-text">"${answerText}" <span class="answer-count-badge">1</span></div>
                 <div class="answer-players">${playerName}</div>
             `;
-            
+
             uncategorizedContainer.appendChild(answerCard);
-            
-            // Update count badge
-            const countBadge = document.getElementById('uncategorizedAnswersCount');
-            if (countBadge) {
-                const currentCount = uncategorizedContainer.children.length;
-                countBadge.textContent = currentCount.toString();
-            }
-            
-            // Setup drag and drop for the new card
             setupDragAndDrop();
-            
             console.log(`📝 Added answer card: "${answerText}" by ${playerName}`);
             return answerCard;
         }
@@ -3129,6 +3257,7 @@
                         dropZone.classList.remove('collapsed');
                         if (toggle) toggle.classList.remove('collapsed');
                     }
+                    mergeIdenticalAnswerChipsIn(dropZone);
                     updateCountBadges();
                     console.log(`✅ Auto-matched "${answerText}" to correct bucket "${match}"`);
                 }
