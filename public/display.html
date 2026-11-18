@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T17-32-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T17-45-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -631,49 +631,7 @@
             return `${n} of ${total} in. Last ones out of the pasture!`;
         }
 
-        const EWE_SVG = `<svg class="tv-ewe-art" viewBox="0 0 240 200" aria-hidden="true">
-            <g class="pose-graze">
-                <ellipse class="shadow" cx="124" cy="186" rx="58" ry="9"/>
-                <rect class="leg" x="86" y="132" width="15" height="44" rx="7"/>
-                <rect class="leg" x="110" y="138" width="15" height="40" rx="7"/>
-                <rect class="leg" x="138" y="132" width="15" height="44" rx="7"/>
-                <rect class="leg" x="162" y="138" width="15" height="40" rx="7"/>
-                <g class="wool">
-                    <ellipse cx="128" cy="108" rx="66" ry="48"/>
-                    <ellipse cx="90" cy="96" rx="36" ry="32"/>
-                    <ellipse cx="162" cy="92" rx="38" ry="34"/>
-                    <ellipse cx="126" cy="76" rx="34" ry="28"/>
-                    <ellipse cx="176" cy="116" rx="24" ry="20"/>
-                </g>
-                <ellipse class="wool-hi" cx="118" cy="84" rx="22" ry="14"/>
-                <circle class="tail" cx="192" cy="118" r="12"/>
-                <ellipse class="ear" cx="82" cy="112" rx="13" ry="18"/>
-                <ellipse class="face" cx="64" cy="136" rx="32" ry="26"/>
-                <ellipse class="snout" cx="40" cy="148" rx="15" ry="11"/>
-                <path class="eye-shut" d="M54 130 q9 7 18 0"/>
-            </g>
-            <g class="pose-alert">
-                <ellipse class="shadow" cx="118" cy="186" rx="58" ry="9"/>
-                <rect class="leg" x="74" y="128" width="15" height="48" rx="7"/>
-                <rect class="leg" x="98" y="134" width="15" height="42" rx="7"/>
-                <rect class="leg" x="128" y="128" width="15" height="48" rx="7"/>
-                <rect class="leg" x="152" y="134" width="15" height="42" rx="7"/>
-                <g class="wool">
-                    <ellipse cx="116" cy="102" rx="64" ry="50"/>
-                    <ellipse cx="80" cy="88" rx="34" ry="30"/>
-                    <ellipse cx="148" cy="82" rx="40" ry="36"/>
-                    <ellipse cx="114" cy="68" rx="32" ry="26"/>
-                    <ellipse cx="68" cy="110" rx="22" ry="18"/>
-                </g>
-                <ellipse class="wool-hi" cx="108" cy="76" rx="22" ry="14"/>
-                <circle class="tail" cx="60" cy="116" r="12"/>
-                <ellipse class="ear" cx="162" cy="50" rx="12" ry="18"/>
-                <ellipse class="face" cx="178" cy="72" rx="32" ry="27"/>
-                <ellipse class="snout" cx="206" cy="82" rx="14" ry="11"/>
-                <circle class="eye-white" cx="186" cy="66" r="7"/>
-                <circle class="eye" cx="188" cy="66" r="3.4"/>
-            </g>
-        </svg>`;
+        const EWE_ART = `<span class="tv-ewe-art" aria-hidden="true"><img class="pose-graze" src="sprites/sheep-graze.png?v=2026-11-18T17-45-00" alt=""><img class="pose-alert" src="sprites/sheep-in.png?v=2026-11-18T17-45-00" alt=""></span>`;
 
         function escapeDisplayText(value) {
             return String(value || '')
@@ -704,13 +662,13 @@
         }
 
         function eweBaseSize(count) {
-            if (count <= 4) return 176;
-            if (count <= 8) return 148;
-            if (count <= 16) return 118;
-            if (count <= 24) return 96;
-            if (count <= 36) return 80;
-            if (count <= 48) return 68;
-            return 58;
+            if (count <= 4) return 188;
+            if (count <= 8) return 156;
+            if (count <= 16) return 128;
+            if (count <= 24) return 108;
+            if (count <= 36) return 90;
+            if (count <= 48) return 76;
+            return 64;
         }
 
         function placeFlock(players) {
@@ -803,7 +761,7 @@
             chorus.style.setProperty('--ewe-base', `${eweBaseSize(list.length)}px`);
             chorus.innerHTML = placeFlock(list).map((slot) => `
                 <figure class="tv-ewe${slot.flip ? ' is-flip' : ''}" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" style="--x:${slot.x}%;--y:${slot.y}%;--s:${slot.scale};--z:${slot.z}">
-                    ${EWE_SVG}
+                    ${EWE_ART}
                     <figcaption>${escapeDisplayText(slot.name)}</figcaption>
                 </figure>
             `).join('');
@@ -875,8 +833,8 @@
                         <div class="tv-pasture-bar">
                             <p class="response-text" id="responseText">${flockResponseLine(0, gameState.players.length)}</p>
                             <div class="tv-flock-key">
-                                <div class="tv-key is-in">${EWE_SVG}<span>In <b id="flockInCount">0</b></span></div>
-                                <div class="tv-key">${EWE_SVG}<span>Grazing <b id="flockOutCount">${gameState.players.length}</b></span></div>
+                                <div class="tv-key is-in">${EWE_ART}<span>In <b id="flockInCount">0</b></span></div>
+                                <div class="tv-key">${EWE_ART}<span>Grazing <b id="flockOutCount">${gameState.players.length}</b></span></div>
                             </div>
                         </div>
                     </div>
