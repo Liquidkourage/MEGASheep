@@ -1151,8 +1151,9 @@ function leaveGame() {
         }
     } catch (_) {}
     clearPlayerIdentity();
-    socket.disconnect();
-    socket.connect();
+    setTimeout(() => {
+        try { socket.disconnect(); socket.connect(); } catch (_) {}
+    }, 50);
     resetGameState();
     stopGameDurationTimer();
     

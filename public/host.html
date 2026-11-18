@@ -1148,6 +1148,13 @@
                 updateGameDisplay();
             });
 
+            socket.on('playerLeft', (data) => {
+                const state = unwrapGameState(data) || data;
+                if (state) currentGame = state;
+                updatePlayerList();
+                updateGameDisplay();
+            });
+
             // Ensure host reflects server-side virtual players (fallback mode)
             socket.on('virtualPlayerJoined', (data) => {
                 try {
