@@ -518,15 +518,17 @@
 .host-grade-mount .grading-interface.is-inbox[style*="display: block"] {
     display: flex !important;
     flex-direction: column !important;
+    flex: 1 1 auto !important;
     height: auto !important;
-    max-height: calc(100dvh - 12.5rem) !important;
+    max-height: none !important;
     overflow: hidden !important;
     min-height: 0 !important;
+    padding: 8px !important;
 }
 
 #panelGrade .host-grade-mount .grading-interface.is-inbox,
 #panelGrade .host-grade-mount .grading-interface.is-inbox[style*="display: block"] {
-    max-height: calc(100dvh - 8.5rem) !important;
+    max-height: none !important;
 }
 
 .host-grade-mount .grading-interface[style*="display: none"] {
@@ -570,7 +572,7 @@
 }
 
 #playGradeMount {
-    margin-top: 16px;
+    margin-top: 0;
 }
 
 #panelPlay .question-section,
@@ -653,7 +655,7 @@
 .grading-board.is-inbox {
     display: flex !important;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     min-height: 0;
 }
 
@@ -668,60 +670,51 @@
     flex: 0 0 auto;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 12px;
+    gap: 8px 12px;
     align-items: center;
     background: rgba(6, 10, 18, 0.96);
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 12px;
-    padding: 10px 12px;
+    border-radius: 10px;
+    padding: 8px 10px;
 }
 
-.grade-strip-kicker {
-    color: #ffc107;
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+.grade-strip-kicker,
+.grade-strip-hint {
+    display: none;
 }
 
 .grade-strip-question {
     color: #fff;
-    font-size: clamp(1em, 1.6vw, 1.25em);
+    font-size: clamp(0.95em, 1.4vw, 1.15em);
     font-weight: 800;
-    line-height: 1.3;
-    margin: 4px 0 2px;
+    line-height: 1.25;
+    margin: 0 0 2px;
 }
 
-.grade-strip-progress,
-.grade-strip-hint {
+.grade-strip-progress {
     margin: 0;
     color: #c5d0dc;
-    font-size: 13px;
-    line-height: 1.35;
-}
-
-.grade-strip-hint { color: #9aa8b8; font-size: 12px; margin-top: 4px; }
-
-@media (max-height: 820px) {
-    .grade-strip-hint { display: none; }
+    font-size: 12px;
+    line-height: 1.3;
 }
 
 .grade-strip-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
     justify-content: flex-end;
 }
 
 .grade-strip-actions .control-btn {
     min-height: 44px;
-    padding: 10px 14px;
+    padding: 8px 12px;
+    font-size: 13px;
 }
 
 .grading-board.is-inbox .grade-inbox-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
-    gap: 12px;
+    grid-template-columns: minmax(0, 1.05fr) minmax(300px, 1fr);
+    gap: 8px;
     min-height: 0;
     flex: 1 1 auto;
     overflow: hidden;
@@ -744,6 +737,14 @@
     flex-direction: column;
     overflow: hidden;
     justify-content: flex-start;
+    padding: 8px;
+}
+
+.grading-board.is-inbox .grade-inbox .uncategorized-bucket h4 {
+    height: auto;
+    min-height: 32px;
+    margin-bottom: 6px;
+    font-size: 14px;
 }
 
 .grading-board.is-inbox .grade-inbox .answer-items {
@@ -755,12 +756,14 @@
 }
 
 .grading-board.is-inbox .grade-inbox .answer-item {
-    padding: 8px 10px !important;
+    padding: 6px 10px !important;
     overflow: hidden !important;
+    min-height: 44px;
 }
 
 .grading-board.is-inbox .grade-inbox .answer-item .answer-text {
-    margin-bottom: 2px !important;
+    margin-bottom: 0 !important;
+    font-size: 14px !important;
 }
 
 .grading-board.is-inbox .grade-inbox .answer-item .answer-players,
@@ -771,9 +774,9 @@
 
 .grading-board.is-inbox .grade-targets-heading {
     flex: 0 0 auto;
-    margin: 0 0 8px;
+    margin: 0 0 6px;
     color: #9ec5ff;
-    font-size: 12px;
+    font-size: 11px;
     letter-spacing: 0.05em;
     text-transform: uppercase;
 }
@@ -788,10 +791,10 @@
 
 .grading-board.is-inbox #correctAnswers {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
     grid-auto-rows: minmax(44px, auto);
     align-content: start;
-    gap: 6px;
+    gap: 4px;
     flex: 1 1 auto;
     min-height: 0;
     max-height: none;
@@ -866,8 +869,8 @@
 .grading-board.is-inbox .grade-targets-docks {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-top: 10px;
+    gap: 6px;
+    margin-top: 6px;
     flex: 0 0 auto;
 }
 
@@ -876,12 +879,21 @@
     min-height: 0;
     overflow: hidden;
     justify-content: flex-start;
+    padding: 6px 8px;
+}
+
+.grading-board.is-inbox .wrong-bucket h4,
+.grading-board.is-inbox .sendback-bucket h4 {
+    height: auto;
+    min-height: 28px;
+    margin-bottom: 4px;
+    font-size: 13px;
 }
 
 .grading-board.is-inbox .wrong-bucket .answer-items,
 .grading-board.is-inbox .sendback-bucket .answer-items {
-    min-height: 64px !important;
-    max-height: 110px !important;
+    min-height: 44px !important;
+    max-height: 88px !important;
 }
 
 .grading-board .answer-item.is-selected {

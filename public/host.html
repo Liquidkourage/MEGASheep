@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Host Console</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T20-00-00">
-    <link rel="stylesheet" href="grading-board.css?v=2026-11-18T21-35-00">
+    <link rel="stylesheet" href="grading-board.css?v=2026-11-18T21-45-00">
     <script src="/socket.io/socket.io.js"></script>
     <script src="apply-state.js?v=2026-11-18T20-00-00"></script>
     <style>
@@ -27,20 +27,32 @@
         }
         .qa-fab .count { margin-left: 6px; background:#000; color:#ffc107; border-radius:999px; padding:2px 8px; font-size:12px; }
         /* Host Console Specific Styles */
+        html {
+            height: 100%;
+        }
         body {
             background: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000033 100%);
             color: #ffffff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
-            min-height: 100vh;
+            padding: 8px 12px;
+            min-height: 100dvh;
+            height: 100%;
             overflow-x: hidden;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
         }
 
         .host-container {
             max-width: 1400px;
+            width: 100%;
             margin: 0 auto;
-            padding: 20px;
+            padding: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
 
         /* Game Created Successfully Section */
@@ -48,13 +60,14 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
+            gap: 8px;
             flex-wrap: wrap;
             background: rgba(0, 0, 0, 0.8);
             border: 2px solid #007bff;
-            border-radius: 16px;
-            padding: 12px 16px;
-            margin-bottom: 12px;
+            border-radius: 10px;
+            padding: 6px 12px;
+            margin-bottom: 6px;
+            flex: 0 0 auto;
         }
         .host-topbar .quick-actions {
             flex: 1 1 280px;
@@ -79,10 +92,11 @@
             gap: 12px;
             flex-wrap: wrap;
             background: linear-gradient(135deg, #007bff, #0056b3);
-            border-radius: 12px;
-            padding: 10px 16px;
-            margin-bottom: 12px;
+            border-radius: 8px;
+            padding: 6px 12px;
+            margin-bottom: 6px;
             color: #fff;
+            flex: 0 0 auto;
         }
         .host-phase-strip strong { font-size: 1.05em; }
         .host-phase-strip .phase-meta { opacity: 0.9; font-size: 14px; }
@@ -129,11 +143,11 @@
         }
 
         .game-code {
-            font-size: clamp(1.8em, 4vw, 2.6em);
+            font-size: clamp(1.25em, 2.4vw, 1.7em);
             font-weight: bold;
             color: #007bff;
             text-shadow: 2px 2px 4px rgba(0, 123, 255, 0.3);
-            letter-spacing: 3px;
+            letter-spacing: 2px;
         }
 
         .game-code-label {
@@ -146,11 +160,12 @@
             background: linear-gradient(135deg, #007bff, #0056b3);
             border: none;
             border-radius: 8px;
-            padding: 10px 20px;
+            padding: 8px 12px;
+            min-height: 44px;
             color: white;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-left: 10px;
+            margin-left: 4px;
             font-weight: bold;
         }
 
@@ -269,37 +284,34 @@
             border-radius: 12px;
         }
         .tab-panel[hidden] { display: none !important; }
-        .tab-panel { margin-bottom: 16px; }
-        #panelPlay.is-live-grading .live-question-card { display: none; }
-        #panelPlay.is-live-grading .dashboard-panel:has(#playerList) { display: none; }
-        #panelPlay.is-live-grading .play-layout {
-            grid-template-columns: 1fr;
-            margin-bottom: 8px;
+        .tab-panel { margin-bottom: 8px; }
+        #activeGameState[style*="display: block"] {
+            display: flex !important;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
         }
-        #panelPlay.is-live-grading .play-layout .dashboard-panel {
-            padding: 10px 12px;
-        }
-        #panelPlay.is-live-grading .play-layout .panel-header {
-            margin-bottom: 8px;
-        }
-        #panelPlay.is-live-grading .play-layout .panel-header h3 {
-            font-size: 0.95em;
-        }
+        #panelPlay.is-live-grading .play-layout,
+        #panelPlay.is-live-grading .live-question-card,
+        #panelPlay.is-live-grading .dashboard-panel:has(#playerList),
         #panelPlay.is-live-grading #answerProgressPanel {
             display: none !important;
         }
-        #panelPlay.is-live-grading .play-actions {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+        #panelPlay.is-live-grading,
+        #panelGrade:not([hidden]) {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            margin-bottom: 0;
         }
-        #panelPlay.is-live-grading .play-actions .control-btn {
-            min-height: 44px;
-            padding: 8px 10px;
-            font-size: 13px;
-        }
-        @media (max-width: 899px) {
-            #panelPlay.is-live-grading .play-actions {
-                grid-template-columns: 1fr 1fr;
-            }
+        #panelPlay.is-live-grading #playGradeMount,
+        #panelGrade:not([hidden]) .host-grade-mount {
+            flex: 1;
+            min-height: 0;
+            margin-top: 0;
+            display: flex;
+            flex-direction: column;
         }
         .tab-btn .tab-count {
             display: inline-flex;
@@ -684,12 +696,12 @@
         }
 
         /* Simple tabs */
-        .tabs { display:flex; gap:8px; margin: 0 0 16px 0; flex-wrap: wrap; }
+        .tabs { display:flex; gap:6px; margin: 0 0 8px 0; flex-wrap: wrap; flex: 0 0 auto; }
         .tab-btn {
             background: rgba(255,255,255,0.06);
             border:1px solid rgba(255,255,255,0.15);
             color:#fff;
-            padding:10px 14px;
+            padding:8px 12px;
             min-height: 44px;
             border-radius:8px;
             cursor:pointer;
@@ -743,11 +755,16 @@
         .connection-status {
             background: rgba(0, 0, 0, 0.6);
             border: 1px solid #007bff;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            margin-bottom: 6px;
             text-align: center;
             color: #ffffff;
+            font-size: 13px;
+            flex: 0 0 auto;
+        }
+        .connection-status:has(.status-connected) {
+            display: none;
         }
 
         .status-indicator {
@@ -1059,7 +1076,8 @@
                         </div>
                         <div class="grade-strip-actions">
                             <button id="endQuestionGradeBtn" class="control-btn warning" type="button">End question</button>
-                            <button id="applyCategorizationBtn" class="control-btn success" type="button">Complete Grading</button>
+                            <button id="applyCategorizationBtn" class="control-btn success" type="button">Complete</button>
+                            <button id="endGameGradeBtn" class="control-btn warning" type="button">End game</button>
                             <button id="resyncBtn" class="control-btn secondary" type="button" onclick="resyncGameData()">Re-sync</button>
                             <button id="nextQuestionBtn" class="control-btn primary" type="button" style="display: none;">Next Question</button>
                         </div>
@@ -1282,7 +1300,7 @@
     </div>
 
     <script>window.MEGASHEEP_GRADING_EMBEDDED = true;</script>
-    <script src="grading-board.js?v=2026-11-18T21-35-00"></script>
+    <script src="grading-board.js?v=2026-11-18T21-45-00"></script>
     <script>
         // Socket.IO connection
         let socket = null;
@@ -1778,11 +1796,11 @@
             if (!btn) return;
             if (phase === 'playing') {
                 btn.disabled = true;
-                btn.textContent = 'End question to finish scoring';
+                btn.textContent = 'Complete';
                 btn.title = 'Keep sorting answers now. Complete grading after the question ends.';
             } else {
                 btn.disabled = false;
-                btn.textContent = 'Complete Grading';
+                btn.textContent = 'Complete';
                 btn.title = '';
             }
         }
@@ -2325,6 +2343,9 @@
                 if (!confirm('End the current game for all players?')) return;
                 socket.emit('endGame', { gameCode: currentGame.gameCode });
             } catch (e) { console.warn('Failed to emit endGame', e); }
+        });
+        document.getElementById('endGameGradeBtn')?.addEventListener('click', () => {
+            document.getElementById('endGameMainBtn')?.click();
         });
 
         // End question now (host manual control)
