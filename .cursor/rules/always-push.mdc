@@ -1,0 +1,10 @@
+---
+description: Always commit and push finished work unless the user says not to.
+alwaysApply: true
+---
+
+# Always push
+
+After finishing work, create a git commit and push to the tracked remote unless the user explicitly says not to commit or not to push.
+
+Do not force-push. Do not skip hooks. Do not commit secrets (`.env`, keys).
