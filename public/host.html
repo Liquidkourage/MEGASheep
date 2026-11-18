@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Host Console</title>
-    <link rel="stylesheet" href="styles.css?v=2026-11-18T12-40-00">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T13-20-00">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         /* Floating Q&A indicator */
@@ -1034,6 +1034,7 @@
         let qpAll = [];
         let qpSelectedIds = new Set();
         let creatingNewGame = false;
+        let lastOpenedGradingQuestion = null;
 
         function unwrapGameState(data) {
             if (!data || typeof data !== 'object') return null;
@@ -1500,6 +1501,7 @@
                     const state = unwrapGameState(data) || data;
                     if (state) currentGame = state;
                     gameState = 'playing';
+                    lastOpenedGradingQuestion = null;
                     updateGameControls();
                     try { window._answersByName = {}; updatePlayerListWithResponses(); } catch(_) {}
                 } catch (e) { console.warn('Failed to handle nextQuestion', e); }
@@ -1972,11 +1974,28 @@
             document.getElementById('gradingSingleModal').style.display = 'block';
             document.getElementById('gradingSingleModalContent').classList.add('fullscreen');
             const gameCode = currentGame.gameCode;
-            const url = `/grading-single?gameCode=${gameCode}`;
+            const question = Number(currentGame.currentQuestion ?? currentGame.currentQuestionIndex ?? 0);
+            const url = `/grading-single?gameCode=${encodeURIComponent(gameCode)}&q=${question}`;
             const frame = document.getElementById('gradingSingleFrame');
-            const currentSrc = frame ? (frame.getAttribute('src') || '') : '';
-            if (frame && !currentSrc.includes(`gameCode=${gameCode}`)) {
+            if (!frame) return;
+            const currentSrc = frame.getAttribute('src') || '';
+            let srcMatches = false;
+            try {
+                const parsed = new URL(currentSrc, window.location.origin);
+                srcMatches = parsed.searchParams.get('gameCode') === gameCode
+                    && parsed.searchParams.get('q') === String(question);
+            } catch (_) {}
+            if (!srcMatches || lastOpenedGradingQuestion !== question) {
+                lastOpenedGradingQuestion = question;
                 frame.src = url;
+            } else {
+                try {
+                    frame.contentWindow?.postMessage({
+                        type: 'megasheep-refresh-grading',
+                        gameCode,
+                        questionIndex: question
+                    }, '*');
+                } catch (_) {}
             }
         }
 

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Single User Grading Interface</title>
-    <link rel="stylesheet" href="styles.css?v=2026-11-18T12-40-00">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T13-20-00">
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body {
@@ -750,6 +750,51 @@
         let draggedElement = null;
         let lastRenderedQuestionIndex = null;
 
+        function getCurrentQuestionIndex() {
+            const g = currentGame;
+            if (!g) return 0;
+            if (typeof g.currentQuestion === 'number' && !Number.isNaN(g.currentQuestion)) return g.currentQuestion;
+            if (typeof g.currentQuestionIndex === 'number' && !Number.isNaN(g.currentQuestionIndex)) return g.currentQuestionIndex;
+            return 0;
+        }
+
+        function applyQuestionIndex(data) {
+            if (!currentGame || !data) return getCurrentQuestionIndex();
+            const incoming = (typeof data.currentQuestion === 'number' && !Number.isNaN(data.currentQuestion))
+                ? data.currentQuestion
+                : ((typeof data.currentQuestionIndex === 'number' && !Number.isNaN(data.currentQuestionIndex))
+                    ? data.currentQuestionIndex
+                    : getCurrentQuestionIndex());
+            currentGame.currentQuestion = incoming;
+            currentGame.currentQuestionIndex = incoming;
+            return incoming;
+        }
+
+        function clearGradingBuckets() {
+            const correctRoot = document.getElementById('correctAnswers');
+            const wrongRoot = document.getElementById('wrongAnswers');
+            const uncatRoot = document.getElementById('uncategorizedAnswers');
+            const sendBackRoot = document.getElementById('sendBackAnswers');
+            if (correctRoot) {
+                correctRoot.innerHTML = '';
+                delete correctRoot.dataset.questionIndex;
+            }
+            if (wrongRoot) wrongRoot.innerHTML = '';
+            if (uncatRoot) uncatRoot.innerHTML = '';
+            if (sendBackRoot) sendBackRoot.innerHTML = '';
+            const wrongCount = document.getElementById('wrongAnswersCount');
+            const uncatCount = document.getElementById('uncategorizedAnswersCount');
+            if (wrongCount) wrongCount.textContent = '0';
+            if (uncatCount) uncatCount.textContent = '0';
+            window.smoothUpdateInitialized = false;
+            window.recentCardUpdateAt = 0;
+        }
+
+        function markCorrectAnswersQuestion(qIndex) {
+            const root = document.getElementById('correctAnswers');
+            if (root) root.dataset.questionIndex = String(qIndex);
+        }
+
         function initializeConnection() {
             socket = io({
                 transports: ['websocket', 'polling'],
@@ -835,12 +880,16 @@
                     currentGame.currentAnswerGroups = coalesceAnswerGroups(data.currentAnswerGroups);
                 }
                 currentGame.pendingEdits = data.pendingEdits || [];
-                currentGame.currentQuestion = data.currentQuestion !== undefined ? data.currentQuestion : currentGame.currentQuestion;
-                currentGame.currentQuestionIndex = data.currentQuestionIndex !== undefined ? data.currentQuestionIndex : (data.currentQuestion !== undefined ? data.currentQuestion : (currentGame.currentQuestionIndex || 0));
-                currentGame.currentQuestionData = data.currentQuestionData || currentGame.currentQuestionData;
+                const incomingQuestion = applyQuestionIndex(data);
+                if (data.currentQuestionData) currentGame.currentQuestionData = data.currentQuestionData;
                 if (typeof data.gameState === 'string') currentGame.gameState = data.gameState;
 
-                try { syncMissingAnswerCards(); } catch (_) {}
+                if (lastRenderedQuestionIndex !== incomingQuestion) {
+                    lastRenderedQuestionIndex = null;
+                    try { updateGradingInterface(true); } catch (_) {}
+                } else {
+                    try { syncMissingAnswerCards(); } catch (_) {}
+                }
                 
                 // CRITICAL FIX: Show pending edits in grading interface
                 try {
@@ -925,6 +974,10 @@
                         }
                     } catch (_) {}
                     
+                    applyQuestionIndex(data);
+                    if (lastRenderedQuestionIndex !== getCurrentQuestionIndex()) {
+                        lastRenderedQuestionIndex = null;
+                    }
                     console.log('📨 About to call updateGradingInterface() with currentGame.currentAnswerGroups:', currentGame.currentAnswerGroups?.length || 0);
                     updateGradingInterface();
                 } else {
@@ -1061,25 +1114,55 @@
                 if (!data || !data.gameCode) return;
                 if (currentGame && currentGame.gameCode && data.gameCode !== currentGame.gameCode) return;
                 currentGame = data;
+                applyQuestionIndex(data);
                 if (!Array.isArray(currentGame.currentAnswerGroups)) currentGame.currentAnswerGroups = [];
                 else currentGame.currentAnswerGroups = coalesceAnswerGroups(currentGame.currentAnswerGroups);
                 lastRenderedQuestionIndex = null;
+                clearGradingBuckets();
                 showGradingWorkspace();
                 try { updateGradingInterface(true); } catch (e) { console.warn('nextQuestion UI update failed', e); }
+            });
+
+            socket.on('questionComplete', (data) => {
+                if (!data || !data.gameCode) return;
+                if (currentGame && currentGame.gameCode && data.gameCode !== currentGame.gameCode) return;
+                currentGame = data;
+                applyQuestionIndex(data);
+                if (Array.isArray(currentGame.currentAnswerGroups)) {
+                    currentGame.currentAnswerGroups = coalesceAnswerGroups(currentGame.currentAnswerGroups);
+                } else {
+                    currentGame.currentAnswerGroups = [];
+                }
+                lastRenderedQuestionIndex = null;
+                showGradingWorkspace();
+                try { updateGradingInterface(true); } catch (e) { console.warn('questionComplete UI update failed', e); }
             });
 
             socket.on('gameStarted', (data) => {
                 if (!data || !data.gameCode) return;
                 if (currentGame && currentGame.gameCode && data.gameCode !== currentGame.gameCode) return;
                 currentGame = data;
+                applyQuestionIndex(data);
                 if (!Array.isArray(currentGame.currentAnswerGroups)) currentGame.currentAnswerGroups = [];
                 else currentGame.currentAnswerGroups = coalesceAnswerGroups(currentGame.currentAnswerGroups);
                 lastRenderedQuestionIndex = null;
+                clearGradingBuckets();
                 showGradingWorkspace();
                 try { updateGradingInterface(true); } catch (e) { console.warn('gameStarted UI update failed', e); }
             });
 
-
+            window.addEventListener('message', (event) => {
+                const msg = event && event.data;
+                if (!msg || msg.type !== 'megasheep-refresh-grading') return;
+                const gameCode = msg.gameCode || currentGame?.gameCode;
+                if (!gameCode) return;
+                if (currentGame && currentGame.gameCode && msg.gameCode && msg.gameCode !== currentGame.gameCode) return;
+                if (typeof msg.questionIndex === 'number' && msg.questionIndex !== getCurrentQuestionIndex()) {
+                    lastRenderedQuestionIndex = null;
+                    clearGradingBuckets();
+                }
+                socket.emit('getGameState', { gameCode });
+            });
         }
 
         function showGradingWorkspace() {
@@ -1095,10 +1178,7 @@
             if (!gameCode) return;
             console.log('🔗 Connecting to host game:', gameCode);
             socket.emit('joinGameRoom', { gameCode: gameCode });
-            const alreadyLoaded = currentGame && currentGame.gameCode === gameCode;
-            if (!alreadyLoaded) {
-                socket.emit('getGameState', { gameCode: gameCode });
-            }
+            socket.emit('getGameState', { gameCode: gameCode });
             showGradingWorkspace();
         }
 
@@ -1167,7 +1247,7 @@
                 questionText.textContent = questionData.prompt || 'No question text available';
                 
                 // Update question number
-                questionNumber.textContent = `Question ${currentGame.currentQuestion + 1}`;
+                questionNumber.textContent = `Question ${getCurrentQuestionIndex() + 1}`;
                 
                 // Update answer count (total responses, not unique answer texts)
                 const totalResponses = Array.isArray(currentGame.currentAnswerGroups)
@@ -1289,16 +1369,23 @@
                 return;
             }
             
-            const qIndex = currentGame.currentQuestion ?? currentGame.currentQuestionIndex ?? 0;
+            const qIndex = getCurrentQuestionIndex();
             const questionChanged = lastRenderedQuestionIndex !== qIndex;
             console.log('✅ updateGradingInterface PROCEEDING - question:', qIndex, 'changed:', questionChanged);
             console.log('✅ Current answer groups available:', currentGame.currentAnswerGroups?.length || 0);
             
             clearPreviousGradingStates();
             updateQuestionDisplay();
+
+            if (questionChanged) {
+                console.log('🧹 Question changed — wiping leftover buckets before building Q' + (qIndex + 1));
+                clearGradingBuckets();
+                window.recentCardUpdateAt = 0;
+            }
+
             try { ensureCorrectBucketsExist(); } catch (_) {}
 
-            if (window.recentCardUpdateAt && Date.now() - window.recentCardUpdateAt < 800) {
+            if (!questionChanged && window.recentCardUpdateAt && Date.now() - window.recentCardUpdateAt < 800) {
                 console.log('⏭️ Skipping full rebuild due to recent direct DOM update');
                 return;
             }
@@ -1311,17 +1398,15 @@
             }
 
             lastRenderedQuestionIndex = qIndex;
+            markCorrectAnswersQuestion(qIndex);
 
             if (currentGame.currentAnswerGroups && currentGame.currentAnswerGroups.length > 0) {
                 console.log('🔄 Clearing and repopulating interface with', currentGame.currentAnswerGroups.length, 'answer groups');
-                document.getElementById('correctAnswers').innerHTML = '';
-                document.getElementById('wrongAnswers').innerHTML = '';
-                document.getElementById('uncategorizedAnswers').innerHTML = '';
-                document.getElementById('wrongAnswersCount').textContent = '0';
-                document.getElementById('uncategorizedAnswersCount').textContent = '0';
+                clearGradingBuckets();
+                markCorrectAnswersQuestion(qIndex);
                 await populateGradingInterface();
             } else {
-                console.log('🔄 No answer groups yet — leaving buckets ready, no wipe/retry');
+                console.log('🔄 No answer groups yet — current-question buckets only');
                 try { ensureCorrectBucketsExist(); } catch (_) {}
             }
         }
@@ -1329,14 +1414,19 @@
         async function updateGradingInterfaceSmoothly() {
             if (!currentGame || !currentGame.currentAnswerGroups) return;
             
-            console.log('🔄 Smooth update: updating grading interface for question:', currentGame.currentQuestionIndex);
+            console.log('🔄 Smooth update: updating grading interface for question:', getCurrentQuestionIndex());
             
             // Clear previous question states in case this is triggered by question transition
             clearPreviousGradingStates();
+            if (lastRenderedQuestionIndex !== getCurrentQuestionIndex()) {
+                clearGradingBuckets();
+                lastRenderedQuestionIndex = getCurrentQuestionIndex();
+            }
             
             // Update question display
             updateQuestionDisplay();
             
+            try { ensureCorrectBucketsExist(); } catch (_) {}
             // Smoothly update only the buckets that need changes
             await updateAnswerBucketsSmoothly();
             
@@ -1730,7 +1820,8 @@
             correctAnswerBuckets.sort((a, b) => a.name.localeCompare(b.name));
             
             // Check if we already have buckets created (to avoid clearing them)
-            const existingBuckets = correctAnswersRoot.children.length > 0;
+            const existingBuckets = correctAnswersRoot.children.length > 0
+                && correctAnswersRoot.dataset.questionIndex === String(getCurrentQuestionIndex());
             console.log('🎯 Existing buckets found:', existingBuckets);
             console.log('🎯 Processing', correctAnswerBuckets.length, 'correct answer buckets');
             
@@ -1820,9 +1911,18 @@
             const questionData = currentGame?.currentQuestionData;
             const correctAnswerList = questionData?.correct_answers || [];
             const correctAnswersRoot = document.getElementById('correctAnswers');
-            if (!correctAnswersRoot || correctAnswerList.length === 0) return;
+            if (!correctAnswersRoot) return;
+            const qIndex = getCurrentQuestionIndex();
+            if (correctAnswersRoot.dataset.questionIndex && correctAnswersRoot.dataset.questionIndex !== String(qIndex)) {
+                correctAnswersRoot.innerHTML = '';
+            }
+            markCorrectAnswersQuestion(qIndex);
+            if (correctAnswerList.length === 0) return;
             // Create any missing buckets
             const wantedIds = new Set(correctAnswerList.map(a => `bucket-${a.toLowerCase().replace(/\s+/g, '-')}`));
+            Array.from(correctAnswersRoot.querySelectorAll('.answer-bucket')).forEach(bucket => {
+                if (!bucket.id || !wantedIds.has(bucket.id)) bucket.remove();
+            });
             // Look for existing OUTER buckets by id
             const existingIds = new Set(Array.from(correctAnswersRoot.querySelectorAll('.answer-bucket[id]')).map(d => d.id));
             const toCreate = [...wantedIds].filter(id => !existingIds.has(id));
@@ -2706,7 +2806,7 @@
             
             const state = {
                 gameCode: currentGame.gameCode,
-                questionIndex: currentGame.currentQuestionIndex,
+                questionIndex: getCurrentQuestionIndex(),
                 timestamp: Date.now(),
                 buckets: {}
             };
@@ -2773,7 +2873,8 @@
                 state.buckets['wrong'] = items;
             }
             
-            const stateKey = `grading_state_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`;
+            state.questionIndex = getCurrentQuestionIndex();
+            const stateKey = `grading_state_${currentGame.gameCode}_${getCurrentQuestionIndex()}`;
             localStorage.setItem(stateKey, JSON.stringify(state));
             
             // Show save indicator
@@ -2797,7 +2898,7 @@
                     const questionIndex = parseInt(key.replace(gradingStatePrefix, ''));
                     
                     // Remove states from previous questions (not current)
-                    if (!isNaN(questionIndex) && questionIndex !== currentGame.currentQuestionIndex) {
+                    if (!isNaN(questionIndex) && questionIndex !== getCurrentQuestionIndex()) {
                         keysToRemove.push(key);
                         console.log(`🗑️ Marking for removal: ${key} (Q${questionIndex} != current Q${currentGame.currentQuestionIndex})`);
                     }
@@ -2826,7 +2927,7 @@
                 return false;
             }
             
-            const stateKey = `grading_state_${currentGame.gameCode}_${currentGame.currentQuestionIndex}`;
+            const stateKey = `grading_state_${currentGame.gameCode}_${getCurrentQuestionIndex()}`;
             const savedState = localStorage.getItem(stateKey);
             
             console.log('💾 Attempting to restore state for key:', stateKey);
@@ -2842,7 +2943,7 @@
                 
                 // Check if state is still valid (same game and question)
                 if (state.gameCode !== currentGame.gameCode || 
-                    state.questionIndex !== currentGame.currentQuestionIndex) {
+                    state.questionIndex !== getCurrentQuestionIndex()) {
                     localStorage.removeItem(stateKey);
                     return false;
                 }
