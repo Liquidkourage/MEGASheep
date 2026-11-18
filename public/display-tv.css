@@ -371,6 +371,11 @@ html, body {
 }
 
 /* ---------- Playing ---------- */
+.display-mode .playing-container,
+.display-mode .tv-play {
+    font-family: Outfit, "Segoe UI", sans-serif;
+}
+
 .display-mode .playing-container {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr);
@@ -379,9 +384,10 @@ html, body {
     align-content: stretch !important;
     justify-items: stretch;
     align-items: stretch;
-    gap: clamp(18px, 2.2vh, 28px);
+    gap: 0;
     position: relative !important;
-    background: #07080d !important;
+    background: #0b1520 !important;
+    padding: clamp(22px, 2.4vw, 40px) clamp(28px, 3vw, 52px) 0 !important;
 }
 
 .display-mode .playing-container::before,
@@ -400,8 +406,7 @@ html, body {
     min-width: 0;
     position: relative;
     z-index: 5;
-    padding-bottom: 4px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    padding-bottom: 14px;
 }
 
 .display-mode .round-info {
@@ -418,17 +423,21 @@ html, body {
 }
 
 .display-mode .tv-play-brand {
-    margin: 0 0 8px;
-    font-size: clamp(0.85rem, 1.5vh, 1.05rem);
+    margin: 0 0 6px;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(0.8rem, 1.4vh, 1rem);
+    font-weight: 700;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.55);
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .display-mode .round-info h2 {
-    font-size: clamp(1.55rem, 3.1vh, 2.3rem);
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(1.35rem, 2.6vh, 1.9rem);
     margin: 0;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: -0.02em;
     color: #fff;
     text-shadow: none;
 }
@@ -441,7 +450,7 @@ html, body {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 2px;
+    gap: 0;
 }
 
 .display-mode .timer-circle {
@@ -460,10 +469,11 @@ html, body {
 }
 
 .display-mode .timer-text {
-    font-size: clamp(4.6rem, 11vh, 7.4rem) !important;
-    font-weight: 700;
-    letter-spacing: -0.04em;
-    line-height: 0.9;
+    font-family: Outfit, "Segoe UI", sans-serif !important;
+    font-size: clamp(5rem, 12vh, 8rem) !important;
+    font-weight: 800;
+    letter-spacing: -0.06em;
+    line-height: 0.86;
     text-shadow: none !important;
     color: #fff !important;
 }
@@ -479,10 +489,12 @@ html, body {
 
 .tv-timer-caption {
     margin: 0;
-    font-size: clamp(0.85rem, 1.5vh, 1.05rem);
-    letter-spacing: 0.18em;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(0.75rem, 1.4vh, 0.95rem);
+    font-weight: 700;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(255, 255, 255, 0.42);
     text-align: right;
     min-height: 1.2em;
 }
@@ -508,7 +520,7 @@ html, body {
     max-height: none !important;
     height: 100% !important;
     aspect-ratio: auto !important;
-    padding: clamp(12px, 2vh, 28px) 0 !important;
+    padding: clamp(8px, 1.5vh, 20px) 0 0 !important;
     border: none !important;
     border-radius: 0 !important;
     background: transparent !important;
@@ -518,7 +530,7 @@ html, body {
     flex-direction: column;
     justify-content: center;
     align-items: flex-start;
-    gap: clamp(14px, 2.2vh, 28px);
+    gap: clamp(10px, 1.6vh, 18px);
 }
 
 .display-mode .question-card::before {
@@ -527,58 +539,85 @@ html, body {
 
 .tv-question-eyebrow {
     margin: 0;
-    font-family: 'Bree Serif', Georgia, serif;
-    font-style: italic;
-    font-size: clamp(1.5rem, 3vh, 2.3rem);
-    color: #c5b08a;
-    letter-spacing: 0;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-style: normal;
+    font-weight: 800;
+    font-size: clamp(1.1rem, 2.2vh, 1.7rem);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #e4c56b;
     text-align: left;
 }
 
 .display-mode .question-prompt {
-    font-family: 'Bree Serif', Georgia, serif;
-    font-size: var(--tv-question) !important;
-    line-height: 1.12 !important;
-    font-weight: 400;
+    font-family: Outfit, "Segoe UI", sans-serif !important;
+    font-size: clamp(3.4rem, 8.4vh, 7.2rem) !important;
+    line-height: 1.02 !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.035em;
     hyphens: none;
     text-align: left;
     text-shadow: none !important;
-    max-width: 18ch;
+    max-width: 18ch !important;
 }
 
-.display-mode .response-indicator {
-    margin: 0 !important;
-    max-width: none !important;
+.tv-pasture {
+    position: relative;
+    z-index: 4;
+    height: clamp(170px, 30vh, 320px);
+    margin: 0 calc(-1 * clamp(28px, 3vw, 52px)) 0;
+    width: calc(100% + 2 * clamp(28px, 3vw, 52px));
+}
+
+.tv-horizon {
+    position: absolute;
+    inset: 0;
     width: 100%;
-    position: relative;
-    z-index: 5;
+    height: 100%;
+    fill: #152536;
 }
 
-.display-mode .response-progress {
-    height: 6px;
-    margin-bottom: 14px;
-    background: rgba(255, 255, 255, 0.12);
-    border: none;
-    border-radius: 999px;
-    box-shadow: none;
+.tv-chorus {
+    position: absolute;
+    left: clamp(28px, 4vw, 64px);
+    right: clamp(28px, 4vw, 64px);
+    bottom: 34%;
+    display: flex;
+    justify-content: space-evenly;
+    align-items: flex-end;
+    gap: 8px;
+    z-index: 2;
 }
 
-.display-mode .response-bar {
-    position: relative;
-    overflow: hidden !important;
-    border-radius: 999px;
-    background: #8ba3d0;
+.tv-sheep-mark {
+    width: clamp(28px, calc(62vw / var(--flock-count, 12)), 76px);
+    height: auto;
+    flex: 0 0 auto;
+    fill: #3d5d77;
+    color: #3d5d77;
 }
 
-.display-mode .response-bar::before,
-.display-mode .response-bar::after {
-    display: none !important;
+.tv-sheep-mark:nth-child(3n) { transform: scale(0.86) translateY(6px); }
+.tv-sheep-mark:nth-child(4n) { transform: scaleX(-1) scale(0.94); }
+.tv-sheep-mark:nth-child(5n) { transform: scale(1.08) translateY(-4px); }
+
+.tv-sheep-mark.is-in {
+    fill: #d7e7b8;
+    color: #d7e7b8;
 }
 
-.display-mode .response-text {
-    font-size: var(--tv-body) !important;
-    font-family: 'Bree Serif', Georgia, serif;
-    font-style: italic;
+.display-mode .tv-play .response-text {
+    position: absolute;
+    left: clamp(28px, 4vw, 64px);
+    right: clamp(28px, 4vw, 64px);
+    bottom: 8%;
+    z-index: 3;
+    margin: 0;
+    font-family: Outfit, "Segoe UI", sans-serif !important;
+    font-style: normal !important;
+    font-size: clamp(1.05rem, 2vh, 1.45rem) !important;
+    font-weight: 700;
+    letter-spacing: 0.02em;
     color: rgba(255, 255, 255, 0.72);
     text-align: left;
     text-shadow: none;

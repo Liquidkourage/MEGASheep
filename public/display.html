@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-30-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-45-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -18,7 +18,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="apply-state.js?v=2026-11-18T14-00-00"></script>
@@ -622,10 +622,28 @@
             if (total <= 0) return 'Waiting for the flock to wander in…';
             if (n <= 0) return 'The flock is still chewing this over…';
             if (n >= total) return 'The whole flock has spoken!';
-            if (n === 1) return '1 sheep has bleated in. The rest are still grazing.';
-            if (n < total / 3) return `${n} of ${total} sheep have bleated in. The flock is waking up.`;
-            if (n < total * 0.8) return `${n} of ${total} sheep have bleated in. Don't get left in the wool.`;
-            return `${n} of ${total} sheep have bleated in. Last ones out of the pasture!`;
+            if (n === 1) return '1 sheep in. The rest are still grazing.';
+            if (n < total / 3) return `${n} of ${total} in. The flock is waking up.`;
+            if (n < total * 0.8) return `${n} of ${total} in. Don't get left in the wool.`;
+            return `${n} of ${total} in. Last ones out of the pasture!`;
+        }
+
+        const SHEEP_MARK_SVG = `<svg class="tv-sheep-mark" viewBox="0 0 80 52" aria-hidden="true"><ellipse cx="32" cy="28" rx="22" ry="13"/><circle cx="54" cy="20" r="11"/><rect x="20" y="38" width="5" height="11" rx="1.6"/><rect x="38" y="38" width="5" height="11" rx="1.6"/></svg>`;
+
+        function renderFlockChorus(totalPlayers) {
+            const chorus = document.getElementById('flockChorus');
+            if (!chorus) return;
+            const total = Math.max(0, Number(totalPlayers) || 0);
+            chorus.style.setProperty('--flock-count', String(Math.max(total, 1)));
+            chorus.innerHTML = Array.from({ length: total }, () => SHEEP_MARK_SVG).join('');
+        }
+
+        function paintFlockChorus(responses) {
+            const marks = document.querySelectorAll('#flockChorus .tv-sheep-mark');
+            const filled = Number(responses) || 0;
+            marks.forEach((mark, index) => {
+                mark.classList.toggle('is-in', index < filled);
+            });
         }
 
         function showPlayingScreen() {
@@ -655,14 +673,16 @@
                             <h1 class="question-prompt">${currentQuestion ? currentQuestion.prompt : 'Loading question...'}</h1>
                         </div>
                     </div>
-                    <div class="response-indicator" id="responseIndicator">
-                        <div class="response-progress">
-                            <div class="response-bar" id="responseBar"></div>
-                        </div>
-                        <div class="response-text" id="responseText">${flockResponseLine(0, gameState.players.length)}</div>
+                    <div class="tv-pasture" id="responseIndicator">
+                        <svg class="tv-horizon" viewBox="0 0 1600 280" preserveAspectRatio="none" aria-hidden="true">
+                            <path d="M0 168 C 220 84, 420 220, 720 128 C 980 58, 1240 188, 1600 96 L 1600 280 L 0 280 Z"></path>
+                        </svg>
+                        <div class="tv-chorus" id="flockChorus"></div>
+                        <p class="response-text" id="responseText">${flockResponseLine(0, gameState.players.length)}</p>
                     </div>
                 </div>
             `;
+            renderFlockChorus(gameState.players.length);
             
             // Set initial timer state
             updateDisplayTimer(gameState.timeLeft || 30);
@@ -722,20 +742,15 @@
         
         function updateResponseIndicator(responses, totalPlayers) {
             const responseText = document.getElementById('responseText');
-            const responseBar = document.getElementById('responseBar');
-            if (!responseBar) return;
+            const chorus = document.getElementById('flockChorus');
+            if (!chorus && !responseText) return;
 
-            const percentage = totalPlayers > 0 ? (responses / totalPlayers) * 100 : 0;
-            responseBar.style.width = `${percentage}%`;
-            if (responseText) responseText.textContent = flockResponseLine(responses, totalPlayers);
-
-            if (responses === totalPlayers && totalPlayers > 0) {
-                responseBar.style.background = '#7dcea0';
-                responseBar.style.boxShadow = 'none';
-            } else {
-                responseBar.style.background = '#8ba3d0';
-                responseBar.style.boxShadow = 'none';
+            const total = Number(totalPlayers) || 0;
+            if (chorus && chorus.children.length !== total) {
+                renderFlockChorus(total);
             }
+            paintFlockChorus(responses);
+            if (responseText) responseText.textContent = flockResponseLine(responses, total);
         }
 
         function showGradingScreen() {
