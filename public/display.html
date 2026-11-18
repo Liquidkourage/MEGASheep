@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-20-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-30-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -637,12 +637,6 @@
             
             document.getElementById('displayScreen').innerHTML = `
                 <div class="playing-container tv-play">
-                    <div class="tv-play-herd" aria-hidden="true">
-                        <span class="tv-sheep tv-sheep-a">🐑</span>
-                        <span class="tv-sheep tv-sheep-b">🐑</span>
-                        <span class="tv-sheep tv-sheep-c">🐑</span>
-                        <span class="tv-sheep tv-sheep-d">🐑</span>
-                    </div>
                     <div class="tv-play-top">
                         <div class="round-info">
                             <p class="tv-play-brand">MEGASheep</p>
@@ -652,7 +646,7 @@
                             <div class="timer-circle" id="timerCircle">
                                 <span class="timer-text" id="displayTimer">${gameState.timeLeft || 30}</span>
                             </div>
-                            <p class="tv-timer-caption" id="timerCaption">baa-fore it's gone</p>
+                            <p class="tv-timer-caption" id="timerCaption">seconds</p>
                         </div>
                     </div>
                     <div class="question-content">
@@ -712,12 +706,12 @@
             const caption = document.getElementById('timerCaption');
             if (timeLeft <= 5) {
                 timerCircle.classList.add('urgent');
-                if (caption) caption.textContent = 'SHEAR PANIC';
+                if (caption) caption.textContent = 'shear panic';
             } else if (timeLeft <= 10) {
                 timerCircle.classList.add('warning');
-                if (caption) caption.textContent = 'the wool is thinning…';
+                if (caption) caption.textContent = 'seconds';
             } else if (caption) {
-                caption.textContent = "baa-fore it's gone";
+                caption.textContent = 'seconds';
             }
             
             // Update gameState for consistency
@@ -736,10 +730,10 @@
             if (responseText) responseText.textContent = flockResponseLine(responses, totalPlayers);
 
             if (responses === totalPlayers && totalPlayers > 0) {
-                responseBar.style.background = 'linear-gradient(90deg, #e8c478 0%, #7dcea0 100%)';
-                responseBar.style.boxShadow = '0 0 18px rgba(232, 196, 120, 0.45)';
+                responseBar.style.background = '#7dcea0';
+                responseBar.style.boxShadow = 'none';
             } else {
-                responseBar.style.background = 'linear-gradient(90deg, #c9a15b 0%, #7aa3e8 55%, #7dcea0 100%)';
+                responseBar.style.background = '#8ba3d0';
                 responseBar.style.boxShadow = 'none';
             }
         }
