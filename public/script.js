@@ -175,6 +175,7 @@ function playerGameCode() {
 
 function getMyAnswerForCurrentQuestion() {
     try {
+        if (gameState && gameState.myAnswer) return String(gameState.myAnswer);
         const q = currentQIndex();
         const code = playerGameCode();
         if (code) {
@@ -577,6 +578,7 @@ function initializeSocket() {
                 playerName: ident.playerName,
                 playerId: getOrCreatePlayerId()
             });
+            socket.emit('requestState', { gameCode: ident.gameCode });
         } catch (e) {
             autoResumeInProgress = false;
             console.warn('Live-session rejoin failed:', e);
@@ -584,44 +586,30 @@ function initializeSocket() {
     });
 
     // Host-triggered: show round results on player UI
-    socket.on('playerShowRoundResults', (state) => {
-        try {
-            if (!state) return;
-            gameState = state;
-            showScreen('scoring');
-            displayRoundResults();
-        } catch (_) {}
-    });
-
-    socket.on('playerShowOverallLeaderboard', (state) => {
-        try {
-            if (!state) return;
-            gameState = state;
-            showScreen('gameOver');
-            displayFinalResults();
-        } catch (_) {}
-    });
+    socket.on('playerShowRoundResults', (state) => applyPlayerState(state, 'playerShowRoundResults'));
+    socket.on('playerShowOverallLeaderboard', (state) => applyPlayerState(state, 'playerShowOverallLeaderboard'));
     
     // Socket event listeners
     socket.on('gameCreated', handleGameCreated);
     socket.on('gameJoined', handleGameJoined);
-    socket.on('playerJoined', handlePlayerJoined);
-    socket.on('virtualPlayerJoined', handlePlayerJoined); // Add virtual player support
-    socket.on('playerLeft', handlePlayerJoined);
-    socket.on('gameStarted', handleGameStarted);
+    socket.on('state', (packet) => applyPlayerState(packet, 'state'));
+    socket.on('playerJoined', (packet) => applyPlayerState(packet, 'playerJoined'));
+    socket.on('virtualPlayerJoined', handlePlayerJoined);
+    socket.on('playerLeft', (packet) => applyPlayerState(packet, 'playerLeft'));
+    socket.on('gameStarted', (packet) => applyPlayerState(packet, 'gameStarted'));
     socket.on('testGameStarted', handleTestGameStarted);
-    socket.on('nextQuestion', handleNextQuestion);
-    socket.on('questionComplete', handleQuestionComplete);
-    socket.on('roundComplete', handleRoundComplete);
-    socket.on('gameFinished', handleGameFinished);
+    socket.on('nextQuestion', (packet) => applyPlayerState(packet, 'nextQuestion'));
+    socket.on('questionComplete', (packet) => applyPlayerState(packet, 'questionComplete'));
+    socket.on('roundComplete', (packet) => applyPlayerState(packet, 'roundComplete'));
+    socket.on('gameFinished', (packet) => applyPlayerState(packet, 'gameFinished'));
     socket.on('error', handleError);
     socket.on('gameError', handleError);
     socket.on('answerSubmitted', handleAnswerSubmitted);
     socket.on('answerError', handleAnswerError);
     socket.on('answerUpdate', handleAnswerUpdate);
     socket.on('timerUpdate', handleTimerUpdate);
-    socket.on('gradingComplete', handleGradingComplete);
-    socket.on('gameStateUpdate', handleGameStateUpdate);
+    socket.on('gradingComplete', (packet) => applyPlayerState(packet, 'gradingComplete'));
+    socket.on('gameStateUpdate', (packet) => applyPlayerState(packet, 'gameStateUpdate'));
 
     // Private host answer for this player
     socket.on('requireAnswerEdit', (data) => {
@@ -2223,6 +2211,69 @@ function playAgain() {
     }
 }
 
+const lockstepCtx = { lastSeq: -1, lastEpoch: '' };
+
+function applyPlayerState(packet, source) {
+    try {
+        if (!packet || typeof packet !== 'object') return;
+        if (typeof packet.gameCode !== 'string' && packet.gameState && typeof packet.gameState === 'object') {
+            packet = packet.gameState;
+        }
+        if (typeof packet.gameCode !== 'string') return;
+        const LS = window.MEGASheepLockstep;
+        const result = (LS && LS.applyServerState)
+            ? LS.applyServerState(packet, lockstepCtx)
+            : { applied: true, epochChanged: true, state: packet };
+        if (!result.applied) return;
+
+        gameState = packet;
+        if (typeof packet.currentQuestion === 'number') currentQuestionIndex = packet.currentQuestion;
+        if (Array.isArray(packet.questions) && packet.questions.length) questions = packet.questions;
+
+        if (result.epochChanged && window.lastSubmittedQuestionIndex !== packet.currentQuestion) {
+            window.lastSubmittedAnswer = '';
+            window.lastSubmittedQuestionIndex = packet.currentQuestion;
+        }
+
+        const pending = findMyPendingEdit(packet.pendingEdits);
+        if (pending) {
+            presentSendBack(pending.reason, pending.originalAnswer);
+            return;
+        }
+
+        const phase = packet.gameState;
+        if (!result.epochChanged) {
+            if (phase === 'waiting') updateLobbyDisplay();
+            if (phase === 'playing' && packet.myAnswer) setPlayerSubmitEnabled(false);
+            return;
+        }
+
+        if (phase === 'waiting') {
+            showScreen('lobby');
+            updateLobbyDisplay();
+        } else if (phase === 'playing') {
+            showScreen('game');
+            displayCurrentQuestion();
+            startTimer();
+        } else if (phase === 'grading') {
+            showScreen('scoring');
+            showWaitingForGrading();
+        } else if (phase === 'scoring') {
+            showScreen('scoring');
+            displayQuestionResults();
+        } else if (phase === 'roundComplete') {
+            showScreen('scoring');
+            displayRoundResults();
+        } else if (phase === 'overallLeaderboard' || phase === 'finished') {
+            clearTimer();
+            showScreen('gameOver');
+            displayFinalResults();
+        }
+    } catch (e) {
+        console.warn('applyPlayerState failed', source, e);
+    }
+}
+
 // Socket event handlers
 function handleGameCreated(data) {
     console.log('🎮 Game created:', data);
@@ -2257,62 +2308,20 @@ function handleGameJoined(data) {
     const testDeserialization = JSON.parse(testSerialization);
     console.log('🎮 Script.js: Client-side serialization test - players after JSON roundtrip:', testDeserialization.gameState?.players?.length || 0);
     
-    gameState = data.gameState;
+    const snapshot = (data && data.gameState && typeof data.gameState === 'object' && data.gameState.gameCode)
+        ? data.gameState
+        : data;
     const showResumeToast = joinedLiveGame && autoResumeInProgress && hasHadSocketDisconnect;
     autoResumeInProgress = false;
     joinedLiveGame = true;
     if (showResumeToast) {
         try { showToast('Reconnected', 'success'); } catch (_) {}
     }
-    // Persist identity in case server normalized code/name
-    try { savePlayerIdentity(data.gameCode || gameState.gameCode, currentPlayerName || localStorage.getItem('player.name')); } catch (_) {}
-
-    // Route player to appropriate screen based on server state
-    const phase = gameState.gameState;
-    if (phase === 'waiting') {
-    showScreen('lobby');
-    updateLobbyDisplay();
-        return;
+    try { savePlayerIdentity(data.gameCode || snapshot.gameCode, currentPlayerName || localStorage.getItem('player.name')); } catch (_) {}
+    applyPlayerState(snapshot, 'gameJoined');
+    if (snapshot && snapshot.gameCode) {
+        try { socket.emit('requestState', { gameCode: snapshot.gameCode }); } catch (_) {}
     }
-    if (phase === 'playing') {
-        // Ensure questions and index are set before rendering
-        questions = gameState.questions || questions || [];
-        currentQuestionIndex = gameState.currentQuestion ?? 0;
-        
-        // Ensure player form is properly set up
-        const playerForm = document.getElementById('playerAnswerForm');
-        const answerInput = document.getElementById('answerInput');
-        const submitBtn = document.getElementById('submitAnswerBtn');
-        
-        if (playerForm) playerForm.style.display = 'flex';
-        if (answerInput) {
-            answerInput.value = '';
-            answerInput.disabled = false;
-        }
-        if (submitBtn) submitBtn.disabled = false;
-        
-        showScreen('game');
-        displayCurrentQuestion();
-        startTimer(); // Start timer if game is active
-        return;
-    }
-    if (phase === 'grading') {
-        const pending = findMyPendingEdit(gameState.pendingEdits);
-        if (pending) {
-            presentSendBack(pending.reason, pending.originalAnswer);
-            return;
-        }
-        showScreen('scoring');
-        showWaitingForGrading();
-        return;
-    }
-    if (phase === 'finished') {
-        clearTimer();
-        showScreen('gameOver');
-        return;
-    }
-    // Fallback: lobby
-    showScreen('lobby');
     updateLobbyDisplay();
 }
 

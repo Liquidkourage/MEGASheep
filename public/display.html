@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
-    <link rel="stylesheet" href="styles.css?v=2026-11-18T13-30-00">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
     <style>
         /* Dynamic scaling based on screen resolution */
         :root {
@@ -699,6 +699,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Bree+Serif&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="apply-state.js?v=2026-11-18T14-00-00"></script>
     <script>
         // Check if QRCode library loaded
         window.addEventListener('load', function() {
@@ -893,6 +894,47 @@
         let socket = null;
         let lastPlayerCount = 0; // Track player count to detect new additions
         let displayGameCode = null;
+        const lockstepCtx = { lastSeq: -1, lastEpoch: '' };
+
+        function applyDisplayState(packet, source) {
+            try {
+                const LS = window.MEGASheepLockstep;
+                const state = (LS && LS.unwrapGameState) ? LS.unwrapGameState(packet) : packet;
+                if (!state || typeof state.gameCode !== 'string') return;
+                const result = (LS && LS.applyServerState)
+                    ? LS.applyServerState(state, lockstepCtx)
+                    : { applied: true, epochChanged: true, state };
+                if (!result.applied) return;
+
+                if (state.gameCode) {
+                    displayGameCode = state.gameCode;
+                    sessionStorage.setItem('displayGameCode', displayGameCode);
+                    window.currentGameCode = displayGameCode;
+                }
+
+                if (!result.epochChanged && gameState) {
+                    gameState = state;
+                    if (state.gameState === 'waiting') {
+                        updatePlayersOnly(state);
+                        return;
+                    }
+                    if (state.gameState === 'playing' || state.gameState === 'grading') {
+                        const count = typeof state.answersReceived === 'number'
+                            ? state.answersReceived
+                            : (Array.isArray(state.players) ? 0 : 0);
+                        const total = typeof state.playerCount === 'number'
+                            ? state.playerCount
+                            : (Array.isArray(state.players) ? state.players.length : 0);
+                        try { updateResponseIndicator(count, total); } catch (_) {}
+                        return;
+                    }
+                }
+
+                updateDisplayFromGameState(state);
+            } catch (e) {
+                console.warn('applyDisplayState failed', source, e);
+            }
+        }
         
         function initializeSocket() {
             socket = io({
@@ -943,6 +985,7 @@
                     if (displayGameCode) {
                         console.log('🔄 Auto-joining display to game:', displayGameCode);
                         socket.emit('joinDisplayRoom', { gameCode: displayGameCode });
+                        socket.emit('requestState', { gameCode: displayGameCode });
                         socket.emit('getGameState', { gameCode: displayGameCode });
                     }
                 } catch (e) {
@@ -982,21 +1025,13 @@
                 // Don't reset to intro screen - let Socket.IO handle reconnection
             });
             
+            socket.on('state', (gameStateData) => applyDisplayState(gameStateData, 'state'));
             socket.on('displayGameState', (gameStateData) => {
-                console.log('📊 Display received game state:', gameStateData);
-                if (gameStateData) {
-                    // Store the game code for future reference
-                    if (gameStateData.gameCode) {
-                        displayGameCode = gameStateData.gameCode;
-                        sessionStorage.setItem('displayGameCode', displayGameCode);
-                        // Expose globally so QR builders can include it
-                        window.currentGameCode = displayGameCode;
-                    }
-                    updateDisplayFromGameState(gameStateData);
-                } else {
-                    // No active game, show welcome screen
+                if (!gameStateData) {
                     showIntroScreen();
+                    return;
                 }
+                applyDisplayState(gameStateData, 'displayGameState');
             });
 
             socket.on('displayError', (data) => {
@@ -1011,37 +1046,15 @@
             });
             
             socket.on('gameCreated', (gameStateData) => {
-                if (gameStateData) {
-                    updateDisplayFromGameState(gameStateData);
-                } else {
-                    showWaitingScreen();
-                }
+                if (gameStateData) applyDisplayState(gameStateData, 'gameCreated');
+                else showWaitingScreen();
             });
-            
-            socket.on('gameStarted', (gameStateData) => {
-                updateDisplayFromGameState(gameStateData);
-            });
-            
-            socket.on('nextQuestion', (gameStateData) => {
-                updateDisplayFromGameState(gameStateData);
-            });
-            
-            socket.on('roundComplete', (gameStateData) => {
-                updateDisplayFromGameState(gameStateData);
-            });
-            
-            socket.on('gradingComplete', (gameStateData) => {
-                updateDisplayFromGameState(gameStateData);
-            });
-
-            // Always stay attached to current game; never revert to pairing unless explicitly told
-            socket.on('gameFinished', (gameStateData) => {
-                try { updateDisplayFromGameState(gameStateData); } catch (_) {}
-            });
-            
-            socket.on('showOverallLeaderboard', (gameStateData) => {
-                showOverallLeaderboardScreen(gameStateData);
-            });
+            socket.on('gameStarted', (gameStateData) => applyDisplayState(gameStateData, 'gameStarted'));
+            socket.on('nextQuestion', (gameStateData) => applyDisplayState(gameStateData, 'nextQuestion'));
+            socket.on('roundComplete', (gameStateData) => applyDisplayState(gameStateData, 'roundComplete'));
+            socket.on('gradingComplete', (gameStateData) => applyDisplayState(gameStateData, 'gradingComplete'));
+            socket.on('gameFinished', (gameStateData) => applyDisplayState(gameStateData, 'gameFinished'));
+            socket.on('showOverallLeaderboard', (gameStateData) => applyDisplayState(gameStateData, 'showOverallLeaderboard'));
             
             socket.on('timerUpdate', (data) => {
                 if (gameState && gameState.gameState === 'playing') {
@@ -1049,32 +1062,13 @@
                 }
             });
             
-            socket.on('playerJoined', (gameStateData) => {
-                updatePlayersOnly(gameStateData);
-            });
+            socket.on('playerJoined', (gameStateData) => applyDisplayState(gameStateData, 'playerJoined'));
             
             socket.on('virtualPlayerJoined', (data) => {
-                console.log('Display: Virtual player joined', data);
-                // Update the game state with the new virtual player
-                if (gameState && gameState.players) {
-                    // Check if player already exists
-                    const existingPlayer = gameState.players.find(p => p.id === data.playerId);
-                    if (!existingPlayer) {
-                        gameState.players.push({
-                            id: data.playerId,
-                            name: data.playerName,
-                            score: 0,
-                            isVirtual: true
-                        });
-                        console.log(`🎭 Added virtual player ${data.playerName} to display`);
-                        updatePlayersOnly(gameState);
-                    }
-                }
-                
-                // Also update the game state if provided
-                if (data.gameState) {
-                    console.log('Display: Using provided gameState from virtualPlayerJoined');
-                    updatePlayersOnly(data.gameState);
+                const LS = window.MEGASheepLockstep;
+                const state = (LS && LS.unwrapGameState) ? LS.unwrapGameState(data) : data;
+                if (state && typeof state.gameState === 'string' && Array.isArray(state.players)) {
+                    applyDisplayState(data, 'virtualPlayerJoined');
                 }
             });
             
@@ -1086,10 +1080,7 @@
                 }
             });
             
-            socket.on('playerLeft', (gameStateData) => {
-                console.log('Display: Player left');
-                updatePlayersOnly(gameStateData);
-            });
+            socket.on('playerLeft', (gameStateData) => applyDisplayState(gameStateData, 'playerLeft'));
             
             socket.on('answerUpdate', (data) => {
                 console.log('Display: Answer update', data);
@@ -1120,11 +1111,7 @@
                 }
             });
             
-            socket.on('questionComplete', (gameStateData) => {
-                console.log('Display: Question complete - all responses received');
-                console.log('Display: Switching to grading mode automatically');
-                updateDisplayFromGameState(gameStateData);
-            });
+            socket.on('questionComplete', (gameStateData) => applyDisplayState(gameStateData, 'questionComplete'));
 
             // Auto-generate virtual responses when question starts
             socket.on('questionStarted', (data) => {

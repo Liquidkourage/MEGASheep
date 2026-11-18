@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Host Console</title>
-    <link rel="stylesheet" href="styles.css?v=2026-11-18T13-30-00">
+    <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
     <script src="/socket.io/socket.io.js"></script>
+    <script src="apply-state.js?v=2026-11-18T14-00-00"></script>
     <style>
         /* Floating Q&A indicator */
         .qa-fab {
@@ -1035,12 +1036,26 @@
         let qpSelectedIds = new Set();
         let creatingNewGame = false;
         let lastOpenedGradingQuestion = null;
+        const lockstepCtx = { lastSeq: -1, lastEpoch: '' };
 
         function unwrapGameState(data) {
+            const LS = window.MEGASheepLockstep;
+            if (LS && typeof LS.unwrapGameState === 'function') return LS.unwrapGameState(data);
             if (!data || typeof data !== 'object') return null;
             if (typeof data.gameCode === 'string' && /^\d{4}$/.test(data.gameCode)) return data;
             if (data.gameState && typeof data.gameState === 'object' && data.gameState.gameCode) return data.gameState;
             return null;
+        }
+
+        function answersByNameFromState(state) {
+            const map = {};
+            const groups = Array.isArray(state && state.currentAnswerGroups) ? state.currentAnswerGroups : [];
+            groups.forEach((group) => {
+                (Array.isArray(group.players) ? group.players : []).forEach((name) => {
+                    map[name] = group.answer;
+                });
+            });
+            return map;
         }
 
         function hostPhase() {
@@ -1052,6 +1067,70 @@
             if (!state) return;
             currentGame = state;
             if (typeof state.gameState === 'string') gameState = state.gameState;
+            try { window._answersByName = answersByNameFromState(state); } catch (_) {}
+        }
+
+        function applyHostState(packet, source) {
+            try {
+                const state = unwrapGameState(packet);
+                if (!state) return;
+                const LS = window.MEGASheepLockstep;
+                const result = (LS && LS.applyServerState)
+                    ? LS.applyServerState(state, lockstepCtx)
+                    : { applied: true, epochChanged: true, state };
+                if (!result.applied) return;
+
+                adoptServerGame(state);
+                warnQuestionBankSource(state.questionBankSource);
+                showActiveGame();
+                updateGameDisplay();
+                try { updateGameControls(); } catch (_) {}
+                try { updatePlayerListWithResponses(); } catch (_) {}
+
+                const phase = state.gameState;
+                if (result.epochChanged) {
+                    if (phase !== 'grading') lastOpenedGradingQuestion = null;
+                    if (phase !== 'scoring' && phase !== 'roundComplete' && phase !== 'overallLeaderboard') {
+                        hideScoringPanel();
+                    }
+                    if (phase !== 'grading') {
+                        try { closeGradingSingleModal(); } catch (_) {}
+                    }
+                }
+
+                if (phase === 'grading') {
+                    hideScoringPanel();
+                    openGradingSingleModal();
+                } else if (phase === 'scoring') {
+                    try { closeGradingSingleModal(); } catch (_) {}
+                    showScoringPanel(state);
+                    if (result.epochChanged) {
+                        try {
+                            window._questionHistory = window._questionHistory || [];
+                            const qIndex = Number(state.currentQuestion ?? 0);
+                            const roundNum = Math.ceil((qIndex + 1) / (state.settings?.questionsPerRound || state.questionsPerRound || 5));
+                            const groups = Array.isArray(state.currentAnswerGroups) ? JSON.parse(JSON.stringify(state.currentAnswerGroups)) : [];
+                            window._questionHistory.push({ questionIndex: qIndex, roundNumber: roundNum, timestamp: Date.now(), answerGroups: groups });
+                        } catch (_) {}
+                    }
+                } else if (phase === 'roundComplete') {
+                    try {
+                        window._roundHistoryClient = window._roundHistoryClient || [];
+                        const last = Array.isArray(state.roundHistory) && state.roundHistory.length > 0
+                            ? state.roundHistory[state.roundHistory.length - 1]
+                            : null;
+                        if (result.epochChanged) {
+                            window._roundHistoryClient.push({
+                                roundNumber: last?.roundNumber || Math.ceil((state.currentQuestion || 0) / (state.questionsPerRound || 5)),
+                                timestamp: Date.now(),
+                                serverRoundData: last || null
+                            });
+                        }
+                    } catch (_) {}
+                }
+            } catch (e) {
+                console.warn('applyHostState failed', source, e);
+            }
         }
 
         function saveHostSession(gameCode, hostToken) {
@@ -1124,6 +1203,7 @@
                     }, 10000); // 10s tolerance
                     
                     socket.emit('host-reconnect', { gameCode: savedGameCode, hostToken: getHostToken() });
+                    try { socket.emit('requestState', { gameCode: savedGameCode }); } catch (_) {}
                     
                     // Clear timeout if reconnection succeeds
                     socket.once('gameCreated', () => {
@@ -1136,54 +1216,41 @@
                 updateConnectionStatus(false);
             });
             
+            socket.on('state', (data) => applyHostState(data, 'state'));
+
             socket.on('gameCreated', (data) => {
-                const state = unwrapGameState(data && data.gameState) || unwrapGameState(data) || data.gameState;
-                adoptServerGame(state);
-                if (!gameState) gameState = 'waiting';
-                if (creatingNewGame) {
-                    gameState = (state && state.gameState) || 'waiting';
-                    try { window._answersByName = {}; window._questionHistory = []; } catch (_) {}
-                }
                 if (data && (data.hostToken || data.gameCode)) saveHostSession(data.gameCode || currentGame?.gameCode, data.hostToken);
-                warnQuestionBankSource(currentGame && currentGame.questionBankSource);
-                showActiveGame();
-                updateGameDisplay();
-                try { updateGameControls(); } catch (_) {}
-                console.log('Game created via socket:', data);
-                // Preserve picker state across reconnect; only reset on new game
                 if (creatingNewGame) {
+                    lockstepCtx.lastSeq = -1;
+                    lockstepCtx.lastEpoch = '';
+                    lockstepCtx.lastGameCode = '';
+                    try { window._answersByName = {}; window._questionHistory = []; } catch (_) {}
                     qpSelectedIds = new Set();
                     creatingNewGame = false;
                     saveQpSel();
                 } else {
                     restoreQpSel();
                 }
+                applyHostState(data, 'gameCreated');
                 renderQp();
                 emitGameSettings();
                 qpLoad();
+                const code = currentGame && currentGame.gameCode;
+                if (code) {
+                    try { socket.emit('requestState', { gameCode: code }); } catch (_) {}
+                }
             });
             
-            socket.on('playerJoined', (data) => {
-                const state = unwrapGameState(data) || data;
-                if (state) currentGame = state;
-                updatePlayerList();
-                updateGameDisplay();
-            });
-
-            socket.on('playerLeft', (data) => {
-                const state = unwrapGameState(data) || data;
-                if (state) currentGame = state;
-                updatePlayerList();
-                updateGameDisplay();
-            });
+            socket.on('playerJoined', (data) => applyHostState(data, 'playerJoined'));
+            socket.on('playerLeft', (data) => applyHostState(data, 'playerLeft'));
 
             // Ensure host reflects server-side virtual players (fallback mode)
             socket.on('virtualPlayerJoined', (data) => {
                 try {
-                    const state = unwrapGameState(data && data.gameState) || unwrapGameState(data);
-                    if (state) currentGame = state;
-                    updatePlayerListWithResponses();
-                    updateGameDisplay();
+                    const state = unwrapGameState(data);
+                    if (state && typeof state.gameState === 'string' && Array.isArray(state.players)) {
+                        applyHostState(data, 'virtualPlayerJoined');
+                    }
                 } catch (_) {}
             });
 
@@ -1211,17 +1278,7 @@
                 }
             });
             
-            socket.on('gameStarted', (data) => {
-                const state = unwrapGameState(data);
-                if (state) currentGame = state;
-                gameState = 'playing';
-                lastOpenedGradingQuestion = null;
-                hideScoringPanel();
-                try { window._answersByName = {}; } catch (_) {}
-                warnQuestionBankSource(currentGame && currentGame.questionBankSource);
-                updateGameControls();
-                updatePlayerList();
-            });
+            socket.on('gameStarted', (data) => applyHostState(data, 'gameStarted'));
             
             socket.on('gameEnded', (data) => {
                 gameState = 'finished';
@@ -1229,14 +1286,8 @@
                 hideScoringPanel();
             });
             
-            socket.on('answerSubmitted', (data) => {
-                try {
-                    window._answersByName = window._answersByName || {};
-                    if (data && data.playerName && typeof data.answer === 'string') {
-                        window._answersByName[data.playerName] = data.answer;
-                    }
-                } catch (_) {}
-                updatePlayerListWithResponses();
+            socket.on('answerSubmitted', () => {
+                try { updatePlayerListWithResponses(); } catch (_) {}
             });
 
             // Real-time answer stream from server for host
@@ -1244,11 +1295,7 @@
                 try {
                     console.log('📡 [host] newAnswerSubmitted:', data);
                     if (!currentGame || !data) return;
-                    window._answersByName = window._answersByName || {};
-                    if (data.playerName && typeof data.answer === 'string') {
-                        window._answersByName[data.playerName] = data.answer;
-                    }
-                    updatePlayerListWithResponses();
+                    try { updatePlayerListWithResponses(); } catch (_) {}
 
                     // Toast: who submitted, what, and when
                     try {
@@ -1268,103 +1315,11 @@
                 } catch (e) { console.warn('Failed to handle newAnswerSubmitted', e); }
             });
             
-            socket.on('gameStateUpdate', (data) => {
-                const state = unwrapGameState(data);
-                if (state) {
-                    adoptServerGame(state);
-                    updatePlayerList();
-                    try { updateGameControls(); } catch (_) {}
-                }
-            });
-            
-            socket.on('gradingComplete', (data) => {
-                console.log('🎯 Host received gradingComplete event:', data);
-                
-                // CRITICAL FIX: Add comprehensive error handling to prevent host disconnection
-                try {
-                    // Update current game state and UI controls
-                    currentGame = data;
-                    gameState = 'scoring';
-                    console.log('🎯 Updated game state to scoring');
-                } catch (error) {
-                    console.error('❌ Error updating game state:', error);
-                }
-                
-                try { 
-                    updateGameControls(); 
-                    console.log('🎯 Updated game controls');
-                } catch (error) {
-                    console.error('❌ Error updating game controls:', error);
-                }
-                
-                // Close the single-user grading modal if open
-                try { 
-                    closeGradingSingleModal(); 
-                    console.log('🎯 Closed grading modal');
-                } catch (error) {
-                    console.error('❌ Error closing grading modal:', error);
-                }
-                
-                try {
-                    showScoringPanel(data);
-                    console.log('🎯 Showed scoring panel');
-                } catch (error) {
-                    console.error('❌ Error showing scoring panel:', error);
-                }
-                
-                try { 
-                    updatePlayerList(); 
-                    console.log('🎯 Updated player list');
-                } catch (error) {
-                    console.error('❌ Error updating player list:', error);
-                }
-
-                // Capture finalized per-question snapshot for History (read-only)
-                try {
-                    window._questionHistory = window._questionHistory || [];
-                    const qIndex = Number(currentGame?.currentQuestion ?? data?.currentQuestion ?? 0);
-                    const roundNum = Math.ceil(((qIndex) + 1) / (currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5));
-                    const groups = Array.isArray(currentGame?.currentAnswerGroups) ? JSON.parse(JSON.stringify(currentGame.currentAnswerGroups)) : [];
-                    window._questionHistory.push({ questionIndex: qIndex, roundNumber: roundNum, timestamp: Date.now(), answerGroups: groups });
-                } catch (_) {}
-            });
-
-            // Track per-round summary into client memory for History
-            socket.on('roundComplete', (data) => {
-                try {
-                    currentGame = data;
-                    gameState = 'roundComplete';
-                    // Force label to START NEXT ROUND here as well
-                    try {
-                        const startBtn = document.getElementById('startGameBtn');
-                        if (startBtn) {
-                            startBtn.textContent = 'START NEXT ROUND';
-                            startBtn.className = 'control-btn success';
-                            startBtn.disabled = false;
-                        }
-                    } catch(_) {}
-                    window._roundHistoryClient = window._roundHistoryClient || [];
-                    const last = Array.isArray(currentGame?.roundHistory) && currentGame.roundHistory.length > 0
-                        ? currentGame.roundHistory[currentGame.roundHistory.length - 1]
-                        : null;
-                    window._roundHistoryClient.push({
-                        roundNumber: last?.roundNumber || Math.ceil((currentGame?.currentQuestion || 0) / (currentGame?.questionsPerRound || 5)),
-                        timestamp: Date.now(),
-                        serverRoundData: last || null
-                    });
-                    // Immediately update primary control to Start Next Round
-                    try {
-                        const startBtn = document.getElementById('startGameBtn');
-                        if (startBtn) {
-                            startBtn.textContent = 'START NEXT ROUND';
-                            startBtn.className = 'control-btn success';
-                            startBtn.disabled = false;
-                        }
-                        // Refresh control state in case other UI relies on it
-                        try { updateGameControls(); } catch (_) {}
-                    } catch (_) {}
-                } catch (_) {}
-            });
+            socket.on('gameStateUpdate', (data) => applyHostState(data, 'gameStateUpdate'));
+            socket.on('gradingComplete', (data) => applyHostState(data, 'gradingComplete'));
+            socket.on('roundComplete', (data) => applyHostState(data, 'roundComplete'));
+            socket.on('showOverallLeaderboard', (data) => applyHostState(data, 'showOverallLeaderboard'));
+            socket.on('gameFinished', (data) => applyHostState(data, 'gameFinished'));
 
             // Q&A Inbox data and rendering
             let hostQuestions = [];
@@ -1498,27 +1453,8 @@
             })();
 
             // When all players answered, server emits questionComplete (grading phase)
-            socket.on('questionComplete', (data) => {
-                try {
-                    const state = unwrapGameState(data) || data;
-                    if (state) currentGame = state;
-                    gameState = 'grading';
-                    hideScoringPanel();
-                    openGradingSingleModal();
-                } catch (e) { console.warn('Failed to auto-open grading on questionComplete', e); }
-            });
-
-            socket.on('nextQuestion', (data) => {
-                try {
-                    const state = unwrapGameState(data) || data;
-                    if (state) currentGame = state;
-                    gameState = 'playing';
-                    lastOpenedGradingQuestion = null;
-                    hideScoringPanel();
-                    updateGameControls();
-                    try { window._answersByName = {}; updatePlayerListWithResponses(); } catch(_) {}
-                } catch (e) { console.warn('Failed to handle nextQuestion', e); }
-            });
+            socket.on('questionComplete', (data) => applyHostState(data, 'questionComplete'));
+            socket.on('nextQuestion', (data) => applyHostState(data, 'nextQuestion'));
             
             socket.on('error', (error) => {
                 console.error('Socket error:', error);
@@ -1583,9 +1519,8 @@
                 
                 // Check if player has a response for the current question
                 let responseDisplay = '';
-                if (gameState === 'playing') {
-                    // During playing, rely on a lightweight cache updated by newAnswerSubmitted
-                    window._answersByName = window._answersByName || {};
+                if (gameState === 'playing' || gameState === 'grading') {
+                    window._answersByName = answersByNameFromState(currentGame);
                     const answerText = window._answersByName[player.name] || '';
                     if (answerText) {
                         responseDisplay = `
@@ -1672,13 +1607,10 @@
                 const playersArr = Array.isArray(currentGame.players) ? currentGame.players : [];
                 const answeredSet = new Set();
                 // During playing, use live cache; during grading/scoring, use currentAnswerGroups
-                if (gameState === 'playing') {
-                    window._answersByName = window._answersByName || {};
-                    Object.keys(window._answersByName).forEach(name => answeredSet.add(String(name)));
-                } else {
-                    const groups = Array.isArray(currentGame.currentAnswerGroups) ? currentGame.currentAnswerGroups : [];
-                    groups.forEach(g => (Array.isArray(g.players) ? g.players.forEach(n => answeredSet.add(String(n))) : null));
-                }
+                window._answersByName = answersByNameFromState(currentGame);
+                Object.keys(window._answersByName).forEach(name => answeredSet.add(String(name)));
+                const groups = Array.isArray(currentGame.currentAnswerGroups) ? currentGame.currentAnswerGroups : [];
+                groups.forEach(g => (Array.isArray(g.players) ? g.players.forEach(n => answeredSet.add(String(n))) : null));
                 const awaiting = playersArr.map(p => p.name).filter(name => !answeredSet.has(String(name)));
                 awaitingNamesEl.textContent = awaiting.length > 0 ? awaiting.join(', ') : '—';
                 awaitingCountEl.textContent = String(awaiting.length);
@@ -1857,6 +1789,9 @@
                 // Create game via API
                 creatingNewGame = true;
                 gameState = 'waiting';
+                lockstepCtx.lastSeq = -1;
+                lockstepCtx.lastEpoch = '';
+                lockstepCtx.lastGameCode = '';
                 try { window._answersByName = {}; } catch (_) {}
                 const response = await fetch('/api/create-game', {
                     method: 'POST',
