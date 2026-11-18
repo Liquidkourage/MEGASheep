@@ -8,6 +8,7 @@ const {
   applyServerState
 } = require('./lockstep');
 
+
 function sampleState(overrides) {
   return {
     gameCode: '1234',
@@ -15,6 +16,11 @@ function sampleState(overrides) {
     currentQuestion: 1,
     seq: 4,
     epoch: gameEpoch('1234', 1, 'playing'),
+    players: [
+      { id: 's1', stableId: 's1', name: 'Ada', score: 0, answers: ['secret-ada'] },
+      { id: 's2', stableId: 's2', name: 'Bea', score: 0, answers: ['secret-bea'] },
+      { id: 's3', stableId: 's3', name: 'Cal', score: 0, answers: [] }
+    ],
     currentAnswerGroups: [
       { answer: 'Mars', count: 2, players: ['Ada', 'Bea'] }
     ],
@@ -64,6 +70,10 @@ function testRedactDisplayNeverGetsLiveAnswers() {
   assert.deepStrictEqual(view.currentAnswerGroups, []);
   assert.deepStrictEqual(view.pendingEdits, []);
   assert.ok(view.answersReceived >= 2);
+  assert.deepStrictEqual(view.answeredPlayers.map((p) => p.name).sort(), ['Ada', 'Bea']);
+  assert.ok(view.players.every((p) => !p.answers));
+  assert.ok(!JSON.stringify(view.answeredPlayers).includes('Mars'));
+  assert.ok(!JSON.stringify(view.players).includes('secret-ada'));
 }
 
 function testApplyIgnoresStaleSeq() {

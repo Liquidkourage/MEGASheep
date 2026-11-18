@@ -1875,6 +1875,29 @@ function pickVirtualAnswer(question) {
     return VIRTUAL_WRONG_ANSWERS[Math.floor(Math.random() * VIRTUAL_WRONG_ANSWERS.length)];
 }
 
+function answerUpdatePayload(game) {
+    const totalExpected = (game.gameState === 'playing' && game.expectedResponders instanceof Set)
+        ? game.expectedResponders.size
+        : game.players.size;
+    const stableAnswered = new Set();
+    const rawAnswers = {};
+    for (const [sid, ans] of game.answers.entries()) {
+        const p = game.players.get(sid);
+        stableAnswered.add(p?.stableId || sid);
+        rawAnswers[sid] = ans;
+    }
+    return {
+        answersReceived: stableAnswered.size,
+        totalPlayers: totalExpected,
+        answers: rawAnswers,
+        answeredPlayers: lockstep.answeredPlayersFromState({
+            players: Array.from(game.players.values()),
+            answersBySocket: rawAnswers,
+            currentAnswerGroups: game.currentAnswerGroups || []
+        })
+    };
+}
+
 function broadcastAcceptedAnswer(game, playerSocketId, answer, playerName, wasClarity) {
     try { game.rebuildCurrentAnswerGroups(); } catch (e) {
         logger.error('Failed to rebuild answer groups after virtual answer:', e?.message);
@@ -1892,21 +1915,7 @@ function broadcastAcceptedAnswer(game, playerSocketId, answer, playerName, wasCl
         at: Date.now(),
         isClarification: !!wasClarity
     });
-    const totalExpected = (game.gameState === 'playing' && game.expectedResponders instanceof Set)
-        ? game.expectedResponders.size
-        : game.players.size;
-    const stableAnswered = new Set();
-    const rawAnswers = {};
-    for (const [sid, ans] of game.answers.entries()) {
-        const p = game.players.get(sid);
-        stableAnswered.add(p?.stableId || sid);
-        rawAnswers[sid] = ans;
-    }
-    io.to(game.gameCode).emit('answerUpdate', {
-        answersReceived: stableAnswered.size,
-        totalPlayers: totalExpected,
-        answers: rawAnswers
-    });
+    io.to(game.gameCode).emit('answerUpdate', answerUpdatePayload(game));
 }
 
 function acceptVirtualAnswer(game, playerId, answer, playerName) {
@@ -2613,24 +2622,7 @@ io.on('connection', (socket) => {
                 logger.debug(`📤 Sent newAnswerSubmitted event for ${playerName} (clarification: ${wasClarity})`);
                 logger.debug(`📤 Event data:`, newAnswerEvent);
                 
-                // Update answer count for all players
-                const totalExpected = (game.gameState === 'playing' && game.expectedResponders instanceof Set)
-                    ? game.expectedResponders.size
-                    : game.players.size;
-                const stableAnswered = new Set();
-                const rawAnswers = {};
-                for (const [sid, ans] of game.answers.entries()) {
-                    const p = game.players.get(sid);
-                    const st = p?.stableId || sid;
-                    stableAnswered.add(st);
-                    rawAnswers[sid] = ans;
-                }
-                
-                io.to(gameCode).emit('answerUpdate', {
-                    answersReceived: stableAnswered.size,
-                    totalPlayers: totalExpected,
-                    answers: rawAnswers
-                });
+                io.to(gameCode).emit('answerUpdate', answerUpdatePayload(game));
                 
                 // Don't auto-end when there are pending clarifications
                 if (game.answersNeedingEdit.size > 0) {

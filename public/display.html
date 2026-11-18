@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-45-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T17-32-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -243,7 +243,7 @@
                         const total = typeof state.playerCount === 'number'
                             ? state.playerCount
                             : (Array.isArray(state.players) ? state.players.length : 0);
-                        try { updateResponseIndicator(count, total); } catch (_) {}
+                        try { updateResponseIndicator(count, total, state.answeredPlayers); } catch (_) {}
                         return;
                     }
                 }
@@ -422,7 +422,10 @@
                             if (stableSet.size > 0) count = stableSet.size;
                         }
                     } catch (_) {}
-                    updateResponseIndicator(count, data.totalPlayers);
+                    if (Array.isArray(data.answeredPlayers) && gameState) {
+                        gameState.answeredPlayers = data.answeredPlayers;
+                    }
+                    updateResponseIndicator(count, data.totalPlayers, data.answeredPlayers);
                     console.log('✅ Updated response indicator');
                 } else {
                     console.log('❌ Response indicator not updated - wrong game state:', gameState?.gameState);
@@ -628,22 +631,199 @@
             return `${n} of ${total} in. Last ones out of the pasture!`;
         }
 
-        const SHEEP_MARK_SVG = `<svg class="tv-sheep-mark" viewBox="0 0 80 52" aria-hidden="true"><ellipse cx="32" cy="28" rx="22" ry="13"/><circle cx="54" cy="20" r="11"/><rect x="20" y="38" width="5" height="11" rx="1.6"/><rect x="38" y="38" width="5" height="11" rx="1.6"/></svg>`;
+        const EWE_SVG = `<svg class="tv-ewe-art" viewBox="0 0 240 200" aria-hidden="true">
+            <g class="pose-graze">
+                <ellipse class="shadow" cx="124" cy="186" rx="58" ry="9"/>
+                <rect class="leg" x="86" y="132" width="15" height="44" rx="7"/>
+                <rect class="leg" x="110" y="138" width="15" height="40" rx="7"/>
+                <rect class="leg" x="138" y="132" width="15" height="44" rx="7"/>
+                <rect class="leg" x="162" y="138" width="15" height="40" rx="7"/>
+                <g class="wool">
+                    <ellipse cx="128" cy="108" rx="66" ry="48"/>
+                    <ellipse cx="90" cy="96" rx="36" ry="32"/>
+                    <ellipse cx="162" cy="92" rx="38" ry="34"/>
+                    <ellipse cx="126" cy="76" rx="34" ry="28"/>
+                    <ellipse cx="176" cy="116" rx="24" ry="20"/>
+                </g>
+                <ellipse class="wool-hi" cx="118" cy="84" rx="22" ry="14"/>
+                <circle class="tail" cx="192" cy="118" r="12"/>
+                <ellipse class="ear" cx="82" cy="112" rx="13" ry="18"/>
+                <ellipse class="face" cx="64" cy="136" rx="32" ry="26"/>
+                <ellipse class="snout" cx="40" cy="148" rx="15" ry="11"/>
+                <path class="eye-shut" d="M54 130 q9 7 18 0"/>
+            </g>
+            <g class="pose-alert">
+                <ellipse class="shadow" cx="118" cy="186" rx="58" ry="9"/>
+                <rect class="leg" x="74" y="128" width="15" height="48" rx="7"/>
+                <rect class="leg" x="98" y="134" width="15" height="42" rx="7"/>
+                <rect class="leg" x="128" y="128" width="15" height="48" rx="7"/>
+                <rect class="leg" x="152" y="134" width="15" height="42" rx="7"/>
+                <g class="wool">
+                    <ellipse cx="116" cy="102" rx="64" ry="50"/>
+                    <ellipse cx="80" cy="88" rx="34" ry="30"/>
+                    <ellipse cx="148" cy="82" rx="40" ry="36"/>
+                    <ellipse cx="114" cy="68" rx="32" ry="26"/>
+                    <ellipse cx="68" cy="110" rx="22" ry="18"/>
+                </g>
+                <ellipse class="wool-hi" cx="108" cy="76" rx="22" ry="14"/>
+                <circle class="tail" cx="60" cy="116" r="12"/>
+                <ellipse class="ear" cx="162" cy="50" rx="12" ry="18"/>
+                <ellipse class="face" cx="178" cy="72" rx="32" ry="27"/>
+                <ellipse class="snout" cx="206" cy="82" rx="14" ry="11"/>
+                <circle class="eye-white" cx="186" cy="66" r="7"/>
+                <circle class="eye" cx="188" cy="66" r="3.4"/>
+            </g>
+        </svg>`;
 
-        function renderFlockChorus(totalPlayers) {
-            const chorus = document.getElementById('flockChorus');
-            if (!chorus) return;
-            const total = Math.max(0, Number(totalPlayers) || 0);
-            chorus.style.setProperty('--flock-count', String(Math.max(total, 1)));
-            chorus.innerHTML = Array.from({ length: total }, () => SHEEP_MARK_SVG).join('');
+        function escapeDisplayText(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
         }
 
-        function paintFlockChorus(responses) {
-            const marks = document.querySelectorAll('#flockChorus .tv-sheep-mark');
-            const filled = Number(responses) || 0;
-            marks.forEach((mark, index) => {
-                mark.classList.toggle('is-in', index < filled);
+        function nameHash(value) {
+            let hash = 2166136261;
+            const text = String(value || '');
+            for (let i = 0; i < text.length; i += 1) {
+                hash ^= text.charCodeAt(i);
+                hash = Math.imul(hash, 16777619);
+            }
+            return Math.abs(hash);
+        }
+
+        function sortedFlockPlayers(players) {
+            return (players || []).slice().sort((a, b) =>
+                String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' })
+            );
+        }
+
+        function flockKey(players) {
+            return sortedFlockPlayers(players).map((p) => p.stableId || p.id || p.name).join('|');
+        }
+
+        function eweBaseSize(count) {
+            if (count <= 4) return 176;
+            if (count <= 8) return 148;
+            if (count <= 16) return 118;
+            if (count <= 24) return 96;
+            if (count <= 36) return 80;
+            if (count <= 48) return 68;
+            return 58;
+        }
+
+        function placeFlock(players) {
+            const list = sortedFlockPlayers(players);
+            const n = list.length;
+            const rows = n <= 7 ? 1 : n <= 18 ? 2 : 3;
+            const counts = [];
+            if (rows === 1) counts.push(n);
+            else if (rows === 2) {
+                const back = Math.ceil(n * 0.55);
+                counts.push(back, n - back);
+            } else {
+                const back = Math.ceil(n * 0.38);
+                const mid = Math.ceil(n * 0.34);
+                counts.push(back, mid, n - back - mid);
+            }
+            const span = n <= 3 ? 42 : n <= 6 ? 58 : n <= 10 ? 76 : 92;
+            const origin = (100 - span) / 2;
+            const slots = [];
+            let index = 0;
+            const minGap = n <= 10 ? 12 : n <= 18 ? 9 : 7;
+            for (let row = 0; row < rows; row += 1) {
+                const count = counts[row];
+                const yBase = rows === 1 ? 68 : 34 + (row / Math.max(rows - 1, 1)) * 48;
+                const scale = rows === 1 ? 1 : 0.78 + (row / Math.max(rows - 1, 1)) * 0.32;
+                const z = 8 + row * 14;
+                const stagger = row === 0 ? 0 : (span / Math.max(count, 1)) * 0.42;
+                const usable = span - stagger;
+                const rowSlots = [];
+                for (let col = 0; col < count; col += 1) {
+                    const player = list[index];
+                    index += 1;
+                    if (!player) continue;
+                    const hash = nameHash(player.name || player.id || String(index));
+                    const x = origin + stagger + ((col + 0.5) / Math.max(count, 1)) * usable + ((hash % 13) - 6) * 0.28;
+                    const y = yBase + (((hash >> 4) % 9) - 4) * 0.45;
+                    rowSlots.push({
+                        id: player.stableId || player.id || player.name,
+                        name: player.name || 'Sheep',
+                        x,
+                        y: Math.min(78, Math.max(16, y)),
+                        scale,
+                        z: z + (col % 4),
+                        flip: (hash % 3) === 0
+                    });
+                }
+                rowSlots.sort((a, b) => a.x - b.x);
+                for (let i = 1; i < rowSlots.length; i += 1) {
+                    if (rowSlots[i].x - rowSlots[i - 1].x < minGap) {
+                        rowSlots[i].x = rowSlots[i - 1].x + minGap;
+                    }
+                }
+                const overflow = rowSlots.length ? rowSlots[rowSlots.length - 1].x - 92 : 0;
+                rowSlots.forEach((slot) => {
+                    if (overflow > 0) slot.x -= overflow;
+                    slot.x = Math.min(92, Math.max(8, slot.x));
+                    slots.push(slot);
+                });
+            }
+            return slots;
+        }
+
+        function answeredLookup(answeredPlayers) {
+            const set = new Set();
+            (answeredPlayers || []).forEach((entry) => {
+                if (typeof entry === 'string') {
+                    set.add(entry.toLowerCase());
+                    return;
+                }
+                if (!entry) return;
+                if (entry.id) set.add(String(entry.id));
+                if (entry.stableId) set.add(String(entry.stableId));
+                if (entry.name) set.add(String(entry.name).toLowerCase());
             });
+            return set;
+        }
+
+        function playerHasAnswered(el, answered) {
+            const id = el.dataset.id;
+            const name = (el.dataset.name || '').toLowerCase();
+            return (id && answered.has(id)) || (name && answered.has(name));
+        }
+
+        function renderFlock(players) {
+            const chorus = document.getElementById('flockChorus');
+            if (!chorus) return;
+            const list = sortedFlockPlayers(players);
+            chorus.dataset.flockKey = flockKey(list);
+            chorus.dataset.dense = list.length > 28 ? '1' : '0';
+            chorus.style.setProperty('--ewe-base', `${eweBaseSize(list.length)}px`);
+            chorus.innerHTML = placeFlock(list).map((slot) => `
+                <figure class="tv-ewe${slot.flip ? ' is-flip' : ''}" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" style="--x:${slot.x}%;--y:${slot.y}%;--s:${slot.scale};--z:${slot.z}">
+                    ${EWE_SVG}
+                    <figcaption>${escapeDisplayText(slot.name)}</figcaption>
+                </figure>
+            `).join('');
+        }
+
+        function paintFlock(answeredPlayers) {
+            const answered = answeredLookup(answeredPlayers);
+            document.querySelectorAll('#flockChorus .tv-ewe').forEach((el) => {
+                const isIn = playerHasAnswered(el, answered);
+                if (el.classList.contains('is-in') !== isIn) {
+                    el.classList.toggle('is-in', isIn);
+                }
+            });
+            const inCount = document.querySelectorAll('#flockChorus .tv-ewe.is-in').length;
+            const total = document.querySelectorAll('#flockChorus .tv-ewe').length;
+            const inEl = document.getElementById('flockInCount');
+            const outEl = document.getElementById('flockOutCount');
+            if (inEl) inEl.textContent = String(inCount);
+            if (outEl) outEl.textContent = String(Math.max(0, total - inCount));
+            return { inCount, total };
         }
 
         function showPlayingScreen() {
@@ -655,6 +835,8 @@
             
             document.getElementById('displayScreen').innerHTML = `
                 <div class="playing-container tv-play">
+                    <div class="tv-play-stars" aria-hidden="true"></div>
+                    <div class="tv-moon" aria-hidden="true"></div>
                     <div class="tv-play-top">
                         <div class="round-info">
                             <p class="tv-play-brand">MEGASheep</p>
@@ -674,30 +856,39 @@
                         </div>
                     </div>
                     <div class="tv-pasture" id="responseIndicator">
-                        <svg class="tv-horizon" viewBox="0 0 1600 280" preserveAspectRatio="none" aria-hidden="true">
-                            <path d="M0 168 C 220 84, 420 220, 720 128 C 980 58, 1240 188, 1600 96 L 1600 280 L 0 280 Z"></path>
-                        </svg>
-                        <div class="tv-chorus" id="flockChorus"></div>
-                        <p class="response-text" id="responseText">${flockResponseLine(0, gameState.players.length)}</p>
+                        <div class="tv-horizon-glow" aria-hidden="true"></div>
+                        <div class="tv-hills" aria-hidden="true">
+                            <svg class="tv-hill tv-hill-far" viewBox="0 0 1600 420" preserveAspectRatio="none">
+                                <path d="M0 210 C 180 120, 340 260, 560 168 C 780 80, 980 230, 1180 150 C 1360 88, 1480 180, 1600 120 L 1600 420 L 0 420 Z"></path>
+                            </svg>
+                            <svg class="tv-hill tv-hill-mid" viewBox="0 0 1600 420" preserveAspectRatio="none">
+                                <path d="M0 248 C 220 170, 420 300, 700 210 C 940 140, 1160 280, 1600 188 L 1600 420 L 0 420 Z"></path>
+                            </svg>
+                            <svg class="tv-hill tv-hill-near" viewBox="0 0 1600 420" preserveAspectRatio="none">
+                                <path d="M0 300 C 260 230, 480 340, 760 268 C 1040 196, 1280 330, 1600 250 L 1600 420 L 0 420 Z"></path>
+                            </svg>
+                            <svg class="tv-hill tv-hill-fore" viewBox="0 0 1600 420" preserveAspectRatio="none">
+                                <path d="M0 368 C 220 340, 480 390, 780 360 C 1100 328, 1360 392, 1600 350 L 1600 420 L 0 420 Z"></path>
+                            </svg>
+                        </div>
+                        <div class="tv-flock" id="flockChorus"></div>
+                        <div class="tv-pasture-bar">
+                            <p class="response-text" id="responseText">${flockResponseLine(0, gameState.players.length)}</p>
+                            <div class="tv-flock-key">
+                                <div class="tv-key is-in">${EWE_SVG}<span>In <b id="flockInCount">0</b></span></div>
+                                <div class="tv-key">${EWE_SVG}<span>Grazing <b id="flockOutCount">${gameState.players.length}</b></span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
-            renderFlockChorus(gameState.players.length);
+            renderFlock(gameState.players);
             
             // Set initial timer state
             updateDisplayTimer(gameState.timeLeft || 30);
             
-            // Initialize response indicator with actual response count if available
-            const actualResponseCount = gameState.currentAnswerGroups ? 
-                gameState.currentAnswerGroups.reduce((total, group) => total + (group.count || 0), 0) : 0;
-            const fallbackResponseCount = gameState.answersReceived || actualResponseCount || 0;
-            
-            console.log('🔍 Response count calculation:');
-            console.log('  - gameState.answersReceived:', gameState.answersReceived);
-            console.log('  - actualResponseCount from answer groups:', actualResponseCount);
-            console.log('  - Using fallback count:', fallbackResponseCount);
-            
-            updateResponseIndicator(fallbackResponseCount, gameState.players.length);
+            const fallbackResponseCount = gameState.answersReceived || 0;
+            updateResponseIndicator(fallbackResponseCount, gameState.players.length, gameState.answeredPlayers);
             
             // Auto-generate virtual responses when playing screen loads (test rooms only)
             console.log('🎭 Playing screen loaded - triggering virtual responses');
@@ -740,17 +931,21 @@
             }
         }
         
-        function updateResponseIndicator(responses, totalPlayers) {
+        function updateResponseIndicator(responses, totalPlayers, answeredPlayers) {
             const responseText = document.getElementById('responseText');
             const chorus = document.getElementById('flockChorus');
             if (!chorus && !responseText) return;
 
-            const total = Number(totalPlayers) || 0;
-            if (chorus && chorus.children.length !== total) {
-                renderFlockChorus(total);
+            if (answeredPlayers && gameState) gameState.answeredPlayers = answeredPlayers;
+            const players = (gameState && gameState.players) || [];
+            const total = Number(totalPlayers) || players.length || 0;
+            if (chorus && chorus.dataset.flockKey !== flockKey(players)) {
+                renderFlock(players);
             }
-            paintFlockChorus(responses);
-            if (responseText) responseText.textContent = flockResponseLine(responses, total);
+            const painted = paintFlock((gameState && gameState.answeredPlayers) || answeredPlayers || []);
+            const inCount = painted ? painted.inCount : (Number(responses) || 0);
+            const flockTotal = painted ? painted.total : total;
+            if (responseText) responseText.textContent = flockResponseLine(inCount, flockTotal);
         }
 
         function showGradingScreen() {

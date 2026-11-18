@@ -19,6 +19,56 @@ function answersReceivedFromState(state) {
   }, 0);
 }
 
+function answeredPlayersFromState(state) {
+  const seen = new Set();
+  const out = [];
+  function add(id, name) {
+    const n = String(name || '').trim();
+    if (!n) return;
+    const key = n.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ id: String(id || n), name: n });
+  }
+
+  const players = Array.isArray(state && state.players) ? state.players : [];
+  const byId = new Map();
+  players.forEach((p) => {
+    if (!p) return;
+    if (p.id) byId.set(String(p.id), p);
+    if (p.stableId) byId.set(String(p.stableId), p);
+  });
+
+  const bySocket = state && state.answersBySocket && typeof state.answersBySocket === 'object'
+    ? state.answersBySocket
+    : null;
+  if (bySocket) {
+    Object.keys(bySocket).forEach((sid) => {
+      const p = byId.get(String(sid));
+      add(p && (p.stableId || p.id) ? (p.stableId || p.id) : sid, p && p.name);
+    });
+  }
+
+  const groups = Array.isArray(state && state.currentAnswerGroups) ? state.currentAnswerGroups : [];
+  groups.forEach((group) => {
+    const names = Array.isArray(group && group.players) ? group.players : [];
+    names.forEach((name) => add(name, name));
+  });
+
+  return out;
+}
+
+function publicPlayersFromState(state) {
+  const players = Array.isArray(state && state.players) ? state.players : [];
+  return players.map((p) => ({
+    id: p && p.id,
+    stableId: p && p.stableId,
+    name: p && p.name,
+    score: p && p.score,
+    isVirtual: !!(p && p.isVirtual)
+  }));
+}
+
 function findMyAnswer(state, viewer) {
   if (!state || !viewer) return null;
   if (state.answersBySocket && viewer.socketId && state.answersBySocket[viewer.socketId] != null) {
@@ -67,6 +117,8 @@ function redactStateForViewer(state, viewer) {
     view.pendingEdits = [];
     view.myAnswer = null;
     view.myPendingEdit = null;
+    view.players = publicPlayersFromState(state);
+    view.answeredPlayers = answeredPlayersFromState(state);
     if (live) {
       view.currentAnswerGroups = [];
       view.categorizationData = null;
@@ -121,6 +173,7 @@ module.exports = {
   gameEpoch,
   isLiveAnsweringPhase,
   answersReceivedFromState,
+  answeredPlayersFromState,
   findMyAnswer,
   viewerRoleFromInfo,
   redactStateForViewer,
