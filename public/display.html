@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-10-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-20-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -599,26 +599,65 @@
             }, 50);
         }
 
+        const PLAY_KICKERS = [
+            'Think ewe-nique.',
+            "Don't follow the flock.",
+            'Fleece the competition.',
+            'No sheepish answers.',
+            'A shear stroke of genius…',
+            'Pull the wool over their eyes.',
+            'Baa-sed answers only.',
+            'Be the bellwether.',
+            'Leave the flock in the dust.',
+            'Make it ram-bunctiously clever.'
+        ];
+
+        function playKickerForQuestion(questionNumber) {
+            return PLAY_KICKERS[(Math.max(1, questionNumber) - 1) % PLAY_KICKERS.length];
+        }
+
+        function flockResponseLine(responses, totalPlayers) {
+            const n = Number(responses) || 0;
+            const total = Number(totalPlayers) || 0;
+            if (total <= 0) return 'Waiting for the flock to wander in…';
+            if (n <= 0) return 'The flock is still chewing this over…';
+            if (n >= total) return 'The whole flock has spoken!';
+            if (n === 1) return '1 sheep has bleated in. The rest are still grazing.';
+            if (n < total / 3) return `${n} of ${total} sheep have bleated in. The flock is waking up.`;
+            if (n < total * 0.8) return `${n} of ${total} sheep have bleated in. Don't get left in the wool.`;
+            return `${n} of ${total} sheep have bleated in. Last ones out of the pasture!`;
+        }
+
         function showPlayingScreen() {
             const currentQuestion = gameState.questions[gameState.currentQuestion];
             const questionNumber = gameState.currentQuestion + 1;
             const roundNumber = Math.ceil(questionNumber / gameState.questionsPerRound);
             const questionInRound = ((questionNumber - 1) % gameState.questionsPerRound) + 1;
+            const kicker = playKickerForQuestion(questionNumber);
             
             document.getElementById('displayScreen').innerHTML = `
-                <div class="playing-container">
+                <div class="playing-container tv-play">
+                    <div class="tv-play-herd" aria-hidden="true">
+                        <span class="tv-sheep tv-sheep-a">🐑</span>
+                        <span class="tv-sheep tv-sheep-b">🐑</span>
+                        <span class="tv-sheep tv-sheep-c">🐑</span>
+                        <span class="tv-sheep tv-sheep-d">🐑</span>
+                    </div>
                     <div class="tv-play-top">
                         <div class="round-info">
-                            <h2>Round ${roundNumber} • Question ${questionInRound}/${gameState.questionsPerRound}</h2>
+                            <p class="tv-play-brand">MEGASheep</p>
+                            <h2>Round ${roundNumber} · Prompt ${questionInRound} of ${gameState.questionsPerRound}</h2>
                         </div>
                         <div class="timer-display">
                             <div class="timer-circle" id="timerCircle">
                                 <span class="timer-text" id="displayTimer">${gameState.timeLeft || 30}</span>
                             </div>
+                            <p class="tv-timer-caption" id="timerCaption">baa-fore it's gone</p>
                         </div>
                     </div>
                     <div class="question-content">
                         <div class="question-card">
+                            <p class="tv-question-eyebrow">${kicker}</p>
                             <h1 class="question-prompt">${currentQuestion ? currentQuestion.prompt : 'Loading question...'}</h1>
                         </div>
                     </div>
@@ -626,9 +665,7 @@
                         <div class="response-progress">
                             <div class="response-bar" id="responseBar"></div>
                         </div>
-                        <div class="response-text" id="responseText">
-                            <span id="responseCount">0</span> of <span id="totalPlayerCount">${gameState.players.length}</span> responses
-                        </div>
+                        <div class="response-text" id="responseText">${flockResponseLine(0, gameState.players.length)}</div>
                     </div>
                 </div>
             `;
@@ -671,14 +708,16 @@
             // Update timer display
             timerText.textContent = timeLeft;
             
-            // Remove existing timer classes
             timerCircle.classList.remove('urgent', 'warning');
-            
-            // Add appropriate class based on time remaining
+            const caption = document.getElementById('timerCaption');
             if (timeLeft <= 5) {
                 timerCircle.classList.add('urgent');
+                if (caption) caption.textContent = 'SHEAR PANIC';
             } else if (timeLeft <= 10) {
                 timerCircle.classList.add('warning');
+                if (caption) caption.textContent = 'the wool is thinning…';
+            } else if (caption) {
+                caption.textContent = "baa-fore it's gone";
             }
             
             // Update gameState for consistency
@@ -688,26 +727,19 @@
         }
         
         function updateResponseIndicator(responses, totalPlayers) {
-            const responseCount = document.getElementById('responseCount');
-            const totalPlayerCount = document.getElementById('totalPlayerCount');
+            const responseText = document.getElementById('responseText');
             const responseBar = document.getElementById('responseBar');
-            
-            if (!responseCount || !totalPlayerCount || !responseBar) return;
-            
-            // Update text
-            responseCount.textContent = responses;
-            totalPlayerCount.textContent = totalPlayers;
-            
-            // Update progress bar
+            if (!responseBar) return;
+
             const percentage = totalPlayers > 0 ? (responses / totalPlayers) * 100 : 0;
             responseBar.style.width = `${percentage}%`;
-            
-            // Add completion pulse when all responses are in
+            if (responseText) responseText.textContent = flockResponseLine(responses, totalPlayers);
+
             if (responses === totalPlayers && totalPlayers > 0) {
-                responseBar.style.background = 'linear-gradient(90deg, #2ecc71 0%, #27ae60 100%)';
-                responseBar.style.boxShadow = '0 0 15px rgba(46, 204, 113, 0.6)';
+                responseBar.style.background = 'linear-gradient(90deg, #e8c478 0%, #7dcea0 100%)';
+                responseBar.style.boxShadow = '0 0 18px rgba(232, 196, 120, 0.45)';
             } else {
-                responseBar.style.background = 'linear-gradient(90deg, #3498db 0%, #2ecc71 100%)';
+                responseBar.style.background = 'linear-gradient(90deg, #c9a15b 0%, #7aa3e8 55%, #7dcea0 100%)';
                 responseBar.style.boxShadow = 'none';
             }
         }
