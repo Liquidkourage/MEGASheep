@@ -1072,7 +1072,7 @@
                             <div class="grade-strip-kicker" id="gradeStripKicker">Live grading</div>
                             <p class="grade-strip-question" id="gradeStripQuestion">Waiting for a question</p>
                             <p class="grade-strip-progress" id="gradeStripProgress"></p>
-                            <p class="grade-strip-hint">Click an answer, then click a target. Double-click files a strong guess.</p>
+                            <p class="grade-strip-hint">Click an answer, then click a target. Double-click files a strong guess. Right-click marks it wrong.</p>
                         </div>
                         <div class="grade-strip-actions">
                             <button id="endQuestionGradeBtn" class="control-btn warning" type="button">End question</button>
@@ -1102,7 +1102,7 @@
                                     Inbox
                                     <span class="answer-count-badge" id="uncategorizedAnswersCount">0</span>
                                 </h4>
-                                <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized" data-bucket-id="uncategorized"></div>
+                                <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized" data-bucket-id="uncategorized" title="Right-click an answer to mark it wrong"></div>
                             </div>
                         </div>
                         <div class="grade-targets">
@@ -1300,7 +1300,7 @@
     </div>
 
     <script>window.MEGASHEEP_GRADING_EMBEDDED = true;</script>
-    <script src="grading-board.js?v=2026-11-18T21-45-00"></script>
+    <script src="grading-board.js?v=2026-11-18T21-50-00"></script>
     <script>
         // Socket.IO connection
         let socket = null;

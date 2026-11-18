@@ -1553,6 +1553,20 @@
             return true;
         }
 
+        function fileChipToWrong(chip) {
+            if (!chip) return false;
+            const inbox = chip.closest('#uncategorizedAnswers, .uncategorized-bucket');
+            if (!inbox) return false;
+            const wrong = document.querySelector('#gradingInterface .wrong-bucket') || document.querySelector('.wrong-bucket');
+            if (!wrong) return false;
+            const moved = moveChipToBucket(chip, wrong);
+            if (moved) {
+                chip.style.background = 'rgba(231, 76, 60, 0.4)';
+                setTimeout(() => { chip.style.background = ''; }, 450);
+            }
+            return moved;
+        }
+
         function bindInboxClicks() {
             const root = document.getElementById('gradingInterface');
             if (!root || root.dataset.inboxClicks === '1') return;
@@ -1570,6 +1584,13 @@
                     e.preventDefault();
                     moveChipToBucket(selectedGradeChip, bucket);
                 }
+            });
+            root.addEventListener('contextmenu', (e) => {
+                const chip = e.target.closest('#uncategorizedAnswers .answer-item, .uncategorized-bucket .answer-item');
+                if (!chip) return;
+                e.preventDefault();
+                e.stopPropagation();
+                fileChipToWrong(chip);
             });
             document.addEventListener('keydown', (e) => {
                 if (!selectedGradeChip) return;
