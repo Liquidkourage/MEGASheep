@@ -8,689 +8,11 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-05-00">
     <style>
-        /* Dynamic scaling based on screen resolution */
         :root {
-            --scale-factor: 0.65;
-            --font-scale: 0.65;
-        }
-        
-        /* JavaScript will update these values based on screen resolution */
-        
-        /* Base scaling for 1920x1080 */
-        @media screen and (max-width: 1920px) {
-            :root {
-                --scale-factor: 0.65;
-                --font-scale: 0.65;
-            }
-        }
-        
-        /* Larger scaling for 2560x1600 and similar high-res displays */
-        @media screen and (min-width: 2560px) {
-            :root {
-                --scale-factor: 0.85;
-                --font-scale: 0.85;
-            }
-        }
-        
-        /* Medium scaling for 1920x1200 and similar */
-        @media screen and (min-width: 1921px) and (max-width: 2559px) {
-            :root {
-                --scale-factor: 0.75;
-                --font-scale: 0.75;
-            }
-        }
-        
-        /* Modern Player Card Animations */
-        @keyframes cardSlideIn {
-            0% {
-                transform: translateY(30px) scale(0.8);
-                opacity: 0;
-            }
-            60% {
-                transform: translateY(-5px) scale(1.05);
-                opacity: 1;
-            }
-            100% {
-                transform: translateY(0) scale(1);
-                opacity: 1;
-            }
-        }
-
-        @keyframes cardPulse {
-            0%, 100% {
-                transform: scale(1);
-                box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            }
-            50% {
-                transform: scale(1.02);
-                box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            }
-        }
-
-        @keyframes scoreGlow {
-            0%, 100% {
-                text-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
-            }
-            50% {
-                text-shadow: 0 0 15px rgba(0, 255, 136, 0.9), 0 0 25px rgba(0, 255, 136, 0.5);
-            }
-        }
-
-        /* Staggered animation delay for cards */
-        .modern-player-card:nth-child(1) { animation-delay: 0ms; }
-        .modern-player-card:nth-child(2) { animation-delay: 50ms; }
-        .modern-player-card:nth-child(3) { animation-delay: 100ms; }
-        .modern-player-card:nth-child(4) { animation-delay: 150ms; }
-        .modern-player-card:nth-child(5) { animation-delay: 200ms; }
-        .modern-player-card:nth-child(6) { animation-delay: 250ms; }
-        .modern-player-card:nth-child(7) { animation-delay: 300ms; }
-        .modern-player-card:nth-child(8) { animation-delay: 350ms; }
-        .modern-player-card:nth-child(9) { animation-delay: 400ms; }
-        .modern-player-card:nth-child(10) { animation-delay: 450ms; }
-        .modern-player-card:nth-child(11) { animation-delay: 500ms; }
-        .modern-player-card:nth-child(12) { animation-delay: 550ms; }
-        .modern-player-card:nth-child(13) { animation-delay: 600ms; }
-        .modern-player-card:nth-child(14) { animation-delay: 650ms; }
-        .modern-player-card:nth-child(15) { animation-delay: 700ms; }
-        .modern-player-card:nth-child(16) { animation-delay: 750ms; }
-        .modern-player-card:nth-child(17) { animation-delay: 800ms; }
-        .modern-player-card:nth-child(18) { animation-delay: 850ms; }
-        .modern-player-card:nth-child(19) { animation-delay: 900ms; }
-        .modern-player-card:nth-child(20) { animation-delay: 950ms; }
-
-        /* For cards beyond 20, use base delay (advanced calc removed for compatibility) */
-        .modern-player-card:nth-child(n+21) { animation-delay: 0ms; }
-
-        /* Hover effects for modern cards */
-        .modern-player-card:hover {
-            transform: translateY(-8px) scale(1.05) !important;
-            border-color: rgba(0, 123, 255, 0.8) !important;
-            background: linear-gradient(135deg, rgba(0, 123, 255, 0.35), rgba(0, 86, 179, 0.25)) !important;
-            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-            animation: cardPulse 1.5s ease-in-out infinite !important;
-        }
-
-        /* Shimmer effect overlay */
-        .modern-player-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                90deg,
-                transparent,
-                rgba(255, 255, 255, 0.15),
-                transparent
-            );
-            transition: left 0.6s ease;
-            border-radius: 12px;
-        }
-
-        .modern-player-card:hover::before {
-            left: 100%;
-        }
-
-        /* Enhanced text styling */
-        .modern-player-name {
-            font-size: calc(1.3rem * var(--font-scale)) !important;
-            color: #ffffff !important;
-            font-weight: 700 !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            line-height: 1.1 !important;
-            flex: 1 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            width: 100% !important;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7), 0 0 8px rgba(0, 123, 255, 0.3) !important;
-            letter-spacing: 0.5px !important;
-            transition: all 0.3s ease !important;
-        }
-
-        .modern-player-score {
-            font-size: calc(1.1rem * var(--font-scale)) !important;
-            color: #00ff88 !important;
-            font-weight: 800 !important;
-            white-space: nowrap !important;
-            line-height: 1 !important;
-            text-shadow: 0 0 10px rgba(0, 255, 136, 0.7), 0 2px 4px rgba(0, 0, 0, 0.8) !important;
-            letter-spacing: 0.3px !important;
-            background: linear-gradient(45deg, #00ff88, #00cc6a) !important;
-            -webkit-background-clip: text !important;
-            -webkit-text-fill-color: transparent !important;
-            background-clip: text !important;
-            animation: scoreGlow 2s ease-in-out infinite !important;
-            transition: all 0.3s ease !important;
-        }
-
-        /* Special effects for top players */
-        .modern-player-card.top-player {
-            border-color: rgba(255, 215, 0, 0.8) !important;
-            background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 179, 0, 0.15)) !important;
-            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-        }
-
-        .modern-player-card.top-player::after {
-            content: '👑';
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: linear-gradient(135deg, #ffd700, #ffb300);
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
-            animation: cardPulse 2s ease-in-out infinite;
-        }
-
-        /* Host player special styling */
-        .modern-player-card.host-player {
-            border-color: rgba(255, 255, 255, 0.8) !important;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1)) !important;
-        }
-
-        .modern-player-card.host-player::after {
-            content: '⭐';
-            position: absolute;
-            top: -8px;
-            left: -8px;
-            background: linear-gradient(135deg, #ffffff, #f0f0f0);
-            color: #333;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.4);
-        }
-
-        /* Main two-column layout for display screen */
-        .display-main-container {
-            display: grid;
-            grid-template-columns: 75% 25%;
-            gap: calc(20px * var(--scale-factor));
-            height: 100vh;
-            width: 100vw;
-            padding: calc(20px * var(--scale-factor));
-            box-sizing: border-box;
-            align-items: start;
-        }
-
-        /* Left column: Question Results */
-        .question-results-section {
-            display: flex;
-            flex-direction: column;
-            background: rgba(0, 40, 80, 0.1);
-            border: 1px solid rgba(0, 123, 255, 0.2);
-            border-radius: calc(15px * var(--scale-factor));
-            padding: calc(18px * var(--scale-factor));
-            overflow: hidden;
-        }
-
-        /* Right column: Current Scores */
-        .current-scores-section {
-            display: flex;
-            flex-direction: column;
-            background: rgba(0, 40, 80, 0.1);
-            border: 1px solid rgba(0, 123, 255, 0.2);
-            border-radius: calc(15px * var(--scale-factor));
-            padding: calc(18px * var(--scale-factor));
-            overflow: hidden;
-        }
-
-        /* Headers for both sections */
-        .scoring-header, .scores-header {
-            text-align: center;
-            margin: 0 0 calc(20px * var(--scale-factor)) 0;
-            flex-shrink: 0;
-            background: rgba(0, 0, 0, 0.6);
-            border-radius: calc(10px * var(--scale-factor));
-            padding: calc(15px * var(--scale-factor));
-        }
-
-        .scoring-header h1, .scores-header h1 {
-            color: #e8e8e8 !important;
-            font-size: calc(2.8rem * var(--font-scale));
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
-            margin: 0;
-            font-weight: bold;
-            -webkit-text-fill-color: #e8e8e8 !important;
-            background: none !important;
-            text-align: center;
-        }
-
-        .scoring-subtitle {
-            color: #cccccc;
-            font-size: calc(1.3rem * var(--font-scale));
-            margin: 10px 0 0 0;
-        }
-
-
-
-        /* Content areas */
-        .scoring-content {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: calc(12px * var(--scale-factor));
-        }
-
-        .scores-content {
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        /* Navigation footer */
-        .scoring-navigation {
-            flex-shrink: 0;
-            text-align: center;
-            margin-top: calc(20px * var(--scale-factor));
-            padding: calc(15px * var(--scale-factor));
-            background: rgba(0, 123, 255, 0.1);
-            border-radius: calc(10px * var(--scale-factor));
-            border: 1px solid rgba(0, 123, 255, 0.2);
-        }
-
-        .scoring-navigation p {
-            color: #ffffff;
-            font-size: calc(1.1rem * var(--font-scale));
-            margin: 0;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-        }
-
-        /* Compact scores for sidebar */
-        .compact-scores-list {
-            display: flex;
-            flex-direction: column;
-            gap: calc(8px * var(--scale-factor));
-        }
-
-        .compact-score-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: calc(8px * var(--scale-factor));
-            padding: calc(8px * var(--scale-factor)) calc(12px * var(--scale-factor));
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .compact-score-name {
-            color: #ffffff;
-            font-weight: 600;
-            font-size: calc(1rem * var(--font-scale));
-        }
-
-        .compact-score-value {
-            color: #00ff88;
-            font-weight: bold;
-            font-size: calc(1.1rem * var(--font-scale));
-        }
-
-        /* Auto-scrolling scores container - 60% of screen height */
-        .auto-scroll-container {
-            height: 66vh; /* Exactly 60% of screen height */
-            overflow: hidden;
-            border-radius: calc(10px * var(--scale-factor));
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .auto-scroll-content {
-            display: flex;
-            flex-direction: column;
-            gap: calc(8px * var(--scale-factor));
-            padding: calc(10px * var(--scale-factor));
-        }
-
-        /* Optimized auto-scroll animation - no hold at top, compressed loop */
-        @keyframes autoScrollDown {
-            0% {
-                transform: translateY(0); /* Start at top */
-            }
-            17% {
-                transform: translateY(0); /* Brief pause at top */
-            }
-            80% {
-                transform: translateY(calc(-100% + 66vh)); /* Scroll to bottom */
-            }
-            98% {
-                transform: translateY(calc(-100% + 66vh)); /* Brief pause at bottom */
-            }
-            100% {
-                transform: translateY(0); /* Fast reset - immediate restart */
-            }
-        }
-
-        /* Pause animation on hover for better UX */
-        .auto-scroll-container:hover .auto-scroll-content {
-            animation-play-state: paused;
-        }
-
-        /* Top Submitted Answers styling overrides */
-        .answers-section .answer-text {
-            font-size: calc(1.4rem * var(--font-scale)) !important;
-            margin-right: calc(20px * var(--scale-factor)) !important;
-            margin-left: 0 !important;
-            align-self: flex-start !important;
-            text-transform: capitalize !important;
-        }
-
-        /* Rank badge designed to work with rounded card corners */
-        .answer-rank {
-            position: absolute !important;
-            top: -2px !important;
-            left: -2px !important;
-            background: rgba(0, 123, 255, 0.8) !important;
-            border: 1px solid rgba(0, 123, 255, 0.6) !important;
-            border-radius: 0 0 8px 0 !important;
-            padding: 3px 8px !important;
-            font-size: 0.75rem !important;
-            font-weight: 700 !important;
-            color: #ffffff !important;
-            text-align: center !important;
-            min-width: 32px !important;
-            z-index: 10 !important;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
-        }
-
-        .answers-section .answer-card {
-            position: relative;
-            align-items: flex-start !important;
-            padding-top: 0 !important;
-            min-height: calc(40px * var(--scale-factor)) !important;
-            padding: calc(8px * var(--scale-factor)) calc(12px * var(--scale-factor)) !important;
-        }
-
-        .answers-section .answer-count {
-            margin-top: calc(8px * var(--scale-factor)) !important;
-            font-size: calc(1.1rem * var(--font-scale)) !important;
-        }
-
-        .answers-section .answer-points {
-            background: transparent !important;
-            font-size: calc(1.1rem * var(--font-scale)) !important;
-        }
-
-        /* Correct answer badge with proper colors and centering */
-        .correct-answer-badge {
-            background: rgba(44, 62, 80, 0.9) !important;
-            border: 2px solid rgba(52, 73, 94, 0.8) !important;
-            border-radius: 10px;
-            padding: 8px 15px;
-            text-align: center;
-            transition: all 0.3s ease;
-            width: fit-content;
-            max-width: 140px;
-            color: #ecf0f1;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 40px;
-        }
-
-        .correct-answer-badge .correct-answer-text {
-            font-size: calc(1.2rem * var(--scale-factor));
-            line-height: 1.2;
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            display: block;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            white-space: normal;
-        }
-
-        /* Dynamic text sizing for correct answer badges */
-        .correct-answer-badge[data-answer-length="short"] .correct-answer-text {
-            font-size: calc(1.4rem * var(--scale-factor));
-        }
-
-        .correct-answer-badge[data-answer-length="medium"] .correct-answer-text {
-            font-size: calc(1.2rem * var(--scale-factor));
-        }
-
-        .correct-answer-badge[data-answer-length="long"] .correct-answer-text {
-            font-size: calc(1rem * var(--scale-factor));
-        }
-
-        .correct-answer-badge[data-answer-length="very-long"] .correct-answer-text {
-            font-size: calc(0.9rem * var(--scale-factor));
-        }
-
-        /* Wrong answers grid - 2 rows */
-        .wrong-answers-grid {
-            display: grid !important;
-            grid-template-rows: repeat(2, 1fr) !important;
-            grid-auto-flow: column !important;
-            gap: calc(10px * var(--scale-factor)) !important;
-            margin: calc(12px * var(--scale-factor)) 0 !important;
-        }
-
-        /* Wrong answer card vertical layout */
-        .wrong-answer-card {
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            gap: calc(8px * var(--scale-factor)) !important;
-            min-height: calc(35px * var(--scale-factor)) !important;
-            padding: calc(6px * var(--scale-factor)) calc(10px * var(--scale-factor)) !important;
-        }
-
-        .wrong-answer-text {
-            font-weight: bold !important;
-            margin-bottom: calc(5px * var(--scale-factor)) !important;
-            font-size: calc(1rem * var(--font-scale)) !important;
-        }
-
-        .wrong-answer-count {
-            font-size: calc(0.9rem * var(--font-scale)) !important;
-            opacity: 0.8 !important;
-        }
-
-
-
-        /* Animate sections */
-        .answers-section, .correct-not-given-section, .wrong-answers-section {
-            opacity: 0;
-            transform: translateY(20px);
-            animation: sectionSlideIn 0.6s ease-out forwards;
-        }
-
-        .answers-section {
-            animation-delay: 0.1s;
-        }
-
-        .correct-not-given-section {
-            animation-delay: 0.3s;
-        }
-
-        .wrong-answers-section {
-            animation-delay: 0.5s;
-        }
-
-        @keyframes sectionSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Answer cards for round results - matching reference image */
-        .player-answers-row {
-            display: flex;
-            gap: calc(8px * var(--scale-factor));
-            margin-top: calc(12px * var(--scale-factor));
-            justify-content: flex-start;
-            width: 100%;
-        }
-
-        .answer-card-small {
-            background: #2ecc71;
-            color: white;
-            padding: calc(10px * var(--scale-factor)) calc(12px * var(--scale-factor));
-            border-radius: calc(8px * var(--scale-factor));
-            font-weight: bold;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex: 1;
-            min-height: calc(60px * var(--scale-factor));
-            border: none;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-            max-width: calc(250px * var(--scale-factor));
-            text-align: center;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-
-        .answer-card-small .answer-text-small {
-            font-size: calc(1.2rem * var(--scale-factor));
-            line-height: 1.2;
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            display: block;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            white-space: normal;
-        }
-
-        /* Dynamic text sizing based on answer length */
-        .answer-card-small[data-answer-length="short"] .answer-text-small {
-            font-size: calc(1.4rem * var(--scale-factor));
-        }
-
-        .answer-card-small[data-answer-length="medium"] .answer-text-small {
-            font-size: calc(1.2rem * var(--scale-factor));
-        }
-
-        .answer-card-small[data-answer-length="long"] .answer-text-small {
-            font-size: calc(1rem * var(--scale-factor));
-        }
-
-        .answer-card-small[data-answer-length="very-long"] .answer-text-small {
-            font-size: calc(0.9rem * var(--scale-factor));
-        }
-
-        .answer-card-small.wrong-answer {
-            background: #e74c3c;
-        }
-
-        .answer-text-small {
-            font-size: calc(1.1rem * var(--font-scale));
-            font-weight: bold;
-            line-height: 1.2;
-            margin-bottom: calc(2px * var(--scale-factor));
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            white-space: normal;
-            text-align: center;
-            width: 100%;
-        }
-
-        .answer-points-small {
-            font-size: calc(0.9rem * var(--font-scale));
-            font-weight: 600;
-            opacity: 0.9;
-            line-height: 1;
-        }
-
-        .no-answers-player {
-            color: #95a5a6;
-            font-style: italic;
-            font-size: calc(0.8rem * var(--font-scale));
-            margin-top: calc(10px * var(--scale-factor));
-        }
-
-        /* 1920x1080 Grid Width Optimizations */
-        .answers-grid, .answers-results-grid, .scores-list, .final-scores-list {
-            grid-template-columns: repeat(auto-fit, minmax(calc(400px * var(--scale-factor)), 1fr)) !important;
-        }
-
-        .answers-results-grid {
-            grid-template-columns: repeat(auto-fit, minmax(calc(450px * var(--scale-factor)), 1fr)) !important;
-        }
-
-        .correct-answers-grid {
-            display: grid !important;
-            grid-template-columns: repeat(auto-fit, minmax(calc(60px * var(--scale-factor)), 1fr)) !important;
-            gap: calc(8px * var(--scale-factor)) !important;
-            margin: calc(12px * var(--scale-factor)) 0 !important;
-        }
-        
-        .wrong-answers-grid {
-            grid-template-columns: repeat(auto-fit, minmax(calc(60px * var(--scale-factor)), 1fr)) !important;
-        }
-
-        .top-answers-grid, .incorrect-answers-grid {
-            grid-template-columns: repeat(auto-fit, minmax(calc(380px * var(--scale-factor, 0.65)), 1fr)) !important;
-        }
-
-        .display-players {
-            grid-template-columns: repeat(auto-fit, minmax(calc(140px * var(--scale-factor)), 1fr)) !important;
-        }
-
-        /* Reduce font size for submitted answers section headers */
-        .answers-section h3,
-        .correct-not-given-section h3,
-        .wrong-answers-section h3 {
-            font-size: calc(1.2rem * var(--font-scale)) !important;
-            margin-bottom: calc(8px * var(--scale-factor)) !important;
-            margin-top: calc(8px * var(--scale-factor)) !important;
-        }
-        /* Header and typography adjustments */
-        .display-header {
-            text-align: center;
-            margin-top: 24px;
-            z-index: 1001;
-        }
-        .display-title {
-            margin: 0 0 6px 0;
-        }
-        .display-brand {
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            opacity: 0.85;
-            margin: 0 0 8px 0;
-            font-size: 0.9rem;
-        }
-        .display-subtitle {
-            font-family: 'Bree Serif', Georgia, 'Times New Roman', serif;
-            text-transform: none !important;
-            letter-spacing: 0.02em !important;
-            line-height: 1.35 !important;
-            max-width: 1200px;
-            margin: 20px auto 0 auto;
-            padding: 0 24px;
-        }
-        .display-content {
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 16px;
-            padding-top: 100px !important;
-            box-sizing: border-box;
+            --scale-factor: 1;
+            --font-scale: 1;
         }
     </style>
     <!-- Fonts -->
@@ -730,11 +52,7 @@
 <body>
     <!-- Display Screen (for projector/streaming) -->
     <div id="displayScreen" class="display-mode">
-        <!-- Content will be dynamically generated by JavaScript -->
-                </div>
-
-
-        </div>
+        <!-- Content is generated by JavaScript -->
     </div>
 
     <script>
@@ -1183,11 +501,7 @@
                 playerCountElement.textContent = `👥 Players: ${gameState.players.length}`;
             }
             
-            // Update only the player grid
-            const playersContainer = document.querySelector('.display-players');
-            if (playersContainer) {
-                playersContainer.innerHTML = generatePlayerListDisplay(gameState.players);
-            }
+            layoutLobbyPlayers();
             
             console.log(`📺 Updated players only: ${gameState.players.length} players`);
             
@@ -1201,32 +515,27 @@
 
         function showIntroScreen() {
             preventAllScrolling();
+            const pairCode = window.displayPairingCode || '----';
             document.getElementById('displayScreen').innerHTML = `
-                <div class="display-content">
-                    <div class="display-section">
-                        <div class="display-header">
-                            <h1 class="display-title">🐑 MEGASheep</h1>
-                            <p class="display-brand">by Liquid Kourage Entertainment</p>
-                            <p class="display-subtitle">Pull the wool over everyone’s eyes with ewe-nique answers to fleece the competition.<br>Flock around and find out who’s a shear genius and who’s mutton but a wolf in sheep’s clothing.</p>
-                        </div>
+                <div class="tv-stage tv-intro">
+                    <div class="tv-intro-brand">
+                        <h1 class="display-title">🐑 MEGASheep</h1>
+                        <p class="display-brand">by Liquid Kourage Entertainment</p>
+                        <p class="display-subtitle">Pull the wool over everyone’s eyes with ewe-nique answers to fleece the competition.<br>Flock around and find out who’s a shear genius and who’s mutton but a wolf in sheep’s clothing.</p>
+                    </div>
+                    <div class="tv-intro-join">
                         ${displayGameCode ? `
-                            <div class="display-status">
-                                <p>Connecting to game ${displayGameCode}...</p>
-                                <div class="loading-spinner"></div>
-                            </div>
+                            <p class="tv-pair-label">Connecting to game ${displayGameCode}</p>
+                            <div class="loading-spinner"></div>
                             <div class="qr-code-section">
-                                <p class="qr-label">Scan to join the game:</p>
+                                <p class="qr-label">Scan to join</p>
                                 <div id="qrCodeIntro" class="qr-code"></div>
-                                <p class="game-url">Or go to <strong>megasheep.liquidkourage.com</strong> and enter game code <span class="game-code-highlight">${displayGameCode}</span></p>
+                                <p class="game-url">megasheep.liquidkourage.com<br>Game code <span class="game-code-highlight">${displayGameCode}</span></p>
                             </div>
                         ` : `
-                            <div class="qr-code-section">
-                                <p class="game-url" style="color:#ccc;">Host: use this code to connect this display in the host console</p>
-                                <div style="font-size:3.2rem;font-weight:900;letter-spacing:0.28em;margin:10px 0;color:#fff;">${((window.displayPairingCode || '----').split('').join(' '))}</div>
-                            </div>
-                            <div class="display-status" style="margin: 10px 0 0 0;">
-                                <div class="loading-spinner" style="margin: 12px auto 0 auto;"></div>
-                            </div>
+                            <p class="tv-pair-label">Enter this code in the host console to pair this screen</p>
+                            <div class="tv-pair-code">${pairCode}</div>
+                            <div class="loading-spinner"></div>
                         `}
                     </div>
                 </div>
@@ -1266,67 +575,28 @@
         function showWaitingScreen() {
             preventAllScrolling();
             document.getElementById('displayScreen').innerHTML = `
-                <div class="display-content" style="
-                    width: 100vw !important;
-                    height: 100vh !important;
-                    display: flex !important;
-                    flex-direction: column !important;
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    padding: 0 !important;
-                    margin: 0 !important;
-                    box-sizing: border-box !important;
-                    overflow: hidden !important;
-                ">
-                    <!-- Top Header -->
-                    <div class="display-header" style="
-                        width: 100% !important;
-                        text-align: center !important;
-                        padding: 20px 0 10px 0 !important;
-                        flex-shrink: 0 !important;
-                        z-index: 1001 !important;
-                    ">
-                        <h1 class="display-title" style="font-size: 2.5rem !important; margin: 0 0 10px 0 !important;">🎮 Game Lobby</h1>
-                        <p class="display-subtitle" style="font-size: 1.2rem !important; margin: 0 0 5px 0 !important;">Players are joining...</p>
-                        <p class="display-status" style="font-size: 1rem !important; margin: 0 !important;">👥 Players: ${gameState.players.length}</p>
+                <div class="tv-stage tv-lobby">
+                    <aside class="tv-lobby-join">
+                        <h1 class="display-title">Join the flock</h1>
+                        <p class="qr-label">Scan to join</p>
+                        <div id="qrCodeWaiting" class="qr-code"></div>
+                        <p class="game-url">megasheep.liquidkourage.com<br>Game code <span class="game-code-highlight">${displayGameCode || 'XXXX'}</span></p>
+                    </aside>
+                    <section class="tv-lobby-players">
+                        <div class="tv-lobby-heading">
+                            <h1>Game Lobby</h1>
+                            <p class="display-status">${gameState.players.length} player${gameState.players.length === 1 ? '' : 's'}</p>
                         </div>
-                    
-                    <!-- Players Grid (will position itself) -->
-                    <div class="display-players" style="
-                        flex: 1 !important; 
-                        position: relative !important;
-                        width: 100% !important;
-                        overflow: hidden !important;
-                        display: flex !important;
-                        justify-content: center !important;
-                        align-items: center !important;
-                        box-sizing: border-box !important;
-                    ">
-                            ${generatePlayerListDisplay(gameState.players)}
-                        </div>
-                    
-                    <!-- Bottom QR Code -->
-                    <div class="qr-code-section" style="
-                        width: 100% !important;
-                        text-align: center !important;
-                        padding: 10px 0 20px 0 !important;
-                        flex-shrink: 0 !important;
-                        z-index: 1001 !important;
-                        background: rgba(0, 0, 0, 0.4) !important;
-                        backdrop-filter: blur(8px) !important;
-                    ">
-                        <p class="qr-label" style="font-size: 0.9rem !important; margin: 0 0 8px 0 !important;">Scan to join:</p>
-                        <div id="qrCodeWaiting" class="qr-code" style="display: inline-block !important;"></div>
-                        <p class="game-url" style="font-size: 1rem !important; margin: 8px 0 0 0 !important;">Or go to <strong>megasheep.liquidkourage.com</strong> and enter game code <span class="game-code-highlight">${displayGameCode || 'XXXX'}</span></p>
-                    </div>
+                        <div class="display-players"></div>
+                    </section>
                 </div>
             `;
-            
-            // Generate QR code after DOM is updated
+            layoutLobbyPlayers();
+            requestAnimationFrame(layoutLobbyPlayers);
             setTimeout(() => {
                 const waitingUrl = window.currentGameCode ? `https://megasheep.liquidkourage.com/?game=${window.currentGameCode}` : 'https://megasheep.liquidkourage.com';
                 generateQRCode('qrCodeWaiting', waitingUrl);
-            }, 100);
+            }, 50);
         }
 
         function showPlayingScreen() {
@@ -1337,26 +607,21 @@
             
             document.getElementById('displayScreen').innerHTML = `
                 <div class="playing-container">
-                    <!-- Timer - Upper Right -->
+                    <div class="tv-play-top">
+                        <div class="round-info">
+                            <h2>Round ${roundNumber} • Question ${questionInRound}/${gameState.questionsPerRound}</h2>
+                        </div>
                         <div class="timer-display">
-                        <div class="timer-circle" id="timerCircle">
-                            <span class="timer-text" id="displayTimer">${gameState.timeLeft || 30}</span>
+                            <div class="timer-circle" id="timerCircle">
+                                <span class="timer-text" id="displayTimer">${gameState.timeLeft || 30}</span>
                             </div>
                         </div>
-                    
-                    <!-- Round/Question Info - Top Center -->
-                    <div class="round-info">
-                        <h2>Round ${roundNumber} • Question ${questionInRound}/${gameState.questionsPerRound}</h2>
                     </div>
-                    
-                    <!-- Question Card -->
                     <div class="question-content">
                         <div class="question-card">
-                        <h1 class="question-prompt">${currentQuestion ? currentQuestion.prompt : 'Loading question...'}</h1>
+                            <h1 class="question-prompt">${currentQuestion ? currentQuestion.prompt : 'Loading question...'}</h1>
                         </div>
                     </div>
-                    
-                    <!-- Response Progress Indicator -->
                     <div class="response-indicator" id="responseIndicator">
                         <div class="response-progress">
                             <div class="response-bar" id="responseBar"></div>
@@ -1535,310 +800,70 @@
             `;
         }
 
+        function layoutLobbyPlayers() {
+            const pane = document.querySelector('.display-players');
+            if (!pane || !gameState) return;
+            pane.innerHTML = generatePlayerListDisplay(gameState.players || []);
+        }
+
         function generatePlayerListDisplay(players) {
             if (!players || players.length === 0) {
-                lastPlayerCount = 0; // Reset when no players
-                return '<p>No players yet...</p>';
-            }
-            
-            // Simple grid calculation - aim for roughly square, optimized for perfect fit
-            const totalPlayers = players.length;
-            
-            // SMART GRID: Calculate optimal cols/rows based on available space and card aspect ratio
-            let cols, rows;
-            
-            // Get green container dimensions first for smarter calculation
-            const greenContainer = document.querySelector('.display-players');
-            const greenRect = greenContainer ? greenContainer.getBoundingClientRect() : {
-                width: window.innerWidth * 0.8,
-                height: window.innerHeight * 0.6
-            };
-            
-            const parentPadding = 20;
-            const parentMargin = 10;
-            const parentBorder = 4;
-            const gap = 8;
-            
-            // Available space inside yellow container - MAX 80% of screen width
-            const maxScreenWidth = window.innerWidth * 0.8; // 80% constraint
-            const maxYellowWidth = Math.min(
-                greenRect.width - (parentMargin * 2) - parentBorder,
-                maxScreenWidth
-            );
-            const maxYellowHeight = greenRect.height - (parentMargin * 2) - parentBorder;
-            const availableWidth = maxYellowWidth - (parentPadding * 2);
-            const availableHeight = maxYellowHeight - (parentPadding * 2);
-            
-            // Card aspect ratio is 1.6:1 (width:height)
-            const cardAspectRatio = 1.6;
-            
-            // SPECIAL LOGIC FOR FIRST 20 CARDS: More balanced layouts
-            let bestCols = Math.ceil(Math.sqrt(totalPlayers));
-            let bestCardSize = 0;
-            
-            // For small groups (≤20), prefer more balanced/square layouts
-            let minCols, maxCols;
-            if (totalPlayers <= 20) {
-                // Special handling for very small groups
-                if (totalPlayers <= 6) {
-                    // Force minimum 2 columns for tiny groups
-                    minCols = 2;
-                    maxCols = Math.max(3, bestCols + 1);
-                    console.log(`📊 Tiny group optimization: forcing ${minCols}-${maxCols} columns for ${totalPlayers} players`);
-                } else if (totalPlayers >= 7 && totalPlayers <= 12) {
-                    // Special fixes for problematic counts 7-12
-                    if (totalPlayers === 7 || totalPlayers === 8) {
-                        // Force 4x2 layout instead of 2x4
-                        minCols = 4;
-                        maxCols = 4;
-                        console.log(`📊 Fixed layout for ${totalPlayers} players: forcing 4 columns`);
-                    } else if (totalPlayers === 9) {
-                        // Force 3x3 layout
-                        minCols = 3;
-                        maxCols = 3;
-                        console.log(`📊 Fixed layout for ${totalPlayers} players: forcing 3x3 square`);
-                    } else if (totalPlayers >= 10 && totalPlayers <= 12) {
-                        // Force 4 columns for 3x4 layout (3 rows, 4 columns)
-                        minCols = 4;
-                        maxCols = 4;
-                        console.log(`📊 Fixed layout for ${totalPlayers} players: forcing 4 columns for 3x4 layout`);
-                    }
-                } else {
-                    // Prefer balanced layouts for other small groups
-                    minCols = Math.max(2, bestCols - 2); // Ensure at least 2 columns
-                    maxCols = bestCols + 2;
-                    console.log(`📊 Small group optimization: testing ${minCols}-${maxCols} columns for ${totalPlayers} players`);
-                }
-            } else {
-                // Normal range for larger groups
-                minCols = Math.max(1, bestCols - 3);
-                maxCols = bestCols + 8;
-            }
-            
-            for (let testCols = minCols; testCols <= maxCols; testCols++) {
-                const testRows = Math.ceil(totalPlayers / testCols);
-                
-                // Calculate maximum card size for this grid
-                const maxCardWidth = (availableWidth - (gap * (testCols - 1))) / testCols;
-                const maxCardHeight = (availableHeight - (gap * (testRows - 1))) / testRows;
-                
-                // Respect aspect ratio - card width should be 1.6 * card height
-                const cardWidthByRatio = maxCardHeight * cardAspectRatio;
-                const cardHeightByRatio = maxCardWidth / cardAspectRatio;
-                
-                // Use the limiting dimension
-                const finalCardWidth = Math.min(maxCardWidth, cardWidthByRatio);
-                const finalCardHeight = Math.min(maxCardHeight, cardHeightByRatio);
-                
-                const cardArea = finalCardWidth * finalCardHeight;
-                
-                // Track the configuration that gives the largest cards
-                // NEW LIMITS: Min 120x75, Max 320x200
-                // PREFER VERTICAL EXPANSION: When card sizes are similar, prefer taller layouts
-                if (finalCardWidth >= 120 && finalCardHeight >= 75 &&
-                    finalCardWidth <= 320 && finalCardHeight <= 200) {
-                    
-                    const isCurrentBetter = cardArea > bestCardSize;
-                    const isSimilarSize = bestCardSize > 0 && Math.abs(cardArea - bestCardSize) < (bestCardSize * 0.05); // Within 5%
-                    
-                    let shouldUpdate = isCurrentBetter;
-                    
-                    // Special logic for small groups (≤20): prefer square grids
-                    if (totalPlayers <= 20 && isSimilarSize) {
-                        const currentDiff = Math.abs(testCols - testRows); // How far from square
-                        const bestDiff = bestCardSize > 0 ? Math.abs(cols - rows) : 999;
-                        
-                        // Prefer the layout closer to square (cols ≈ rows)
-                        if (currentDiff < bestDiff) {
-                            shouldUpdate = true;
-                            console.log(`📐 More square: ${testCols}x${testRows} (diff ${currentDiff}) vs ${cols}x${rows} (diff ${bestDiff})`);
-                        }
-                    } else if (totalPlayers > 20 && isSimilarSize) {
-                        // For larger groups, prefer vertical expansion
-                        const isTaller = testRows > rows;
-                        if (isTaller) {
-                            shouldUpdate = true;
-                        }
-                    }
-                    
-                    if (shouldUpdate) {
-                        bestCardSize = cardArea;
-                        cols = testCols;
-                        rows = testRows;
-                    }
-                }
-            }
-            
-            // Fallback if no valid horizontal layout found
-            if (bestCardSize === 0) {
-                console.log(`⚠️ No horizontal layout found, using square fallback`);
-                cols = Math.ceil(Math.sqrt(totalPlayers));
-                rows = Math.ceil(totalPlayers / cols);
-                bestCardSize = 1; // Ensure we proceed
-            }
-            
-            console.log(`🎯 SMART GRID: ${cols}x${rows} for ${totalPlayers} players (${totalPlayers <= 20 ? 'prefer square' : 'vertical expansion'}, max 80% width)`);
-            
-            // Calculate optimal card size for the chosen grid
-            const maxCardWidth = (availableWidth - (gap * (cols - 1))) / cols;
-            const maxCardHeight = (availableHeight - (gap * (rows - 1))) / rows;
-            
-            // Respect aspect ratio
-            const cardWidthByRatio = maxCardHeight * cardAspectRatio;
-            const cardHeightByRatio = maxCardWidth / cardAspectRatio;
-            
-            // Use the limiting dimension
-            let cardWidth = Math.min(maxCardWidth, cardWidthByRatio);
-            let cardHeight = Math.min(maxCardHeight, cardHeightByRatio);
-            
-            // Enforce size limits: Min 120x75, Max 320x200
-            cardWidth = Math.min(320, Math.max(120, cardWidth));
-            cardHeight = Math.min(200, Math.max(75, cardHeight));
-            
-            console.log(`🖥️ Screen: ${window.innerWidth}x${window.innerHeight}, Available: ${availableWidth}x${availableHeight}`);
-            console.log(`📊 Target grid: ${cols}x${rows} = ${totalPlayers} players`);
-            
-            // Keep reducing card size until grid fits
-            let attempts = 0;
-            while (attempts < 20) {
-                const gridWidth = (cardWidth * cols) + (gap * (cols - 1));
-                const gridHeight = (cardHeight * rows) + (gap * (rows - 1));
-                
-                console.log(`   Attempt ${attempts + 1}: Cards ${cardWidth}x${cardHeight}, Grid ${gridWidth}x${gridHeight}`);
-                
-                if (gridWidth <= availableWidth && gridHeight <= availableHeight) {
-                    console.log(`✅ SUCCESS: Grid fits in available space`);
-                    break;
-                }
-                
-                // Reduce card size by 10px and maintain aspect ratio
-                cardWidth -= 10;
-                cardHeight = Math.round(cardWidth / 1.6);
-                attempts++;
-            }
-            
-            if (attempts >= 20) {
-                console.error(`🚨 EMERGENCY: Using minimum card size`);
-                cardWidth = 60;
-                cardHeight = 37;
-            }
-            
-            let finalGridWidth = (cardWidth * cols) + (gap * (cols - 1));
-            let finalGridHeight = (cardHeight * rows) + (gap * (rows - 1));
-            
-            // HARD STOP: If yellow would overflow green, force emergency reduction
-            const finalYellowWidth = finalGridWidth + (parentPadding * 2);
-            const finalYellowHeight = finalGridHeight + (parentPadding * 2);
-            
-            if (finalYellowWidth > maxYellowWidth || finalYellowHeight > maxYellowHeight) {
-                console.error(`🚨 EMERGENCY OVERRIDE: Yellow ${finalYellowWidth}x${finalYellowHeight} > Green ${maxYellowWidth}x${maxYellowHeight}`);
-                
-                // Force cards to be tiny if needed to fit
-                const maxCardWidth = Math.floor((maxYellowWidth - (parentPadding * 2) - (gap * (cols - 1))) / cols);
-                const maxCardHeight = Math.floor((maxYellowHeight - (parentPadding * 2) - (gap * (rows - 1))) / rows);
-                
-                cardWidth = Math.max(120, maxCardWidth);  // Minimum 120px wide
-                cardHeight = Math.max(75, maxCardHeight); // Minimum 75px tall
-                
-                console.log(`🔒 HARD STOP: Forced cards to ${cardWidth}x${cardHeight}`);
-                
-                // Recalculate with forced dimensions
-                finalGridWidth = (cardWidth * cols) + (gap * (cols - 1));
-                finalGridHeight = (cardHeight * rows) + (gap * (rows - 1));
-            }
-            
-            console.log(`🎯 FINAL: Cards ${cardWidth}x${cardHeight}, Grid ${finalGridWidth}x${finalGridHeight}`);
-            
-            let html = `
-                <div class="parent-container" style="
-                    padding: 20px;
-                    margin: 10px auto;
-                    border-radius: 8px;
-                    display: inline-block;
-                ">
-                <div class="stable-players-grid" style="
-                    display: grid;
-                    grid-template-rows: repeat(${rows}, ${cardHeight}px);
-                    grid-auto-flow: column;
-                    gap: ${gap}px;
-                    height: ${finalGridHeight}px;
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                ">
-            `;
-            
-            // Detect if this is a re-render with new players
-            const isNewPlayerAdded = players.length > lastPlayerCount;
-            
-            // If players left, reset the counter to re-enable animations
-            if (players.length < lastPlayerCount) {
                 lastPlayerCount = 0;
+                return '<p class="tv-empty">Waiting for players…</p>';
             }
-            
+
+            const totalPlayers = players.length;
+            const pane = document.querySelector('.display-players');
+            const rect = pane ? pane.getBoundingClientRect() : {
+                width: window.innerWidth * 0.58,
+                height: window.innerHeight * 0.82
+            };
+            const gap = 14;
+            const availableWidth = Math.max(240, rect.width);
+            const availableHeight = Math.max(180, rect.height);
+
+            let best = { cols: 1, rows: totalPlayers, score: -1 };
+            const maxCols = Math.min(totalPlayers, 10);
+            for (let cols = 1; cols <= maxCols; cols++) {
+                const rows = Math.ceil(totalPlayers / cols);
+                const cellW = (availableWidth - gap * (cols - 1)) / cols;
+                const cellH = (availableHeight - gap * (rows - 1)) / rows;
+                if (cellW < 140 || cellH < 64) continue;
+                const area = cellW * cellH;
+                const ratioPenalty = Math.abs((cellW / Math.max(cellH, 1)) - 1.7);
+                const score = area - ratioPenalty * 80;
+                if (score > best.score) best = { cols, rows, score };
+            }
+            if (best.score < 0) {
+                best.cols = Math.max(1, Math.round(Math.sqrt(totalPlayers * (availableWidth / Math.max(1, availableHeight)))));
+                best.rows = Math.ceil(totalPlayers / best.cols);
+            }
+
+            if (players.length < lastPlayerCount) lastPlayerCount = 0;
+
+            let html = `<div class="parent-container"><div class="stable-players-grid" style="grid-template-columns: repeat(${best.cols}, minmax(0, 1fr)); grid-template-rows: repeat(${best.rows}, minmax(0, 1fr));">`;
+
             players.forEach((player, index) => {
-                // Determine special classes
-                let specialClasses = '';
-                if (player.isHost) {
-                    specialClasses += ' host-player';
-                }
-                
-                // Only animate new cards (those added beyond the last count)
+                const specialClasses = player.isHost ? ' host-player' : '';
                 const isNewCard = index >= lastPlayerCount;
-                const animationDelay = isNewCard ? ((index - lastPlayerCount) % 20) * 50 : 0;
-                
+                const animationDelay = isNewCard ? ((index - lastPlayerCount) % 20) * 40 : 0;
                 html += `
                     <div class="modern-player-card${specialClasses}" style="
-                        display: flex;
-                        flex-direction: column;
-                        justify-content: space-between;
-                        align-items: center;
-                        padding: 8px 6px;
-                        background: linear-gradient(135deg, rgba(0, 123, 255, 0.2), rgba(0, 86, 179, 0.15));
-                        border: 2px solid rgba(0, 123, 255, 0.4);
-                        border-radius: 12px;
-                        aspect-ratio: 1.6/1;
-                        box-sizing: border-box;
-                        text-align: center;
-                        backdrop-filter: blur(10px);
-                        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-                        position: relative;
-                        overflow: hidden;
-                        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-                        ${isNewCard ? `
-                            animation: cardSlideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-                            animation-delay: ${animationDelay}ms;
-                            transform: translateY(30px) scale(0.8);
-                            opacity: 0;
-                            animation-fill-mode: forwards;
-                        ` : `
-                            transform: translateY(0) scale(1);
-                            opacity: 1;
-                        `}
+                        display:flex;
+                        flex-direction:column;
+                        justify-content:center;
+                        align-items:center;
+                        background:linear-gradient(135deg, rgba(0, 123, 255, 0.2), rgba(0, 86, 179, 0.15));
+                        border:2px solid rgba(0, 123, 255, 0.4);
+                        ${isNewCard ? `animation:cardSlideIn 0.45s ease-out forwards;animation-delay:${animationDelay}ms;opacity:0;` : 'opacity:1;'}
                     ">
                         <span class="modern-player-name">${player.name}</span>
                     </div>
                 `;
             });
-            
-            html += '</div>'; // Close stable-players-grid
-            html += '</div>'; // Close parent-container
-            
-            // Update player count tracking
+
+            html += '</div></div>';
             lastPlayerCount = players.length;
-            
-            // Add auto-scroll if there are many players
-            if (players.length > 12) {
-                setTimeout(() => {
-                    const gridContainer = document.querySelector('.stable-players-grid');
-                    if (gridContainer) {
-                        gridContainer.style.overflow = 'hidden';
-                        const content = gridContainer.querySelector('.auto-scroll-content') || gridContainer;
-                        content.style.animation = `autoScrollDown ${Math.max(players.length * 0.5, 8)}s ease-in-out infinite`;
-                    }
-                }, 1000);
-            }
-            
             return html;
         }
 
@@ -2735,15 +1760,8 @@
             
             console.log(`Generating QR code for ${url} in element ${elementId}`);
             
-            // Create a larger QR code using a reliable online service
-            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
-            
-            element.innerHTML = `
-                <img src="${qrCodeUrl}" 
-                     alt="QR Code to join game" 
-                     style="width: 300px; height: 300px; background: white; border-radius: 12px;"
-                     onerror="this.parentElement.innerHTML='<div style=\\'width: 300px; height: 300px; background: white; border: 2px solid #333; display: flex; align-items: center; justify-content: center; font-size: 16px; text-align: center; padding: 20px;\\'><a href=\\'${url}\\' target=\\'_blank\\' style=\\'color: #333; text-decoration: none;\\'>Click to join<br>${url}</a></div>'">
-            `;
+            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(url)}`;
+            element.innerHTML = `<img src="${qrCodeUrl}" alt="QR Code to join game">`;
         }
 
         // Dynamic Sheep Carousel System
@@ -2975,76 +1993,16 @@
             `;
         }
 
-        // Dynamic scaling calculation based on screen resolution
         function calculateDynamicScaling() {
-            const screenWidth = window.screen.width;
-            const screenHeight = window.screen.height;
-            
-            console.log(`Screen resolution: ${screenWidth}x${screenHeight}`);
-            
-            let scaleFactor = 0.65; // Default for 1920x1080
-            
-            // Calculate scaling based on screen resolution
-            if (screenWidth >= 2560) {
-                // High-res displays like 2560x1600, 2560x1440, 3840x2160
-                scaleFactor = 0.85;
-                console.log('High-res display detected, using scale factor: 0.85');
-            } else if (screenWidth >= 1921) {
-                // Medium displays like 1920x1200, 2048x1536
-                scaleFactor = 0.75;
-                console.log('Medium-res display detected, using scale factor: 0.75');
-            } else {
-                // Standard displays like 1920x1080, 1366x768
-                scaleFactor = 0.65;
-                console.log('Standard display detected, using scale factor: 0.65');
+            document.documentElement.style.setProperty('--scale-factor', '1');
+            document.documentElement.style.setProperty('--font-scale', '1');
+        }
+
+        window.addEventListener('resize', () => {
+            if (gameState && gameState.gameState === 'waiting') {
+                layoutLobbyPlayers();
             }
-            
-            // Apply the scaling factor to CSS variables
-            document.documentElement.style.setProperty('--scale-factor', scaleFactor);
-            document.documentElement.style.setProperty('--font-scale', scaleFactor);
-            
-            console.log(`Applied scale factor: ${scaleFactor}`);
-            
-            // Force a recalculation by triggering a reflow
-            document.body.offsetHeight;
-            
-            // Log the computed value to verify it's working
-            const computedScale = getComputedStyle(document.documentElement).getPropertyValue('--scale-factor');
-            console.log(`Computed scale factor: ${computedScale}`);
-            
-            // Calculate what the minmax value should be
-            const minmaxValue = 380 * scaleFactor;
-            console.log(`Minmax value should be: ${minmaxValue}px`);
-            
-            // Also set the grid template columns directly via JavaScript as backup
-            const topAnswersGrids = document.querySelectorAll('.top-answers-grid, .incorrect-answers-grid');
-            console.log(`Found ${topAnswersGrids.length} grid elements to update`);
-            topAnswersGrids.forEach((grid, index) => {
-                grid.style.gridTemplateColumns = `repeat(auto-fit, minmax(${minmaxValue}px, 1fr))`;
-                console.log(`Grid ${index + 1} (${grid.className}): ${grid.style.gridTemplateColumns}`);
-                
-                // Also log the computed style to see what's actually applied
-                const computedStyle = getComputedStyle(grid).gridTemplateColumns;
-                console.log(`Grid ${index + 1} computed style: ${computedStyle}`);
-                
-                // Count how many cards are actually in the grid
-                const cards = grid.querySelectorAll('.answer-card, .wrong-answer-card');
-                console.log(`Grid ${index + 1} has ${cards.length} cards`);
-            });
-        }
-        
-        // Calculate scaling on page load
-        document.addEventListener('DOMContentLoaded', calculateDynamicScaling);
-        
-        // Recalculate on window resize (in case of resolution changes)
-        window.addEventListener('resize', calculateDynamicScaling);
-        
-        // Also calculate immediately if DOM is already loaded
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', calculateDynamicScaling);
-        } else {
-            calculateDynamicScaling();
-        }
+        });
 
         function generateRoundHistoryDisplay(roundHistory) {
             if (!roundHistory || roundHistory.length === 0) {
@@ -3081,5 +2039,4 @@
         }
     </script>
 </body>
-</html> 
 </html> 

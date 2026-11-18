@@ -1,0 +1,784 @@
+/* Audience /display — landscape 1080p+ video canvas. Fills the entire screen. */
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #05050a;
+}
+
+.display-mode {
+    --tv-pad: clamp(24px, 2.4vw, 48px);
+    --tv-gap: clamp(16px, 1.6vw, 28px);
+    --tv-title: clamp(2.6rem, 5.2vh, 4.6rem);
+    --tv-heading: clamp(1.8rem, 3.4vh, 2.8rem);
+    --tv-body: clamp(1.15rem, 2.2vh, 1.7rem);
+    --tv-score: clamp(1.6rem, 3.2vh, 2.6rem);
+    --tv-question: clamp(3rem, 7.2vh, 6.4rem);
+    --tv-timer: clamp(4.4rem, 10vh, 7.2rem);
+    --tv-code: clamp(3.4rem, 8vh, 6.8rem);
+    --tv-radius: 18px;
+    --tv-panel: rgba(0, 12, 28, 0.42);
+    --tv-border: rgba(120, 170, 255, 0.22);
+
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+    background: linear-gradient(135deg, #000000 0%, #101018 48%, #0a1024 100%);
+    color: #fff;
+    font-size: var(--tv-body);
+}
+
+.display-mode * {
+    box-sizing: border-box;
+}
+
+.tv-stage {
+    width: 100%;
+    height: 100%;
+    padding: var(--tv-pad);
+    display: grid;
+    gap: var(--tv-gap);
+    overflow: hidden;
+}
+
+/* Shared content shells from styles.css — unroll the boxed webpage look */
+.display-mode .display-content,
+.display-mode .display-section,
+.display-mode .playing-container,
+.display-mode .grading-container,
+.display-mode .round-leaderboard-container,
+.display-mode .round-history-container,
+.display-mode .leaderboard-container,
+.display-mode .game-finished-container {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: var(--tv-pad) !important;
+    overflow: hidden !important;
+    animation: none !important;
+    transform: none !important;
+}
+
+.display-mode .display-content,
+.display-mode .display-section {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    gap: var(--tv-gap);
+}
+
+.display-mode .display-header {
+    margin: 0 !important;
+    width: 100%;
+    text-align: left;
+    flex: 0 0 auto;
+}
+
+.display-mode .display-title,
+.display-mode .scoring-header h1,
+.display-mode .scores-header h1,
+.display-mode .grading-header h1,
+.display-mode .round-leaderboard-header h1,
+.display-mode .history-header h1,
+.display-mode .leaderboard-header h1,
+.display-mode .game-finished-container h1 {
+    font-size: var(--tv-title) !important;
+    line-height: 1.05;
+    margin: 0 !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+    background: none !important;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+}
+
+.display-mode .display-brand {
+    font-size: var(--tv-body);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    opacity: 0.78;
+    margin: 8px 0 0;
+}
+
+.display-mode .display-subtitle,
+.display-mode .scoring-subtitle,
+.display-mode .grading-subtitle,
+.display-mode .round-subtitle,
+.display-mode .history-subtitle,
+.display-mode .leaderboard-subtitle {
+    font-size: var(--tv-body) !important;
+    line-height: 1.35 !important;
+    max-width: none !important;
+    margin: 10px 0 0 !important;
+    padding: 0 !important;
+    opacity: 0.9;
+}
+
+/* ---------- Intro / pairing ---------- */
+.tv-intro {
+    grid-template-columns: minmax(0, 1.15fr) minmax(420px, 0.85fr);
+    align-items: stretch;
+}
+
+.tv-intro-brand,
+.tv-intro-join {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    height: 100%;
+    padding: clamp(28px, 3vw, 56px);
+    background: var(--tv-panel);
+    border: 1px solid var(--tv-border);
+    border-radius: calc(var(--tv-radius) + 6px);
+}
+
+.tv-intro-brand .display-title {
+    font-size: clamp(4rem, 9vh, 7.2rem) !important;
+}
+
+.tv-intro-brand .display-subtitle {
+    font-size: clamp(1.35rem, 2.6vh, 2rem) !important;
+    max-width: 22em;
+}
+
+.tv-intro-join {
+    align-items: center;
+    text-align: center;
+    gap: 18px;
+}
+
+.tv-pair-label {
+    font-size: var(--tv-body);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.8;
+    margin: 0;
+}
+
+.tv-pair-code {
+    font-size: var(--tv-code);
+    font-weight: 900;
+    letter-spacing: 0.22em;
+    line-height: 1;
+    color: #fff;
+    white-space: nowrap;
+    text-shadow: 0 0 28px rgba(80, 160, 255, 0.35);
+}
+
+.display-mode .qr-code-section {
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+}
+
+.display-mode .qr-code {
+    padding: 18px !important;
+    border-radius: 20px !important;
+    background: #fff;
+}
+
+.display-mode .qr-code img {
+    width: min(380px, 38vh) !important;
+    height: min(380px, 38vh) !important;
+    display: block;
+}
+
+.display-mode .qr-label {
+    font-size: var(--tv-body) !important;
+    margin: 0 0 12px !important;
+}
+
+.display-mode .game-url {
+    font-size: var(--tv-body) !important;
+    margin-top: 16px !important;
+}
+
+.display-mode .game-code-highlight {
+    font-size: clamp(1.6rem, 3.4vh, 2.4rem) !important;
+}
+
+.display-mode .loading-spinner {
+    width: 48px;
+    height: 48px;
+    margin: 8px auto 0;
+}
+
+/* ---------- Lobby ---------- */
+.tv-lobby {
+    grid-template-columns: minmax(380px, 0.38fr) minmax(0, 1fr);
+}
+
+.tv-lobby-join,
+.tv-lobby-players {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    background: var(--tv-panel);
+    border: 1px solid var(--tv-border);
+    border-radius: calc(var(--tv-radius) + 6px);
+    overflow: hidden;
+}
+
+.tv-lobby-join {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: clamp(24px, 2.4vw, 40px);
+    gap: 16px;
+}
+
+.tv-lobby-join .display-title {
+    font-size: clamp(2.2rem, 4.4vh, 3.4rem) !important;
+    text-align: center;
+}
+
+.tv-lobby-players {
+    padding: clamp(20px, 2vw, 32px);
+    gap: 16px;
+}
+
+.tv-lobby-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex: 0 0 auto;
+}
+
+.tv-lobby-heading h1 {
+    font-size: var(--tv-heading);
+    margin: 0;
+}
+
+.tv-lobby-heading .display-status {
+    font-size: var(--tv-body);
+    opacity: 0.85;
+    width: auto;
+    margin: 0;
+}
+
+.display-mode .display-players {
+    flex: 1 1 auto;
+    width: 100% !important;
+    min-height: 0;
+    display: flex !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    overflow: hidden !important;
+}
+
+.display-mode .parent-container {
+    width: 100%;
+    height: 100%;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex;
+}
+
+.display-mode .stable-players-grid {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    gap: 14px;
+}
+
+.display-mode .modern-player-card {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    aspect-ratio: auto !important;
+    padding: 14px 16px !important;
+    border-radius: 14px !important;
+}
+
+.display-mode .modern-player-name {
+    font-size: clamp(1.35rem, 2.8vh, 2.15rem) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.display-mode .modern-player-card:hover {
+    transform: none !important;
+    animation: none !important;
+}
+
+.tv-empty {
+    margin: auto;
+    font-size: var(--tv-heading);
+    opacity: 0.7;
+}
+
+@keyframes cardSlideIn {
+    0% { transform: translateY(24px) scale(0.92); opacity: 0; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.modern-player-card:nth-child(1) { animation-delay: 0ms; }
+.modern-player-card:nth-child(2) { animation-delay: 40ms; }
+.modern-player-card:nth-child(3) { animation-delay: 80ms; }
+.modern-player-card:nth-child(4) { animation-delay: 120ms; }
+.modern-player-card:nth-child(5) { animation-delay: 160ms; }
+.modern-player-card:nth-child(6) { animation-delay: 200ms; }
+.modern-player-card:nth-child(7) { animation-delay: 240ms; }
+.modern-player-card:nth-child(8) { animation-delay: 280ms; }
+.modern-player-card:nth-child(9) { animation-delay: 320ms; }
+.modern-player-card:nth-child(10) { animation-delay: 360ms; }
+.modern-player-card:nth-child(n+11) { animation-delay: 400ms; }
+
+.modern-player-card.top-player {
+    border-color: rgba(255, 215, 0, 0.8) !important;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 179, 0, 0.15)) !important;
+}
+
+.modern-player-card.host-player {
+    border-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* ---------- Playing ---------- */
+.display-mode .playing-container {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    justify-content: stretch !important;
+    align-content: stretch !important;
+    justify-items: stretch;
+    align-items: stretch;
+    gap: var(--tv-gap);
+}
+
+.tv-play-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--tv-gap);
+    width: 100%;
+    min-width: 0;
+}
+
+.display-mode .round-info {
+    margin: 0 !important;
+    width: auto;
+    flex: 1;
+    text-align: left;
+    padding: 18px 28px !important;
+}
+
+.display-mode .round-info h2 {
+    font-size: clamp(1.8rem, 3.6vh, 2.8rem);
+    margin: 0;
+}
+
+.display-mode .timer-display {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    flex: 0 0 auto;
+}
+
+.display-mode .timer-circle {
+    width: clamp(168px, 20vh, 240px) !important;
+    height: clamp(168px, 20vh, 240px) !important;
+}
+
+.display-mode .timer-text {
+    font-size: var(--tv-timer) !important;
+}
+
+.display-mode .question-content {
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+}
+
+.display-mode .question-card {
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    height: 100% !important;
+    aspect-ratio: auto !important;
+    padding: clamp(28px, 4vh, 64px) clamp(36px, 4vw, 72px) !important;
+    border-radius: 24px;
+}
+
+.display-mode .question-prompt {
+    font-size: var(--tv-question) !important;
+    line-height: 1.18 !important;
+    hyphens: none;
+}
+
+.display-mode .response-indicator {
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100%;
+}
+
+.display-mode .response-progress {
+    height: 28px;
+    margin-bottom: 14px;
+}
+
+.display-mode .response-text {
+    font-size: var(--tv-body) !important;
+}
+
+/* ---------- Grading ---------- */
+.display-mode .grading-container {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 28px;
+}
+
+.display-mode .grading-header,
+.display-mode .grading-content,
+.display-mode .grading-message {
+    width: min(1400px, 100%);
+}
+
+.display-mode .grading-spinner {
+    width: 96px;
+    height: 96px;
+    border-width: 8px;
+}
+
+.display-mode .grading-animation h3 {
+    font-size: var(--tv-heading);
+}
+
+.display-mode .grading-animation p {
+    font-size: var(--tv-body);
+}
+
+.display-mode .grading-stats {
+    gap: 32px;
+}
+
+.display-mode .stat-box {
+    min-width: 240px;
+    padding: 28px 36px;
+}
+
+.display-mode .stat-number {
+    font-size: clamp(3rem, 7vh, 5rem);
+}
+
+.display-mode .stat-label {
+    font-size: var(--tv-body);
+}
+
+.display-mode .grading-message p {
+    font-size: var(--tv-body);
+}
+
+/* ---------- Results ---------- */
+.display-mode .display-main-container {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.7fr) minmax(340px, 0.55fr);
+    gap: var(--tv-gap);
+    height: 100vh !important;
+    width: 100vw !important;
+    padding: var(--tv-pad) !important;
+    align-items: stretch !important;
+}
+
+.display-mode .question-results-section,
+.display-mode .current-scores-section {
+    height: 100%;
+    min-height: 0;
+    padding: clamp(18px, 1.6vw, 28px) !important;
+    background: var(--tv-panel);
+    border: 1px solid var(--tv-border);
+    border-radius: calc(var(--tv-radius) + 4px);
+}
+
+.display-mode .scoring-header,
+.display-mode .scores-header {
+    text-align: left;
+    margin: 0 0 16px !important;
+    padding: 0 !important;
+    background: transparent !important;
+}
+
+.display-mode .scoring-content,
+.display-mode .scores-content {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    gap: 18px !important;
+}
+
+.display-mode .answers-section,
+.display-mode .correct-not-given-section,
+.display-mode .wrong-answers-section {
+    padding: 18px 20px;
+    margin: 0;
+    opacity: 1;
+    transform: none;
+    animation: none;
+}
+
+.display-mode .answers-section h3,
+.display-mode .correct-not-given-section h3,
+.display-mode .wrong-answers-section h3 {
+    font-size: var(--tv-heading) !important;
+    margin: 0 0 14px !important;
+}
+
+.display-mode .answers-grid,
+.display-mode .answers-results-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+    gap: 14px !important;
+}
+
+.display-mode .answer-card {
+    min-height: 110px;
+    padding: 18px 20px !important;
+    align-items: flex-start !important;
+}
+
+.display-mode .answers-section .answer-text,
+.display-mode .answer-text {
+    font-size: clamp(1.6rem, 3vh, 2.3rem) !important;
+    margin: 8px 0 10px !important;
+}
+
+.display-mode .answer-rank {
+    font-size: 1rem !important;
+    padding: 6px 12px !important;
+}
+
+.display-mode .answers-section .answer-count,
+.display-mode .answers-section .answer-points,
+.display-mode .answer-count,
+.display-mode .answer-points {
+    font-size: var(--tv-body) !important;
+}
+
+.display-mode .correct-answers-grid,
+.display-mode .wrong-answers-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important;
+    grid-template-rows: none !important;
+    grid-auto-flow: row !important;
+    gap: 12px !important;
+    margin: 0 !important;
+}
+
+.display-mode .correct-answer-badge {
+    max-width: none !important;
+    width: 100%;
+    min-height: 72px;
+    padding: 14px 16px !important;
+    font-size: clamp(1.3rem, 2.4vh, 1.9rem);
+}
+
+.display-mode .correct-answer-badge .correct-answer-text {
+    font-size: inherit !important;
+}
+
+.display-mode .wrong-answer-card {
+    min-height: 84px !important;
+    padding: 14px 16px !important;
+}
+
+.display-mode .wrong-answer-text {
+    font-size: clamp(1.2rem, 2.3vh, 1.7rem) !important;
+}
+
+.display-mode .wrong-answer-count {
+    font-size: 1.05rem !important;
+}
+
+.display-mode .scoring-navigation {
+    margin: 14px 0 0 !important;
+    padding: 14px 18px !important;
+}
+
+.display-mode .scoring-navigation p {
+    font-size: var(--tv-body) !important;
+}
+
+.display-mode .compact-scores-list {
+    gap: 10px;
+}
+
+.display-mode .compact-score-item {
+    padding: 12px 16px;
+    min-height: 56px;
+}
+
+.display-mode .compact-score-name {
+    font-size: var(--tv-body) !important;
+}
+
+.display-mode .compact-score-value {
+    font-size: var(--tv-score) !important;
+}
+
+.display-mode .auto-scroll-container {
+    height: auto !important;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ---------- Round / overall leaderboard ---------- */
+.display-mode .round-leaderboard-header {
+    margin: 0 0 18px !important;
+    text-align: left;
+}
+
+.display-mode .round-leaderboard-content {
+    padding: 0 !important;
+    min-height: 0;
+}
+
+.display-mode .leaderboard-single-column {
+    max-width: none !important;
+    gap: 18px !important;
+}
+
+.display-mode .leaderboard-two-column,
+.display-mode .leaderboard-three-column {
+    padding: 0 !important;
+    gap: 18px;
+}
+
+.display-mode .leaderboard-column {
+    gap: 16px !important;
+}
+
+.display-mode .leaderboard-column.column-2,
+.display-mode .leaderboard-column.column-3,
+.display-mode .leaderboard-two-column .leaderboard-column.column-2 {
+    margin-top: 0 !important;
+}
+
+.display-mode .leaderboard-row {
+    min-height: 0 !important;
+    padding: 16px 20px;
+}
+
+.display-mode .round-leaderboard-container .player-name,
+.display-mode .leaderboard-name {
+    font-size: clamp(1.4rem, 2.8vh, 2.1rem) !important;
+}
+
+.display-mode .leaderboard-score,
+.display-mode .player-total-score,
+.display-mode .player-score {
+    font-size: var(--tv-score) !important;
+}
+
+.display-mode .podium {
+    width: min(1400px, 100%);
+    margin: 8px auto 12px;
+    grid-template-rows: auto minmax(240px, 34vh);
+    gap: 12px 40px;
+    align-items: stretch;
+}
+
+.display-mode .name-gold,
+.display-mode .name-silver,
+.display-mode .name-bronze,
+.display-mode .block-gold,
+.display-mode .block-silver,
+.display-mode .block-bronze {
+    transform: none !important;
+}
+
+.display-mode .podium-player-name.gold { font-size: clamp(2.4rem, 5vh, 3.6rem); }
+.display-mode .podium-player-name.silver { font-size: clamp(2rem, 4.2vh, 3rem); }
+.display-mode .podium-player-name.bronze { font-size: clamp(1.8rem, 3.8vh, 2.7rem); }
+
+.display-mode .podium-block {
+    max-width: none !important;
+    height: 100%;
+}
+
+.display-mode .podium-number { font-size: clamp(2.4rem, 5vh, 3.6rem); }
+.display-mode .podium-points { font-size: var(--tv-score); }
+
+.display-mode .podium-message {
+    font-size: var(--tv-heading);
+    margin: 12px 0 20px;
+}
+
+.display-mode .overall-list-container {
+    max-width: none !important;
+    max-height: none !important;
+    flex: 1;
+    min-height: 0;
+}
+
+.display-mode .leaderboard-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 16px;
+    margin: 0;
+}
+
+.display-mode .leaderboard-entry {
+    padding: 18px 22px;
+}
+
+.display-mode .leaderboard-rank {
+    font-size: var(--tv-heading);
+}
+
+.display-mode .winner-card h2 {
+    font-size: clamp(2.4rem, 5.4vh, 4rem);
+}
+
+.display-mode .winner-score {
+    font-size: var(--tv-heading);
+}
+
+.display-mode .answer-card-small {
+    max-width: none;
+    min-height: 72px;
+    padding: 12px 14px;
+}
+
+.display-mode .answer-text-small {
+    font-size: clamp(1.15rem, 2.2vh, 1.6rem) !important;
+}
+
+.display-mode .btn {
+    font-size: var(--tv-body);
+    padding: 16px 28px;
+}
+
+.display-mode .no-answers {
+    font-size: var(--tv-body);
+    opacity: 0.75;
+}

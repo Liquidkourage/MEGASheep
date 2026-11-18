@@ -12,4 +12,4 @@ The host console is an operator tool used on a laptop or desktop. Desktop layout
 - Phone size and resolution requirements apply only to player-facing screens.
 - A typical laptop should still fit without horizontal page scrolling, but host does not need a phone layout.
 
-Player-facing screens remain mobile-first under Universal Player Display Standards.
+Player-facing screens remain mobile-first under Universal Player Display Standards. The audience `/display` screen is a landscape 1080p+ video canvas, not a host or player layout.
