@@ -149,6 +149,37 @@ function setPlayerSubmitEnabled(enabled) {
         }
     }
 }
+
+function findMyPendingEdit(pendingEdits) {
+    const name = currentPlayerName || localStorage.getItem('player.name') || sessionStorage.getItem('playerName');
+    if (!name || !Array.isArray(pendingEdits)) return null;
+    return pendingEdits.find(p => p && p.playerName === name) || null;
+}
+
+function presentSendBack(reason, originalAnswer) {
+    window._submitInFlight = false;
+    showScreen('game');
+    const form = document.getElementById('playerAnswerForm');
+    if (form) form.style.display = 'flex';
+    setPlayerSubmitEnabled(true);
+    try {
+        const code = (gameState && gameState.gameCode) || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
+        const qIndex = (typeof gameState?.currentQuestion === 'number') ? gameState.currentQuestion : (typeof currentQuestionIndex === 'number' ? currentQuestionIndex : 0);
+        if (code) {
+            localStorage.removeItem(`player.submitted.${code}.q${qIndex}`);
+            if (originalAnswer) localStorage.setItem(`player.answer.${code}.q${qIndex}`, originalAnswer);
+            sessionStorage.setItem('gameCode', String(code));
+            localStorage.setItem('player.gameCode', String(code));
+        }
+    } catch (_) {}
+    const input = document.getElementById('answerInput');
+    if (input) {
+        if (originalAnswer) input.value = originalAnswer;
+        input.focus();
+    }
+    showToast(`✏️ Edit requested by host: ${reason || 'Please be more specific'}`, 'warning');
+    if (navigator && navigator.vibrate) navigator.vibrate(120);
+}
 let currentPlayerName;
 let gameState = {};
 let questions = [];
@@ -518,61 +549,13 @@ function initializeSocket() {
         } catch (_) {}
     });
 
-    // Host requested a more specific answer (Send Back)
     socket.on('requireAnswerEdit', (data) => {
         try {
-            const reason = (data && data.reason) ? data.reason : 'Please be more specific';
             console.log('✏️ Script.js: requireAnswerEdit received:', data);
-
-            // Ensure player UI is visible
-            if (typeof screens !== 'undefined' && screens.game) {
-                showScreen('game');
-            }
-
-            setPlayerSubmitEnabled(!isHost);
-
-            const input = document.getElementById('answerInput');
-
-            // Clear per-question submission lock so refresh won't re-lock
-            try {
-                const code = (gameState && gameState.gameCode) || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
-                const qIndex = (typeof gameState?.currentQuestion === 'number') ? gameState.currentQuestion : (typeof currentQuestionIndex === 'number' ? currentQuestionIndex : 0);
-                if (code) {
-                    localStorage.removeItem(`player.submitted.${code}.q${qIndex}`);
-                    // Keep or update stored answer to show in the box
-                    if (data && data.originalAnswer) {
-                        localStorage.setItem(`player.answer.${code}.q${qIndex}`, data.originalAnswer);
-                    }
-                }
-            } catch (_) {}
-
-            // Prefill with original answer if provided
-            if (input && data && data.originalAnswer) {
-                input.value = data.originalAnswer;
-            }
-
-            // Ensure we have a valid gameCode persisted for immediate resubmission
-            try {
-                const urlParams = new URLSearchParams(window.location.search);
-                const urlCode = urlParams.get('game') || urlParams.get('code') || urlParams.get('gameCode') || urlParams.get('room');
-                const code = gameState?.gameCode || urlCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode');
-                if (code) {
-                    // Normalize primary storage key
-                    sessionStorage.setItem('gameCode', String(code));
-                    localStorage.setItem('player.gameCode', String(code));
-                }
-            } catch(_) {}
-
-            // Show a toast notification for edit request
-            showToast(`✏️ Edit requested by host: ${reason}`, 'warning');
-
-            // Focus input
-            if (input) input.focus();
-
-            // Haptic feedback (mobile)
-            if (navigator && navigator.vibrate) {
-                navigator.vibrate(120);
-            }
+            presentSendBack(
+                (data && data.reason) ? data.reason : 'Please be more specific',
+                data && data.originalAnswer
+            );
         } catch (e) {
             console.warn('Script.js: Failed to present edit request', e);
         }
@@ -1206,10 +1189,10 @@ function submitAnswer() {
     } catch(_) {}
     console.log('💾 Stored submitted answer:', answer);
     
+    if (window._submitInFlight) return;
+    window._submitInFlight = true;
     console.log('🚨 Emitting submitAnswer with:', { gameCode: gameCodeToUse, answer });
     socket.emit('submitAnswer', { gameCode: gameCodeToUse, answer });
-    
-    // Populate the answer textbox with the submitted answer instead of clearing it
     answerInput.value = answer;
     setPlayerSubmitEnabled(false);
 }
@@ -2216,6 +2199,11 @@ function handleGameJoined(data) {
         return;
     }
     if (phase === 'grading') {
+        const pending = findMyPendingEdit(gameState.pendingEdits);
+        if (pending) {
+            presentSendBack(pending.reason, pending.originalAnswer);
+            return;
+        }
         showScreen('scoring');
         showWaitingForGrading();
         return;
@@ -2406,8 +2394,9 @@ function handleQuestionComplete(gameStateData) {
             displayQuestionResults();
         }
     } else {
-        // Players wait for host to complete grading
-        showWaitingForGrading();
+        const pending = findMyPendingEdit(gameStateData.pendingEdits);
+        if (pending) presentSendBack(pending.reason, pending.originalAnswer);
+        else showWaitingForGrading();
     }
 
     // Capture read-only per-question snapshot on the host
@@ -2470,6 +2459,7 @@ function handleGameFinished(gameStateData) {
 }
 
 function handleAnswerSubmitted() {
+    window._submitInFlight = false;
     showToast('✅ Answer submitted! (Locked)', 'success');
     try {
         const code = gameState?.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
@@ -2480,6 +2470,7 @@ function handleAnswerSubmitted() {
 }
 
 function handleAnswerError(data) {
+    window._submitInFlight = false;
     const msg = (data && data.message) ? data.message : 'Answer submission failed';
     showError(msg);
     try {
@@ -2565,37 +2556,20 @@ function handleGameStateUpdate(data) {
             displayCurrentQuestion();
             startTimer();
         } else if (newPhase === 'grading') {
-            showScreen('scoring');
-            showWaitingForGrading();
+            const pendingOnPhaseChange = findMyPendingEdit(pendingEdits);
+            if (pendingOnPhaseChange) presentSendBack(pendingOnPhaseChange.reason, pendingOnPhaseChange.originalAnswer);
+            else {
+                showScreen('scoring');
+                showWaitingForGrading();
+            }
         } else if (newPhase === 'finished') {
             clearTimer();
             showScreen('gameOver');
         }
     }
 
-    const currentPlayerName = localStorage.getItem('player.name') || sessionStorage.getItem('playerName');
-    const myPendingEdit = pendingEdits.find(p => p.playerName === currentPlayerName);
-    if (myPendingEdit) {
-        console.log('✏️ Pending edit found for this player');
-        showScreen('game');
-        setPlayerSubmitEnabled(true);
-        const input = document.getElementById('answerInput');
-        if (input) {
-            input.value = myPendingEdit.originalAnswer || '';
-            input.focus();
-        }
-        try {
-            const code = state.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
-            const qIndex = (typeof state.currentQuestion === 'number') ? state.currentQuestion : (typeof currentQuestionIndex === 'number' ? currentQuestionIndex : 0);
-            if (code) {
-                localStorage.removeItem(`player.submitted.${code}.q${qIndex}`);
-                if (myPendingEdit.originalAnswer) {
-                    localStorage.setItem(`player.answer.${code}.q${qIndex}`, myPendingEdit.originalAnswer);
-                }
-            }
-        } catch (_) {}
-        showToast(`✏️ Edit requested: ${myPendingEdit.reason}`, 'warning');
-    }
+    const myPendingEdit = findMyPendingEdit(pendingEdits);
+    if (myPendingEdit) presentSendBack(myPendingEdit.reason, myPendingEdit.originalAnswer);
 }
 
 // Display functions
