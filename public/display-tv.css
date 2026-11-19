@@ -773,6 +773,10 @@ html, body {
     overflow: hidden;
 }
 
+.tv-ewe.is-left .tv-ewe-art {
+    transform: scaleX(-1);
+}
+
 .tv-ewe-strip {
     position: absolute;
     top: 0;
