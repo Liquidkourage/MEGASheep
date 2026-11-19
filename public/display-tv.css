@@ -2001,26 +2001,28 @@ html, body {
 
 .tv-answer-post {
     left: var(--x, 50%);
-    bottom: 34%;
+    bottom: var(--plant, 29%);
     z-index: 6;
-    width: min(var(--post-w, 16vw), 270px);
+    width: min(var(--post-w, 16vw), 280px);
     transform: translateX(-50%) rotate(var(--tilt, 0deg));
     transform-origin: 50% 100%;
+    container-type: inline-size;
+    container-name: post;
 }
 
 .tv-answer-post .tv-sign-face {
-    gap: 0.08em;
-    padding: 0 0.2em;
+    gap: 0.04em;
+    padding: 0 0.15em;
 }
 
 .tv-post-answer {
     margin: 0;
     max-width: 100%;
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(1.7rem, 3.6vh, 3rem);
+    font-size: clamp(1.05rem, 17cqi, 2.6rem);
     font-weight: 800;
     letter-spacing: -0.04em;
-    line-height: 0.95;
+    line-height: 0.92;
     color: #1a140c;
     overflow: hidden;
     display: -webkit-box;
@@ -2031,7 +2033,7 @@ html, body {
 .tv-post-pts {
     margin: 0;
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(2.2rem, 4.8vh, 3.8rem);
+    font-size: clamp(1.15rem, 21cqi, 3.2rem);
     font-weight: 800;
     letter-spacing: -0.05em;
     line-height: 0.9;
@@ -2080,6 +2082,10 @@ html, body {
 
 .tv-score .tv-ewe figcaption {
     font-size: clamp(1.15rem, 28cqi, 2.15rem);
+}
+
+.tv-score .tv-ewe.is-crowd figcaption {
+    display: none;
 }
 
 .tv-boards {
