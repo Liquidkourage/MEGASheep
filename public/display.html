@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-10-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-25-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -438,10 +438,7 @@
 
             // Auto-generate virtual responses when question starts
             socket.on('questionStarted', (data) => {
-                console.log('🎭 Question started - generating virtual responses');
-                if (gameState && gameState.players && gameState.isTestMode) {
-                    generateVirtualResponsesForDisplay(data.question);
-                }
+                console.log('🎭 Question started');
             });
         }
 
@@ -751,10 +748,27 @@
         }
 
         const LOBBY_FIELD = { left: 36, right: 95, top: 40, bottom: 88 };
+        const PLAY_FIELD = { left: 5, right: 56, top: 46, bottom: 90 };
+
+        function isPastureScene() {
+            return !!(document.querySelector('.tv-lobby') || document.querySelector('.tv-play'));
+        }
+
+        function pastureField() {
+            return document.querySelector('.tv-play') ? PLAY_FIELD : LOBBY_FIELD;
+        }
+
+        function canPastureWander(el) {
+            if (!el || !el.isConnected || !isPastureScene()) return false;
+            if (el.classList.contains('is-in') || el.classList.contains('is-outside')) return false;
+            if (el.classList.contains('is-snackish') || el.classList.contains('is-nibbling')) return false;
+            return true;
+        }
 
         function lobbyDepth(gy) {
-            const span = LOBBY_FIELD.bottom - LOBBY_FIELD.top;
-            const t = Math.min(1, Math.max(0, (gy - LOBBY_FIELD.top) / span));
+            const field = pastureField();
+            const span = field.bottom - field.top;
+            const t = Math.min(1, Math.max(0, (gy - field.top) / span));
             return {
                 scale: 0.84 + t * 0.28,
                 z: Math.round(10 + t * 40)
@@ -762,9 +776,10 @@
         }
 
         function clampLobbyPoint(gx, gy) {
+            const field = pastureField();
             return {
-                gx: Math.min(LOBBY_FIELD.right, Math.max(LOBBY_FIELD.left, gx)),
-                gy: Math.min(LOBBY_FIELD.bottom, Math.max(LOBBY_FIELD.top, gy))
+                gx: Math.min(field.right, Math.max(field.left, gx)),
+                gy: Math.min(field.bottom, Math.max(field.top, gy))
             };
         }
 
@@ -797,12 +812,13 @@
         }
 
         function randomLobbyPoint(occupied, selfEl) {
+            const field = pastureField();
             const selfW = (selfEl && selfEl.getBoundingClientRect().width) || 90;
-            let spot = { gx: 70, gy: 64 };
+            let spot = { gx: (field.left + field.right) / 2, gy: (field.top + field.bottom) / 2 };
             for (let i = 0; i < 22; i += 1) {
                 const next = {
-                    gx: LOBBY_FIELD.left + Math.random() * (LOBBY_FIELD.right - LOBBY_FIELD.left),
-                    gy: LOBBY_FIELD.top + Math.random() * (LOBBY_FIELD.bottom - LOBBY_FIELD.top)
+                    gx: field.left + Math.random() * (field.right - field.left),
+                    gy: field.top + Math.random() * (field.bottom - field.top)
                 };
                 spot = next;
                 if (!lobbySpotCrowded(next.gx, next.gy, occupied, selfW)) break;
@@ -820,7 +836,9 @@
             return el.classList.contains('is-walking') ||
                 el.classList.contains('is-joining') ||
                 el.classList.contains('is-snackish') ||
-                el.classList.contains('is-nibbling');
+                el.classList.contains('is-nibbling') ||
+                el.classList.contains('is-in') ||
+                el.classList.contains('is-outside');
         }
 
         function placeLobbyFlock(list, names) {
@@ -857,11 +875,53 @@
             });
         }
 
+        function placePlayFlock(list, names) {
+            const occupied = [];
+            const chorus = document.getElementById('flockChorus');
+            if (chorus) {
+                chorus.querySelectorAll('.tv-ewe').forEach((el) => {
+                    if (el.classList.contains('is-in') || el.classList.contains('is-outside')) return;
+                    occupied.push(readLobbyEwe(el));
+                });
+            }
+            const pen = packRegion(list.length, { left: 70, right: 91, top: 58, bottom: 86 });
+            const gate = packRegion(list.length, { left: 56, right: 67, top: 60, bottom: 84 });
+            return list.map((player, index) => {
+                const hash = nameHash(player.name || player.id || String(index));
+                const id = String(player.stableId || player.id || player.name);
+                const prior = occupied.find((p) => p.id === id && Number.isFinite(p.gx) && Number.isFinite(p.gy));
+                const spot = prior || randomLobbyPoint(occupied);
+                if (!prior) occupied.push({ id, gx: spot.gx, gy: spot.gy, w: 90 });
+                const depth = lobbyDepth(spot.gy);
+                const p = pen[index] || { x: 80, y: 70, z: 10, scale: 1 };
+                const o = gate[index] || { x: 60, y: 70, z: 10, scale: 1 };
+                return {
+                    id,
+                    name: player.name || 'Sheep',
+                    label: flockLabel(player.name || 'Sheep', names),
+                    gx: spot.gx,
+                    gy: spot.gy,
+                    px: Math.min(95, Math.max(66, p.x + ((hash % 5) - 2) * 0.2)),
+                    py: Math.min(88, Math.max(48, p.y + (((hash >> 4) % 5) - 2) * 0.35)),
+                    ox: Math.min(68, Math.max(54, o.x + ((hash % 5) - 2) * 0.25)),
+                    oy: Math.min(86, Math.max(56, o.y + (((hash >> 4) % 5) - 2) * 0.3)),
+                    scale: depth.scale,
+                    z: depth.z,
+                    coat: (hash % 2) + 1,
+                    idle: ((hash % 17) * 0.18).toFixed(2),
+                    mood: (hash % 3 === 0) ? 'eat' : 'idle'
+                };
+            });
+        }
+
         function placeFlock(players) {
             const list = sortedFlockPlayers(players);
             const names = list.map((p) => p.name || 'Sheep');
             if (document.querySelector('.tv-lobby')) {
                 return placeLobbyFlock(list, names);
+            }
+            if (document.querySelector('.tv-play')) {
+                return placePlayFlock(list, names);
             }
             const graze = packRegion(list.length, { left: 4, right: 56, top: 48, bottom: 88 });
             const pen = packRegion(list.length, { left: 70, right: 91, top: 58, bottom: 86 });
@@ -962,14 +1022,18 @@
             el.dataset.wanderTimer = '';
         }
 
+        function bumpEweWalk(el) {
+            const next = String((Number(el.dataset.walkGen) || 0) + 1);
+            el.dataset.walkGen = next;
+            return next;
+        }
+
         function scheduleLobbyWander(el) {
             clearEweWander(el);
-            if (!el || !el.isConnected || !document.querySelector('.tv-lobby')) return;
-            if (el.classList.contains('is-snackish') || el.classList.contains('is-nibbling')) return;
+            if (!canPastureWander(el)) return;
             const wait = 4000 + Math.random() * 10000;
             const timer = window.setTimeout(() => {
-                if (!el.isConnected || !document.querySelector('.tv-lobby')) return;
-                if (el.classList.contains('is-snackish') || el.classList.contains('is-nibbling')) return;
+                if (!canPastureWander(el)) return;
                 if (el.classList.contains('is-walking') || el.classList.contains('is-joining')) {
                     scheduleLobbyWander(el);
                     return;
@@ -1092,7 +1156,7 @@
         }
 
         function wanderLobbyEwe(el) {
-            if (el.classList.contains('is-snackish') || el.classList.contains('is-nibbling')) return;
+            if (!canPastureWander(el)) return;
             const gx = parseFloat(el.style.getPropertyValue('--gx')) || 70;
             const gy = parseFloat(el.style.getPropertyValue('--gy')) || 64;
             const occupied = occupiedLobbyPoints(el);
@@ -1148,7 +1212,7 @@
 
         function nudgeOverlappingLobbyEwes() {
             const chorus = document.getElementById('flockChorus');
-            if (!chorus || !document.querySelector('.tv-lobby')) return;
+            if (!chorus || !isPastureScene()) return;
             const ewes = [...chorus.querySelectorAll('.tv-ewe')].map(readLobbyEwe);
             const moved = new Set();
             for (let i = 0; i < ewes.length; i += 1) {
@@ -1171,7 +1235,7 @@
 
         function armLobbySeparate() {
             window.clearTimeout(lobbySeparateTimer);
-            if (!document.querySelector('.tv-lobby')) return;
+            if (!isPastureScene()) return;
             lobbySeparateTimer = window.setTimeout(() => {
                 nudgeOverlappingLobbyEwes();
                 armLobbySeparate();
@@ -1213,6 +1277,7 @@
             const minSeconds = (opts && opts.minSeconds) || 0.6 * 2;
             const maxSeconds = (opts && opts.maxSeconds) || 8;
             const seconds = Math.min(maxSeconds, Math.max(minSeconds, dist / (stride / cycle)));
+            const gen = bumpEweWalk(el);
             el.classList.remove('is-joining');
             el.classList.remove('is-walking');
             el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
@@ -1220,6 +1285,7 @@
             el.classList.add('is-walking');
             let done = false;
             const finish = (event) => {
+                if (el.dataset.walkGen !== gen) return;
                 if (event && event.propertyName && event.propertyName !== 'left') return;
                 if (done) return;
                 done = true;
@@ -1263,12 +1329,12 @@
             if (!chorus) return;
             const list = sortedFlockPlayers(players);
             const slots = placeFlock(list);
-            const lobby = !!document.querySelector('.tv-lobby');
+            const roaming = isPastureScene();
             const existing = chorus.querySelectorAll('.tv-ewe').length;
             chorus.dataset.flockKey = flockKey(list);
             chorus.dataset.dense = list.length > 28 ? '1' : '0';
             chorus.style.setProperty('--ewe-base', `${eweBaseSize(list.length)}px`);
-            if (lobby) {
+            if (roaming) {
                 if (existing) {
                     syncLobbyFlock(chorus, slots);
                     window.setTimeout(nudgeOverlappingLobbyEwes, 480);
@@ -1301,6 +1367,8 @@
         }
 
         function moveEwe(el, next, skipWalk) {
+            clearEweWander(el);
+            const gen = bumpEweWalk(el);
             const destLeft = next.outside ? 'ox' : 'px';
             const destTop = next.outside ? 'oy' : 'py';
             const seconds = skipWalk ? 0 : walkSecondsTo(el, destLeft, destTop);
@@ -1316,6 +1384,7 @@
             el.classList.add('is-walking');
             let done = false;
             const finish = (event) => {
+                if (el.dataset.walkGen !== gen) return;
                 if (event && event.propertyName && event.propertyName !== 'left') return;
                 if (done) return;
                 done = true;
@@ -1385,21 +1454,13 @@
                 </div>
             `;
             renderFlock(gameState.players);
+            armLobbySeparate();
             
             // Set initial timer state
             updateDisplayTimer(gameState.timeLeft || 30);
             
             const fallbackResponseCount = gameState.answersReceived || 0;
             updateResponseIndicator(fallbackResponseCount, gameState.players.length, gameState.answeredPlayers);
-            
-            // Auto-generate virtual responses when playing screen loads (test rooms only)
-            console.log('🎭 Playing screen loaded - triggering virtual responses');
-            if (currentQuestion && gameState.players && gameState.isTestMode) {
-                // Delay slightly to ensure screen is fully loaded
-                setTimeout(() => {
-                    generateVirtualResponsesForDisplay(currentQuestion);
-                }, 1000);
-            }
         }
         
         function updateDisplayTimer(timeLeft) {
@@ -1616,7 +1677,7 @@
         }
 
         function generateVirtualResponsesForDisplay(question) {
-            if (!gameState || !gameState.players || !gameState.isTestMode) return;
+            return;
             
             console.log('🎭 Generating virtual responses for display');
             

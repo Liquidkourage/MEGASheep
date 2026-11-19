@@ -1961,17 +1961,24 @@ function addOneVirtualPlayer(game) {
     return { playerId, playerName };
 }
 
+function submitVirtualAnswerNow(game, playerId) {
+    const live = activeGames.get(game.gameCode);
+    if (!live || live.gameState !== 'playing') return;
+    const player = live.players.get(playerId);
+    if (!player || !isVirtualPlayer(player, playerId) || live.answers.has(playerId)) return;
+    const question = Array.isArray(live.questions) ? live.questions[live.currentQuestion] : null;
+    try { acceptVirtualAnswer(live, playerId, pickVirtualAnswer(question), player.name); } catch (_) {}
+}
+
 function scheduleOneVirtualAnswer(game, playerId) {
     const player = game.players.get(playerId);
     if (!player || !isVirtualPlayer(player, playerId)) return;
     const questionIndex = game.currentQuestion;
-    const question = Array.isArray(game.questions) ? game.questions[questionIndex] : null;
-    const delay = 400 + Math.floor(Math.random() * 7000);
+    const delay = Math.floor(Math.random() * 5001);
     const timeoutId = setTimeout(() => {
         const live = activeGames.get(game.gameCode);
         if (!live || live.gameState !== 'playing' || live.currentQuestion !== questionIndex) return;
-        if (live.answers.has(playerId)) return;
-        try { acceptVirtualAnswer(live, playerId, pickVirtualAnswer(question), player.name); } catch (_) {}
+        submitVirtualAnswerNow(live, playerId);
     }, delay);
     trackVirtualTimeout(game.gameCode, timeoutId);
 }
@@ -2046,9 +2053,26 @@ function scheduleVirtualAnswersForGame(game) {
     if (!game || !game.gameCode) return;
     clearVirtualAnswerJobs(game.gameCode);
     if (game.gameState !== 'playing') return;
+    const ids = [];
     for (const [playerId, player] of game.players.entries()) {
-        if (player && isVirtualPlayer(player, playerId)) scheduleOneVirtualAnswer(game, playerId);
+        if (player && isVirtualPlayer(player, playerId) && !game.answers.has(playerId)) ids.push(playerId);
     }
+    for (let i = ids.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const swap = ids[i];
+        ids[i] = ids[j];
+        ids[j] = swap;
+    }
+    const questionIndex = game.currentQuestion;
+    const step = (index) => {
+        const live = activeGames.get(game.gameCode);
+        if (!live || live.gameState !== 'playing' || live.currentQuestion !== questionIndex) return;
+        if (index < ids.length) submitVirtualAnswerNow(live, ids[index]);
+        if (index + 1 >= ids.length) return;
+        const delay = Math.floor(Math.random() * 5001);
+        trackVirtualTimeout(game.gameCode, setTimeout(() => step(index + 1), delay));
+    };
+    if (ids.length) step(0);
 }
 
 function startAddingVirtualPlayers(game, playerCount) {

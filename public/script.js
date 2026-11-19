@@ -5219,21 +5219,7 @@ function getAnswerSetsFromQuestion(question) {
 }
 
 function scheduleVirtualQuestionFlow() {
-    if (!isVirtualTestingMode || !isHost) return;
-    try {
-        const q = (questions && questions.length)
-            ? (questions[currentQuestionIndex] || questions[0])
-            : (gameState?.questions?.[gameState.currentQuestion] || gameState?.currentQuestion || null);
-        if (!q) return;
-        setTimeout(() => { try { generateVirtualResponses(q); } catch (_) {} }, 1000);
-        setTimeout(() => {
-            try {
-                if (gameState?.gameCode && socket) {
-                    socket.emit('endQuestion', { gameCode: gameState.gameCode });
-                }
-            } catch (_) {}
-        }, 6500);
-    } catch (e) { console.warn('Virtual question flow error', e); }
+    // Server staggers virtual answers 0-5s after each other, same as lobby joins.
 }
 
 function startVirtualPlayerSimulation(playerCount = 50) {
