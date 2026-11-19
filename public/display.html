@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T19-30-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T19-42-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -631,7 +631,7 @@
             return `${n} of ${total} in the pen. Last ones out of the pasture!`;
         }
 
-        const EWE_ART = `<span class="tv-ewe-art" aria-hidden="true"><img class="pose-graze" src="sprites/sheep-graze.png?v=2026-11-18T17-45-00" alt=""><img class="pose-alert" src="sprites/sheep-in.png?v=2026-11-18T17-45-00" alt=""></span>`;
+        const EWE_ART = `<span class="tv-ewe-art" aria-hidden="true"></span>`;
 
         function escapeDisplayText(value) {
             return String(value || '')
@@ -662,11 +662,11 @@
         }
 
         function eweBaseSize(count) {
-            if (count <= 6) return 58;
-            if (count <= 12) return 50;
-            if (count <= 24) return 44;
-            if (count <= 36) return 38;
-            return 34;
+            if (count <= 6) return 64;
+            if (count <= 12) return 56;
+            if (count <= 24) return 50;
+            if (count <= 36) return 44;
+            return 40;
         }
 
         function packRegion(n, box) {
@@ -709,8 +709,8 @@
         function placeFlock(players) {
             const list = sortedFlockPlayers(players);
             const names = list.map((p) => p.name || 'Sheep');
-            const graze = packRegion(list.length, { left: 5, right: 60, top: 18, bottom: 76 });
-            const pen = packRegion(list.length, { left: 71, right: 93, top: 24, bottom: 72 });
+            const graze = packRegion(list.length, { left: 5, right: 60, top: 22, bottom: 76 });
+            const pen = packRegion(list.length, { left: 73, right: 91, top: 40, bottom: 66 });
             return list.map((player, index) => {
                 const hash = nameHash(player.name || player.id || String(index));
                 const g = graze[index] || { x: 20, y: 50, z: 10, scale: 1 };
@@ -725,7 +725,7 @@
                     py: Math.min(78, Math.max(16, p.y + (((hash >> 4) % 5) - 2) * 0.35)),
                     scale: g.scale,
                     z: g.z,
-                    walk: (1.05 + (hash % 8) * 0.09).toFixed(2),
+                    walk: (1.85 + (hash % 8) * 0.14).toFixed(2),
                     idle: ((hash % 17) * 0.18).toFixed(2)
                 };
             });
@@ -852,26 +852,10 @@
                         </div>
                         <div class="tv-field-label">Pasture</div>
                         <div class="tv-fold" aria-hidden="true">
-                            <div class="tv-fold-yard"></div>
-                            <svg class="tv-fold-fence tv-fold-back" viewBox="0 0 520 280" preserveAspectRatio="none">
-                                <rect x="8" y="48" width="12" height="180" rx="3" fill="#4a3018"/>
-                                <rect x="86" y="28" width="14" height="220" rx="3" fill="#5b3c22"/>
-                                <rect x="210" y="22" width="14" height="226" rx="3" fill="#6a4728"/>
-                                <rect x="334" y="22" width="14" height="226" rx="3" fill="#5b3c22"/>
-                                <rect x="458" y="28" width="14" height="220" rx="3" fill="#6a4728"/>
-                                <rect x="500" y="48" width="12" height="180" rx="3" fill="#4a3018"/>
-                                <rect x="86" y="58" width="420" height="11" rx="3" fill="#8b5e34"/>
-                                <rect x="86" y="114" width="420" height="11" rx="3" fill="#7a522e"/>
-                                <rect x="86" y="170" width="420" height="11" rx="3" fill="#6c4728"/>
-                            </svg>
+                            <img class="tv-fold-art" src="sprites/pen.png?v=2026-11-18T19-40-00" alt="">
                             <p class="tv-fold-label">Pen</p>
                         </div>
                         <div class="tv-flock" id="flockChorus"></div>
-                        <svg class="tv-fold-fence tv-fold-front" viewBox="0 0 520 80" preserveAspectRatio="none" aria-hidden="true">
-                            <rect x="18" y="18" width="12" height="54" rx="2" fill="#4a3018"/>
-                            <rect x="18" y="28" width="490" height="10" rx="3" fill="#7a522e"/>
-                            <rect x="18" y="50" width="490" height="10" rx="3" fill="#5b3c22"/>
-                        </svg>
                         <div class="tv-pasture-bar">
                             <p class="response-text" id="responseText">${flockResponseLine(0, gameState.players.length)}</p>
                             <div class="tv-flock-key">
