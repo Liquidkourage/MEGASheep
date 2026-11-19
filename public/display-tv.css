@@ -296,7 +296,9 @@ html, body {
 }
 
 .tv-sign.tv-intro-sign,
-.tv-sign.tv-lobby-join {
+.tv-sign.tv-lobby-join,
+.tv-sign.tv-answer-post,
+.tv-sign.tv-score-ranks {
     position: absolute;
 }
 
@@ -650,7 +652,6 @@ html, body {
 
 .tv-play .tv-ewe:not(.is-in) figcaption,
 .tv-play .tv-ewe.is-walking figcaption,
-.tv-score .tv-ewe figcaption,
 .tv-standings .tv-ewe figcaption,
 .tv-final .tv-flock .tv-ewe figcaption,
 .tv-history .tv-ewe figcaption,
@@ -999,7 +1000,6 @@ html, body {
 }
 
 .tv-play .tv-ewe,
-.tv-score .tv-ewe,
 .tv-standings .tv-ewe,
 .tv-final .tv-ewe,
 .tv-history .tv-ewe {
@@ -1389,8 +1389,12 @@ html, body {
     position: relative;
     z-index: 2;
     margin: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.28em;
     width: max-content;
-    max-width: min(12ch, 160cqi);
+    max-width: min(14ch, 180cqi);
     padding: 0.18em 0.42em;
     border-radius: 0.42em;
     background: rgba(8, 16, 24, 0.82);
@@ -1403,8 +1407,18 @@ html, body {
     color: #f6ecc4;
     overflow: hidden;
     white-space: nowrap;
-    text-overflow: ellipsis;
     pointer-events: none;
+}
+
+.tv-ewe-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tv-ewe-pts {
+    flex: 0 0 auto;
+    color: #d7f08a;
 }
 
 .tv-ewe.is-in:not(.is-walking) figcaption {
@@ -1936,7 +1950,10 @@ html, body {
     background: #071018;
 }
 
-.tv-score .tv-flock,
+.tv-score .tv-flock {
+    z-index: 8;
+}
+
 .tv-standings .tv-flock,
 .tv-final .tv-flock,
 .tv-history .tv-flock {
@@ -1973,6 +1990,96 @@ html, body {
     text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55);
     max-width: min(22ch, 96%);
     color: #fff;
+}
+
+.tv-score-posts {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+}
+
+.tv-answer-post {
+    left: var(--x, 50%);
+    bottom: 34%;
+    z-index: 6;
+    width: min(var(--post-w, 16vw), 270px);
+    transform: translateX(-50%) rotate(var(--tilt, 0deg));
+    transform-origin: 50% 100%;
+}
+
+.tv-answer-post .tv-sign-face {
+    gap: 0.08em;
+    padding: 0 0.2em;
+}
+
+.tv-post-answer {
+    margin: 0;
+    max-width: 100%;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(1.7rem, 3.6vh, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+    color: #1a140c;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+}
+
+.tv-post-pts {
+    margin: 0;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(2.2rem, 4.8vh, 3.8rem);
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 0.9;
+    color: #2f6b32;
+}
+
+.tv-answer-post.is-miss {
+    opacity: 0.5;
+    filter: grayscale(0.2);
+}
+
+.tv-score-ranks {
+    right: 0.4%;
+    bottom: 3.2%;
+    z-index: 10;
+    width: min(22vw, 360px);
+    transform: rotate(0.55deg);
+    transform-origin: 50% 100%;
+    pointer-events: none;
+}
+
+.tv-score-ranks .tv-sign-face {
+    left: 8%;
+    right: 8%;
+    top: 8.4%;
+    bottom: 22.5%;
+    justify-content: flex-start;
+    align-items: stretch;
+    overflow: hidden;
+    padding: 0.15em 0.1em 0.2em;
+}
+
+.tv-score-ranks .tv-rank-list {
+    --rank-cols: 1;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+.tv-score-ranks .tv-rank-n,
+.tv-score-ranks .tv-rank-name,
+.tv-score-ranks .tv-rank-pts {
+    font-size: clamp(1.55rem, 3.1vh, 2.35rem);
+}
+
+.tv-score .tv-ewe figcaption {
+    font-size: clamp(1.15rem, 28cqi, 2.15rem);
 }
 
 .tv-boards {

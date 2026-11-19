@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T09-10-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T12-25-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -1215,7 +1215,114 @@
             });
         }
 
+        function resultSlot(player, names, point) {
+            const hash = nameHash(player.name || player.id || '');
+            const g = point || { x: 50, y: 80, z: 12, scale: 1 };
+            const depth = lobbyDepth(g.y);
+            return {
+                id: player.stableId || player.id || player.name,
+                name: player.name || 'Sheep',
+                label: flockLabel(player.name || 'Sheep', names),
+                score: Number(player.score) || 0,
+                gx: Math.min(96, Math.max(2, g.x + ((hash % 5) - 2) * 0.45)),
+                gy: Math.min(93, Math.max(66, g.y + (((hash >> 3) % 5) - 2) * 2.1)),
+                px: 80,
+                py: 70,
+                ox: 60,
+                oy: 70,
+                scale: g.scale || depth.scale,
+                z: g.z || depth.z,
+                coat: (hash % 2) + 1,
+                idle: ((hash % 17) * 0.18).toFixed(2),
+                mood: (hash % 3 === 0) ? 'eat' : 'idle'
+            };
+        }
+
+        function playerMatchesGroup(player, group) {
+            const people = (group && group.players) || [];
+            const name = String(player.name || '').toLowerCase();
+            const ids = [player.id, player.stableId].filter(Boolean).map(String);
+            return people.some((entry) => {
+                if (typeof entry === 'string') {
+                    return entry.toLowerCase() === name || ids.includes(entry);
+                }
+                if (!entry) return false;
+                if (entry.id && ids.includes(String(entry.id))) return true;
+                if (entry.stableId && ids.includes(String(entry.stableId))) return true;
+                return String(entry.name || '').toLowerCase() === name;
+            });
+        }
+
+        function scorePostModels() {
+            const { submittedAnswers, correctNotGiven } = categorizeAnswersForDisplay();
+            const hits = (submittedAnswers || [])
+                .slice()
+                .sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))
+                .slice(0, 6);
+            const misses = (correctNotGiven || []).slice(0, Math.max(0, 6 - hits.length));
+            const posts = hits.map((group) => ({
+                kind: 'hit',
+                answer: group.answer,
+                points: Number(group.points) || 0,
+                players: group.players || []
+            })).concat(misses.map((answer) => ({
+                kind: 'miss',
+                answer: answer,
+                points: 0,
+                players: []
+            })));
+            const n = posts.length;
+            const left = 20;
+            const right = 76;
+            return posts.map((post, index) => Object.assign(post, {
+                x: n <= 1 ? 44 : left + ((index + 0.5) / n) * (right - left)
+            }));
+        }
+
+        function placeScoreFlock(list, names) {
+            const posts = scorePostModels();
+            const claimed = new Set();
+            const buckets = posts.map((post) => {
+                const members = [];
+                list.forEach((player, index) => {
+                    if (claimed.has(index)) return;
+                    if (!playerMatchesGroup(player, post)) return;
+                    claimed.add(index);
+                    members.push(player);
+                });
+                return { post, members };
+            });
+            const leftovers = list.filter((_, index) => !claimed.has(index));
+            const byPlayer = new Map();
+            const spacing = posts.length <= 1 ? 24 : (76 - 20) / posts.length;
+            buckets.forEach(({ post, members }) => {
+                if (!members.length) return;
+                const half = Math.max(5, Math.min(spacing * 0.78, 6.5 + members.length * 0.85));
+                const packed = packTrapezoid(
+                    members.length,
+                    { left: post.x - half * 0.5, right: post.x + half * 0.5, y: 71 },
+                    { left: post.x - half, right: post.x + half, y: 92 }
+                );
+                members.forEach((player, index) => {
+                    byPlayer.set(player, resultSlot(player, names, packed[index]));
+                });
+            });
+            if (leftovers.length) {
+                const hasHits = buckets.some((bucket) => bucket.members.length);
+                const packed = packTrapezoid(
+                    leftovers.length,
+                    hasHits ? { left: 3, right: 16, y: 71 } : RESULTS_FAR,
+                    hasHits ? { left: 1, right: 22, y: 93 } : RESULTS_NEAR
+                );
+                leftovers.forEach((player, index) => {
+                    byPlayer.set(player, resultSlot(player, names, packed[index]));
+                });
+            }
+            return list.map((player) => byPlayer.get(player) || resultSlot(player, names));
+        }
+
         function placeResultsFlock(list, names) {
+            if (document.querySelector('.tv-score')) return placeScoreFlock(list, names);
             const graze = packTrapezoid(list.length, RESULTS_FAR, RESULTS_NEAR);
             return list.map((player, index) => {
                 const hash = nameHash(player.name || player.id || String(index));
@@ -1224,6 +1331,7 @@
                     id: player.stableId || player.id || player.name,
                     name: player.name || 'Sheep',
                     label: flockLabel(player.name || 'Sheep', names),
+                    score: Number(player.score) || 0,
                     gx: Math.min(RESULTS_NEAR.right, Math.max(RESULTS_NEAR.left, g.x + ((hash % 5) - 2) * 0.4)),
                     gy: Math.min(RESULTS_NEAR.y, Math.max(RESULTS_FAR.y, g.y + (((hash >> 3) % 5) - 2) * 0.35)),
                     px: 80,
@@ -1299,11 +1407,20 @@
             return (id && answered.has(id)) || (name && answered.has(name));
         }
 
+        function eweCaptionHtml(slot) {
+            const name = escapeDisplayText(slot.label || slot.name || 'Sheep');
+            const score = Number(slot.score);
+            const pts = (slot.score != null && Number.isFinite(score))
+                ? `<span class="tv-ewe-pts">${score}</span>`
+                : '';
+            return `<span class="tv-ewe-name">${name}</span>${pts}`;
+        }
+
         function eweFigureHtml(slot) {
             return `
                 <figure class="tv-ewe" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" data-mood="${escapeDisplayText(slot.mood || 'idle')}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--ox:${slot.ox}%;--oy:${slot.oy}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
                     ${EWE_ART}
-                    <figcaption>${escapeDisplayText(slot.label)}</figcaption>
+                    <figcaption>${eweCaptionHtml(slot)}</figcaption>
                 </figure>
             `;
         }
@@ -1322,14 +1439,18 @@
             el.style.setProperty('--z', String(slot.z));
             el.style.setProperty('--idle', `${slot.idle}s`);
             const cap = el.querySelector('figcaption');
-            if (cap) cap.textContent = slot.label;
+            if (cap) cap.innerHTML = eweCaptionHtml(slot);
         }
 
         function slotFromEwe(el, overrides) {
+            const nameEl = el.querySelector('.tv-ewe-name');
+            const ptsEl = el.querySelector('.tv-ewe-pts');
+            const score = ptsEl ? Number(ptsEl.textContent) : null;
             return Object.assign({
                 id: el.dataset.id,
                 name: el.dataset.name,
-                label: (el.querySelector('figcaption') && el.querySelector('figcaption').textContent) || el.dataset.name,
+                label: (nameEl && nameEl.textContent) || (el.querySelector('figcaption') && el.querySelector('figcaption').textContent) || el.dataset.name,
+                score: Number.isFinite(score) ? score : undefined,
                 gx: parseFloat(el.style.getPropertyValue('--gx')) || 50,
                 gy: parseFloat(el.style.getPropertyValue('--gy')) || 64,
                 px: parseFloat(el.style.getPropertyValue('--px')) || 80,
@@ -1775,7 +1896,7 @@
                     return;
                 }
                 const cap = el.querySelector('figcaption');
-                if (cap) cap.textContent = slot.label;
+                if (cap) cap.innerHTML = eweCaptionHtml(slot);
             });
             byId.forEach((el, id) => {
                 if (keep.has(id)) return;
@@ -2059,41 +2180,23 @@
             }, 80);
         }
 
-        function tvAnswerRowsHtml() {
-            const { submittedAnswers, correctNotGiven, wrongAnswers } = categorizeAnswersForDisplay();
-            const hits = (submittedAnswers || [])
-                .slice()
-                .sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))
-                .slice(0, 10);
-            const misses = (correctNotGiven || []).slice(0, 6);
-            const wrongs = (wrongAnswers || []).slice(0, 6);
-            const rows = [];
-            hits.forEach((group) => {
-                rows.push(`
-                    <li class="tv-answer is-hit">
-                        <span class="tv-answer-text">${escapeDisplayText(group.answer)}</span>
-                        <span class="tv-answer-pts">${Number(group.points) || 0}</span>
-                        <span class="tv-answer-n">${Number(group.count) || 0}</span>
-                    </li>
-                `);
-            });
-            misses.forEach((answer) => {
-                rows.push(`
-                    <li class="tv-answer is-miss">
-                        <span class="tv-answer-text">${escapeDisplayText(answer)}</span>
-                    </li>
-                `);
-            });
-            wrongs.forEach((group) => {
-                rows.push(`
-                    <li class="tv-answer is-wrong">
-                        <span class="tv-answer-text">${escapeDisplayText(group.answer)}</span>
-                        <span class="tv-answer-n">${Number(group.count) || 0}</span>
-                    </li>
-                `);
-            });
-            if (!rows.length) return '';
-            return `<ul class="tv-answer-list auto-scroll-content">${rows.join('')}</ul>`;
+        function tvAnswerPostHtml() {
+            const posts = scorePostModels();
+            const tilts = [-1.1, 0.8, -0.45, 1.05, -0.85, 0.55];
+            const width = posts.length <= 1 ? 16 : Math.max(10, Math.min(15.5, 42 / posts.length));
+            return `
+                <div class="tv-score-posts" style="--post-w:${width}vw">
+                    ${posts.map((post, index) => `
+                        <aside class="tv-sign tv-answer-post is-${post.kind}" style="--x:${post.x.toFixed(2)}%; --tilt:${tilts[index % tilts.length]}deg">
+                            <img class="tv-sign-art" src="sprites/meadow-sign.png?v=2026-11-18T27-20-00" alt="" aria-hidden="true">
+                            <div class="tv-sign-face">
+                                <p class="tv-post-answer">${escapeDisplayText(post.answer)}</p>
+                                ${post.kind === 'hit' ? `<p class="tv-post-pts">${post.points}</p>` : ''}
+                            </div>
+                        </aside>
+                    `).join('')}
+                </div>
+            `;
         }
 
         function tvPodiumHtml(sorted) {
@@ -2142,16 +2245,14 @@
                     <p class="tv-play-meta"><span>Round ${meta.roundNumber}</span><span>${meta.questionInRound} of ${meta.perRound}</span></p>
                     <h1 class="question-prompt">${escapeDisplayText(prompt)}</h1>
                 </div>
-                <div class="tv-boards">
-                    <section class="tv-board tv-board-answers" id="scoreAnswerBoard">
-                        ${tvAnswerRowsHtml()}
-                    </section>
-                    <section class="tv-board tv-board-scores" id="scoreRankBoard">
+                ${tvAnswerPostHtml()}
+                <aside class="tv-sign tv-score-ranks">
+                    <img class="tv-sign-art" src="sprites/meadow-sign-tall.png?v=2026-11-19T00-20-00" alt="" aria-hidden="true">
+                    <div class="tv-sign-face" id="scoreRankBoard">
                         ${tvRankListHtml(players, 0)}
-                    </section>
-                </div>
+                    </div>
+                </aside>
             `);
-            armBoardScroll('scoreAnswerBoard', 10);
             armBoardScroll('scoreRankBoard', players.length);
         }
 

@@ -8,8 +8,10 @@ alwaysApply: true
 On the audience scoring, round-standings, and finale screens (`/display` scoring, roundComplete, overallLeaderboard, finished), text is either large enough to read from across the room or it does not belong on this screen.
 
 - These screens share the cartoon night meadow. Panels are opaque outlined signs, not glass cards.
+- On scoring, plant answers as wooden posts in the meadow. The flock clustered under a post is who scored it. Empty faded posts are correct answers nobody found. Sheep grazing aside missed.
 - Keep only words that carry the reveal: the prompt (on scoring), the round, ranks, sheep names, scores, and answers with their points.
+- Do not duplicate a player count in text. The flock at a post is the count.
 - Size kept type for a 1920×1080 landscape TV viewed from across a room.
 - Do not add scene titles, “coming soon” lines, URLs, buttons, or puns that merely name the screen.
-- The flock is atmosphere. Rankings live on the signs (and on the finale podium).
+- Rankings live on nametags and a slim rank sign (and on the finale podium).
 - This is a video canvas rule. It does not apply to the host console or player phones.
