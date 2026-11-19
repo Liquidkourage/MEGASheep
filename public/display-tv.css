@@ -1171,17 +1171,17 @@ html, body {
 
 .tv-ewe.is-in:not(.is-walking) .tv-ewe-strip {
     background-size: 600% 100%;
-    background-image: url("sprites/sheep-01-sleep.png?v=2026-11-19T04-05-00");
+    background-image: url("sprites/sheep-01-sleep.png?v=2026-11-19T04-20-00");
     animation: eweSleep 1.8s steps(6, jump-none) infinite;
     animation-delay: var(--idle, 0s);
 }
 
 .tv-ewe[data-coat="2"].is-in:not(.is-walking) .tv-ewe-strip {
-    background-image: url("sprites/sheep-02-sleep.png?v=2026-11-19T04-05-00");
+    background-image: url("sprites/sheep-02-sleep.png?v=2026-11-19T04-20-00");
 }
 
 .tv-ewe[data-coat="3"].is-in:not(.is-walking) .tv-ewe-strip {
-    background-image: url("sprites/sheep-03-sleep.png?v=2026-11-19T04-05-00");
+    background-image: url("sprites/sheep-03-sleep.png?v=2026-11-19T04-20-00");
 }
 
 .tv-ewe.is-outside:not(.is-walking) .tv-ewe-strip {
