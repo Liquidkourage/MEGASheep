@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T00-45-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T00-50-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -1306,23 +1306,32 @@
                 lobbySnackTimer = window.setTimeout(tryLobbySnack, 8000);
                 return;
             }
-            const ewes = [...document.querySelectorAll('#flockChorus .tv-ewe')].filter((el) =>
-                !isLobbyEweBusy(el) && !el.classList.contains('is-walking')
-            );
-            if (!ewes.length) {
+            const pick = pickSnackEwe();
+            if (!pick) {
                 lobbySnackTimer = window.setTimeout(tryLobbySnack, 8000);
                 return;
-            }
-            let pick = ewes[Math.floor(Math.random() * ewes.length)];
-            if (ewes.length > 1 && lastSnackId) {
-                const others = ewes.filter((el) => el.dataset.id !== lastSnackId);
-                if (others.length) pick = others[Math.floor(Math.random() * others.length)];
             }
             startQrNibble(pick);
             armLobbySnack();
         }
 
-        const SNACK_WALK = { cycle: 1.05, minSeconds: 3.2, maxSeconds: 16 };
+        function pickSnackEwe() {
+            const ewes = [...document.querySelectorAll('#flockChorus .tv-ewe')].filter((el) =>
+                !isLobbyEweBusy(el) && !el.classList.contains('is-walking')
+            );
+            if (!ewes.length) return null;
+            const ranked = ewes
+                .map((el) => ({ el, gy: parseFloat(el.style.getPropertyValue('--gy')) || 64 }))
+                .sort((a, b) => a.gy - b.gy);
+            const notLast = lastSnackId ? ranked.filter((row) => row.el.dataset.id !== lastSnackId) : ranked;
+            const pool = notLast.length ? notLast : ranked;
+            const farCount = Math.max(1, Math.ceil(pool.length / 2));
+            const far = pool.slice(0, farCount);
+            return far[Math.floor(Math.random() * far.length)].el;
+        }
+
+        const SNACK_WALK = { cycle: 1.12, minSeconds: 4.4, maxSeconds: 16 };
+        const SNACK_SCALE = 1.28;
 
         function startQrNibble(el) {
             const lobby = document.querySelector('.tv-lobby');
@@ -1339,11 +1348,10 @@
             el.classList.add('is-snackish');
             const spot = qrNibbleSpot(el);
             el.classList.add('is-left');
-            const depth = lobbyDepth(Math.min(LOBBY_FIELD.bottom, Math.max(LOBBY_FIELD.top, spot.gy)));
             walkEweOnField(el, slotFromEwe(el, {
                 gx: spot.gx,
                 gy: spot.gy,
-                scale: Math.max(depth.scale, 1.14),
+                scale: SNACK_SCALE,
                 z: 80,
                 mood: 'idle'
             }), () => {

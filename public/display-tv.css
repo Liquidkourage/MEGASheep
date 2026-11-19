@@ -1,5 +1,11 @@
 /* Audience /display — landscape 1080p+ video canvas. Fills the entire screen. */
 
+@property --s {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 1;
+}
+
 html, body {
     margin: 0;
     padding: 0;
@@ -956,6 +962,7 @@ html, body {
         left var(--walk, 4s) linear,
         top var(--walk, 4s) linear,
         transform var(--walk, 4s) linear,
+        --s var(--walk, 4s) linear,
         width 1.8s ease-out;
 }
 
