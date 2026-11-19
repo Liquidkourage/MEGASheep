@@ -1813,6 +1813,7 @@ function nextVirtualPlayerName(game) {
 function stopVirtualJoinJob(gameCode) {
     const job = virtualJoinJobs.get(gameCode);
     if (job) {
+        clearTimeout(job);
         clearInterval(job);
         virtualJoinJobs.delete(gameCode);
     }
@@ -2055,19 +2056,17 @@ function startAddingVirtualPlayers(game, playerCount) {
     game.isTestMode = true;
     let added = 0;
     const addNext = () => {
-        if (!activeGames.has(game.gameCode) || added >= playerCount) {
-            stopVirtualJoinJob(game.gameCode);
-            return;
-        }
+        virtualJoinJobs.delete(game.gameCode);
+        if (!activeGames.has(game.gameCode) || added >= playerCount) return;
         try { addOneVirtualPlayer(game); } catch (e) {
             logger.warn('Failed to add virtual player:', e?.message);
         }
         added += 1;
+        if (added >= playerCount || !activeGames.has(game.gameCode)) return;
+        const delay = Math.floor(Math.random() * 5001);
+        virtualJoinJobs.set(game.gameCode, setTimeout(addNext, delay));
     };
     addNext();
-    if (added >= playerCount) return;
-    const interval = setInterval(addNext, 80);
-    virtualJoinJobs.set(game.gameCode, interval);
 }
 
 // Socket.IO Connection Handler
