@@ -935,10 +935,10 @@ html, body {
 
 .tv-pen {
     position: absolute;
-    left: 40%;
-    right: 0;
-    top: 46%;
-    bottom: 1%;
+    left: 66%;
+    right: 1.5%;
+    top: 20%;
+    bottom: 0;
     pointer-events: none;
 }
 
@@ -955,7 +955,7 @@ html, body {
     inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: fill;
     object-position: right bottom;
     pointer-events: none;
     filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.28));

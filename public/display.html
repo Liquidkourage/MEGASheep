@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T02-10-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T03-10-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -607,11 +607,11 @@
                     <div class="tv-pasture-shade" aria-hidden="true"></div>
                     <div class="tv-pasture-ground" aria-hidden="true"></div>
                     ${withPen ? `<div class="tv-pen tv-pen-back" aria-hidden="true">
-                        <img class="tv-pen-art" src="sprites/pen-back.png?v=2026-11-19T02-12-00" alt="">
+                        <img class="tv-pen-art" src="sprites/pen-back.png?v=2026-11-19T03-00-00" alt="">
                     </div>` : ''}
                     <div class="tv-flock" id="flockChorus"></div>
                     ${withPen ? `<div class="tv-pen tv-pen-front" aria-hidden="true">
-                        <img class="tv-pen-art" src="sprites/pen-front.png?v=2026-11-19T02-12-00" alt="">
+                        <img class="tv-pen-art" src="sprites/pen-front.png?v=2026-11-19T03-00-00" alt="">
                     </div>` : ''}
                 </div>
             `;
@@ -734,7 +734,12 @@
 
         function packRegion(n, box) {
             if (n <= 0) return [];
-            const rows = n <= 7 ? 1 : n <= 16 ? 2 : n <= 30 ? 3 : 4;
+            const spanX = Math.max(1, box.right - box.left);
+            const spanY = Math.max(1, box.bottom - box.top);
+            const tall = spanY >= spanX * 1.4;
+            const rows = tall
+                ? (n <= 3 ? 1 : n <= 8 ? 2 : n <= 15 ? 3 : n <= 24 ? 4 : 5)
+                : (n <= 7 ? 1 : n <= 16 ? 2 : n <= 30 ? 3 : 4);
             const counts = [];
             let remaining = n;
             for (let r = 0; r < rows; r += 1) {
@@ -770,9 +775,9 @@
         }
 
         const LOBBY_FIELD = { left: 2, right: 98, top: 18, bottom: 90 };
-        const PLAY_FIELD = { left: 3, right: 46, top: 50, bottom: 91 };
-        const PEN_FIELD = { left: 60, right: 86, top: 66, bottom: 79 };
-        const GATE_FIELD = { left: 40, right: 51, top: 64, bottom: 88 };
+        const PLAY_FIELD = { left: 3, right: 62, top: 50, bottom: 91 };
+        const PEN_FIELD = { left: 72, right: 88, top: 34, bottom: 80 };
+        const GATE_FIELD = { left: 61, right: 69, top: 48, bottom: 78 };
         const GRASS_LINE = 0.55;
 
         function isPastureScene() {
