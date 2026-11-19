@@ -270,7 +270,7 @@ html, body {
 
 .tv-lobby .tv-flock {
     z-index: 9;
-    left: calc(min(500px, 34vw) + clamp(20px, 2.2vw, 40px) + 12px);
+    left: calc(min(480px, 33vw) + clamp(20px, 2.2vw, 40px) + 12px);
     right: clamp(20px, 2vw, 36px);
     top: 44%;
     bottom: clamp(12px, 2.2vh, 28px);
@@ -333,21 +333,30 @@ html, body {
     position: absolute;
     left: clamp(20px, 2.2vw, 40px);
     top: auto;
-    bottom: 7%;
+    bottom: 6%;
     transform: rotate(-0.65deg);
     z-index: 8;
-    width: min(500px, 34vw);
+    width: min(480px, 33vw);
 }
 
 .tv-lobby-join .tv-sign-face {
+    left: 8%;
+    right: 8%;
+    top: 8.4%;
+    bottom: 22.5%;
     flex-direction: column;
-    gap: 8px;
-    padding: 4px 0 0;
+    justify-content: center;
+    gap: 10px;
+    padding: 0;
+}
+
+.tv-lobby-join .qr-code {
+    padding: 10px !important;
 }
 
 .tv-lobby-join .qr-code img {
-    width: min(128px, 12.5vh) !important;
-    height: min(128px, 12.5vh) !important;
+    width: min(288px, 28vh) !important;
+    height: min(288px, 28vh) !important;
 }
 
 .tv-lobby-code {
