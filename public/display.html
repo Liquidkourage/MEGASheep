@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T14-12-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T14-20-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -840,8 +840,6 @@
         const RESULTS_FIELD = { left: 8, right: 92, top: 64, bottom: 93 };
         const RESULTS_FAR = { left: 22, right: 78, y: 66 };
         const RESULTS_NEAR = { left: 8, right: 92, y: 92 };
-        const SCORE_BANNER_LEFT = 14;
-        const SCORE_BANNER_RIGHT = 72;
         const SCORE_NAME_AT = 2;
         const PEN_FAR = { left: 70, right: 84, y: 62 };
         const PEN_NEAR = { left: 64, right: 88, y: 86 };
@@ -1234,6 +1232,7 @@
                 named,
                 paradeWait: !!extra.paradeWait,
                 parade: !!extra.parade,
+                wrong: extra.wrong || '',
                 gx: offstage ? gxRaw : Math.min(96, Math.max(2, gxRaw)),
                 gy: offstage ? gyRaw : Math.min(93, Math.max(extra.minGy != null ? extra.minGy : 58, gyRaw)),
                 px: 80,
@@ -1269,55 +1268,35 @@
             return Math.round(8 + t * 52);
         }
 
-        function scoreRowPlan(n) {
-            if (n <= 6) return [n];
-            const front = Math.ceil(n / 2);
-            return [front, n - front];
-        }
-
-        function layoutScoreBanners(groups) {
-            const n = groups.length;
-            const plan = scoreRowPlan(n);
-            const left = SCORE_BANNER_LEFT;
-            const right = SCORE_BANNER_RIGHT;
-            const span = right - left;
-            const tilts = [-0.9, 0.7, -0.45, 1.0, -0.65, 0.5, -0.3, 0.85];
-            const rowY = plan.length === 1 ? [79] : [85, 70];
-            const rowW = plan.map((count, row) => {
-                if (n <= 1) return 12;
-                const fill = row === 0 ? 0.62 : 0.58;
-                const minW = row === 0 ? 5.8 : 5.4;
-                const maxW = row === 0 ? 10.4 : 8.4;
-                return Math.min(maxW, Math.max(minW, (span / Math.max(1, count)) * fill));
+        function layoutMissPosts(answers) {
+            const list = answers || [];
+            const n = list.length;
+            if (!n) return [];
+            const tilts = [-1.1, 0.7, -0.5, 1.05, -0.8, 0.45, -0.3, 0.9];
+            const slots = packRegion(n, { left: 18, right: 68, top: 48, bottom: 64 });
+            const width = n > 12 ? 5.6 : n > 7 ? 6.8 : 8.2;
+            return list.map((answer, index) => {
+                const hash = nameHash(answer);
+                const slot = slots[index] || { x: 38, y: 60, z: 6 };
+                const x = Math.min(66, Math.max(10, slot.x + ((hash % 5) - 2) * 0.9));
+                const y = Math.min(71, Math.max(49, slot.y + (((hash >> 3) % 5) - 2) * 0.65));
+                return {
+                    kind: 'miss',
+                    answer,
+                    points: 0,
+                    players: [],
+                    count: 0,
+                    x,
+                    y,
+                    width,
+                    tilt: tilts[index % tilts.length],
+                    z: Math.max(3, scoreBannerZ(y) - 8)
+                };
             });
-            const out = [];
-            let i = 0;
-            plan.forEach((count, row) => {
-                const slot = span / Math.max(1, count);
-                const stagger = row % 2 ? slot * 0.12 : 0;
-                for (let col = 0; col < count; col += 1) {
-                    const group = groups[i];
-                    i += 1;
-                    if (!group) return;
-                    const x = count <= 1
-                        ? (left + right) / 2
-                        : Math.min(right - 1.2, Math.max(left + 1.2, left + (col + 0.5) * slot + stagger));
-                    const y = rowY[row] + (col % 2 ? 0.6 : 0);
-                    out.push(Object.assign({}, group, {
-                        x,
-                        y,
-                        width: rowW[row],
-                        tilt: tilts[(i + row) % tilts.length],
-                        row,
-                        z: Math.max(4, scoreBannerZ(y) - 2)
-                    }));
-                }
-            });
-            return out;
         }
 
         function scoreAnswerModels() {
-            const { submittedAnswers, correctNotGiven } = categorizeAnswersForDisplay();
+            const { submittedAnswers, correctNotGiven, wrongAnswers } = categorizeAnswersForDisplay();
             const hits = (submittedAnswers || []).slice().sort((a, b) => {
                 const byPoints = (Number(b.points) || 0) - (Number(a.points) || 0);
                 if (byPoints) return byPoints;
@@ -1329,40 +1308,43 @@
                 players: group.players || [],
                 count: Number(group.count) || (group.players || []).length
             }));
-            const misses = (correctNotGiven || []).map((answer) => ({
-                kind: 'miss',
-                answer,
+            const misses = layoutMissPosts(correctNotGiven || []);
+            const wrongs = (wrongAnswers || []).slice().sort((a, b) => {
+                return (Number(b.count) || 0) - (Number(a.count) || 0);
+            }).map((group) => ({
+                kind: 'wrong',
+                answer: group.answer,
                 points: 0,
-                players: [],
-                count: 0
+                players: group.players || [],
+                count: Number(group.count) || (group.players || []).length
             }));
-            return { field: layoutScoreBanners(hits.concat(misses)) };
+            return { hits, misses, wrongs };
         }
 
-        function packBannerHolders(count, x, y, maxHalf) {
+        function scoringAnswerKey() {
+            const { hits, misses, wrongs } = scoreAnswerModels();
+            return JSON.stringify({
+                q: gameState && gameState.currentQuestion,
+                hits: hits.map((group) => [group.answer, group.points, group.count]),
+                misses: misses.map((group) => group.answer),
+                wrongs: wrongs.map((group) => [group.answer, group.count]),
+                n: ((gameState && gameState.players) || []).length
+            });
+        }
+
+        function packWrongHolders(count, x, y) {
             const n = Math.max(1, count);
-            const crowd = n > 10 ? 0.7 : n > 5 ? 0.82 : 1;
-            const cap = Math.max(2.1, Number(maxHalf) || 5.2);
             const withZ = (slot) => Object.assign({}, slot, {
                 z: scoreBannerZ(slot.y),
-                scale: (slot.scale || 1) * crowd
+                scale: slot.scale || 1
             });
-            if (n === 1) {
-                return [withZ({ x, y: y + 2.2, scale: 1 })];
-            }
-            if (n === 2) {
-                const spread = Math.min(2.6, cap);
-                return [
-                    withZ({ x: x - spread, y: y + 2.0, scale: 1 }),
-                    withZ({ x: x + spread, y: y + 2.4, scale: 1 })
-                ];
-            }
-            const half = Math.min(cap, n <= 4 ? 1.7 + n * 0.2 : 2.2 + Math.min(n, 14) * 0.12);
-            return packTrapezoid(
-                n,
-                { left: x - half * 0.4, right: x + half * 0.4, y: y + 0.2 },
-                { left: x - half, right: x + half, y: y + 4.6 }
-            ).map(withZ);
+            if (n === 1) return [withZ({ x, y, scale: 1 })];
+            const spread = Math.min(6.4, 3.2 + n * 0.7);
+            return Array.from({ length: n }, (_, index) => withZ({
+                x: x + (index - (n - 1) / 2) * spread,
+                y: y + (index % 2 ? 1.4 : 0),
+                scale: 1
+            }));
         }
 
         function claimScoreMembers(list, claimed, group) {
@@ -1377,37 +1359,55 @@
         }
 
         function placeScoreFlock(list, names) {
-            const { field } = scoreAnswerModels();
+            const { hits, wrongs } = scoreAnswerModels();
             const claimed = new Set();
             const byPlayer = new Map();
-            field.forEach((banner) => {
-                if (banner.kind === 'miss') return;
-                const members = claimScoreMembers(list, claimed, banner);
-                if (!members.length) return;
-                const named = members.length <= SCORE_NAME_AT;
-                const packed = packBannerHolders(members.length, banner.x, banner.y, banner.width * 0.38);
+            hits.forEach((group) => {
+                const members = claimScoreMembers(list, claimed, group);
                 members.forEach((player, index) => {
-                    const slot = resultSlot(player, names, packed[index], {
-                        named,
+                    byPlayer.set(player, resultSlot(player, names, {
+                        x: -22 - (index % 6) * 1.5,
+                        y: 88 + (index % 3) * 1.1,
+                        z: 48,
+                        scale: 1
+                    }, {
+                        named: false,
+                        paradeWait: true,
+                        minGy: 84
+                    }));
+                });
+            });
+            const wrongCenters = packRegion(wrongs.length, { left: 16, right: 64, top: 72, bottom: 82 });
+            wrongs.forEach((group, gi) => {
+                const members = claimScoreMembers(list, claimed, group);
+                if (!members.length) return;
+                const center = wrongCenters[gi] || { x: 32, y: 76 };
+                const packed = packWrongHolders(members.length, center.x, center.y);
+                const frontAt = packed.reduce((best, slot, index) => (
+                    slot.y >= (packed[best] || slot).y ? index : best
+                ), 0);
+                members.forEach((player, index) => {
+                    byPlayer.set(player, resultSlot(player, names, packed[index], {
+                        named: false,
+                        wrong: index === frontAt ? group.answer : '',
                         tight: true,
-                        minGy: banner.y - 2
-                    });
-                    slot.mood = 'idle';
-                    byPlayer.set(player, slot);
+                        minGy: 70,
+                        scale: 0.95
+                    }));
                 });
             });
             const leftovers = list.filter((_, index) => !claimed.has(index));
             if (leftovers.length) {
                 const packed = packTrapezoid(
                     leftovers.length,
-                    { left: 1.2, right: 11, y: 56 },
-                    { left: 0.6, right: 13, y: 70 }
+                    { left: 2, right: 11, y: 48 },
+                    { left: 1, right: 12, y: 58 }
                 );
                 leftovers.forEach((player, index) => {
                     byPlayer.set(player, resultSlot(player, names, packed[index], {
                         named: leftovers.length <= SCORE_NAME_AT,
                         scale: 0.84,
-                        minGy: 54
+                        minGy: 50
                     }));
                 });
             }
@@ -1501,6 +1501,9 @@
         }
 
         function eweCaptionHtml(slot) {
+            if (slot.wrong) {
+                return `<span class="tv-ewe-wrong">${escapeDisplayText(slot.wrong)}</span>`;
+            }
             const name = escapeDisplayText(slot.label || slot.name || 'Sheep');
             const score = Number(slot.score);
             const pts = (slot.score != null && Number.isFinite(score))
@@ -1510,16 +1513,19 @@
         }
 
         function applyEweLook(el, slot) {
-            el.classList.toggle('is-crowd', slot.named === false);
+            el.classList.toggle('is-crowd', slot.named === false && !slot.wrong);
             el.classList.toggle('is-parade-wait', !!slot.paradeWait);
             el.classList.toggle('is-parade', !!slot.parade);
+            el.classList.toggle('is-wrong', !!slot.wrong);
         }
 
         function eweFigureHtml(slot) {
-            const crowd = slot.named === false ? ' is-crowd' : '';
+            const crowd = slot.named === false && !slot.wrong ? ' is-crowd' : '';
             const wait = slot.paradeWait ? ' is-parade-wait' : '';
+            const parade = slot.parade ? ' is-parade' : '';
+            const wrong = slot.wrong ? ' is-wrong' : '';
             return `
-                <figure class="tv-ewe${crowd}${wait}" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" data-mood="${escapeDisplayText(slot.mood || 'idle')}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--ox:${slot.ox}%;--oy:${slot.oy}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
+                <figure class="tv-ewe${crowd}${wait}${parade}${wrong}" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" data-mood="${escapeDisplayText(slot.mood || 'idle')}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--ox:${slot.ox}%;--oy:${slot.oy}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
                     ${EWE_ART}
                     <figcaption>${eweCaptionHtml(slot)}</figcaption>
                 </figure>
@@ -1953,7 +1959,7 @@
             const destX = field.left + (slot.gx / 100) * field.width;
             const destY = field.top + (slot.gy / 100) * field.height;
             const dist = Math.hypot(destX - (now.left + now.width / 2), destY - (now.top + now.height * 0.72));
-            if (dist < 10) {
+            if (dist < 10 && !(opts && opts.seconds)) {
                 applyEweSlot(el, slot);
                 if (onDone) onDone();
                 return;
@@ -1962,11 +1968,14 @@
             const stride = (now.width || 56) * 1.25;
             const minSeconds = (opts && opts.minSeconds) || 0.6 * 2;
             const maxSeconds = (opts && opts.maxSeconds) || 8;
-            const seconds = Math.min(maxSeconds, Math.max(minSeconds, dist / (stride / cycle)));
+            const seconds = (opts && opts.seconds) || Math.min(maxSeconds, Math.max(minSeconds, dist / (stride / cycle)));
             const gen = bumpEweWalk(el);
+            const fromX = parseFloat(el.style.getPropertyValue('--gx')) || 0;
             el.classList.remove('is-joining');
             el.classList.remove('is-walking');
+            el.classList.toggle('is-left', slot.gx < fromX);
             el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
+            el.style.transitionDuration = `${seconds.toFixed(2)}s`;
             applyEweSlot(el, slot);
             el.classList.add('is-walking');
             let done = false;
@@ -2294,8 +2303,10 @@
             const width = extra.width != null ? extra.width : group.width;
             const tilt = extra.tilt != null ? extra.tilt : (group.tilt || 0);
             const wait = extra.wait ? ' is-parade-wait' : '';
+            const parade = extra.parade ? ' is-parade' : '';
+            const id = extra.id ? ` id="${extra.id}"` : '';
             return `
-                <div class="tv-banner is-${group.kind}${wait}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${Number(group.count) || (group.players || []).length}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
+                <div${id} class="tv-banner is-${group.kind}${wait}${parade}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${Number(group.count) || (group.players || []).length}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
                     <aside class="tv-sign tv-banner-sign">
                         <div class="tv-banner-clip">
                             <img class="tv-sign-art" src="sprites/meadow-sign.png?v=2026-11-18T27-20-00" alt="" aria-hidden="true">
@@ -2310,10 +2321,21 @@
         }
 
         function tvScoreBannerHtml() {
-            const { field } = scoreAnswerModels();
+            const { misses } = scoreAnswerModels();
             return `
                 <div class="tv-score-banners">
-                    ${field.map((group) => tvBannerMarkup(group)).join('')}
+                    ${misses.map((group) => tvBannerMarkup(group)).join('')}
+                    ${tvBannerMarkup({
+                        kind: 'hit',
+                        answer: '',
+                        points: 0,
+                        count: 0,
+                        x: -24,
+                        y: 88,
+                        width: 14,
+                        tilt: -0.4,
+                        z: 50
+                    }, { wait: true, parade: true, id: 'scoreParadeBanner' })}
                 </div>
             `;
         }
@@ -2322,6 +2344,175 @@
             const chorus = document.getElementById('flockChorus');
             const wrap = document.querySelector('.tv-score-banners');
             if (chorus && wrap) chorus.appendChild(wrap);
+        }
+
+        function paradeBannerWidth(group, count) {
+            const n = Math.max(1, Number(count) || 1);
+            const letters = String((group && group.answer) || '').length;
+            return Math.min(22, Math.max(11, 8.4 + n * 0.42, letters * 0.85));
+        }
+
+        function packParadeLane(count, x0, x1, y0, y1) {
+            return packTrapezoid(
+                Math.max(1, count),
+                { left: x0, right: x1, y: y0 },
+                { left: x0 + 2, right: x1 + 2, y: y1 }
+            );
+        }
+
+        function setParadeBanner(group, x, y, width, walk, wait) {
+            const el = document.getElementById('scoreParadeBanner');
+            if (!el) return;
+            el.dataset.answer = String((group && group.answer) || '');
+            el.dataset.holders = String(Number((group && group.count) || 0));
+            el.classList.toggle('is-parade-wait', !!wait);
+            el.classList.add('is-parade', 'is-hit');
+            el.style.setProperty('--x', `${Number(x).toFixed(2)}%`);
+            el.style.setProperty('--y', `${Number(y).toFixed(2)}%`);
+            el.style.setProperty('--w', `${Number(width).toFixed(2)}vw`);
+            el.style.setProperty('--z', '49');
+            el.style.setProperty('--walk', `${Number(walk || 0).toFixed(2)}s`);
+            el.style.transitionDuration = `${Number(walk || 0).toFixed(2)}s`;
+            const word = el.querySelector('.tv-post-answer');
+            const pts = el.querySelector('.tv-post-pts');
+            if (word) word.textContent = (group && group.answer) || '';
+            if (pts) pts.textContent = String(Number((group && group.points) || 0));
+        }
+
+        function parkParadeEwes(els) {
+            const names = ((gameState && gameState.players) || []).map((player) => player.name || 'Sheep');
+            els.forEach((el, index) => {
+                const slot = resultSlot({
+                    id: el.dataset.id,
+                    stableId: el.dataset.id,
+                    name: el.dataset.name
+                }, names, {
+                    x: -22 - (index % 6) * 1.5,
+                    y: 88 + (index % 3) * 1.1,
+                    z: 48,
+                    scale: 1
+                }, {
+                    named: false,
+                    paradeWait: true,
+                    minGy: 84
+                });
+                el.classList.add('is-placed');
+                el.style.transitionDuration = '0s';
+                applyEweSlot(el, slot);
+                el.classList.remove('is-walking', 'is-parade', 'is-left');
+                window.requestAnimationFrame(() => el.classList.remove('is-placed'));
+            });
+        }
+
+        function paradeScoreGroup(group, gen, onDone) {
+            if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) {
+                if (onDone) onDone();
+                return;
+            }
+            const chorus = document.getElementById('flockChorus');
+            const names = ((gameState && gameState.players) || []).map((player) => player.name || 'Sheep');
+            const members = ((gameState && gameState.players) || []).filter((player) => playerMatchesGroup(player, group));
+            const els = members.map((player) => {
+                const id = String(player.stableId || player.id || player.name);
+                return chorus && chorus.querySelector(`.tv-ewe[data-id="${CSS.escape(id)}"]`);
+            }).filter(Boolean);
+            const n = Math.max(1, els.length || members.length || 1);
+            const start = packParadeLane(n, 4, Math.min(24, 4 + n * 1.15), 87, 93);
+            const dest = packParadeLane(n, 104, Math.min(126, 104 + n * 1.15), 87, 93);
+            const width = paradeBannerWidth(group, n);
+            const startX = start.reduce((sum, slot) => sum + slot.x, 0) / start.length;
+            const destX = dest.reduce((sum, slot) => sum + slot.x, 0) / dest.length;
+            const laneY = 90.5;
+            const seconds = 7.6;
+            const banner = document.getElementById('scoreParadeBanner');
+            const finish = () => {
+                parkParadeEwes(els);
+                setParadeBanner(group, destX, laneY, width, 0, true);
+                if (onDone) onDone();
+            };
+            if (banner) {
+                banner.classList.add('is-placed');
+                setParadeBanner(group, startX, laneY, width, 0, false);
+                banner.getBoundingClientRect();
+            }
+            const armWalk = (onGo) => {
+                window.requestAnimationFrame(() => {
+                    if (gen !== scoreParadeGen) return;
+                    if (banner) {
+                        banner.classList.remove('is-placed');
+                        banner.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
+                    }
+                    els.forEach((el) => {
+                        el.classList.remove('is-placed');
+                        el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
+                    });
+                    if (banner) banner.getBoundingClientRect();
+                    window.requestAnimationFrame(() => {
+                        if (gen !== scoreParadeGen) return;
+                        onGo();
+                    });
+                });
+            };
+            if (!els.length) {
+                armWalk(() => {
+                    setParadeBanner(group, destX, laneY, width, seconds, false);
+                    window.setTimeout(finish, seconds * 1000 + 80);
+                });
+                return;
+            }
+            let left = els.length;
+            const finishOne = () => {
+                left -= 1;
+                if (left > 0) return;
+                finish();
+            };
+            els.forEach((el, index) => {
+                const startSlot = resultSlot(members[index], names, start[index] || start[0], {
+                    named: false,
+                    parade: true,
+                    minGy: 84
+                });
+                el.classList.add('is-placed');
+                applyEweSlot(el, startSlot);
+                el.classList.remove('is-parade-wait', 'is-left');
+                el.classList.add('is-parade', 'is-crowd');
+            });
+            if (els[0]) els[0].getBoundingClientRect();
+            armWalk(() => {
+                setParadeBanner(group, destX, laneY, width, seconds, false);
+                els.forEach((el, index) => {
+                    const destSlot = resultSlot(members[index], names, dest[index] || dest[0], {
+                        named: false,
+                        parade: true,
+                        minGy: 84
+                    });
+                    walkEweOnField(el, destSlot, finishOne, { seconds, minSeconds: seconds, maxSeconds: seconds });
+                });
+            });
+        }
+
+        function startScoreParade() {
+            const gen = scoreParadeGen;
+            const hits = scoreAnswerModels().hits;
+            if (!hits.length) return;
+            const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            let i = 0;
+            const next = () => {
+                if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) return;
+                const group = hits[i % hits.length];
+                i += 1;
+                if (reduce) {
+                    const n = Math.max(1, Number(group.count) || 1);
+                    setParadeBanner(group, 42, 90, paradeBannerWidth(group, n), 0, false);
+                    window.setTimeout(() => {
+                        setParadeBanner(group, 42, 90, paradeBannerWidth(group, n), 0, true);
+                        window.setTimeout(next, 280);
+                    }, 2200);
+                    return;
+                }
+                paradeScoreGroup(group, gen, () => window.setTimeout(next, 420));
+            };
+            window.setTimeout(next, 900);
         }
 
         function tvPodiumHtml(sorted) {
@@ -2362,10 +2553,17 @@
         }
 
         function showScoringScreen() {
+            const key = scoringAnswerKey();
+            const stage = document.querySelector('#displayScreen .tv-score');
+            const players = rankedPlayers((gameState && gameState.players) || []);
+            if (stage && stage.dataset.answerKey === key) {
+                const board = document.getElementById('scoreRankBoard');
+                if (board) board.innerHTML = tvRankListHtml(players, 0, { short: true });
+                return;
+            }
             scoreParadeGen += 1;
             const meta = playRoundMeta();
             const prompt = currentPromptText();
-            const players = rankedPlayers(gameState.players);
             paintMeadowScreen('tv-score', `
                 <div class="tv-score-top">
                     <p class="tv-play-meta"><span>Round ${meta.roundNumber}</span><span>${meta.questionInRound} of ${meta.perRound}</span></p>
@@ -2379,8 +2577,11 @@
                     </div>
                 </aside>
             `);
+            const painted = document.querySelector('#displayScreen .tv-score');
+            if (painted) painted.dataset.answerKey = key;
             mountScoreBanners();
             armBoardScroll('scoreRankBoard', players.length);
+            startScoreParade();
         }
 
         function layoutLobbyPlayers() {

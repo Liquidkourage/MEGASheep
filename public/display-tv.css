@@ -1956,7 +1956,8 @@ html, body {
 }
 
 .tv-score .tv-flock {
-    z-index: 9;
+    z-index: 11;
+    overflow: visible;
 }
 
 .tv-standings .tv-flock,
@@ -2023,7 +2024,8 @@ html, body {
 }
 
 .tv-banner.is-parade {
-    z-index: 12;
+    z-index: var(--z, 49);
+    width: min(var(--w, 14vw), 260px);
 }
 
 .tv-banner.is-parade-wait {
@@ -2031,8 +2033,28 @@ html, body {
 }
 
 .tv-banner.is-miss {
-    opacity: 0.5;
-    filter: grayscale(0.2);
+    width: min(var(--w, 8vw), 168px);
+    transform: translate(-50%, -86%) rotate(var(--tilt, 0deg));
+    opacity: 0.82;
+    filter: grayscale(0.08);
+}
+
+.tv-banner.is-miss .tv-banner-clip {
+    overflow: visible;
+    aspect-ratio: auto;
+}
+
+.tv-banner.is-miss .tv-banner-clip .tv-sign-art {
+    position: relative;
+    width: 100%;
+    height: auto;
+}
+
+.tv-banner.is-miss .tv-banner-sign .tv-sign-face {
+    left: 8%;
+    right: 8%;
+    top: 8%;
+    bottom: 34%;
 }
 
 .tv-banner-sign {
@@ -2132,10 +2154,26 @@ html, body {
     font-size: clamp(1.15rem, 28cqi, 2.15rem);
 }
 
-.tv-score .tv-ewe.is-crowd figcaption,
+.tv-score .tv-ewe.is-crowd:not(.is-wrong) figcaption,
 .tv-score .tv-ewe.is-parade figcaption,
 .tv-score .tv-ewe.is-parade-wait figcaption {
     display: none;
+}
+
+.tv-score .tv-ewe.is-wrong figcaption {
+    display: flex;
+    z-index: 4;
+    max-width: min(16ch, 220cqi);
+    background: #1a140c;
+    color: #f6ecc4;
+}
+
+.tv-ewe-wrong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 800;
+    letter-spacing: -0.04em;
 }
 
 .tv-score .tv-ewe.is-parade-wait {
