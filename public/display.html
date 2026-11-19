@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T00-55-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T01-05-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -621,8 +621,10 @@
                     ${skyNameHtml()}
                     <aside class="tv-sign tv-lobby-join">
                         <img class="tv-sign-art" src="sprites/meadow-sign-tall.png?v=2026-11-19T00-20-00" alt="" aria-hidden="true">
-                        <img class="tv-sign-bite-edge" src="sprites/sign-bite-edge.png?v=2026-11-19T00-35-00" alt="" aria-hidden="true">
-                        <img class="tv-sign-bite-plug" src="sprites/sign-bite-plug.png?v=2026-11-19T00-35-00" alt="" aria-hidden="true">
+                        <img class="tv-sign-bite-edge tv-sign-bite-edge-nibble" src="sprites/sign-bite-edge-nibble.png?v=2026-11-19T01-05-00" alt="" aria-hidden="true">
+                        <img class="tv-sign-bite-edge tv-sign-bite-edge-full" src="sprites/sign-bite-edge.png?v=2026-11-19T01-05-00" alt="" aria-hidden="true">
+                        <img class="tv-sign-bite-plug" src="sprites/sign-bite-plug.png?v=2026-11-19T01-05-00" alt="" aria-hidden="true">
+                        <span class="tv-sign-crumbs" aria-hidden="true"><i></i><i></i><i></i></span>
                         <div class="tv-sign-face">
                             <div id="qrCodeWaiting" class="qr-code"></div>
                             <p class="tv-lobby-code">${displayGameCode || 'XXXX'}</p>
@@ -1243,7 +1245,10 @@
         let lobbySeparateTimer = 0;
         let lastSnackId = '';
         let biteMarkTimer = 0;
+        let biteNibbleTimer = 0;
         let biteHealTimer = 0;
+        const SNACK_WALK = { cycle: 1.12, minSeconds: 4.4, maxSeconds: 16 };
+        const SNACK_SCALE = 1.28;
 
         function lobbyJoinSign() {
             return document.querySelector('.tv-lobby-join');
@@ -1257,11 +1262,13 @@
             const art = card.querySelector('.tv-sign-art') || card;
             const box = art.getBoundingClientRect();
             if (!field.width || !field.height) return { gx: 2, gy: 78 };
-            const eweW = (el && el.getBoundingClientRect().width) || 110;
-            const cornerX = box.left + box.width * 0.92;
-            const cornerY = box.top + box.height * 0.77;
+            const currentS = parseFloat((el && el.style.getPropertyValue('--s')) || '1') || 1;
+            const drawnW = (el && el.getBoundingClientRect().width) || 110;
+            const eweW = drawnW * (SNACK_SCALE / currentS);
+            const cornerX = box.left + box.width * 0.93;
+            const cornerY = box.top + box.height * 0.80;
             return {
-                gx: ((cornerX + eweW * 0.16 - field.left) / field.width) * 100,
+                gx: ((cornerX + eweW * 0.50 - field.left) / field.width) * 100,
                 gy: ((cornerY + eweW * 0.14 - field.top) / field.height) * 100
             };
         }
@@ -1271,18 +1278,26 @@
             if (card) card.classList.remove('is-nibbled');
         }
 
+        function resetSignBite() {
+            const card = lobbyJoinSign();
+            if (!card) return;
+            card.classList.remove('is-bitten', 'is-bite-1', 'is-bite-2', 'is-healing', 'is-healed', 'is-nibbled');
+        }
+
         function clearSignBiteTimers() {
             window.clearTimeout(biteMarkTimer);
+            window.clearTimeout(biteNibbleTimer);
             window.clearTimeout(biteHealTimer);
             biteMarkTimer = 0;
+            biteNibbleTimer = 0;
             biteHealTimer = 0;
         }
 
-        function markSignBitten() {
+        function markSignBitten(stage) {
             const card = lobbyJoinSign();
             if (!card) return;
-            card.classList.remove('is-healing');
-            card.classList.add('is-bitten');
+            card.classList.remove('is-healing', 'is-bite-1', 'is-bite-2');
+            card.classList.add('is-bitten', stage === 1 ? 'is-bite-1' : 'is-bite-2');
         }
 
         function healSignBite() {
@@ -1290,8 +1305,12 @@
             if (!card || !card.classList.contains('is-bitten')) return;
             card.classList.add('is-healing');
             biteHealTimer = window.setTimeout(() => {
-                card.classList.remove('is-bitten', 'is-healing');
-            }, 620);
+                card.classList.remove('is-bitten', 'is-bite-1', 'is-bite-2');
+                card.classList.add('is-healed');
+                biteHealTimer = window.setTimeout(() => {
+                    card.classList.remove('is-healing', 'is-healed');
+                }, 240);
+            }, 880);
         }
 
         function armLobbySnack() {
@@ -1333,9 +1352,6 @@
             return far[Math.floor(Math.random() * far.length)].el;
         }
 
-        const SNACK_WALK = { cycle: 1.12, minSeconds: 4.4, maxSeconds: 16 };
-        const SNACK_SCALE = 1.28;
-
         function startQrNibble(el) {
             const lobby = document.querySelector('.tv-lobby');
             if (!lobby || !el || !el.isConnected) return;
@@ -1348,6 +1364,7 @@
             lastSnackId = el.dataset.id || '';
             clearEweWander(el);
             clearSignBiteTimers();
+            resetSignBite();
             el.classList.add('is-snackish');
             const spot = qrNibbleSpot(el);
             el.classList.add('is-left');
@@ -1363,15 +1380,16 @@
                 el.dataset.mood = 'eat';
                 const nibbleCard = lobbyJoinSign();
                 if (nibbleCard) nibbleCard.classList.add('is-nibbled');
-                biteMarkTimer = window.setTimeout(markSignBitten, 480);
-                window.setTimeout(() => finishQrNibble(el), 5500 + Math.random() * 3500);
+                biteMarkTimer = window.setTimeout(() => markSignBitten(1), 280);
+                biteNibbleTimer = window.setTimeout(() => markSignBitten(2), 730);
+                window.setTimeout(() => finishQrNibble(el), 5200 + Math.random() * 2800);
             }, SNACK_WALK);
         }
 
         function finishQrNibble(el) {
             stopCardChew();
             window.clearTimeout(biteHealTimer);
-            biteHealTimer = window.setTimeout(healSignBite, 2600 + Math.random() * 1400);
+            biteHealTimer = window.setTimeout(healSignBite, 1800 + Math.random() * 900);
             if (!el || !el.isConnected || !document.querySelector('.tv-lobby')) return;
             el.classList.remove('is-nibbling');
             const away = randomLobbyPoint(occupiedLobbyPoints(el), el);
