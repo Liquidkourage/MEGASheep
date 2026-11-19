@@ -141,33 +141,84 @@ html, body {
     z-index: 1;
 }
 
+.tv-sky-name {
+    position: absolute;
+    left: 4%;
+    right: 16%;
+    top: 2.2%;
+    z-index: 5;
+    margin: 0;
+    height: min(16vh, 168px);
+    pointer-events: none;
+}
+
+.tv-sky-name svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-weight: 800;
+    font-size: 108px;
+    letter-spacing: 4px;
+}
+
+.tv-sky-name-fill {
+    fill: rgba(255, 236, 186, 0.28);
+}
+
+.tv-sky-name-constellation {
+    fill: none;
+    stroke: #fff6d2;
+    stroke-width: 7.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 0 20;
+}
+
+.tv-sky-sparks path {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: skyTwinkle 2.6s ease-in-out infinite;
+}
+
+.tv-sky-sparks path:nth-child(2) { animation-delay: 0.4s; }
+.tv-sky-sparks path:nth-child(3) { animation-delay: 1.1s; }
+.tv-sky-sparks path:nth-child(4) { animation-delay: 1.7s; }
+.tv-sky-sparks path:nth-child(5) { animation-delay: 0.8s; }
+
+@keyframes skyTwinkle {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+}
+
 .tv-intro-sign {
     position: absolute;
     left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
+    top: 54%;
+    transform: translate(-50%, -50%) rotate(0.35deg);
     z-index: 8;
-    width: min(820px, 64vw);
-    gap: 16px;
+    width: min(760px, 60vw);
+    gap: 14px;
 }
 
 .tv-intro-brand {
     margin: 0;
-    font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(1.5rem, 2.8vh, 2.2rem);
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    color: #1a140c;
+    font-family: "Bree Serif", Georgia, serif;
+    font-size: clamp(1.45rem, 2.6vh, 2.05rem);
+    font-weight: 400;
+    letter-spacing: 0.03em;
+    color: #2a1a0c;
 }
 
 .tv-intro-blurb {
     margin: 0;
     max-width: 22em;
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(1.45rem, 2.8vh, 2.15rem);
+    font-size: clamp(1.35rem, 2.5vh, 1.95rem);
     font-weight: 600;
     line-height: 1.3;
-    color: #1a140c;
+    color: #2a1a0c;
 }
 
 .tv-intro-sign .qr-code img {
@@ -185,12 +236,13 @@ html, body {
 
 .tv-pair-code {
     margin: 0;
-    font-family: Outfit, "Segoe UI", sans-serif;
+    font-family: "Bree Serif", Georgia, serif;
     font-size: clamp(4.6rem, 12vh, 8rem);
-    font-weight: 900;
+    font-weight: 400;
     letter-spacing: 0.16em;
     line-height: 1;
-    color: #1a140c;
+    color: #f4ead0;
+    text-shadow: 0 3px 0 #1a140c;
     white-space: nowrap;
 }
 
@@ -248,7 +300,7 @@ html, body {
 
 .tv-lobby .tv-flock {
     z-index: 9;
-    left: calc(min(500px, 34vw) + clamp(28px, 3vw, 52px) + 28px);
+    left: calc(min(440px, 32vw) + clamp(28px, 3vw, 52px) + 28px);
     right: clamp(20px, 2vw, 36px);
     top: 44%;
     bottom: clamp(12px, 2.2vh, 28px);
@@ -258,65 +310,85 @@ html, body {
 }
 
 .tv-sign {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: clamp(22px, 2.2vw, 36px);
-    gap: 18px;
-    background: #f4efe4;
-    border: 6px solid #1a140c;
-    border-radius: 32px;
-    box-shadow: 8px 10px 0 #1a140c;
+    padding: clamp(18px, 1.8vw, 28px) clamp(18px, 1.8vw, 28px) clamp(20px, 2vw, 30px);
+    gap: 14px;
+    color: #1a140c;
+    background-color: #b07a3d;
+    background-image:
+        radial-gradient(circle at 16px 16px, #3a2412 0 5px, #d8c090 6px 7px, transparent 8px),
+        radial-gradient(circle at calc(100% - 16px) 16px, #3a2412 0 5px, #d8c090 6px 7px, transparent 8px),
+        radial-gradient(circle at 16px calc(100% - 16px), #3a2412 0 5px, #d8c090 6px 7px, transparent 8px),
+        radial-gradient(circle at calc(100% - 16px) calc(100% - 16px), #3a2412 0 5px, #d8c090 6px 7px, transparent 8px),
+        repeating-linear-gradient(180deg, transparent 0 34px, rgba(42, 24, 12, 0.16) 34px 36px),
+        linear-gradient(90deg, rgba(42, 24, 12, 0.22) 0 3px, transparent 3px 100%),
+        linear-gradient(90deg, #6e4320 0%, #c49a5c 14%, #d2ae70 48%, #b07a3d 82%, #6a401c 100%);
+    border: 7px solid #1a140c;
+    border-radius: 12px;
+    box-shadow:
+        inset 0 2px 0 rgba(255, 232, 190, 0.28),
+        inset 0 -12px 20px rgba(40, 22, 8, 0.22),
+        7px 9px 0 #1a140c;
 }
 
-.tv-sign .display-title {
-    font-size: clamp(2.6rem, 5.2vh, 4.2rem) !important;
-    line-height: 0.92;
-    letter-spacing: -0.05em;
-    width: 100%;
-    text-align: center;
-    color: #1a140c !important;
-    -webkit-text-fill-color: #1a140c !important;
-    text-shadow: none;
+.tv-sign::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: calc(100% - 10px);
+    width: 44px;
+    height: min(132px, 15vh);
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, #4a2e14 0%, #c49a5c 36%, #8a5a30 70%, #3a2412 100%);
+    border: 6px solid #1a140c;
+    border-top: 0;
+    border-radius: 0 0 6px 6px;
+    box-shadow: 4px 6px 0 #1a140c;
+    z-index: -1;
 }
 
 .tv-sign .qr-code {
-    padding: 14px !important;
-    background: #fff;
-    border: 5px solid #1a140c;
-    border-radius: 22px;
+    padding: 10px !important;
+    background: #f3e6c8 !important;
+    border: 4px solid #1a140c !important;
+    border-radius: 8px !important;
+    box-shadow: 3px 4px 0 #1a140c;
+    transform: rotate(-1.2deg);
 }
 
 .tv-sign .qr-code img {
-    width: min(300px, 28vh) !important;
-    height: min(300px, 28vh) !important;
+    width: min(280px, 26vh) !important;
+    height: min(280px, 26vh) !important;
 }
 
 .tv-lobby-join {
     position: absolute;
     left: clamp(28px, 3vw, 52px);
-    top: 56%;
-    transform: translateY(-50%);
+    top: 58%;
+    transform: translateY(-50%) rotate(-0.7deg);
     z-index: 8;
-    width: min(500px, 34vw);
+    width: min(440px, 32vw);
 }
 
 .tv-lobby-code {
     margin: 0;
-    font-family: Outfit, "Segoe UI", sans-serif;
+    font-family: "Bree Serif", Georgia, serif;
     font-size: var(--tv-code);
-    font-weight: 900;
-    letter-spacing: 0.14em;
+    font-weight: 400;
+    letter-spacing: 0.12em;
     line-height: 1;
-    color: #1a140c;
-    text-shadow: none;
+    color: #f4ead0;
+    text-shadow: 0 3px 0 #1a140c;
 }
 
 .tv-lobby-join.is-nibbled {
     animation: lobbyCardChew 0.52s ease-in-out infinite;
-    transform-origin: 90% 55%;
+    transform-origin: 88% 42%;
 }
 
 .tv-ewe.is-snackish,
@@ -325,9 +397,9 @@ html, body {
 }
 
 @keyframes lobbyCardChew {
-    0%, 100% { transform: translateY(-50%) rotate(0deg); }
-    32% { transform: translateY(-50%) rotate(-0.7deg) translateX(1px); }
-    68% { transform: translateY(-50%) rotate(0.45deg); }
+    0%, 100% { transform: translateY(-50%) rotate(-0.7deg); }
+    32% { transform: translateY(-50%) rotate(-1.5deg) translateX(1px); }
+    68% { transform: translateY(-50%) rotate(-0.15deg); }
 }
 
 .tv-lobby-empty {
@@ -1233,6 +1305,7 @@ html, body {
     .tv-wait-strip, .tv-wait-think i { animation: none !important; }
     .tv-wait-think i { opacity: 1; }
     .tv-ewe-poof, .tv-ewe.is-poofing .tv-ewe-art, .tv-ewe.is-poofing figcaption { animation: none !important; }
+    .tv-sky-sparks path { animation: none !important; }
 }
 
 .tv-pasture-bar {
