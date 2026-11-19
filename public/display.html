@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T00-20-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T00-35-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -621,6 +621,8 @@
                     ${skyNameHtml()}
                     <aside class="tv-sign tv-lobby-join">
                         <img class="tv-sign-art" src="sprites/meadow-sign-tall.png?v=2026-11-19T00-20-00" alt="" aria-hidden="true">
+                        <img class="tv-sign-bite-edge" src="sprites/sign-bite-edge.png?v=2026-11-19T00-35-00" alt="" aria-hidden="true">
+                        <img class="tv-sign-bite-plug" src="sprites/sign-bite-plug.png?v=2026-11-19T00-35-00" alt="" aria-hidden="true">
                         <div class="tv-sign-face">
                             <div id="qrCodeWaiting" class="qr-code"></div>
                             <p class="tv-lobby-code">${displayGameCode || 'XXXX'}</p>
@@ -1237,23 +1239,56 @@
         let lobbySnackTimer = 0;
         let lobbySeparateTimer = 0;
         let lastSnackId = '';
+        let biteMarkTimer = 0;
+        let biteHealTimer = 0;
 
-        function qrNibbleSpot() {
+        function lobbyJoinSign() {
+            return document.querySelector('.tv-lobby-join');
+        }
+
+        function qrNibbleSpot(el) {
             const chorus = document.getElementById('flockChorus');
-            const card = document.querySelector('.tv-lobby-join');
-            if (!chorus || !card) return { gx: 31, gy: 62 };
+            const card = lobbyJoinSign();
+            if (!chorus || !card) return { gx: 2, gy: 78 };
             const field = chorus.getBoundingClientRect();
-            const box = card.getBoundingClientRect();
-            if (!field.width || !field.height) return { gx: 31, gy: 62 };
+            const art = card.querySelector('.tv-sign-art') || card;
+            const box = art.getBoundingClientRect();
+            if (!field.width || !field.height) return { gx: 2, gy: 78 };
+            const eweW = (el && el.getBoundingClientRect().width) || 110;
+            const cornerX = box.left + box.width * 0.92;
+            const cornerY = box.top + box.height * 0.77;
             return {
-                gx: ((box.right - field.left) / field.width) * 100 + 1.4,
-                gy: ((box.top + box.height * 0.62 - field.top) / field.height) * 100
+                gx: ((cornerX + eweW * 0.16 - field.left) / field.width) * 100,
+                gy: ((cornerY + eweW * 0.14 - field.top) / field.height) * 100
             };
         }
 
         function stopCardChew() {
-            const card = document.querySelector('.tv-lobby-join');
+            const card = lobbyJoinSign();
             if (card) card.classList.remove('is-nibbled');
+        }
+
+        function clearSignBiteTimers() {
+            window.clearTimeout(biteMarkTimer);
+            window.clearTimeout(biteHealTimer);
+            biteMarkTimer = 0;
+            biteHealTimer = 0;
+        }
+
+        function markSignBitten() {
+            const card = lobbyJoinSign();
+            if (!card) return;
+            card.classList.remove('is-healing');
+            card.classList.add('is-bitten');
+        }
+
+        function healSignBite() {
+            const card = lobbyJoinSign();
+            if (!card || !card.classList.contains('is-bitten')) return;
+            card.classList.add('is-healing');
+            biteHealTimer = window.setTimeout(() => {
+                card.classList.remove('is-bitten', 'is-healing');
+            }, 620);
         }
 
         function armLobbySnack() {
@@ -1300,29 +1335,32 @@
             }
             lastSnackId = el.dataset.id || '';
             clearEweWander(el);
+            clearSignBiteTimers();
             el.classList.add('is-snackish');
-            const spot = qrNibbleSpot();
-            const gx = parseFloat(el.style.getPropertyValue('--gx')) || 70;
-            el.classList.toggle('is-left', spot.gx < gx);
+            const spot = qrNibbleSpot(el);
+            el.classList.add('is-left');
             const depth = lobbyDepth(Math.min(LOBBY_FIELD.bottom, Math.max(LOBBY_FIELD.top, spot.gy)));
             walkEweOnField(el, slotFromEwe(el, {
                 gx: spot.gx,
                 gy: spot.gy,
-                scale: Math.max(depth.scale, 1.08),
+                scale: Math.max(depth.scale, 1.14),
                 z: 80,
                 mood: 'idle'
             }), () => {
                 if (!el.isConnected || !document.querySelector('.tv-lobby')) return;
                 el.classList.add('is-left', 'is-nibbling');
                 el.dataset.mood = 'eat';
-                const nibbleCard = document.querySelector('.tv-lobby-join');
+                const nibbleCard = lobbyJoinSign();
                 if (nibbleCard) nibbleCard.classList.add('is-nibbled');
+                biteMarkTimer = window.setTimeout(markSignBitten, 480);
                 window.setTimeout(() => finishQrNibble(el), 5500 + Math.random() * 3500);
             }, SNACK_WALK);
         }
 
         function finishQrNibble(el) {
             stopCardChew();
+            window.clearTimeout(biteHealTimer);
+            biteHealTimer = window.setTimeout(healSignBite, 2600 + Math.random() * 1400);
             if (!el || !el.isConnected || !document.querySelector('.tv-lobby')) return;
             el.classList.remove('is-nibbling');
             const away = randomLobbyPoint(occupiedLobbyPoints(el), el);
