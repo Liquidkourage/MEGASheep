@@ -762,7 +762,10 @@ html, body {
     gap: 0.12em;
     container-type: inline-size;
     container-name: ewe;
-    transition: left var(--walk, 4s) linear, top var(--walk, 4s) linear;
+    transition:
+        left var(--walk, 4s) linear,
+        top var(--walk, 4s) linear,
+        width 1.45s ease;
 }
 
 .tv-ewe.is-left .tv-ewe-art {
@@ -826,6 +829,10 @@ html, body {
     background-size: 1800% 100%;
     background-image: url("sprites/sheep-01-walk.png?v=2026-11-18T20-05-00");
     animation: eweWalk 0.6s steps(18, jump-none) infinite;
+}
+
+.tv-ewe.is-snackish.is-walking .tv-ewe-strip {
+    animation-duration: 1.05s;
 }
 
 .tv-ewe[data-coat="2"].is-walking .tv-ewe-strip {

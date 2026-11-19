@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T22-50-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-10-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -643,6 +643,7 @@
                 generateQRCode('qrCodeWaiting', waitingUrl);
             }, 50);
             armLobbySnack();
+            armLobbySeparate();
         }
 
         const PLAY_KICKERS = [
@@ -760,18 +761,66 @@
             };
         }
 
-        function randomLobbyPoint(occupied) {
+        function clampLobbyPoint(gx, gy) {
+            return {
+                gx: Math.min(LOBBY_FIELD.right, Math.max(LOBBY_FIELD.left, gx)),
+                gy: Math.min(LOBBY_FIELD.bottom, Math.max(LOBBY_FIELD.top, gy))
+            };
+        }
+
+        function lobbyFieldWidth() {
+            const chorus = document.getElementById('flockChorus');
+            return (chorus && chorus.getBoundingClientRect().width) || 1600;
+        }
+
+        function readLobbyEwe(el) {
+            return {
+                el,
+                id: el.dataset.id,
+                gx: parseFloat(el.style.getPropertyValue('--gx')) || 70,
+                gy: parseFloat(el.style.getPropertyValue('--gy')) || 64,
+                w: el.getBoundingClientRect().width || 90
+            };
+        }
+
+        function lobbySepNeeded(selfW, otherW) {
+            return Math.max(6.5, ((selfW + otherW) * 0.44 / lobbyFieldWidth()) * 100);
+        }
+
+        function lobbySpotCrowded(gx, gy, occupied, selfW) {
+            const width = selfW || 90;
+            return (occupied || []).some((other) => {
+                if (!Number.isFinite(other.gx) || !Number.isFinite(other.gy)) return false;
+                const need = lobbySepNeeded(width, other.w || 90);
+                return Math.hypot(other.gx - gx, (other.gy - gy) * 1.2) < need;
+            });
+        }
+
+        function randomLobbyPoint(occupied, selfEl) {
+            const selfW = (selfEl && selfEl.getBoundingClientRect().width) || 90;
             let spot = { gx: 70, gy: 64 };
-            for (let i = 0; i < 14; i += 1) {
-                const gx = LOBBY_FIELD.left + Math.random() * (LOBBY_FIELD.right - LOBBY_FIELD.left);
-                const gy = LOBBY_FIELD.top + Math.random() * (LOBBY_FIELD.bottom - LOBBY_FIELD.top);
-                const crowded = (occupied || []).some((other) =>
-                    Math.hypot((other.gx || 0) - gx, (other.gy || 0) - gy) < 7
-                );
-                spot = { gx, gy };
-                if (!crowded) break;
+            for (let i = 0; i < 22; i += 1) {
+                const next = {
+                    gx: LOBBY_FIELD.left + Math.random() * (LOBBY_FIELD.right - LOBBY_FIELD.left),
+                    gy: LOBBY_FIELD.top + Math.random() * (LOBBY_FIELD.bottom - LOBBY_FIELD.top)
+                };
+                spot = next;
+                if (!lobbySpotCrowded(next.gx, next.gy, occupied, selfW)) break;
             }
             return spot;
+        }
+
+        function occupiedLobbyPoints(exceptEl) {
+            return [...document.querySelectorAll('#flockChorus .tv-ewe')]
+                .filter((el) => el !== exceptEl)
+                .map(readLobbyEwe);
+        }
+
+        function isLobbyEweBusy(el) {
+            return el.classList.contains('is-walking') ||
+                el.classList.contains('is-joining') ||
+                el.classList.contains('is-snackish') ||
+                el.classList.contains('is-nibbling');
         }
 
         function placeLobbyFlock(list, names) {
@@ -779,11 +828,7 @@
             const occupied = [];
             if (chorus) {
                 chorus.querySelectorAll('.tv-ewe').forEach((el) => {
-                    occupied.push({
-                        id: el.dataset.id,
-                        gx: parseFloat(el.style.getPropertyValue('--gx')),
-                        gy: parseFloat(el.style.getPropertyValue('--gy'))
-                    });
+                    occupied.push(readLobbyEwe(el));
                 });
             }
             return list.map((player, index) => {
@@ -791,7 +836,7 @@
                 const id = String(player.stableId || player.id || player.name);
                 const prior = occupied.find((p) => p.id === id && Number.isFinite(p.gx) && Number.isFinite(p.gy));
                 const spot = prior || randomLobbyPoint(occupied);
-                if (!prior) occupied.push({ id, gx: spot.gx, gy: spot.gy });
+                if (!prior) occupied.push({ id, gx: spot.gx, gy: spot.gy, w: 90 });
                 const depth = lobbyDepth(spot.gy);
                 return {
                     id,
@@ -942,6 +987,8 @@
         }
 
         let lobbySnackTimer = 0;
+        let lobbySeparateTimer = 0;
+        let lastSnackId = '';
 
         function qrNibbleSpot() {
             const chorus = document.getElementById('flockChorus');
@@ -965,25 +1012,32 @@
             window.clearTimeout(lobbySnackTimer);
             const lobby = document.querySelector('.tv-lobby');
             if (!lobby) return;
-            lobby.dataset.snackDone = '';
             if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
             lobbySnackTimer = window.setTimeout(tryLobbySnack, 60000);
         }
 
         function tryLobbySnack() {
             const lobby = document.querySelector('.tv-lobby');
-            if (!lobby || lobby.dataset.snackDone === '1') return;
-            const ewes = [...document.querySelectorAll('#flockChorus .tv-ewe')].filter((el) =>
-                !el.classList.contains('is-joining') &&
-                !el.classList.contains('is-walking') &&
-                !el.classList.contains('is-nibbling')
-            );
+            if (!lobby) return;
+            if (document.querySelector('#flockChorus .tv-ewe.is-snackish, #flockChorus .tv-ewe.is-nibbling')) {
+                lobbySnackTimer = window.setTimeout(tryLobbySnack, 8000);
+                return;
+            }
+            const ewes = [...document.querySelectorAll('#flockChorus .tv-ewe')].filter((el) => !isLobbyEweBusy(el));
             if (!ewes.length) {
                 lobbySnackTimer = window.setTimeout(tryLobbySnack, 8000);
                 return;
             }
-            startQrNibble(ewes[Math.floor(Math.random() * ewes.length)]);
+            let pick = ewes[Math.floor(Math.random() * ewes.length)];
+            if (ewes.length > 1 && lastSnackId) {
+                const others = ewes.filter((el) => el.dataset.id !== lastSnackId);
+                if (others.length) pick = others[Math.floor(Math.random() * others.length)];
+            }
+            startQrNibble(pick);
+            armLobbySnack();
         }
+
+        const SNACK_WALK = { cycle: 1.05, minSeconds: 3.2, maxSeconds: 16 };
 
         function startQrNibble(el) {
             const lobby = document.querySelector('.tv-lobby');
@@ -991,10 +1045,10 @@
             const chorus = document.getElementById('flockChorus');
             const card = document.querySelector('.tv-lobby-join');
             if (!chorus || !card || !chorus.getBoundingClientRect().width || !el.getBoundingClientRect().width) {
-                lobbySnackTimer = window.setTimeout(() => startQrNibble(el), 250);
+                window.setTimeout(() => startQrNibble(el), 250);
                 return;
             }
-            lobby.dataset.snackDone = '1';
+            lastSnackId = el.dataset.id || '';
             clearEweWander(el);
             el.classList.add('is-snackish');
             const spot = qrNibbleSpot();
@@ -1014,18 +1068,14 @@
                 const nibbleCard = document.querySelector('.tv-lobby-join');
                 if (nibbleCard) nibbleCard.classList.add('is-nibbled');
                 window.setTimeout(() => finishQrNibble(el), 5500 + Math.random() * 3500);
-            });
+            }, SNACK_WALK);
         }
 
         function finishQrNibble(el) {
             stopCardChew();
             if (!el || !el.isConnected || !document.querySelector('.tv-lobby')) return;
             el.classList.remove('is-nibbling');
-            const occupied = [...document.querySelectorAll('#flockChorus .tv-ewe')].map((other) => ({
-                gx: parseFloat(other.style.getPropertyValue('--gx')),
-                gy: parseFloat(other.style.getPropertyValue('--gy'))
-            }));
-            const away = randomLobbyPoint(occupied);
+            const away = randomLobbyPoint(occupiedLobbyPoints(el), el);
             const depth = lobbyDepth(away.gy);
             const gx = parseFloat(el.style.getPropertyValue('--gx')) || 30;
             el.classList.toggle('is-left', away.gx < gx);
@@ -1038,23 +1088,94 @@
             }), () => {
                 el.classList.remove('is-snackish');
                 scheduleLobbyWander(el);
-            });
+            }, SNACK_WALK);
         }
 
         function wanderLobbyEwe(el) {
             if (el.classList.contains('is-snackish') || el.classList.contains('is-nibbling')) return;
             const gx = parseFloat(el.style.getPropertyValue('--gx')) || 70;
             const gy = parseFloat(el.style.getPropertyValue('--gy')) || 64;
-            const ngx = Math.min(LOBBY_FIELD.right, Math.max(LOBBY_FIELD.left, gx + (Math.random() - 0.5) * 14));
-            const ngy = Math.min(LOBBY_FIELD.bottom, Math.max(LOBBY_FIELD.top, gy + (Math.random() - 0.5) * 10));
-            const depth = lobbyDepth(ngy);
-            el.classList.toggle('is-left', ngx < gx);
+            const occupied = occupiedLobbyPoints(el);
+            let dest = clampLobbyPoint(gx + (Math.random() - 0.5) * 14, gy + (Math.random() - 0.5) * 10);
+            for (let i = 0; i < 8; i += 1) {
+                const trySpot = clampLobbyPoint(gx + (Math.random() - 0.5) * 14, gy + (Math.random() - 0.5) * 10);
+                if (!lobbySpotCrowded(trySpot.gx, trySpot.gy, occupied, el.getBoundingClientRect().width)) {
+                    dest = trySpot;
+                    break;
+                }
+            }
+            const depth = lobbyDepth(dest.gy);
+            el.classList.toggle('is-left', dest.gx < gx);
             walkEweOnField(el, slotFromEwe(el, {
-                gx: ngx,
-                gy: ngy,
+                gx: dest.gx,
+                gy: dest.gy,
                 scale: depth.scale,
                 z: depth.z
             }), () => scheduleLobbyWander(el));
+        }
+
+        function separateLobbyEwe(el) {
+            if (!el || !el.isConnected || isLobbyEweBusy(el)) return;
+            const me = readLobbyEwe(el);
+            const occupied = occupiedLobbyPoints(el);
+            let nearest = null;
+            let nearestDist = Infinity;
+            occupied.forEach((other) => {
+                const dist = Math.hypot(other.gx - me.gx, (other.gy - me.gy) * 1.2);
+                if (dist < nearestDist) {
+                    nearestDist = dist;
+                    nearest = other;
+                }
+            });
+            let dest = randomLobbyPoint(occupied, el);
+            if (nearest && nearestDist > 0.2) {
+                const step = clampLobbyPoint(
+                    me.gx + ((me.gx - nearest.gx) / nearestDist) * 9,
+                    me.gy + ((me.gy - nearest.gy) / nearestDist) * 7
+                );
+                if (!lobbySpotCrowded(step.gx, step.gy, occupied, me.w)) dest = step;
+            }
+            clearEweWander(el);
+            const depth = lobbyDepth(dest.gy);
+            el.classList.toggle('is-left', dest.gx < me.gx);
+            walkEweOnField(el, slotFromEwe(el, {
+                gx: dest.gx,
+                gy: dest.gy,
+                scale: depth.scale,
+                z: depth.z
+            }), () => scheduleLobbyWander(el));
+        }
+
+        function nudgeOverlappingLobbyEwes() {
+            const chorus = document.getElementById('flockChorus');
+            if (!chorus || !document.querySelector('.tv-lobby')) return;
+            const ewes = [...chorus.querySelectorAll('.tv-ewe')].map(readLobbyEwe);
+            const moved = new Set();
+            for (let i = 0; i < ewes.length; i += 1) {
+                for (let j = i + 1; j < ewes.length; j += 1) {
+                    const need = lobbySepNeeded(ewes[i].w, ewes[j].w);
+                    const dist = Math.hypot(ewes[i].gx - ewes[j].gx, (ewes[i].gy - ewes[j].gy) * 1.2);
+                    if (dist >= need) continue;
+                    const aBusy = isLobbyEweBusy(ewes[i].el) || moved.has(ewes[i].el);
+                    const bBusy = isLobbyEweBusy(ewes[j].el) || moved.has(ewes[j].el);
+                    let mover = null;
+                    if (!aBusy && bBusy) mover = ewes[i].el;
+                    else if (!bBusy && aBusy) mover = ewes[j].el;
+                    else if (!aBusy && !bBusy) mover = Math.random() < 0.5 ? ewes[i].el : ewes[j].el;
+                    if (!mover) continue;
+                    moved.add(mover);
+                    separateLobbyEwe(mover);
+                }
+            }
+        }
+
+        function armLobbySeparate() {
+            window.clearTimeout(lobbySeparateTimer);
+            if (!document.querySelector('.tv-lobby')) return;
+            lobbySeparateTimer = window.setTimeout(() => {
+                nudgeOverlappingLobbyEwes();
+                armLobbySeparate();
+            }, 1400);
         }
 
         function playJoinJump(el) {
@@ -1075,7 +1196,7 @@
             }, 700);
         }
 
-        function walkEweOnField(el, slot, onDone) {
+        function walkEweOnField(el, slot, onDone, opts) {
             const chorus = document.getElementById('flockChorus');
             const field = (chorus || el).getBoundingClientRect();
             const now = el.getBoundingClientRect();
@@ -1087,9 +1208,11 @@
                 if (onDone) onDone();
                 return;
             }
-            const cycle = 0.6;
+            const cycle = (opts && opts.cycle) || 0.6;
             const stride = (now.width || 56) * 1.25;
-            const seconds = Math.min(8, Math.max(cycle * 2, dist / (stride / cycle)));
+            const minSeconds = (opts && opts.minSeconds) || 0.6 * 2;
+            const maxSeconds = (opts && opts.maxSeconds) || 8;
+            const seconds = Math.min(maxSeconds, Math.max(minSeconds, dist / (stride / cycle)));
             el.classList.remove('is-joining');
             el.classList.remove('is-walking');
             el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
@@ -1148,6 +1271,7 @@
             if (lobby) {
                 if (existing) {
                     syncLobbyFlock(chorus, slots);
+                    window.setTimeout(nudgeOverlappingLobbyEwes, 480);
                     return;
                 }
                 chorus.innerHTML = slots.map((slot) => eweFigureHtml(slot)).join('');
