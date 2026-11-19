@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T01-21-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T01-35-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -1332,14 +1332,11 @@
         function healSignBite() {
             const card = lobbyJoinSign();
             if (!card || !card.classList.contains('is-bitten')) return;
+            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             card.classList.add('is-healing');
             biteHealTimer = window.setTimeout(() => {
-                card.classList.remove('is-bitten', 'is-bite-1', 'is-bite-2');
-                card.classList.add('is-healed');
-                biteHealTimer = window.setTimeout(() => {
-                    card.classList.remove('is-healing', 'is-healed');
-                }, 240);
-            }, 880);
+                card.classList.remove('is-bitten', 'is-bite-1', 'is-bite-2', 'is-healing', 'is-healed');
+            }, reduce ? 0 : 6200);
         }
 
         function armLobbySnack() {
@@ -1418,7 +1415,7 @@
         function finishQrNibble(el) {
             stopCardChew();
             window.clearTimeout(biteHealTimer);
-            biteHealTimer = window.setTimeout(healSignBite, 1800 + Math.random() * 900);
+            biteHealTimer = window.setTimeout(healSignBite, 700);
             if (!el || !el.isConnected || !document.querySelector('.tv-lobby')) return;
             el.classList.remove('is-nibbling');
             const away = randomLobbyPoint(occupiedLobbyPoints(el), el);

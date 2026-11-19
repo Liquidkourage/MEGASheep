@@ -308,6 +308,11 @@ html, body {
     user-select: none;
 }
 
+.tv-sign-art-whole {
+    position: relative;
+    z-index: 0;
+}
+
 .tv-sign-face {
     position: absolute;
     left: 7.4%;
@@ -485,31 +490,15 @@ html, body {
     100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(48deg) scale(0.75); }
 }
 
-.tv-lobby-join.is-healing .tv-sign-bite-edge {
+.tv-lobby-join.is-bitten.is-healing .tv-sign-art-whole {
+    z-index: 1;
+    opacity: 1;
+    transition: opacity 6s ease-in-out;
+}
+
+.tv-lobby-join.is-bitten.is-healing .tv-sign-bite-edge {
     opacity: 0;
-    transition: opacity 0.16s ease-out;
-}
-
-.tv-lobby-join.is-healing .tv-sign-bite-plug {
-    opacity: 1;
-    transform-origin: 96% 84%;
-    animation: signBiteReturn 0.86s cubic-bezier(0.22, 0.82, 0.28, 1) both;
-}
-
-.tv-lobby-join.is-healed .tv-sign-bite-plug {
-    opacity: 1;
-    animation: signPlugFade 0.22s ease-out both;
-}
-
-@keyframes signBiteReturn {
-    0% { opacity: 0; transform: translate(16%, 20%) scale(0.2) rotate(-16deg); }
-    62% { opacity: 1; transform: translate(-1.5%, -2.5%) scale(1.05) rotate(2deg); }
-    100% { opacity: 1; transform: none; }
-}
-
-@keyframes signPlugFade {
-    from { opacity: 1; }
-    to { opacity: 0; }
+    transition: opacity 5s ease-in-out;
 }
 
 .tv-lobby-join.is-nibbled {
@@ -1442,9 +1431,10 @@ html, body {
     .tv-ewe, .tv-ewe figcaption { transition: none; }
     .tv-ewe-strip { animation: none !important; }
     .tv-lobby-join.is-nibbled,
-    .tv-lobby-join.is-healing .tv-sign-bite-plug,
     .tv-ewe.is-nibbling .tv-ewe-art,
     .tv-sign-crumbs i { animation: none !important; }
+    .tv-lobby-join.is-bitten.is-healing .tv-sign-art-whole,
+    .tv-lobby-join.is-bitten.is-healing .tv-sign-bite-edge { transition: none !important; }
     .tv-wait-strip, .tv-wait-think i { animation: none !important; }
     .tv-wait-think i { opacity: 1; }
     .tv-ewe-poof, .tv-ewe.is-poofing .tv-ewe-art, .tv-ewe.is-poofing figcaption { animation: none !important; }
