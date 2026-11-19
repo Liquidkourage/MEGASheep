@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-25-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-50-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -783,11 +783,6 @@
             };
         }
 
-        function lobbyFieldWidth() {
-            const chorus = document.getElementById('flockChorus');
-            return (chorus && chorus.getBoundingClientRect().width) || 1600;
-        }
-
         function readLobbyEwe(el) {
             return {
                 el,
@@ -798,43 +793,150 @@
             };
         }
 
-        function lobbySepNeeded(selfW, otherW) {
-            return Math.max(6.5, ((selfW + otherW) * 0.44 / lobbyFieldWidth()) * 100);
+        function roamingEwes(exceptEl) {
+            return [...document.querySelectorAll('#flockChorus .tv-ewe')].filter((el) =>
+                el !== exceptEl &&
+                !el.classList.contains('is-in') &&
+                !el.classList.contains('is-outside')
+            );
         }
 
-        function lobbySpotCrowded(gx, gy, occupied, selfW) {
-            const width = selfW || 90;
+        function boxesOverlap(a, b) {
+            return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+        }
+
+        function eweWorldBox(el, gx, gy) {
+            const chorus = document.getElementById('flockChorus');
+            const field = (chorus || el).getBoundingClientRect();
+            const r = el.getBoundingClientRect();
+            const cap = el.querySelector('figcaption');
+            const capR = cap ? cap.getBoundingClientRect() : null;
+            const nameOn = cap && getComputedStyle(cap).opacity !== '0' &&
+                !(el.classList.contains('is-in') && !el.classList.contains('is-walking'));
+            let left;
+            let right;
+            let top;
+            let bottom;
+            if (gx == null || gy == null) {
+                left = r.left;
+                right = r.right;
+                top = r.top;
+                bottom = r.bottom;
+                if (nameOn && capR) {
+                    left = Math.min(left, capR.left);
+                    right = Math.max(right, capR.right);
+                    top = Math.min(top, capR.top);
+                    bottom = Math.max(bottom, capR.bottom);
+                }
+            } else {
+                const x = field.left + (gx / 100) * field.width;
+                const y = field.top + (gy / 100) * field.height;
+                left = x - r.width / 2;
+                right = x + r.width / 2;
+                top = y - r.height * 0.72;
+                bottom = top + r.height;
+                if (nameOn && capR) {
+                    const capLeft = x - capR.width / 2;
+                    left = Math.min(left, capLeft);
+                    right = Math.max(right, capLeft + capR.width);
+                    bottom = Math.max(bottom, top + r.height);
+                }
+            }
+            const pad = 12;
+            return {
+                el,
+                left: left - pad,
+                right: right + pad,
+                top: top - pad,
+                bottom: bottom + pad
+            };
+        }
+
+        function eweLinePoint(el, gx, gy) {
+            const chorus = document.getElementById('flockChorus');
+            const field = (chorus || el).getBoundingClientRect();
+            if (gx != null && gy != null) {
+                return {
+                    el,
+                    x: field.left + (gx / 100) * field.width,
+                    y: field.top + (gy / 100) * field.height
+                };
+            }
+            const art = el.querySelector('.tv-ewe-art') || el;
+            const r = art.getBoundingClientRect();
+            return {
+                el,
+                x: r.left + r.width / 2,
+                y: r.top + r.height * 0.62
+            };
+        }
+
+        function pointsCollinear(a, b, c) {
+            const abx = b.x - a.x;
+            const aby = b.y - a.y;
+            const acx = c.x - a.x;
+            const acy = c.y - a.y;
+            const ab = Math.hypot(abx, aby);
+            const ac = Math.hypot(acx, acy);
+            const bc = Math.hypot(c.x - b.x, c.y - b.y);
+            const span = Math.max(ab, ac, bc);
+            if (ab < 24 || ac < 24 || bc < 24 || span < 110) return false;
+            return Math.abs(abx * acy - aby * acx) / (ab * ac) < 0.1;
+        }
+
+        function lobbySpotCrowded(gx, gy, occupied, selfEl) {
+            if (!selfEl || !selfEl.getBoundingClientRect().width) {
+                return (occupied || []).some((other) => {
+                    if (!Number.isFinite(other.gx) || !Number.isFinite(other.gy)) return false;
+                    return Math.hypot((other.gx || 0) - gx, ((other.gy || 0) - gy) * 1.15) < 9;
+                });
+            }
+            const selfBox = eweWorldBox(selfEl, gx, gy);
             return (occupied || []).some((other) => {
-                if (!Number.isFinite(other.gx) || !Number.isFinite(other.gy)) return false;
-                const need = lobbySepNeeded(width, other.w || 90);
-                return Math.hypot(other.gx - gx, (other.gy - gy) * 1.2) < need;
+                if (!other.el) return false;
+                const dest = other.el.classList.contains('is-walking')
+                    ? eweWorldBox(other.el, other.gx, other.gy)
+                    : eweWorldBox(other.el);
+                return boxesOverlap(selfBox, dest);
             });
+        }
+
+        function lobbySpotCollinear(gx, gy, occupied, selfEl) {
+            if (!selfEl || (occupied || []).length < 2) return false;
+            const selfPt = eweLinePoint(selfEl, gx, gy);
+            const pts = (occupied || []).filter((other) => other.el).map((other) => eweLinePoint(other.el));
+            for (let i = 0; i < pts.length; i += 1) {
+                for (let j = i + 1; j < pts.length; j += 1) {
+                    if (pointsCollinear(selfPt, pts[i], pts[j])) return true;
+                }
+            }
+            return false;
+        }
+
+        function spotIsClear(gx, gy, occupied, selfEl) {
+            return !lobbySpotCrowded(gx, gy, occupied, selfEl) && !lobbySpotCollinear(gx, gy, occupied, selfEl);
         }
 
         function randomLobbyPoint(occupied, selfEl) {
             const field = pastureField();
-            const selfW = (selfEl && selfEl.getBoundingClientRect().width) || 90;
             let spot = { gx: (field.left + field.right) / 2, gy: (field.top + field.bottom) / 2 };
-            for (let i = 0; i < 22; i += 1) {
+            for (let i = 0; i < 36; i += 1) {
                 const next = {
                     gx: field.left + Math.random() * (field.right - field.left),
                     gy: field.top + Math.random() * (field.bottom - field.top)
                 };
                 spot = next;
-                if (!lobbySpotCrowded(next.gx, next.gy, occupied, selfW)) break;
+                if (spotIsClear(next.gx, next.gy, occupied, selfEl)) break;
             }
             return spot;
         }
 
         function occupiedLobbyPoints(exceptEl) {
-            return [...document.querySelectorAll('#flockChorus .tv-ewe')]
-                .filter((el) => el !== exceptEl)
-                .map(readLobbyEwe);
+            return roamingEwes(exceptEl).map(readLobbyEwe);
         }
 
         function isLobbyEweBusy(el) {
-            return el.classList.contains('is-walking') ||
-                el.classList.contains('is-joining') ||
+            return el.classList.contains('is-joining') ||
                 el.classList.contains('is-snackish') ||
                 el.classList.contains('is-nibbling') ||
                 el.classList.contains('is-in') ||
@@ -1087,7 +1189,9 @@
                 lobbySnackTimer = window.setTimeout(tryLobbySnack, 8000);
                 return;
             }
-            const ewes = [...document.querySelectorAll('#flockChorus .tv-ewe')].filter((el) => !isLobbyEweBusy(el));
+            const ewes = [...document.querySelectorAll('#flockChorus .tv-ewe')].filter((el) =>
+                !isLobbyEweBusy(el) && !el.classList.contains('is-walking')
+            );
             if (!ewes.length) {
                 lobbySnackTimer = window.setTimeout(tryLobbySnack, 8000);
                 return;
@@ -1160,13 +1264,17 @@
             const gx = parseFloat(el.style.getPropertyValue('--gx')) || 70;
             const gy = parseFloat(el.style.getPropertyValue('--gy')) || 64;
             const occupied = occupiedLobbyPoints(el);
-            let dest = clampLobbyPoint(gx + (Math.random() - 0.5) * 14, gy + (Math.random() - 0.5) * 10);
-            for (let i = 0; i < 8; i += 1) {
-                const trySpot = clampLobbyPoint(gx + (Math.random() - 0.5) * 14, gy + (Math.random() - 0.5) * 10);
-                if (!lobbySpotCrowded(trySpot.gx, trySpot.gy, occupied, el.getBoundingClientRect().width)) {
+            let dest = null;
+            for (let i = 0; i < 16; i += 1) {
+                const trySpot = clampLobbyPoint(gx + (Math.random() - 0.5) * 16, gy + (Math.random() - 0.5) * 12);
+                if (spotIsClear(trySpot.gx, trySpot.gy, occupied, el)) {
                     dest = trySpot;
                     break;
                 }
+            }
+            if (!dest) {
+                scheduleLobbyWander(el);
+                return;
             }
             const depth = lobbyDepth(dest.gy);
             el.classList.toggle('is-left', dest.gx < gx);
@@ -1178,26 +1286,63 @@
             }), () => scheduleLobbyWander(el));
         }
 
-        function separateLobbyEwe(el) {
+        function pickIdleMover(els, moved) {
+            const idle = els.filter((el) => el && !isLobbyEweBusy(el) && !(moved && moved.has(el)));
+            if (!idle.length) return null;
+            return idle[Math.floor(Math.random() * idle.length)];
+        }
+
+        function separateLobbyEwe(el, opts) {
             if (!el || !el.isConnected || isLobbyEweBusy(el)) return;
             const me = readLobbyEwe(el);
             const occupied = occupiedLobbyPoints(el);
-            let nearest = null;
-            let nearestDist = Infinity;
-            occupied.forEach((other) => {
-                const dist = Math.hypot(other.gx - me.gx, (other.gy - me.gy) * 1.2);
-                if (dist < nearestDist) {
-                    nearestDist = dist;
-                    nearest = other;
-                }
-            });
-            let dest = randomLobbyPoint(occupied, el);
-            if (nearest && nearestDist > 0.2) {
+            let dest = null;
+            if (opts && opts.line && opts.line.length === 2) {
+                const a = opts.line[0];
+                const b = opts.line[1];
+                const dx = b.x - a.x;
+                const dy = b.y - a.y;
+                const len = Math.hypot(dx, dy) || 1;
+                const side = Math.random() < 0.5 ? 1 : -1;
                 const step = clampLobbyPoint(
-                    me.gx + ((me.gx - nearest.gx) / nearestDist) * 9,
-                    me.gy + ((me.gy - nearest.gy) / nearestDist) * 7
+                    me.gx + (-dy / len) * 11 * side,
+                    me.gy + (dx / len) * 8 * side
                 );
-                if (!lobbySpotCrowded(step.gx, step.gy, occupied, me.w)) dest = step;
+                if (!lobbySpotCrowded(step.gx, step.gy, occupied, el)) dest = step;
+            } else {
+                let nearest = null;
+                let nearestDist = Infinity;
+                occupied.forEach((other) => {
+                    const dist = Math.hypot(other.gx - me.gx, (other.gy - me.gy) * 1.2);
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearest = other;
+                    }
+                });
+                if (nearest && nearestDist > 0.2) {
+                    const step = clampLobbyPoint(
+                        me.gx + ((me.gx - nearest.gx) / nearestDist) * 10,
+                        me.gy + ((me.gy - nearest.gy) / nearestDist) * 8
+                    );
+                    if (!lobbySpotCrowded(step.gx, step.gy, occupied, el)) dest = step;
+                }
+            }
+            if (!dest) {
+                const field = pastureField();
+                for (let i = 0; i < 28; i += 1) {
+                    const fallback = {
+                        gx: field.left + Math.random() * (field.right - field.left),
+                        gy: field.top + Math.random() * (field.bottom - field.top)
+                    };
+                    if (!lobbySpotCrowded(fallback.gx, fallback.gy, occupied, el)) {
+                        dest = fallback;
+                        break;
+                    }
+                }
+            }
+            if (!dest) {
+                scheduleLobbyWander(el);
+                return false;
             }
             clearEweWander(el);
             const depth = lobbyDepth(dest.gy);
@@ -1208,27 +1353,33 @@
                 scale: depth.scale,
                 z: depth.z
             }), () => scheduleLobbyWander(el));
+            return true;
         }
 
         function nudgeOverlappingLobbyEwes() {
             const chorus = document.getElementById('flockChorus');
             if (!chorus || !isPastureScene()) return;
-            const ewes = [...chorus.querySelectorAll('.tv-ewe')].map(readLobbyEwe);
+            const ewes = roamingEwes();
             const moved = new Set();
             for (let i = 0; i < ewes.length; i += 1) {
                 for (let j = i + 1; j < ewes.length; j += 1) {
-                    const need = lobbySepNeeded(ewes[i].w, ewes[j].w);
-                    const dist = Math.hypot(ewes[i].gx - ewes[j].gx, (ewes[i].gy - ewes[j].gy) * 1.2);
-                    if (dist >= need) continue;
-                    const aBusy = isLobbyEweBusy(ewes[i].el) || moved.has(ewes[i].el);
-                    const bBusy = isLobbyEweBusy(ewes[j].el) || moved.has(ewes[j].el);
-                    let mover = null;
-                    if (!aBusy && bBusy) mover = ewes[i].el;
-                    else if (!bBusy && aBusy) mover = ewes[j].el;
-                    else if (!aBusy && !bBusy) mover = Math.random() < 0.5 ? ewes[i].el : ewes[j].el;
+                    if (!boxesOverlap(eweWorldBox(ewes[i]), eweWorldBox(ewes[j]))) continue;
+                    const mover = pickIdleMover([ewes[i], ewes[j]], moved);
                     if (!mover) continue;
-                    moved.add(mover);
-                    separateLobbyEwe(mover);
+                    if (separateLobbyEwe(mover)) moved.add(mover);
+                }
+            }
+            const pts = ewes.filter((el) => !moved.has(el)).map((el) => eweLinePoint(el));
+            for (let i = 0; i < pts.length; i += 1) {
+                for (let j = i + 1; j < pts.length; j += 1) {
+                    for (let k = j + 1; k < pts.length; k += 1) {
+                        if (moved.has(pts[i].el) || moved.has(pts[j].el) || moved.has(pts[k].el)) continue;
+                        if (!pointsCollinear(pts[i], pts[j], pts[k])) continue;
+                        const mover = pickIdleMover([pts[i].el, pts[j].el, pts[k].el], moved);
+                        if (!mover) continue;
+                        const line = [pts[i], pts[j], pts[k]].filter((p) => p.el !== mover).slice(0, 2);
+                        if (separateLobbyEwe(mover, { line })) moved.add(mover);
+                    }
                 }
             }
         }

@@ -264,6 +264,13 @@ html, body {
 
 .tv-lobby .tv-flock {
     z-index: 9;
+    inset: 12px;
+    box-sizing: border-box;
+    overflow: hidden;
+    border: 5px solid #e4c56b;
+    border-radius: 18px;
+    box-shadow: inset 0 0 0 2px rgba(92, 58, 8, 0.35), 0 0 28px rgba(228, 197, 107, 0.18);
+    pointer-events: none;
 }
 
 .tv-lobby-join {
