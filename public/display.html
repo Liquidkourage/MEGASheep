@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T24-50-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T25-00-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -702,12 +702,15 @@
             return sortedFlockPlayers(players).map((p) => p.stableId || p.id || p.name).join('|');
         }
 
+        const EWE_BASE_MAX = 118;
+        const EWE_BASE_MIN = 56;
+        const EWE_SHRINK_AT = 36;
+
         function eweBaseSize(count) {
-            if (count <= 6) return 118;
-            if (count <= 12) return 96;
-            if (count <= 24) return 78;
-            if (count <= 36) return 64;
-            return 52;
+            const n = Math.max(1, Number(count) || 1);
+            if (n >= EWE_SHRINK_AT) return EWE_BASE_MIN;
+            const t = (n - 1) / (EWE_SHRINK_AT - 1);
+            return EWE_BASE_MAX + (EWE_BASE_MIN - EWE_BASE_MAX) * t;
         }
 
         function packRegion(n, box) {

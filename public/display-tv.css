@@ -755,13 +755,16 @@ html, body {
     bottom: 0;
     z-index: 3;
     overflow: visible;
+    --ewe-base: 118px;
+    --ewe-min: 52px;
+    --ewe-max: 132px;
 }
 
 .tv-ewe {
     position: absolute;
     left: var(--gx);
     top: var(--gy);
-    width: calc(var(--ewe-base, 40px) * var(--s, 1));
+    width: clamp(var(--ewe-min, 52px), calc(var(--ewe-base, 118px) * var(--s, 1)), var(--ewe-max, 132px));
     min-width: 0;
     margin: 0;
     transform: translate(-50%, -72%);
@@ -775,7 +778,7 @@ html, body {
     transition:
         left var(--walk, 4s) linear,
         top var(--walk, 4s) linear,
-        width 1.45s ease;
+        width 1.8s ease-out;
 }
 
 .tv-ewe.is-left .tv-ewe-art {
