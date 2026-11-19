@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T17-42-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T17-55-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -1270,7 +1270,7 @@
         }
 
         const PARADE_LANES = 3;
-        const MISS_SIGN_AT = { x: 18, y: 44 };
+        const MISS_SIGN_AT = { x: 20, y: 66 };
 
         function layoutMissSign(answers) {
             const list = (answers || []).filter(Boolean);
@@ -1355,7 +1355,7 @@
         function pickWrongPatch(occupied, hash, avoid) {
             for (let tryAt = 0; tryAt < 24; tryAt += 1) {
                 const gx = 42 + ((hash + tryAt * 17) % 26);
-                const gy = 58 + ((hash + tryAt * 13) % 16);
+                const gy = 62 + ((hash + tryAt * 13) % 14);
                 if (gx > 70 || gx < 40) continue;
                 if (avoid && Math.hypot(gx - avoid.x, (gy - avoid.y) * 1.4) < 26) continue;
                 if (occupied.some((spot) => Math.hypot(spot.x - gx, (spot.y - gy) * 1.25) < 12)) continue;
@@ -1422,14 +1422,14 @@
             if (leftovers.length) {
                 const packed = packTrapezoid(
                     leftovers.length,
-                    { left: 1.2, right: 8, y: 42 },
-                    { left: 0.8, right: 9, y: 50 }
+                    { left: 1.5, right: 8, y: 64 },
+                    { left: 1, right: 9, y: 73 }
                 );
                 leftovers.forEach((player, index) => {
                     byPlayer.set(player, resultSlot(player, names, packed[index], {
                         named: leftovers.length <= SCORE_NAME_AT,
                         scale: 0.84,
-                        minGy: 50
+                        minGy: 64
                     }));
                 });
             }

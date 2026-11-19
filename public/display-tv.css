@@ -2012,10 +2012,10 @@ html, body {
     top: var(--y, 79%);
     z-index: var(--z, 8);
     width: min(var(--w, 12vw), 220px);
-    transform: translate(-50%, -158%) rotate(var(--tilt, 0deg));
+    transform: translate(-50%, -100%) rotate(var(--tilt, 0deg));
     transform-origin: 50% 100%;
     pointer-events: none;
-    filter: drop-shadow(0 8px 10px rgba(4, 10, 18, 0.32));
+    filter: drop-shadow(0 10px 12px rgba(4, 10, 18, 0.38));
     transition:
         left var(--walk, 0s) linear,
         top var(--walk, 0s) linear;
@@ -2026,7 +2026,7 @@ html, body {
 }
 
 .tv-banner.is-parade {
-    z-index: var(--z, 47);
+    z-index: var(--z, 46);
     width: min(var(--w, 13vw), 240px);
 }
 
@@ -2036,11 +2036,11 @@ html, body {
 
 .tv-miss-sign {
     position: absolute;
-    left: var(--x, 18%);
-    top: var(--y, 44%);
+    left: var(--x, 20%);
+    top: var(--y, 66%);
     z-index: var(--z, 5);
     width: min(var(--w, 17vw), 320px);
-    transform: translate(-50%, -86%) rotate(var(--tilt, -0.7deg));
+    transform: translate(-50%, -100%) rotate(var(--tilt, -0.7deg));
     transform-origin: 50% 100%;
     pointer-events: none;
 }
@@ -2104,14 +2104,15 @@ html, body {
     display: block;
     width: 100%;
     height: auto;
-    margin-bottom: -28%;
+    clip-path: inset(0 0 12.5% 0);
+    margin-bottom: calc(-1 * 100% * 706 / 769 * 0.125);
 }
 
 .tv-banner-sign .tv-sign-face {
-    left: 11%;
-    right: 11%;
-    top: 11%;
-    bottom: 22%;
+    left: 10%;
+    right: 10%;
+    top: 7%;
+    bottom: 44%;
     gap: 0.02em;
     padding: 0 0.08em;
 }
