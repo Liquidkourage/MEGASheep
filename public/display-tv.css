@@ -935,9 +935,9 @@ html, body {
 
 .tv-pen {
     position: absolute;
-    left: 62%;
-    right: 1%;
-    top: 49%;
+    left: 50%;
+    right: 1.5%;
+    top: 55%;
     bottom: 0;
     pointer-events: none;
 }
@@ -1170,18 +1170,18 @@ html, body {
 }
 
 .tv-ewe.is-in:not(.is-walking) .tv-ewe-strip {
-    background-size: 1200% 100%;
-    background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
-    animation: eweIdle 0.4s steps(12, jump-none) infinite;
+    background-size: 600% 100%;
+    background-image: url("sprites/sheep-01-sleep.png?v=2026-11-19T04-05-00");
+    animation: eweSleep 1.8s steps(6, jump-none) infinite;
     animation-delay: var(--idle, 0s);
 }
 
 .tv-ewe[data-coat="2"].is-in:not(.is-walking) .tv-ewe-strip {
-    background-image: url("sprites/sheep-02-idle.png?v=2026-11-18T20-05-00");
+    background-image: url("sprites/sheep-02-sleep.png?v=2026-11-19T04-05-00");
 }
 
 .tv-ewe[data-coat="3"].is-in:not(.is-walking) .tv-ewe-strip {
-    background-image: url("sprites/sheep-03-idle.png?v=2026-11-18T20-05-00");
+    background-image: url("sprites/sheep-03-sleep.png?v=2026-11-19T04-05-00");
 }
 
 .tv-ewe.is-outside:not(.is-walking) .tv-ewe-strip {
@@ -1325,6 +1325,11 @@ html, body {
 }
 
 @keyframes eweIdle {
+    from { background-position: 0 0; }
+    to { background-position: 100% 0; }
+}
+
+@keyframes eweSleep {
     from { background-position: 0 0; }
     to { background-position: 100% 0; }
 }

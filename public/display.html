@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T03-40-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T04-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -607,11 +607,11 @@
                     <div class="tv-pasture-shade" aria-hidden="true"></div>
                     <div class="tv-pasture-ground" aria-hidden="true"></div>
                     ${withPen ? `<div class="tv-pen tv-pen-back" aria-hidden="true">
-                        <img class="tv-pen-art" src="sprites/pen-back.png?v=2026-11-19T03-40-00" alt="">
+                        <img class="tv-pen-art" src="sprites/pen-back.png?v=2026-11-19T04-05-00" alt="">
                     </div>` : ''}
                     <div class="tv-flock" id="flockChorus"></div>
                     ${withPen ? `<div class="tv-pen tv-pen-front" aria-hidden="true">
-                        <img class="tv-pen-art" src="sprites/pen-front.png?v=2026-11-19T03-40-00" alt="">
+                        <img class="tv-pen-art" src="sprites/pen-front.png?v=2026-11-19T04-05-00" alt="">
                     </div>` : ''}
                 </div>
             `;
@@ -763,8 +763,12 @@
 
         function packTrapezoid(n, far, near) {
             if (n <= 0) return [];
+            const spanX = Math.max(1, ((far.right - far.left) + (near.right - near.left)) / 2);
             const spanY = Math.max(1, near.y - far.y);
-            const rows = n <= 3 ? 1 : n <= 8 ? 2 : n <= 15 ? 3 : n <= 24 ? 4 : 5;
+            const tall = spanY >= spanX * 1.15;
+            const rows = tall
+                ? (n <= 3 ? 1 : n <= 8 ? 2 : n <= 15 ? 3 : n <= 24 ? 4 : 5)
+                : (n <= 8 ? 1 : n <= 18 ? 2 : n <= 32 ? 3 : 4);
             const counts = [];
             let remaining = n;
             for (let r = 0; r < rows; r += 1) {
@@ -776,7 +780,7 @@
             const slots = [];
             for (let r = 0; r < rows; r += 1) {
                 const count = counts[r];
-                const t = (r + 0.58) / rows;
+                const t = (r + 0.85) / (rows + 0.35);
                 const y = far.y + t * spanY;
                 const left = far.left + t * (near.left - far.left);
                 const right = far.right + t * (near.right - far.right);
@@ -811,11 +815,11 @@
         }
 
         const LOBBY_FIELD = { left: 2, right: 98, top: 18, bottom: 90 };
-        const PLAY_FIELD = { left: 3, right: 66, top: 52, bottom: 91 };
-        const PEN_FAR = { left: 77, right: 91, y: 54 };
-        const PEN_NEAR = { left: 69, right: 96, y: 84 };
-        const PEN_FIELD = { left: 69, right: 96, top: 54, bottom: 84 };
-        const GATE_FIELD = { left: 64, right: 72, top: 64, bottom: 82 };
+        const PLAY_FIELD = { left: 3, right: 50, top: 52, bottom: 91 };
+        const PEN_FAR = { left: 63, right: 84, y: 61 };
+        const PEN_NEAR = { left: 55, right: 88, y: 81 };
+        const PEN_FIELD = { left: 55, right: 88, top: 61, bottom: 81 };
+        const GATE_FIELD = { left: 50, right: 58, top: 66, bottom: 80 };
         const GRASS_LINE = 0.55;
 
         function isPastureScene() {
@@ -1131,6 +1135,13 @@
             }
             const pen = packTrapezoid(list.length, PEN_FAR, PEN_NEAR);
             const gate = packRegion(list.length, GATE_FIELD);
+            const penOrder = list
+                .map((player, index) => ({ index, key: nameHash(player.name || player.id || String(index)) }))
+                .sort((a, b) => a.key - b.key || a.index - b.index);
+            const penAt = new Array(list.length);
+            penOrder.forEach((entry, slot) => {
+                penAt[entry.index] = slot;
+            });
             return list.map((player, index) => {
                 const hash = nameHash(player.name || player.id || String(index));
                 const id = String(player.stableId || player.id || player.name);
@@ -1144,7 +1155,7 @@
                     occupied.push({ id, gx: spot.gx, gy: spot.gy, w: 90 });
                 }
                 const depth = lobbyDepth(spot.gy);
-                const p = pen[index] || { x: 80, y: 70, z: 10, scale: 1 };
+                const p = pen[penAt[index]] || pen[index] || { x: 80, y: 70, z: 10, scale: 1 };
                 const o = gate[index] || { x: 60, y: 70, z: 10, scale: 1 };
                 const py = Math.min(PEN_FIELD.bottom, Math.max(PEN_FIELD.top, p.y + (((hash >> 4) % 5) - 2) * 0.4));
                 const rail = penXAt(py);
