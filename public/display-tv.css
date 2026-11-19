@@ -314,6 +314,7 @@ html, body {
     right: 7.4%;
     top: 11.5%;
     bottom: 30.5%;
+    z-index: 2;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -341,6 +342,7 @@ html, body {
     top: auto;
     bottom: 6%;
     transform: rotate(-0.65deg);
+    transform-origin: 50% 50%;
     z-index: 8;
     width: min(480px, 33vw);
 }
@@ -411,7 +413,17 @@ html, body {
     opacity: 0;
 }
 
-.tv-lobby-join.is-bite-1 .tv-sign-art {
+.tv-sign-art-nibble,
+.tv-sign-art-full {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    z-index: 0;
+    will-change: opacity;
+}
+
+.tv-sign-art-nibble {
     -webkit-mask-image: url("sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00");
     mask-image: url("sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00");
     -webkit-mask-size: 100% 100%;
@@ -420,7 +432,7 @@ html, body {
     mask-repeat: no-repeat;
 }
 
-.tv-lobby-join.is-bite-2 .tv-sign-art {
+.tv-sign-art-full {
     -webkit-mask-image: url("sprites/sign-bite-mask.png?v=2026-11-19T01-05-00");
     mask-image: url("sprites/sign-bite-mask.png?v=2026-11-19T01-05-00");
     -webkit-mask-size: 100% 100%;
@@ -429,7 +441,17 @@ html, body {
     mask-repeat: no-repeat;
 }
 
-.tv-lobby-join.is-bite-1 .tv-sign-bite-edge-nibble,
+.tv-lobby-join.is-bite-1 .tv-sign-art-whole,
+.tv-lobby-join.is-bite-2 .tv-sign-art-whole {
+    opacity: 0;
+}
+
+.tv-lobby-join.is-bite-1:not(.is-bite-2) .tv-sign-art-nibble,
+.tv-lobby-join.is-bite-2 .tv-sign-art-full {
+    opacity: 1;
+}
+
+.tv-lobby-join.is-bite-1:not(.is-bite-2) .tv-sign-bite-edge-nibble,
 .tv-lobby-join.is-bite-2 .tv-sign-bite-edge-full {
     opacity: 1;
 }
@@ -492,7 +514,6 @@ html, body {
 
 .tv-lobby-join.is-nibbled {
     animation: lobbyCardChew 0.38s ease-in-out 3;
-    transform-origin: 94% 80%;
 }
 
 .tv-ewe.is-snackish,

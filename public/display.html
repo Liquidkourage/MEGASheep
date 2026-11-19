@@ -8,7 +8,9 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T01-05-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T01-21-00">
+    <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
+    <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -620,7 +622,9 @@
                     ${pastureSceneHtml({ pen: false })}
                     ${skyNameHtml()}
                     <aside class="tv-sign tv-lobby-join">
-                        <img class="tv-sign-art" src="sprites/meadow-sign-tall.png?v=2026-11-19T00-20-00" alt="" aria-hidden="true">
+                        <img class="tv-sign-art tv-sign-art-whole" src="sprites/meadow-sign-tall.png?v=2026-11-19T00-20-00" alt="" aria-hidden="true">
+                        <img class="tv-sign-art tv-sign-art-nibble" src="sprites/meadow-sign-tall.png?v=2026-11-19T00-20-00" alt="" aria-hidden="true">
+                        <img class="tv-sign-art tv-sign-art-full" src="sprites/meadow-sign-tall.png?v=2026-11-19T00-20-00" alt="" aria-hidden="true">
                         <img class="tv-sign-bite-edge tv-sign-bite-edge-nibble" src="sprites/sign-bite-edge-nibble.png?v=2026-11-19T01-05-00" alt="" aria-hidden="true">
                         <img class="tv-sign-bite-edge tv-sign-bite-edge-full" src="sprites/sign-bite-edge.png?v=2026-11-19T01-05-00" alt="" aria-hidden="true">
                         <img class="tv-sign-bite-plug" src="sprites/sign-bite-plug.png?v=2026-11-19T01-05-00" alt="" aria-hidden="true">
@@ -643,6 +647,31 @@
             }, 50);
             armLobbySnack();
             armLobbySeparate();
+            preloadBiteMasks();
+        }
+
+        const BITE_MASK_URLS = [
+            'sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00',
+            'sprites/sign-bite-mask.png?v=2026-11-19T01-05-00'
+        ];
+        let biteMasksReady = false;
+
+        function preloadBiteMasks() {
+            window.setTimeout(() => {
+                biteMasksReady = true;
+            }, 800);
+            Promise.all(BITE_MASK_URLS.map((src) => {
+                const img = new Image();
+                img.src = src;
+                return img.decode ? img.decode() : new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                });
+            })).then(() => {
+                biteMasksReady = true;
+            }).catch(() => {
+                biteMasksReady = true;
+            });
         }
 
         const PLAY_KICKERS = [
@@ -1259,7 +1288,7 @@
             const card = lobbyJoinSign();
             if (!chorus || !card) return { gx: 2, gy: 78 };
             const field = chorus.getBoundingClientRect();
-            const art = card.querySelector('.tv-sign-art') || card;
+            const art = card.querySelector('.tv-sign-art-whole') || card.querySelector('.tv-sign-art') || card;
             const box = art.getBoundingClientRect();
             if (!field.width || !field.height) return { gx: 2, gy: 78 };
             const currentS = parseFloat((el && el.style.getPropertyValue('--s')) || '1') || 1;
@@ -1295,8 +1324,8 @@
 
         function markSignBitten(stage) {
             const card = lobbyJoinSign();
-            if (!card) return;
-            card.classList.remove('is-healing', 'is-bite-1', 'is-bite-2');
+            if (!card || !biteMasksReady) return;
+            card.classList.remove('is-healing');
             card.classList.add('is-bitten', stage === 1 ? 'is-bite-1' : 'is-bite-2');
         }
 
