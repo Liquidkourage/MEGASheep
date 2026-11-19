@@ -143,64 +143,38 @@ html, body {
 
 .tv-sky-name {
     position: absolute;
-    left: 4%;
-    right: 16%;
-    top: 2%;
+    left: 3.2%;
+    top: 3%;
     z-index: 5;
     margin: 0;
-    height: min(18vh, 188px);
+    width: min(50vw, 860px);
+    height: auto;
     pointer-events: none;
 }
 
-.tv-sky-name svg {
+.tv-sky-name img {
     display: block;
     width: 100%;
-    height: 100%;
-    overflow: visible;
-    font-family: Outfit, "Segoe UI", sans-serif;
-    font-weight: 800;
-    font-size: 108px;
-    letter-spacing: 2px;
-}
-
-.tv-sky-name-rim {
-    fill: none;
-    stroke: #f4ead0;
-    stroke-width: 12;
-    stroke-linejoin: round;
-    stroke-linecap: round;
-}
-
-.tv-sky-name-veil {
-    fill: rgba(8, 22, 48, 0.35);
-}
-
-.tv-sky-name-stars {
-    fill: url(#skyNameStars);
-}
-
-.tv-sky-name-ink {
-    fill: none;
-    stroke: #1a140c;
-    stroke-width: 6;
-    stroke-linejoin: round;
-    stroke-linecap: round;
+    height: auto;
 }
 
 .tv-intro-sign {
-    position: absolute;
     left: 50%;
-    top: 54%;
-    transform: translate(-50%, -50%) rotate(0.35deg);
+    top: auto;
+    bottom: 7%;
+    transform: translateX(-50%) rotate(0.45deg);
     z-index: 8;
-    width: min(760px, 60vw);
-    gap: 14px;
+    width: min(600px, 42vw);
+}
+
+.tv-intro-sign .tv-sign-face {
+    gap: 12px;
 }
 
 .tv-intro-brand {
     margin: 0;
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(1.4rem, 2.5vh, 2rem);
+    font-size: clamp(1.25rem, 2.2vh, 1.7rem);
     font-weight: 700;
     letter-spacing: 0.02em;
     color: #1a140c;
@@ -208,17 +182,19 @@ html, body {
 
 .tv-intro-blurb {
     margin: 0;
-    max-width: 22em;
+    max-width: none;
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(1.35rem, 2.5vh, 1.95rem);
+    font-size: clamp(1.22rem, 2.2vh, 1.65rem);
     font-weight: 600;
-    line-height: 1.3;
+    line-height: 1.28;
     color: #1a140c;
+    hyphens: manual;
+    overflow-wrap: normal;
 }
 
 .tv-intro-sign .qr-code img {
-    width: min(240px, 22vh) !important;
-    height: min(240px, 22vh) !important;
+    width: min(150px, 14vh) !important;
+    height: min(150px, 14vh) !important;
 }
 
 .tv-intro-wait {
@@ -232,7 +208,7 @@ html, body {
 .tv-pair-code {
     margin: 0;
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(4.6rem, 12vh, 8rem);
+    font-size: clamp(4.2rem, 9vh, 6.4rem);
     font-weight: 800;
     letter-spacing: 0.12em;
     line-height: 1;
@@ -294,7 +270,7 @@ html, body {
 
 .tv-lobby .tv-flock {
     z-index: 9;
-    left: calc(min(440px, 32vw) + clamp(28px, 3vw, 52px) + 28px);
+    left: calc(min(500px, 34vw) + clamp(20px, 2.2vw, 40px) + 12px);
     right: clamp(20px, 2vw, 36px);
     top: 44%;
     bottom: clamp(12px, 2.2vh, 28px);
@@ -305,69 +281,68 @@ html, body {
 
 .tv-sign {
     position: relative;
+    display: block;
+    padding: 0;
+    color: #1a140c;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+.tv-sign.tv-intro-sign,
+.tv-sign.tv-lobby-join {
+    position: absolute;
+}
+
+.tv-sign-art {
+    display: block;
+    width: 100%;
+    height: auto;
+    pointer-events: none;
+    user-select: none;
+}
+
+.tv-sign-face {
+    position: absolute;
+    left: 7.4%;
+    right: 7.4%;
+    top: 11.5%;
+    bottom: 30.5%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: clamp(18px, 1.8vw, 28px) clamp(18px, 1.8vw, 28px) clamp(22px, 2.2vw, 32px);
-    gap: 14px;
-    color: #1a140c;
-    background: #f4ead0;
-    border: 6px solid #1a140c;
-    border-radius: 22px;
-    box-shadow: 7px 9px 0 #1a140c;
-}
-
-.tv-sign::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: calc(100% - 8px);
-    width: 28px;
-    height: min(92px, 11vh);
-    transform: translateX(-50%);
-    background: #7a4e28;
-    border: 5px solid #1a140c;
-    border-top: 0;
-    border-radius: 0 0 6px 6px;
-    z-index: -1;
-}
-
-.tv-sign::after {
-    content: "";
-    position: absolute;
-    left: 8%;
-    right: 8%;
-    bottom: -14px;
-    height: 28px;
-    pointer-events: none;
-    background:
-        radial-gradient(ellipse 42% 90% at 18% 80%, #2f6b32 0 54%, transparent 56%),
-        radial-gradient(ellipse 36% 80% at 52% 90%, #3d7a38 0 50%, transparent 52%),
-        radial-gradient(ellipse 40% 90% at 84% 78%, #2a5c2c 0 52%, transparent 54%);
-    z-index: 3;
+    gap: 10px;
+    overflow: hidden;
 }
 
 .tv-sign .qr-code {
-    padding: 10px !important;
+    padding: 8px !important;
     background: #fff !important;
     border: 4px solid #1a140c !important;
-    border-radius: 14px !important;
+    border-radius: 10px !important;
 }
 
 .tv-sign .qr-code img {
-    width: min(280px, 26vh) !important;
-    height: min(280px, 26vh) !important;
+    width: min(168px, 16vh) !important;
+    height: min(168px, 16vh) !important;
 }
 
 .tv-lobby-join {
     position: absolute;
-    left: clamp(28px, 3vw, 52px);
-    top: 58%;
-    transform: translateY(-50%) rotate(-0.5deg);
+    left: clamp(20px, 2.2vw, 40px);
+    top: auto;
+    bottom: 7%;
+    transform: rotate(-0.65deg);
     z-index: 8;
-    width: min(440px, 32vw);
+    width: min(500px, 34vw);
+}
+
+.tv-lobby-join .tv-sign-face {
+    flex-direction: row;
+    gap: 14px;
+    padding: 0 4px;
 }
 
 .tv-lobby-code {
@@ -382,7 +357,7 @@ html, body {
 
 .tv-lobby-join.is-nibbled {
     animation: lobbyCardChew 0.52s ease-in-out infinite;
-    transform-origin: 88% 42%;
+    transform-origin: 92% 38%;
 }
 
 .tv-ewe.is-snackish,
@@ -391,9 +366,9 @@ html, body {
 }
 
 @keyframes lobbyCardChew {
-    0%, 100% { transform: translateY(-50%) rotate(-0.5deg); }
-    32% { transform: translateY(-50%) rotate(-1.3deg) translateX(1px); }
-    68% { transform: translateY(-50%) rotate(0.1deg); }
+    0%, 100% { transform: rotate(-0.65deg); }
+    32% { transform: rotate(-1.45deg) translateX(1px); }
+    68% { transform: rotate(0.15deg); }
 }
 
 .tv-lobby-empty {
@@ -1299,7 +1274,6 @@ html, body {
     .tv-wait-strip, .tv-wait-think i { animation: none !important; }
     .tv-wait-think i { opacity: 1; }
     .tv-ewe-poof, .tv-ewe.is-poofing .tv-ewe-art, .tv-ewe.is-poofing figcaption { animation: none !important; }
-    .tv-sky-name-stars { animation: none !important; }
 }
 
 .tv-pasture-bar {
