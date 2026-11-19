@@ -297,7 +297,8 @@ html, body {
 
 .tv-sign.tv-intro-sign,
 .tv-sign.tv-lobby-join,
-.tv-sign.tv-score-ranks {
+.tv-sign.tv-score-ranks,
+.tv-sign.tv-miss-sign {
     position: absolute;
 }
 
@@ -2032,29 +2033,56 @@ html, body {
     opacity: 0;
 }
 
-.tv-banner.is-miss {
-    width: min(var(--w, 8vw), 168px);
-    transform: translate(-50%, -86%) rotate(var(--tilt, 0deg));
-    opacity: 0.82;
-    filter: grayscale(0.08);
+.tv-miss-sign {
+    position: absolute;
+    left: var(--x, 28%);
+    top: var(--y, 54%);
+    z-index: var(--z, 6);
+    width: min(var(--w, 26vw), 520px);
+    transform: translate(-50%, -86%) rotate(var(--tilt, -0.55deg));
+    transform-origin: 50% 100%;
+    pointer-events: none;
 }
 
-.tv-banner.is-miss .tv-banner-clip {
-    overflow: visible;
-    aspect-ratio: auto;
-}
-
-.tv-banner.is-miss .tv-banner-clip .tv-sign-art {
-    position: relative;
-    width: 100%;
-    height: auto;
-}
-
-.tv-banner.is-miss .tv-banner-sign .tv-sign-face {
+.tv-miss-sign .tv-sign-face {
     left: 8%;
     right: 8%;
     top: 8%;
-    bottom: 34%;
+    bottom: 32%;
+    gap: 0.18em;
+    padding: 0.08em 0.12em;
+}
+
+.tv-miss-kicker {
+    margin: 0;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(2rem, 4.2vh, 3.4rem);
+    font-weight: 800;
+    letter-spacing: -0.045em;
+    line-height: 0.92;
+    color: #1a140c;
+}
+
+.tv-miss-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.12em 0.55em;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.tv-miss-list li {
+    margin: 0;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(1.55rem, 3.4vh, 2.7rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+    color: #1a140c;
 }
 
 .tv-banner-sign {
