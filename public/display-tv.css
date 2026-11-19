@@ -2011,10 +2011,11 @@ html, body {
     left: var(--x, 50%);
     top: var(--y, 79%);
     z-index: var(--z, 8);
-    width: min(var(--w, 11vw), 210px);
-    transform: translate(-50%, calc(-100% - 28%)) rotate(var(--tilt, 0deg));
+    width: min(var(--w, 12vw), 220px);
+    transform: translate(-50%, -158%) rotate(var(--tilt, 0deg));
     transform-origin: 50% 100%;
     pointer-events: none;
+    filter: drop-shadow(0 8px 10px rgba(4, 10, 18, 0.32));
     transition:
         left var(--walk, 0s) linear,
         top var(--walk, 0s) linear;
@@ -2025,8 +2026,8 @@ html, body {
 }
 
 .tv-banner.is-parade {
-    z-index: var(--z, 49);
-    width: min(var(--w, 14vw), 260px);
+    z-index: var(--z, 47);
+    width: min(var(--w, 13vw), 240px);
 }
 
 .tv-banner.is-parade-wait {
@@ -2035,11 +2036,11 @@ html, body {
 
 .tv-miss-sign {
     position: absolute;
-    left: var(--x, 28%);
-    top: var(--y, 54%);
-    z-index: var(--z, 6);
-    width: min(var(--w, 26vw), 520px);
-    transform: translate(-50%, -86%) rotate(var(--tilt, -0.55deg));
+    left: var(--x, 18%);
+    top: var(--y, 44%);
+    z-index: var(--z, 5);
+    width: min(var(--w, 17vw), 320px);
+    transform: translate(-50%, -86%) rotate(var(--tilt, -0.7deg));
     transform-origin: 50% 100%;
     pointer-events: none;
 }
@@ -2049,14 +2050,14 @@ html, body {
     right: 8%;
     top: 8%;
     bottom: 32%;
-    gap: 0.18em;
-    padding: 0.08em 0.12em;
+    gap: 0.1em;
+    padding: 0.06em 0.08em;
 }
 
 .tv-miss-kicker {
     margin: 0;
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(2rem, 4.2vh, 3.4rem);
+    font-size: clamp(1.45rem, 2.8vh, 2.2rem);
     font-weight: 800;
     letter-spacing: -0.045em;
     line-height: 0.92;
@@ -2068,7 +2069,7 @@ html, body {
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    gap: 0.12em 0.55em;
+    gap: 0.06em 0.38em;
     width: 100%;
     margin: 0;
     padding: 0;
@@ -2078,7 +2079,7 @@ html, body {
 .tv-miss-list li {
     margin: 0;
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(1.55rem, 3.4vh, 2.7rem);
+    font-size: clamp(1.15rem, 2.35vh, 1.8rem);
     font-weight: 800;
     letter-spacing: -0.04em;
     line-height: 0.95;
@@ -2095,27 +2096,24 @@ html, body {
     position: relative;
     overflow: hidden;
     width: 100%;
-    aspect-ratio: 769 / 491;
-    min-height: 0;
     line-height: 0;
 }
 
 .tv-banner-clip .tv-sign-art {
-    position: absolute;
-    left: 0;
-    top: 0;
+    position: relative;
     display: block;
     width: 100%;
     height: auto;
+    margin-bottom: -28%;
 }
 
 .tv-banner-sign .tv-sign-face {
-    left: 8%;
-    right: 8%;
-    top: 16%;
-    bottom: 9%;
-    gap: 0.04em;
-    padding: 0 0.12em;
+    left: 11%;
+    right: 11%;
+    top: 11%;
+    bottom: 22%;
+    gap: 0.02em;
+    padding: 0 0.08em;
 }
 
 .tv-post-answer {
@@ -2210,7 +2208,7 @@ html, body {
 }
 
 .tv-score .tv-ewe.is-parade {
-    z-index: 48;
+    z-index: 52;
 }
 
 .tv-boards {

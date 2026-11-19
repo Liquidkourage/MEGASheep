@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T17-20-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T17-42-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -1270,7 +1270,7 @@
         }
 
         const PARADE_LANES = 3;
-        const MISS_SIGN_AT = { x: 28, y: 54 };
+        const MISS_SIGN_AT = { x: 18, y: 44 };
 
         function layoutMissSign(answers) {
             const list = (answers || []).filter(Boolean);
@@ -1281,9 +1281,9 @@
                 answers: list,
                 x: MISS_SIGN_AT.x,
                 y: MISS_SIGN_AT.y,
-                width: n > 8 ? 32 : n > 4 ? 26 : 20,
-                tilt: -0.55,
-                z: 6
+                width: n > 8 ? 17.5 : n > 4 ? 16 : 14,
+                tilt: -0.7,
+                z: 5
             };
         }
 
@@ -1353,15 +1353,15 @@
         }
 
         function pickWrongPatch(occupied, hash, avoid) {
-            for (let tryAt = 0; tryAt < 20; tryAt += 1) {
-                const gx = 8 + ((hash + tryAt * 19) % 52);
-                const gy = 52 + ((hash + tryAt * 11) % 14);
-                if (gx > 66) continue;
-                if (avoid && Math.hypot(gx - avoid.x, (gy - avoid.y) * 1.35) < 18) continue;
-                if (occupied.some((spot) => Math.hypot(spot.x - gx, (spot.y - gy) * 1.25) < 13)) continue;
+            for (let tryAt = 0; tryAt < 24; tryAt += 1) {
+                const gx = 42 + ((hash + tryAt * 17) % 26);
+                const gy = 58 + ((hash + tryAt * 13) % 16);
+                if (gx > 70 || gx < 40) continue;
+                if (avoid && Math.hypot(gx - avoid.x, (gy - avoid.y) * 1.4) < 26) continue;
+                if (occupied.some((spot) => Math.hypot(spot.x - gx, (spot.y - gy) * 1.25) < 12)) continue;
                 return { x: gx, y: gy };
             }
-            return { x: 10 + (hash % 36), y: 56 + (hash % 10) };
+            return { x: 48 + (hash % 18), y: 62 + (hash % 10) };
         }
 
         function claimScoreMembers(list, claimed, group) {
@@ -1422,8 +1422,8 @@
             if (leftovers.length) {
                 const packed = packTrapezoid(
                     leftovers.length,
-                    { left: 2, right: 11, y: 48 },
-                    { left: 1, right: 12, y: 58 }
+                    { left: 1.2, right: 8, y: 42 },
+                    { left: 0.8, right: 9, y: 50 }
                 );
                 leftovers.forEach((player, index) => {
                     byPlayer.set(player, resultSlot(player, names, packed[index], {
@@ -2391,7 +2391,7 @@
         function paradeBannerWidth(group, count) {
             const n = Math.max(1, Number(count) || 1);
             const letters = String((group && group.answer) || '').length;
-            return Math.min(22, Math.max(11, 8.4 + n * 0.42, letters * 0.85));
+            return Math.min(16, Math.max(11.5, 10 + Math.min(n, 6) * 0.28, letters * 0.72));
         }
 
         function packParadeLane(count, x0, x1, y0, y1) {
