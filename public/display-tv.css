@@ -264,8 +264,9 @@ html, body {
 }
 
 .tv-lobby-join .display-title {
-    font-size: clamp(2.8rem, 6vh, 4.6rem) !important;
-    line-height: 0.95;
+    font-size: clamp(3.2rem, 7vh, 5.4rem) !important;
+    line-height: 0.92;
+    letter-spacing: -0.04em;
     text-align: center;
     text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
 }
@@ -305,18 +306,71 @@ html, body {
     position: absolute;
     left: 38%;
     right: 6%;
-    top: 58%;
+    top: 54%;
     z-index: 6;
     margin: 0;
-    text-align: center;
-    font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(2.8rem, 6.4vh, 5.2rem);
-    font-weight: 800;
-    line-height: 1.05;
-    letter-spacing: -0.03em;
-    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     pointer-events: none;
-    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+}
+
+.tv-lobby-wait {
+    position: relative;
+    width: min(220px, 18vw);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.35));
+}
+
+.tv-lobby-wait-ewe {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    background-image: url("sprites/sheep-01-eat.png?v=2026-11-18T20-05-00");
+    background-size: 1200% 100%;
+    background-repeat: no-repeat;
+    animation: eweEat 1.2s steps(12, jump-none) infinite;
+}
+
+.tv-lobby-wait-dots {
+    position: absolute;
+    left: 62%;
+    top: 4%;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 36px;
+}
+
+.tv-lobby-wait-dots i {
+    display: block;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    border-radius: 50%;
+    background: #f6ecc4;
+    box-shadow: 0 0 0 3px #1a140c;
+    opacity: 0.4;
+    animation: lobbyWaitDot 1.6s ease-in-out infinite;
+}
+
+.tv-lobby-wait-dots i:nth-child(2) {
+    width: 11px;
+    height: 11px;
+    animation-delay: 0.2s;
+}
+
+.tv-lobby-wait-dots i:nth-child(3) {
+    width: 8px;
+    height: 8px;
+    animation-delay: 0.4s;
+}
+
+@keyframes lobbyWaitDot {
+    0%, 100% { opacity: 0.25; transform: translateY(6px); }
+    50% { opacity: 1; transform: translateY(-8px); }
 }
 
 .tv-lobby .tv-ewe figcaption {
@@ -1077,6 +1131,7 @@ html, body {
     .tv-ewe { transition: none; }
     .tv-ewe-strip { animation: none !important; }
     .tv-lobby-join.is-nibbled { animation: none !important; }
+    .tv-lobby-wait-ewe, .tv-lobby-wait-dots i { animation: none !important; }
     .tv-ewe-poof, .tv-ewe.is-poofing .tv-ewe-art, .tv-ewe.is-poofing figcaption { animation: none !important; }
 }
 
