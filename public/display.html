@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T22-05-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T22-15-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -642,6 +642,7 @@
                 const waitingUrl = window.currentGameCode ? `https://megasheep.liquidkourage.com/?game=${window.currentGameCode}` : 'https://megasheep.liquidkourage.com';
                 generateQRCode('qrCodeWaiting', waitingUrl);
             }, 50);
+            armLobbySnack();
         }
 
         const PLAY_KICKERS = [
@@ -919,9 +920,11 @@
         function scheduleLobbyWander(el) {
             clearEweWander(el);
             if (!el || !el.isConnected || !document.querySelector('.tv-lobby')) return;
+            if (el.classList.contains('is-snackish') || el.classList.contains('is-nibbling')) return;
             const wait = 4000 + Math.random() * 10000;
             const timer = window.setTimeout(() => {
                 if (!el.isConnected || !document.querySelector('.tv-lobby')) return;
+                if (el.classList.contains('is-snackish') || el.classList.contains('is-nibbling')) return;
                 if (el.classList.contains('is-walking') || el.classList.contains('is-joining')) {
                     scheduleLobbyWander(el);
                     return;
@@ -938,7 +941,108 @@
             el.dataset.wanderTimer = String(timer);
         }
 
+        let lobbySnackTimer = 0;
+
+        function qrNibbleSpot() {
+            const chorus = document.getElementById('flockChorus');
+            const card = document.querySelector('.tv-lobby-join');
+            if (!chorus || !card) return { gx: 31, gy: 62 };
+            const field = chorus.getBoundingClientRect();
+            const box = card.getBoundingClientRect();
+            if (!field.width || !field.height) return { gx: 31, gy: 62 };
+            return {
+                gx: ((box.right - field.left) / field.width) * 100 + 1.4,
+                gy: ((box.top + box.height * 0.62 - field.top) / field.height) * 100
+            };
+        }
+
+        function stopCardChew() {
+            const card = document.querySelector('.tv-lobby-join');
+            if (card) card.classList.remove('is-nibbled');
+        }
+
+        function armLobbySnack() {
+            window.clearTimeout(lobbySnackTimer);
+            const lobby = document.querySelector('.tv-lobby');
+            if (!lobby) return;
+            lobby.dataset.snackDone = '';
+            if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            lobbySnackTimer = window.setTimeout(tryLobbySnack, 60000);
+        }
+
+        function tryLobbySnack() {
+            const lobby = document.querySelector('.tv-lobby');
+            if (!lobby || lobby.dataset.snackDone === '1') return;
+            const ewes = [...document.querySelectorAll('#flockChorus .tv-ewe')].filter((el) =>
+                !el.classList.contains('is-joining') &&
+                !el.classList.contains('is-walking') &&
+                !el.classList.contains('is-nibbling')
+            );
+            if (!ewes.length) {
+                lobbySnackTimer = window.setTimeout(tryLobbySnack, 8000);
+                return;
+            }
+            startQrNibble(ewes[Math.floor(Math.random() * ewes.length)]);
+        }
+
+        function startQrNibble(el) {
+            const lobby = document.querySelector('.tv-lobby');
+            if (!lobby || !el || !el.isConnected) return;
+            const chorus = document.getElementById('flockChorus');
+            const card = document.querySelector('.tv-lobby-join');
+            if (!chorus || !card || !chorus.getBoundingClientRect().width || !el.getBoundingClientRect().width) {
+                lobbySnackTimer = window.setTimeout(() => startQrNibble(el), 250);
+                return;
+            }
+            lobby.dataset.snackDone = '1';
+            clearEweWander(el);
+            el.classList.add('is-snackish');
+            const spot = qrNibbleSpot();
+            const gx = parseFloat(el.style.getPropertyValue('--gx')) || 70;
+            el.classList.toggle('is-left', spot.gx < gx);
+            const depth = lobbyDepth(Math.min(LOBBY_FIELD.bottom, Math.max(LOBBY_FIELD.top, spot.gy)));
+            walkEweOnField(el, slotFromEwe(el, {
+                gx: spot.gx,
+                gy: spot.gy,
+                scale: Math.max(depth.scale, 1.08),
+                z: 80,
+                mood: 'idle'
+            }), () => {
+                if (!el.isConnected || !document.querySelector('.tv-lobby')) return;
+                el.classList.add('is-left', 'is-nibbling');
+                el.dataset.mood = 'eat';
+                const nibbleCard = document.querySelector('.tv-lobby-join');
+                if (nibbleCard) nibbleCard.classList.add('is-nibbled');
+                window.setTimeout(() => finishQrNibble(el), 5500 + Math.random() * 3500);
+            });
+        }
+
+        function finishQrNibble(el) {
+            stopCardChew();
+            if (!el || !el.isConnected || !document.querySelector('.tv-lobby')) return;
+            el.classList.remove('is-nibbling');
+            const occupied = [...document.querySelectorAll('#flockChorus .tv-ewe')].map((other) => ({
+                gx: parseFloat(other.style.getPropertyValue('--gx')),
+                gy: parseFloat(other.style.getPropertyValue('--gy'))
+            }));
+            const away = randomLobbyPoint(occupied);
+            const depth = lobbyDepth(away.gy);
+            const gx = parseFloat(el.style.getPropertyValue('--gx')) || 30;
+            el.classList.toggle('is-left', away.gx < gx);
+            walkEweOnField(el, slotFromEwe(el, {
+                gx: away.gx,
+                gy: away.gy,
+                scale: depth.scale,
+                z: depth.z,
+                mood: Math.random() < 0.4 ? 'eat' : 'idle'
+            }), () => {
+                el.classList.remove('is-snackish');
+                scheduleLobbyWander(el);
+            });
+        }
+
         function wanderLobbyEwe(el) {
+            if (el.classList.contains('is-snackish') || el.classList.contains('is-nibbling')) return;
             const gx = parseFloat(el.style.getPropertyValue('--gx')) || 70;
             const gy = parseFloat(el.style.getPropertyValue('--gy')) || 64;
             const ngx = Math.min(LOBBY_FIELD.right, Math.max(LOBBY_FIELD.left, gx + (Math.random() - 0.5) * 14));
@@ -1023,6 +1127,9 @@
             });
             byId.forEach((el, id) => {
                 if (keep.has(id)) return;
+                if (el.classList.contains('is-nibbling') || el.classList.contains('is-snackish')) {
+                    stopCardChew();
+                }
                 clearEweWander(el);
                 el.remove();
             });
