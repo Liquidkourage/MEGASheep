@@ -768,7 +768,7 @@
             const tall = spanY >= spanX * 1.15;
             const rows = tall
                 ? (n <= 3 ? 1 : n <= 8 ? 2 : n <= 15 ? 3 : n <= 24 ? 4 : 5)
-                : (n <= 8 ? 1 : n <= 18 ? 2 : n <= 32 ? 3 : 4);
+                : (n <= 8 ? 1 : n <= 16 ? 2 : n <= 24 ? 3 : 4);
             const counts = [];
             let remaining = n;
             for (let r = 0; r < rows; r += 1) {
@@ -780,11 +780,12 @@
             const slots = [];
             for (let r = 0; r < rows; r += 1) {
                 const count = counts[r];
-                const t = (r + 0.85) / (rows + 0.35);
-                const y = far.y + t * spanY;
-                const left = far.left + t * (near.left - far.left);
-                const right = far.right + t * (near.right - far.right);
-                const scale = 0.72 + t * 0.34;
+                const t = rows <= 1 ? 0.58 : r / (rows - 1);
+                const u = 0.08 + t * 0.84;
+                const y = far.y + u * spanY;
+                const left = far.left + u * (near.left - far.left);
+                const right = far.right + u * (near.right - far.right);
+                const scale = 0.72 + u * 0.34;
                 for (let c = 0; c < count; c += 1) {
                     const x = left + ((c + 0.5) / Math.max(count, 1)) * (right - left);
                     slots.push({ x, y, z: 12 + r * 10, scale });
@@ -816,9 +817,9 @@
 
         const LOBBY_FIELD = { left: 2, right: 98, top: 18, bottom: 90 };
         const PLAY_FIELD = { left: 3, right: 50, top: 52, bottom: 91 };
-        const PEN_FAR = { left: 70, right: 84, y: 61 };
-        const PEN_NEAR = { left: 64, right: 88, y: 81 };
-        const PEN_FIELD = { left: 64, right: 88, top: 61, bottom: 81 };
+        const PEN_FAR = { left: 70, right: 84, y: 62 };
+        const PEN_NEAR = { left: 64, right: 88, y: 86 };
+        const PEN_FIELD = { left: 64, right: 88, top: 62, bottom: 86 };
         const GATE_FIELD = { left: 50, right: 58, top: 66, bottom: 80 };
         const GRASS_LINE = 0.55;
 
