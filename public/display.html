@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T04-30-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T04-45-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -402,11 +402,6 @@
             socket.on('playerLeft', (gameStateData) => applyDisplayState(gameStateData, 'playerLeft'));
             
             socket.on('answerUpdate', (data) => {
-                console.log('Display: Answer update', data);
-                console.log('Current game state:', gameState?.gameState);
-                console.log('Answers received:', data.answersReceived, 'Total players:', data.totalPlayers);
-                
-                // Update response indicator for both 'playing' and 'questionActive' states
                 if (gameState && (gameState.gameState === 'playing' || gameState.gameState === 'questionActive' || gameState.gameState === 'grading')) {
                     // Prefer authoritative snapshot if provided
                     let count = data.answersReceived;
@@ -430,9 +425,6 @@
                         gameState.sentBackPlayers = data.sentBackPlayers;
                     }
                     updateResponseIndicator(count, data.totalPlayers, data.answeredPlayers);
-                    console.log('✅ Updated response indicator');
-                } else {
-                    console.log('❌ Response indicator not updated - wrong game state:', gameState?.gameState);
                 }
             });
             
@@ -720,16 +712,43 @@
         }
 
         const EWE_BASE_MAX = 118;
-        const EWE_BASE_MIN = 86;
+        const EWE_BASE_MID = 86;
+        const EWE_BASE_MIN = 68;
         const EWE_HOLD_UNTIL = 12;
         const EWE_SHRINK_AT = 56;
+        const EWE_CROWD_AT = 100;
 
         function eweBaseSize(count) {
             const n = Math.max(1, Number(count) || 1);
             if (n <= EWE_HOLD_UNTIL) return EWE_BASE_MAX;
-            if (n >= EWE_SHRINK_AT) return EWE_BASE_MIN;
-            const t = (n - EWE_HOLD_UNTIL) / (EWE_SHRINK_AT - EWE_HOLD_UNTIL);
-            return EWE_BASE_MAX + (EWE_BASE_MIN - EWE_BASE_MAX) * t;
+            if (n >= EWE_CROWD_AT) return EWE_BASE_MIN;
+            if (n <= EWE_SHRINK_AT) {
+                const t = (n - EWE_HOLD_UNTIL) / (EWE_SHRINK_AT - EWE_HOLD_UNTIL);
+                return EWE_BASE_MAX + (EWE_BASE_MID - EWE_BASE_MAX) * t;
+            }
+            const t = (n - EWE_SHRINK_AT) / (EWE_CROWD_AT - EWE_SHRINK_AT);
+            return EWE_BASE_MID + (EWE_BASE_MIN - EWE_BASE_MID) * t;
+        }
+
+        function isPlayPasture() {
+            return !!document.querySelector('.tv-play');
+        }
+
+        function flockSize() {
+            return document.querySelectorAll('#flockChorus .tv-ewe').length;
+        }
+
+        function walkingCount() {
+            return document.querySelectorAll('#flockChorus .tv-ewe.is-walking').length;
+        }
+
+        function shouldRoam(el) {
+            if (!el || !canPastureWander(el)) return false;
+            if (!isPlayPasture()) return true;
+            const n = flockSize();
+            if (n <= 24) return true;
+            const hash = nameHash(el.dataset.id || el.dataset.name || '');
+            return (hash % Math.max(2, Math.ceil(n / 10))) === 0;
         }
 
         function packRegion(n, box) {
@@ -1035,14 +1054,21 @@
         }
 
         function lobbySpotCrowded(gx, gy, occupied, selfEl) {
-            if (!selfEl || !selfEl.getBoundingClientRect().width) {
-                return (occupied || []).some((other) => {
+            const crowd = occupied || [];
+            if (!selfEl || crowd.length > 20 || isPlayPasture()) {
+                return crowd.some((other) => {
+                    if (!Number.isFinite(other.gx) || !Number.isFinite(other.gy)) return false;
+                    return Math.hypot((other.gx || 0) - gx, ((other.gy || 0) - gy) * 1.15) < 9;
+                });
+            }
+            if (!selfEl.getBoundingClientRect().width) {
+                return crowd.some((other) => {
                     if (!Number.isFinite(other.gx) || !Number.isFinite(other.gy)) return false;
                     return Math.hypot((other.gx || 0) - gx, ((other.gy || 0) - gy) * 1.15) < 9;
                 });
             }
             const selfBox = eweWorldBox(selfEl, gx, gy);
-            return (occupied || []).some((other) => {
+            return crowd.some((other) => {
                 if (!other.el) return false;
                 const dest = other.el.classList.contains('is-walking')
                     ? eweWorldBox(other.el, other.gx, other.gy)
@@ -1295,16 +1321,22 @@
 
         function scheduleLobbyWander(el) {
             clearEweWander(el);
-            if (!canPastureWander(el)) return;
-            const wait = 4000 + Math.random() * 10000;
+            if (!canPastureWander(el) || !shouldRoam(el)) return;
+            const play = isPlayPasture();
+            const n = flockSize();
+            const wait = play
+                ? (9000 + Math.random() * 16000)
+                : (4000 + Math.random() * 10000);
             const timer = window.setTimeout(() => {
-                if (!canPastureWander(el)) return;
+                if (!canPastureWander(el) || !shouldRoam(el)) return;
                 if (el.classList.contains('is-walking') || el.classList.contains('is-joining')) {
                     scheduleLobbyWander(el);
                     return;
                 }
-                if (Math.random() > 0.32) {
-                    if (Math.random() < 0.28) {
+                const walkChance = play && n > 24 ? 0.12 : 0.32;
+                const walkCap = play ? (n > 60 ? 4 : 8) : 18;
+                if (Math.random() > walkChance || walkingCount() >= walkCap) {
+                    if (!play && Math.random() < 0.28) {
                         el.dataset.mood = Math.random() < 0.45 ? 'eat' : 'idle';
                     }
                     scheduleLobbyWander(el);
@@ -1578,17 +1610,20 @@
 
         function nudgeOverlappingLobbyEwes() {
             const chorus = document.getElementById('flockChorus');
-            if (!chorus || !isPastureScene()) return;
+            if (!chorus || !isPastureScene() || isPlayPasture()) return;
             const ewes = roamingEwes();
+            if (ewes.length > 40) return;
+            const boxes = ewes.map((el) => eweWorldBox(el));
             const moved = new Set();
-            for (let i = 0; i < ewes.length; i += 1) {
-                for (let j = i + 1; j < ewes.length; j += 1) {
-                    if (!boxesOverlap(eweWorldBox(ewes[i]), eweWorldBox(ewes[j]))) continue;
+            for (let i = 0; i < boxes.length; i += 1) {
+                for (let j = i + 1; j < boxes.length; j += 1) {
+                    if (!boxesOverlap(boxes[i], boxes[j])) continue;
                     const mover = pickIdleMover([ewes[i], ewes[j]], moved);
                     if (!mover) continue;
                     if (separateLobbyEwe(mover)) moved.add(mover);
                 }
             }
+            if (ewes.length > 18) return;
             const pts = ewes
                 .filter((el) => !moved.has(el) && !el.classList.contains('is-walking'))
                 .map((el) => eweLinePoint(el));
@@ -1611,7 +1646,7 @@
 
         function armLobbySeparate() {
             window.clearTimeout(lobbySeparateTimer);
-            if (!isPastureScene()) return;
+            if (!document.querySelector('.tv-lobby')) return;
             lobbySeparateTimer = window.setTimeout(() => {
                 nudgeOverlappingLobbyEwes();
                 armLobbySeparate();
@@ -1728,17 +1763,21 @@
             if (roaming) {
                 if (existing) {
                     syncLobbyFlock(chorus, slots);
-                    chorus.querySelectorAll('.tv-ewe').forEach(pinEweToGrass);
-                    chorus.getBoundingClientRect();
+                    if (!isPlayPasture()) {
+                        chorus.querySelectorAll('.tv-ewe').forEach(pinEweToGrass);
+                        chorus.getBoundingClientRect();
+                    }
                     chorus.style.setProperty('--ewe-base', nextBase);
-                    window.setTimeout(nudgeOverlappingLobbyEwes, 480);
+                    if (!isPlayPasture()) window.setTimeout(nudgeOverlappingLobbyEwes, 480);
                     return;
                 }
                 chorus.style.setProperty('--ewe-base', nextBase);
                 chorus.innerHTML = slots.map((slot) => eweFigureHtml(slot)).join('');
                 const born = chorus.querySelectorAll('.tv-ewe');
                 if (born.length === 1) playJoinJump(born[0]);
-                else born.forEach((el) => scheduleLobbyWander(el));
+                else born.forEach((el) => {
+                    if (shouldRoam(el)) scheduleLobbyWander(el);
+                });
                 return;
             }
             chorus.style.setProperty('--ewe-base', nextBase);
@@ -1767,6 +1806,7 @@
             const gen = bumpEweWalk(el);
             const destLeft = next.outside ? 'ox' : 'px';
             const destTop = next.outside ? 'oy' : 'py';
+            if (!skipWalk && isPlayPasture() && walkingCount() >= 8) skipWalk = true;
             const seconds = skipWalk ? 0 : walkSecondsTo(el, destLeft, destTop);
             el.classList.remove('is-walking');
             if (!skipWalk) el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
@@ -1851,7 +1891,6 @@
                 </div>
             `;
             renderFlock(gameState.players);
-            armLobbySeparate();
             
             // Set initial timer state
             updateDisplayTimer(gameState.timeLeft || 30);

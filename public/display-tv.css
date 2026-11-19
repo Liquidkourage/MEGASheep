@@ -985,6 +985,22 @@ html, body {
     --ewe-max: 132px;
 }
 
+.tv-flock[data-dense="1"] {
+    --ewe-min: 58px;
+}
+
+.tv-flock[data-dense="1"] .tv-ewe::after {
+    display: none;
+}
+
+.tv-play .tv-ewe {
+    container-type: normal;
+}
+
+.tv-play .tv-pen-art {
+    filter: none;
+}
+
 .tv-ewe {
     position: absolute;
     left: var(--gx);
@@ -1001,6 +1017,7 @@ html, body {
     gap: 0.12em;
     container-type: inline-size;
     container-name: ewe;
+    contain: layout;
     transition:
         left var(--walk, 4s) linear,
         top var(--walk, 4s) linear,
@@ -1113,7 +1130,6 @@ html, body {
 .tv-ewe.is-in {
     left: var(--px);
     top: var(--py);
-    filter: drop-shadow(0 0 8px rgba(243, 235, 208, 0.2));
 }
 
 .tv-ewe.is-outside {
@@ -1255,6 +1271,14 @@ html, body {
 .tv-lobby .tv-ewe[data-coat="3"].is-joining .tv-ewe-strip,
 .tv-play .tv-ewe[data-coat="3"].is-joining .tv-ewe-strip {
     background-image: url("sprites/sheep-03-jump.png?v=2026-11-18T21-40-00");
+}
+
+.tv-play .tv-flock[data-dense="1"] .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip {
+    animation: none !important;
+}
+
+.tv-play .tv-flock[data-dense="1"] .tv-ewe:nth-child(11n):not(.is-in):not(.is-walking):not(.is-joining) .tv-ewe-strip {
+    animation: eweIdle 1.2s steps(12, jump-none) infinite !important;
 }
 
 .tv-thought {
