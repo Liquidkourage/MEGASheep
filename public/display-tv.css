@@ -568,7 +568,7 @@ html, body {
     background-repeat: no-repeat;
     background-position: 0 0;
     background-size: 1200% 100%;
-    animation: eweIdle 0.4s steps(12, jump-none) infinite;
+    animation: eweIdle 0.4s steps(11) infinite;
 }
 
 .tv-wait-think {
@@ -1169,19 +1169,19 @@ html, body {
     height: 100%;
     background-repeat: no-repeat;
     background-position: 0 0;
-    background-size: 1300% 100%;
-    background-image: url("sprites/sheep-01-eat.png?v=2026-11-18T20-05-00");
-    animation: eweEat 0.45s steps(13, jump-none) infinite;
+    background-size: 1200% 100%;
+    background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
+    animation: eweIdle 0.4s steps(11) infinite;
     animation-delay: var(--idle, 0s);
     transform-origin: 50% 50%;
 }
 
 .tv-ewe[data-coat="2"] .tv-ewe-strip {
-    background-image: url("sprites/sheep-02-eat.png?v=2026-11-18T20-05-00");
+    background-image: url("sprites/sheep-02-idle.png?v=2026-11-18T20-05-00");
 }
 
 .tv-ewe[data-coat="3"] .tv-ewe-strip {
-    background-image: url("sprites/sheep-03-eat.png?v=2026-11-18T20-05-00");
+    background-image: url("sprites/sheep-03-idle.png?v=2026-11-18T20-05-00");
 }
 
 .tv-ewe.is-walking .tv-ewe-strip {
@@ -1220,7 +1220,7 @@ html, body {
 .tv-ewe.is-outside:not(.is-walking) .tv-ewe-strip {
     background-size: 1200% 100%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
-    animation: eweIdle 0.4s steps(12, jump-none) infinite;
+    animation: eweIdle 0.4s steps(11) infinite;
     animation-delay: var(--idle, 0s);
 }
 
@@ -1236,7 +1236,7 @@ html, body {
 .tv-play .tv-ewe:not(.is-walking):not(.is-joining):not(.is-in):not(.is-outside) .tv-ewe-strip {
     background-size: 1200% 100%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
-    animation: eweIdle 0.4s steps(12, jump-none) infinite;
+    animation: eweIdle 0.4s steps(11) infinite;
     animation-delay: var(--idle, 0s);
 }
 
@@ -1250,6 +1250,7 @@ html, body {
     background-image: url("sprites/sheep-03-idle.png?v=2026-11-18T20-05-00");
 }
 
+.tv-ewe[data-mood="eat"]:not(.is-walking):not(.is-joining):not(.is-in) .tv-ewe-strip,
 .tv-lobby .tv-ewe[data-mood="eat"]:not(.is-walking):not(.is-joining) .tv-ewe-strip,
 .tv-play .tv-ewe[data-mood="eat"]:not(.is-walking):not(.is-joining):not(.is-in):not(.is-outside) .tv-ewe-strip {
     background-size: 1300% 100%;
@@ -1258,11 +1259,13 @@ html, body {
     animation-delay: var(--idle, 0s);
 }
 
+.tv-ewe[data-coat="2"][data-mood="eat"]:not(.is-walking):not(.is-joining):not(.is-in) .tv-ewe-strip,
 .tv-lobby .tv-ewe[data-coat="2"][data-mood="eat"]:not(.is-walking):not(.is-joining) .tv-ewe-strip,
 .tv-play .tv-ewe[data-coat="2"][data-mood="eat"]:not(.is-walking):not(.is-joining):not(.is-in):not(.is-outside) .tv-ewe-strip {
     background-image: url("sprites/sheep-02-eat.png?v=2026-11-18T20-05-00");
 }
 
+.tv-ewe[data-coat="3"][data-mood="eat"]:not(.is-walking):not(.is-joining):not(.is-in) .tv-ewe-strip,
 .tv-lobby .tv-ewe[data-coat="3"][data-mood="eat"]:not(.is-walking):not(.is-joining) .tv-ewe-strip,
 .tv-play .tv-ewe[data-coat="3"][data-mood="eat"]:not(.is-walking):not(.is-joining):not(.is-in):not(.is-outside) .tv-ewe-strip {
     background-image: url("sprites/sheep-03-eat.png?v=2026-11-18T20-05-00");
@@ -1294,7 +1297,9 @@ html, body {
 }
 
 .tv-play .tv-flock[data-dense="1"] .tv-ewe:nth-child(11n):not(.is-in):not(.is-walking):not(.is-joining) .tv-ewe-strip {
-    animation: eweIdle 1.2s steps(12, jump-none) infinite !important;
+    background-size: 1200% 100% !important;
+    background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00") !important;
+    animation: eweIdle 1.2s steps(11) infinite !important;
 }
 
 .tv-thought {
@@ -1356,7 +1361,7 @@ html, body {
 .tv-key.is-in .tv-ewe-strip {
     background-size: 1200% 100%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
-    animation: eweIdle 0.4s steps(12, jump-none) infinite;
+    animation: eweIdle 0.4s steps(11) infinite;
 }
 
 @keyframes eweEat {
@@ -2391,7 +2396,7 @@ html, body {
 .tv-podium .tv-ewe .tv-ewe-strip {
     background-size: 1200% 100%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
-    animation: eweIdle 0.4s steps(12, jump-none) infinite;
+    animation: eweIdle 0.4s steps(11) infinite;
 }
 
 .tv-podium .tv-ewe[data-coat="2"] .tv-ewe-strip {
