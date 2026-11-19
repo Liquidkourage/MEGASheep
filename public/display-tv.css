@@ -721,7 +721,7 @@ html, body {
     position: relative;
     display: block;
     width: 100%;
-    aspect-ratio: 1.25 / 1;
+    aspect-ratio: 1 / 1;
     overflow: hidden;
 }
 
@@ -730,72 +730,76 @@ html, body {
     top: 0;
     left: 0;
     height: 100%;
-    width: 800%;
+    width: 1300%;
     background-repeat: no-repeat;
     background-size: 100% 100%;
-    background-image: url("sprites/sheep-graze-sheet.png?v=2026-11-18T19-58-00");
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-    animation: eweStrip 0.8s infinite;
+    background-image: url("sprites/sheep-01-eat.png?v=2026-11-18T20-05-00");
+    animation: eweEat 0.45s steps(13, jump-none) infinite;
     animation-delay: var(--idle, 0s);
+}
+
+.tv-ewe[data-coat="2"] .tv-ewe-strip {
+    background-image: url("sprites/sheep-02-eat.png?v=2026-11-18T20-05-00");
+}
+
+.tv-ewe[data-coat="3"] .tv-ewe-strip {
+    background-image: url("sprites/sheep-03-eat.png?v=2026-11-18T20-05-00");
 }
 
 .tv-ewe.is-walking .tv-ewe-strip {
-    background-image: url("sprites/sheep-walk-sheet.png?v=2026-11-18T19-58-00");
-    animation-name: eweStripWalk;
-    animation-duration: 0.666s;
-    animation-delay: 0s;
+    width: 1800%;
+    background-image: url("sprites/sheep-01-walk.png?v=2026-11-18T20-05-00");
+    animation: eweWalk 0.6s steps(18, jump-none) infinite;
+}
+
+.tv-ewe[data-coat="2"].is-walking .tv-ewe-strip {
+    background-image: url("sprites/sheep-02-walk.png?v=2026-11-18T20-05-00");
+}
+
+.tv-ewe[data-coat="3"].is-walking .tv-ewe-strip {
+    background-image: url("sprites/sheep-03-walk.png?v=2026-11-18T20-05-00");
 }
 
 .tv-ewe.is-in:not(.is-walking) .tv-ewe-strip {
-    background-image: url("sprites/sheep-stand-sheet.png?v=2026-11-18T19-58-00");
-    animation-name: eweStripStand;
-    animation-duration: 1s;
+    width: 1200%;
+    background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
+    animation: eweIdle 0.4s steps(12, jump-none) infinite;
     animation-delay: var(--idle, 0s);
 }
 
+.tv-ewe[data-coat="2"].is-in:not(.is-walking) .tv-ewe-strip {
+    background-image: url("sprites/sheep-02-idle.png?v=2026-11-18T20-05-00");
+}
+
+.tv-ewe[data-coat="3"].is-in:not(.is-walking) .tv-ewe-strip {
+    background-image: url("sprites/sheep-03-idle.png?v=2026-11-18T20-05-00");
+}
+
 .tv-key .tv-ewe-strip {
-    animation-name: eweStrip;
-    animation-duration: 0.8s;
+    width: 1300%;
+    background-image: url("sprites/sheep-01-eat.png?v=2026-11-18T20-05-00");
+    animation: eweEat 0.45s steps(13, jump-none) infinite;
 }
 
 .tv-key.is-in .tv-ewe-strip {
-    background-image: url("sprites/sheep-stand-sheet.png?v=2026-11-18T19-58-00");
-    animation-name: eweStripStand;
-    animation-duration: 1s;
+    width: 1200%;
+    background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
+    animation: eweIdle 0.4s steps(12, jump-none) infinite;
 }
 
-@keyframes eweStrip {
-    0%, 12.49% { transform: translateX(0); }
-    12.5%, 24.99% { transform: translateX(-12.5%); }
-    25%, 37.49% { transform: translateX(-25%); }
-    37.5%, 49.99% { transform: translateX(-37.5%); }
-    50%, 62.49% { transform: translateX(-50%); }
-    62.5%, 74.99% { transform: translateX(-62.5%); }
-    75%, 87.49% { transform: translateX(-75%); }
-    87.5%, 100% { transform: translateX(-87.5%); }
+@keyframes eweEat {
+    from { transform: translateX(0); }
+    to { transform: translateX(-92.3077%); }
 }
 
-@keyframes eweStripWalk {
-    0%, 12.49% { transform: translateX(0); }
-    12.5%, 24.99% { transform: translateX(-12.5%); }
-    25%, 37.49% { transform: translateX(-25%); }
-    37.5%, 49.99% { transform: translateX(-37.5%); }
-    50%, 62.49% { transform: translateX(-50%); }
-    62.5%, 74.99% { transform: translateX(-62.5%); }
-    75%, 87.49% { transform: translateX(-75%); }
-    87.5%, 100% { transform: translateX(-87.5%); }
+@keyframes eweWalk {
+    from { transform: translateX(0); }
+    to { transform: translateX(-94.4444%); }
 }
 
-@keyframes eweStripStand {
-    0%, 12.49% { transform: translateX(0); }
-    12.5%, 24.99% { transform: translateX(-12.5%); }
-    25%, 37.49% { transform: translateX(-25%); }
-    37.5%, 49.99% { transform: translateX(-37.5%); }
-    50%, 62.49% { transform: translateX(-50%); }
-    62.5%, 74.99% { transform: translateX(-62.5%); }
-    75%, 87.49% { transform: translateX(-75%); }
-    87.5%, 100% { transform: translateX(-87.5%); }
+@keyframes eweIdle {
+    from { transform: translateX(0); }
+    to { transform: translateX(-91.6667%); }
 }
 
 .tv-ewe figcaption {

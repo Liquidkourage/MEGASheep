@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T19-58-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T20-05-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -662,11 +662,11 @@
         }
 
         function eweBaseSize(count) {
-            if (count <= 6) return 64;
-            if (count <= 12) return 56;
-            if (count <= 24) return 50;
-            if (count <= 36) return 44;
-            return 40;
+            if (count <= 6) return 72;
+            if (count <= 12) return 64;
+            if (count <= 24) return 56;
+            if (count <= 36) return 50;
+            return 44;
         }
 
         function packRegion(n, box) {
@@ -725,7 +725,8 @@
                     py: Math.min(78, Math.max(16, p.y + (((hash >> 4) % 5) - 2) * 0.35)),
                     scale: g.scale,
                     z: g.z,
-                    walk: (1.85 + (hash % 8) * 0.14).toFixed(2),
+                    coat: (hash % 3) + 1,
+                    walk: (2.05 + (hash % 8) * 0.12).toFixed(2),
                     idle: ((hash % 17) * 0.18).toFixed(2)
                 };
             });
@@ -762,7 +763,7 @@
             chorus.dataset.dense = list.length > 28 ? '1' : '0';
             chorus.style.setProperty('--ewe-base', `${eweBaseSize(list.length)}px`);
             chorus.innerHTML = slots.map((slot) => `
-                <figure class="tv-ewe" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--s:${slot.scale};--z:${slot.z};--walk:${slot.walk}s;--idle:${slot.idle}s">
+                <figure class="tv-ewe" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--s:${slot.scale};--z:${slot.z};--walk:${slot.walk}s;--idle:${slot.idle}s">
                     ${EWE_ART}
                     <figcaption>${escapeDisplayText(slot.label)}</figcaption>
                 </figure>
