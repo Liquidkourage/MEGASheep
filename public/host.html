@@ -478,6 +478,49 @@
             box-shadow: 0 8px 24px rgba(0,0,0,0.35);
             display: none;
         }
+        .host-toast {
+            left: 50%;
+            right: auto;
+            transform: translateX(-50%);
+            max-width: 420px;
+            z-index: 4000;
+            font-size: 14px;
+            line-height: 1.35;
+        }
+        .host-toast.is-error { border-left: 4px solid #dc3545; }
+        .host-toast.is-success { border-left: 4px solid #28a745; }
+        .host-toast.is-info { border-left: 4px solid #17a2b8; }
+        .virtual-test-row {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+        }
+        .virtual-test-row label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            padding: 0 10px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            color: #ddd;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        .virtual-test-row input {
+            width: 64px;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.4);
+            color: #fff;
+            font-size: 14px;
+        }
+        .virtual-test-row .control-btn {
+            flex: 1;
+        }
 
         /* Players Panel */
         .player-list {
@@ -1584,7 +1627,12 @@
             </div>
             <div class="modal-body">
                 <div class="tools-grid">
-                    <button id="virtualTestBtn" class="control-btn warning" type="button">🎭 VIRTUAL TEST</button>
+                    <div class="virtual-test-row">
+                        <label for="virtualPlayerCount">Players
+                            <input id="virtualPlayerCount" type="number" min="1" max="100" value="10">
+                        </label>
+                        <button id="virtualTestBtn" class="control-btn warning" type="button">🎭 VIRTUAL TEST</button>
+                    </div>
                     <button id="showRoundLbBtn" class="control-btn secondary" type="button">📊 ROUND LEADERBOARD</button>
                     <button id="showOverallLbBtn" class="control-btn secondary" type="button">🏆 OVERALL LEADERBOARD</button>
                     <button id="historyBtn" class="control-btn secondary" type="button">📚 HISTORY</button>
@@ -1878,7 +1926,7 @@
                 const btn = document.getElementById('virtualTestBtn');
                 if (btn) btn.textContent = `🎭 ADDING ${count} VIRTUAL PLAYERS...`;
                 setTimeout(() => {
-                    if (btn) btn.textContent = '🎭 VIRTUAL TEST (100 players)';
+                    if (btn) btn.textContent = '🎭 VIRTUAL TEST';
                 }, 4000);
             });
             
@@ -2756,7 +2804,7 @@
             if (typeof startVirtualPlayerSimulation === 'function') {
                 startVirtualPlayerSimulation();
             } else {
-                alert('Virtual player simulation not available');
+                showHostToast('Virtual player simulation is not available', 'error');
             }
         });
 
@@ -3163,27 +3211,46 @@
             `).join('');
         }
 
+        function showHostToast(message, type = 'info') {
+            let toast = document.getElementById('hostToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'hostToast';
+                toast.setAttribute('role', 'status');
+                toast.setAttribute('aria-live', 'polite');
+                document.body.appendChild(toast);
+            }
+            toast.className = `qa-toast host-toast is-${type}`;
+            toast.textContent = message;
+            toast.style.display = 'block';
+            clearTimeout(window.__hostToastTimer);
+            window.__hostToastTimer = setTimeout(() => {
+                if (toast) toast.style.display = 'none';
+            }, 2800);
+        }
+
         // Virtual Player Simulation Function
         function startVirtualPlayerSimulation() {
             if (!currentGame || !currentGame.gameCode) {
-                alert('No active game. Please create a game first.');
+                showHostToast('Create a game first.', 'error');
                 return;
             }
 
-            const playerCount = prompt('How many virtual players? (1-100):', '10');
-            if (!playerCount || isNaN(playerCount) || playerCount < 1 || playerCount > 100) {
-                alert('Please enter a number between 1 and 100.');
+            const raw = document.getElementById('virtualPlayerCount')
+                ? document.getElementById('virtualPlayerCount').value
+                : '10';
+            const count = parseInt(raw, 10);
+            if (!Number.isFinite(count) || count < 1 || count > 100) {
+                showHostToast('Enter between 1 and 100 virtual players.', 'error');
                 return;
             }
 
-            console.log(`🎭 Starting virtual player simulation with ${playerCount} players`);
-            
-            // Emit the virtual player simulation event
-            const count = parseInt(playerCount, 10);
+            console.log(`🎭 Starting virtual player simulation with ${count} players`);
             socket.emit('startVirtualPlayerSimulation', {
                 gameCode: currentGame.gameCode,
                 playerCount: count
             });
+            showHostToast(`Adding ${count} virtual players…`, 'info');
         }
     </script>
 </body>
