@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T01-35-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T01-45-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -672,23 +672,6 @@
             }).catch(() => {
                 biteMasksReady = true;
             });
-        }
-
-        const PLAY_KICKERS = [
-            'Think ewe-nique.',
-            "Don't follow the flock.",
-            'Fleece the competition.',
-            'No sheepish answers.',
-            'A shear stroke of genius…',
-            'Pull the wool over their eyes.',
-            'Baa-sed answers only.',
-            'Be the bellwether.',
-            'Leave the flock in the dust.',
-            'Make it ram-bunctiously clever.'
-        ];
-
-        function playKickerForQuestion(questionNumber) {
-            return PLAY_KICKERS[(Math.max(1, questionNumber) - 1) % PLAY_KICKERS.length];
         }
 
         function flockResponseLine(responses, totalPlayers) {
@@ -1777,29 +1760,15 @@
 
         function showPlayingScreen() {
             const currentQuestion = gameState.questions[gameState.currentQuestion];
-            const questionNumber = gameState.currentQuestion + 1;
-            const roundNumber = Math.ceil(questionNumber / gameState.questionsPerRound);
-            const questionInRound = ((questionNumber - 1) % gameState.questionsPerRound) + 1;
-            const kicker = playKickerForQuestion(questionNumber);
-            
             document.getElementById('displayScreen').innerHTML = `
                 <div class="playing-container tv-play">
                     ${pastureSceneHtml({ pen: true, pastureId: 'responseIndicator' })}
                     <div class="tv-play-top">
-                        <div class="round-info">
-                            <h2>Round ${roundNumber} · Prompt ${questionInRound} of ${gameState.questionsPerRound}</h2>
-                        </div>
-                        <div class="timer-display">
-                        <div class="timer-circle" id="timerCircle">
-                            <span class="timer-text" id="displayTimer">${gameState.timeLeft || 30}</span>
-                            </div>
-                            <p class="tv-timer-caption" id="timerCaption">seconds</p>
-                        </div>
-                    </div>
-                    <div class="question-content">
-                        <div class="question-card">
-                            <p class="tv-question-eyebrow">${kicker}</p>
                         <h1 class="question-prompt">${currentQuestion ? currentQuestion.prompt : 'Loading question...'}</h1>
+                        <div class="timer-display">
+                            <div class="timer-circle" id="timerCircle">
+                                <span class="timer-text" id="displayTimer">${gameState.timeLeft || 30}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1828,15 +1797,10 @@
             timerText.textContent = timeLeft;
             
             timerCircle.classList.remove('urgent', 'warning');
-            const caption = document.getElementById('timerCaption');
             if (timeLeft <= 5) {
                 timerCircle.classList.add('urgent');
-                if (caption) caption.textContent = 'shear panic';
             } else if (timeLeft <= 10) {
                 timerCircle.classList.add('warning');
-                if (caption) caption.textContent = 'seconds';
-            } else if (caption) {
-                caption.textContent = 'seconds';
             }
             
             // Update gameState for consistency

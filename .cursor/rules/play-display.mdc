@@ -1,0 +1,14 @@
+---
+description: Question-screen text is either huge or gone
+alwaysApply: true
+---
+
+# Question Screen Text Earns Its Place
+
+On the audience question screen (`/display` playing), text is either large enough to read from across the room or it does not belong on this screen.
+
+- Keep only words that carry the round: the prompt, the timer number, and sheep names.
+- Do not add round counters, “prompt 2 of 5” lines, “seconds” captions, kickers, puns, response-count sentences, URLs, or scene titles that merely name the question screen.
+- The flock walking into the pen is the response count. Do not duplicate it in text.
+- Size kept type for a 1920×1080 landscape TV viewed from across a room.
+- This is a video canvas rule. It does not apply to the host console or player phones.

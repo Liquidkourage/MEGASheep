@@ -643,7 +643,8 @@ html, body {
     80%, 100% { opacity: 0; }
 }
 
-.tv-lobby .tv-ewe figcaption {
+.tv-lobby .tv-ewe figcaption,
+.tv-play .tv-ewe figcaption {
     font-size: clamp(1.35rem, 34cqi, 2.6rem);
 }
 
@@ -774,47 +775,14 @@ html, body {
 
 .tv-play-top {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: var(--tv-gap);
+    gap: clamp(20px, 2.4vw, 40px);
     width: 100%;
     min-width: 0;
     position: relative;
     z-index: 5;
     padding: clamp(22px, 2.4vw, 40px) clamp(28px, 3vw, 52px) 8px;
-}
-
-.display-mode .round-info {
-    margin: 0 !important;
-    width: auto;
-    flex: 1;
-    text-align: left;
-    padding: 0 !important;
-    background: transparent !important;
-    border: none !important;
-    border-radius: 0;
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-}
-
-.display-mode .tv-play-brand {
-    margin: 0 0 6px;
-    font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(0.8rem, 1.4vh, 1rem);
-    font-weight: 700;
-    letter-spacing: 0.28em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.display-mode .round-info h2 {
-    font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(1.35rem, 2.6vh, 1.9rem);
-    margin: 0;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: #fff;
-    text-shadow: none;
 }
 
 .display-mode .timer-display {
@@ -845,11 +813,11 @@ html, body {
 
 .display-mode .timer-text {
     font-family: Outfit, "Segoe UI", sans-serif !important;
-    font-size: clamp(5rem, 12vh, 8rem) !important;
+    font-size: clamp(5.4rem, 13vh, 8.6rem) !important;
     font-weight: 800;
     letter-spacing: -0.06em;
     line-height: 0.86;
-    text-shadow: none !important;
+    text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55) !important;
     color: #fff !important;
 }
 
@@ -859,83 +827,23 @@ html, body {
 
 .display-mode .timer-circle.urgent .timer-text {
     color: #ff6d5e !important;
-    text-shadow: none !important;
+    text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55) !important;
 }
 
-.tv-timer-caption {
+.display-mode .tv-play .question-prompt {
+    flex: 1 1 auto;
+    min-width: 0;
     margin: 0;
-    font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(0.75rem, 1.4vh, 0.95rem);
-    font-weight: 700;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.42);
-    text-align: right;
-    min-height: 1.2em;
-}
-
-.display-mode .timer-display:has(.urgent) .tv-timer-caption {
-    color: #ff6d5e;
-}
-
-.display-mode .question-content {
-    margin: 0 !important;
-    max-width: none !important;
-    width: 100% !important;
-    flex: none;
-    min-height: 0;
-    display: block;
-    position: relative;
-    z-index: 5;
-    padding: 0 clamp(28px, 3vw, 52px);
-    pointer-events: none;
-}
-
-.display-mode .question-card {
-    width: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
-    height: auto !important;
-    aspect-ratio: auto !important;
-    padding: 0 0 8px !important;
-    border: none !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: flex-start;
-    gap: clamp(10px, 1.6vh, 18px);
-}
-
-.display-mode .question-card::before {
-    display: none !important;
-}
-
-.tv-question-eyebrow {
-    margin: 0;
-    font-family: Outfit, "Segoe UI", sans-serif;
-    font-style: normal;
-    font-weight: 800;
-    font-size: clamp(1.1rem, 2.2vh, 1.7rem);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #e4c56b;
-    text-align: left;
-}
-
-.display-mode .question-prompt {
     font-family: Outfit, "Segoe UI", sans-serif !important;
-    font-size: clamp(3.4rem, 8.4vh, 7.2rem) !important;
+    font-size: clamp(3.8rem, 9.2vh, 7.6rem) !important;
     line-height: 1.02 !important;
     font-weight: 800 !important;
     letter-spacing: -0.035em;
     hyphens: none;
     text-align: left;
-    text-shadow: none !important;
-    max-width: 18ch !important;
+    text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55) !important;
+    max-width: 16ch !important;
+    color: #fff;
 }
 
 .tv-pasture {
