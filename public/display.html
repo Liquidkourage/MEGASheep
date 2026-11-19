@@ -763,8 +763,9 @@
             return `${first} ${parts[parts.length - 1].charAt(0)}.`;
         }
 
-        const LOBBY_FIELD = { left: 8, right: 94, top: 14, bottom: 88 };
-        const PLAY_FIELD = { left: 5, right: 56, top: 46, bottom: 90 };
+        const LOBBY_FIELD = { left: 8, right: 94, top: 22, bottom: 88 };
+        const PLAY_FIELD = { left: 5, right: 56, top: 55, bottom: 90 };
+        const GRASS_LINE = 0.55;
 
         function isPastureScene() {
             return !!(document.querySelector('.tv-lobby') || document.querySelector('.tv-play'));
@@ -805,14 +806,52 @@
             };
         }
 
+        function minFootGy(gx) {
+            const field = pastureField();
+            let minGy = field.top;
+            const chorus = document.getElementById('flockChorus');
+            const pasture = document.querySelector('.tv-pasture');
+            if (chorus && pasture) {
+                const box = chorus.getBoundingClientRect();
+                const stage = pasture.getBoundingClientRect();
+                if (box.height && stage.height) {
+                    const line = stage.top + stage.height * GRASS_LINE;
+                    minGy = Math.max(minGy, ((line - box.top) / box.height) * 100);
+                }
+            }
+            const span = field.right - field.left;
+            const t = span <= 0 ? 0.5 : (gx - field.left) / span;
+            const towardTrees = Math.max(0, (t - 0.62) / 0.38);
+            return minGy + towardTrees * towardTrees * 5;
+        }
+
         function clampLobbyPoint(gx, gy) {
             const field = pastureField();
-            const cy = Math.min(field.bottom, Math.max(field.top, gy));
+            let cy = Math.min(field.bottom, Math.max(field.top, gy));
+            cy = Math.max(cy, minFootGy(gx));
             const xs = fieldXRange(cy);
-            return {
-                gx: Math.min(xs.right, Math.max(xs.left, gx)),
-                gy: cy
-            };
+            const cx = Math.min(xs.right, Math.max(xs.left, gx));
+            cy = Math.min(field.bottom, Math.max(cy, minFootGy(cx)));
+            return { gx: cx, gy: cy };
+        }
+
+        function pinEweToGrass(el) {
+            if (!el || !el.isConnected) return;
+            if (el.classList.contains('is-in') || el.classList.contains('is-outside')) return;
+            if (el.classList.contains('is-snackish') || el.classList.contains('is-nibbling')) return;
+            if (el.classList.contains('is-walking') || el.classList.contains('is-joining')) return;
+            const gx = parseFloat(el.style.getPropertyValue('--gx')) || 50;
+            const gy = parseFloat(el.style.getPropertyValue('--gy')) || 64;
+            const next = clampLobbyPoint(gx, gy);
+            if (Math.abs(next.gy - gy) < 0.2 && Math.abs(next.gx - gx) < 0.2) return;
+            const depth = lobbyDepth(next.gy);
+            el.classList.add('is-placed');
+            el.style.setProperty('--walk', '0s');
+            el.style.setProperty('--gx', `${next.gx}%`);
+            el.style.setProperty('--gy', `${next.gy}%`);
+            el.style.setProperty('--s', String(depth.scale));
+            el.style.setProperty('--z', String(depth.z));
+            requestAnimationFrame(() => el.classList.remove('is-placed'));
         }
 
         function readLobbyEwe(el) {
@@ -959,15 +998,16 @@
 
         function randomLobbyPoint(occupied, selfEl) {
             const field = pastureField();
-            let spot = { gx: (field.left + field.right) / 2, gy: (field.top + field.bottom) / 2 };
+            let spot = clampLobbyPoint((field.left + field.right) / 2, (field.top + field.bottom) / 2);
             for (let i = 0; i < 36; i += 1) {
+                const floor = minFootGy((field.left + field.right) / 2);
                 const t = Math.pow(Math.random(), 0.82);
-                const gy = field.top + t * (field.bottom - field.top);
+                const gy = floor + t * (field.bottom - floor);
                 const xs = fieldXRange(gy);
-                const next = {
-                    gx: xs.left + Math.random() * (xs.right - xs.left),
+                const next = clampLobbyPoint(
+                    xs.left + Math.random() * (xs.right - xs.left),
                     gy
-                };
+                );
                 spot = next;
                 if (spotIsClear(next.gx, next.gy, occupied, selfEl)) break;
             }
@@ -998,8 +1038,14 @@
                 const hash = nameHash(player.name || player.id || String(index));
                 const id = String(player.stableId || player.id || player.name);
                 const prior = occupied.find((p) => p.id === id && Number.isFinite(p.gx) && Number.isFinite(p.gy));
-                const spot = prior || randomLobbyPoint(occupied);
-                if (!prior) occupied.push({ id, gx: spot.gx, gy: spot.gy, w: 90 });
+                const raw = prior || randomLobbyPoint(occupied);
+                const spot = clampLobbyPoint(raw.gx, raw.gy);
+                if (prior) {
+                    prior.gx = spot.gx;
+                    prior.gy = spot.gy;
+                } else {
+                    occupied.push({ id, gx: spot.gx, gy: spot.gy, w: 90 });
+                }
                 const depth = lobbyDepth(spot.gy);
                 return {
                     id,
@@ -1035,8 +1081,14 @@
                 const hash = nameHash(player.name || player.id || String(index));
                 const id = String(player.stableId || player.id || player.name);
                 const prior = occupied.find((p) => p.id === id && Number.isFinite(p.gx) && Number.isFinite(p.gy));
-                const spot = prior || randomLobbyPoint(occupied);
-                if (!prior) occupied.push({ id, gx: spot.gx, gy: spot.gy, w: 90 });
+                const raw = prior || randomLobbyPoint(occupied);
+                const spot = clampLobbyPoint(raw.gx, raw.gy);
+                if (prior) {
+                    prior.gx = spot.gx;
+                    prior.gy = spot.gy;
+                } else {
+                    occupied.push({ id, gx: spot.gx, gy: spot.gy, w: 90 });
+                }
                 const depth = lobbyDepth(spot.gy);
                 const p = pen[index] || { x: 80, y: 70, z: 10, scale: 1 };
                 const o = gate[index] || { x: 60, y: 70, z: 10, scale: 1 };
@@ -1551,6 +1603,7 @@
             if (roaming) {
                 if (existing) {
                     syncLobbyFlock(chorus, slots);
+                    chorus.querySelectorAll('.tv-ewe').forEach(pinEweToGrass);
                     chorus.getBoundingClientRect();
                     chorus.style.setProperty('--ewe-base', nextBase);
                     window.setTimeout(nudgeOverlappingLobbyEwes, 480);
