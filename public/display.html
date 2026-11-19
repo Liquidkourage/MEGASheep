@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T19-42-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T19-52-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -631,7 +631,7 @@
             return `${n} of ${total} in the pen. Last ones out of the pasture!`;
         }
 
-        const EWE_ART = `<span class="tv-ewe-art" aria-hidden="true"></span>`;
+        const EWE_ART = `<span class="tv-ewe-art" aria-hidden="true"><span class="tv-ewe-strip"></span></span>`;
 
         function escapeDisplayText(value) {
             return String(value || '')
@@ -784,12 +784,17 @@
                         requestAnimationFrame(() => el.classList.remove('is-placed'));
                     } else {
                         el.classList.add('is-walking', 'is-in');
+                        let done = false;
                         const finish = (event) => {
                             if (event && event.propertyName && event.propertyName !== 'left') return;
+                            if (done) return;
+                            done = true;
                             el.classList.remove('is-walking');
                             el.removeEventListener('transitionend', finish);
                         };
                         el.addEventListener('transitionend', finish);
+                        const walkMs = (parseFloat(getComputedStyle(el).getPropertyValue('--walk')) || 2) * 1000;
+                        window.setTimeout(finish, walkMs + 80);
                     }
                 } else {
                     el.classList.remove('is-in', 'is-walking');

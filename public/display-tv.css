@@ -723,40 +723,67 @@ html, body {
     width: 100%;
     aspect-ratio: 1.25 / 1;
     overflow: hidden;
+}
+
+.tv-ewe-strip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 400%;
     background-repeat: no-repeat;
-    background-position: 0 0;
-    background-size: 400% 100%;
-    background-image: url("sprites/sheep-graze-sheet.png?v=2026-11-18T19-40-00");
+    background-size: 100% 100%;
+    background-image: url("sprites/sheep-graze-sheet.png?v=2026-11-18T19-52-00");
     image-rendering: pixelated;
     image-rendering: crisp-edges;
-    animation: eweSheet 0.9s steps(4) infinite;
+    animation: eweStrip 0.88s infinite;
     animation-delay: var(--idle, 0s);
 }
 
-.tv-ewe.is-walking .tv-ewe-art {
-    background-image: url("sprites/sheep-walk-sheet.png?v=2026-11-18T19-40-00");
-    animation: eweSheet 0.4s steps(4) infinite;
+.tv-ewe.is-walking .tv-ewe-strip {
+    background-image: url("sprites/sheep-walk-sheet.png?v=2026-11-18T19-52-00");
+    animation-name: eweStripWalk;
+    animation-duration: 0.48s;
     animation-delay: 0s;
 }
 
-.tv-ewe.is-in:not(.is-walking) .tv-ewe-art {
-    background-image: url("sprites/sheep-stand-sheet.png?v=2026-11-18T19-40-00");
-    animation: eweSheet 1.2s steps(4) infinite;
+.tv-ewe.is-in:not(.is-walking) .tv-ewe-strip {
+    background-image: url("sprites/sheep-stand-sheet.png?v=2026-11-18T19-52-00");
+    animation-name: eweStripStand;
+    animation-duration: 1.16s;
     animation-delay: var(--idle, 0s);
 }
 
-.tv-key .tv-ewe-art {
-    animation: eweSheet 0.9s steps(4) infinite;
+.tv-key .tv-ewe-strip {
+    animation-name: eweStrip;
+    animation-duration: 0.88s;
 }
 
-.tv-key.is-in .tv-ewe-art {
-    background-image: url("sprites/sheep-stand-sheet.png?v=2026-11-18T19-40-00");
-    animation: eweSheet 1.2s steps(4) infinite;
+.tv-key.is-in .tv-ewe-strip {
+    background-image: url("sprites/sheep-stand-sheet.png?v=2026-11-18T19-52-00");
+    animation-name: eweStripStand;
+    animation-duration: 1.16s;
 }
 
-@keyframes eweSheet {
-    from { background-position: 0 0; }
-    to { background-position: -400% 0; }
+@keyframes eweStrip {
+    0%, 24.99% { transform: translateX(0); }
+    25%, 49.99% { transform: translateX(-25%); }
+    50%, 74.99% { transform: translateX(-50%); }
+    75%, 100% { transform: translateX(-75%); }
+}
+
+@keyframes eweStripWalk {
+    0%, 24.99% { transform: translateX(0); }
+    25%, 49.99% { transform: translateX(-25%); }
+    50%, 74.99% { transform: translateX(-50%); }
+    75%, 100% { transform: translateX(-75%); }
+}
+
+@keyframes eweStripStand {
+    0%, 24.99% { transform: translateX(0); }
+    25%, 49.99% { transform: translateX(-25%); }
+    50%, 74.99% { transform: translateX(-50%); }
+    75%, 100% { transform: translateX(-75%); }
 }
 
 .tv-ewe figcaption {
@@ -792,7 +819,7 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
     .tv-ewe { transition: none; }
-    .tv-ewe-art { animation: none !important; }
+    .tv-ewe-strip { animation: none !important; }
 }
 
 .tv-pasture-bar {
