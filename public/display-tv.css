@@ -1995,7 +1995,7 @@ html, body {
 .tv-score-banners {
     position: absolute;
     inset: 0;
-    z-index: 8;
+    z-index: auto;
     pointer-events: none;
 }
 
@@ -2003,7 +2003,7 @@ html, body {
     position: absolute;
     left: var(--x, 50%);
     top: var(--y, 79%);
-    z-index: 8;
+    z-index: var(--z, 8);
     width: min(var(--w, 11vw), 210px);
     transform: translate(-50%, calc(-100% - 28%)) rotate(var(--tilt, 0deg));
     transform-origin: 50% 100%;

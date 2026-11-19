@@ -8,8 +8,8 @@ alwaysApply: true
 On the audience scoring, round-standings, and finale screens (`/display` scoring, roundComplete, overallLeaderboard, finished), text is either large enough to read from across the room or it does not belong on this screen.
 
 - These screens share the cartoon night meadow. Panels are opaque outlined signs, not glass cards.
-- On scoring, plant answers as wooden banners held by the sheep who scored them. One or more holders carry that board together. Clip the stake so it reads as a carried board, not a post in the ground.
-- Extra scored groups parade as the same thing: a banner with its holders walking across the meadow. Do not reveal leftover answers as sky words.
+- On scoring, every scored answer is a wooden banner held by the sheep who scored it. One sheep or a whole cluster carries that board together. Clip the stake so it reads as a carried board, not a post in the ground.
+- Do not park five answers and send the rest on a parade. Do not reveal leftover answers as sky words.
 - Missed correct answers have no holders. Sheep grazing aside scored nothing on this question.
 - Keep only words that carry the reveal: the prompt (on scoring), the round, ranks, sheep names, scores, and answers with their points.
 - Do not duplicate a player count in text. The flock at a banner is the count.

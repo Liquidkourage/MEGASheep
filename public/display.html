@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T13-55-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T14-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -840,9 +840,8 @@
         const RESULTS_FIELD = { left: 8, right: 92, top: 64, bottom: 93 };
         const RESULTS_FAR = { left: 22, right: 78, y: 66 };
         const RESULTS_NEAR = { left: 8, right: 92, y: 92 };
-        const SCORE_BANNER_LEFT = 16;
-        const SCORE_BANNER_RIGHT = 70;
-        const SCORE_BANNER_FIELD = 5;
+        const SCORE_BANNER_LEFT = 14;
+        const SCORE_BANNER_RIGHT = 72;
         const SCORE_NAME_AT = 2;
         const PEN_FAR = { left: 70, right: 84, y: 62 };
         const PEN_NEAR = { left: 64, right: 88, y: 86 };
@@ -1264,29 +1263,57 @@
             });
         }
 
-        const PARADE_PARK_X = -28;
-        const PARADE_START_X = -16;
-        const PARADE_END_X = 118;
-        const PARADE_Y = 83;
-        const SCORE_PARADE_HOLDERS = 12;
+        function scoreBannerZ(gy) {
+            const span = RESULTS_FIELD.bottom - RESULTS_FIELD.top;
+            const t = Math.min(1, Math.max(0, (gy - RESULTS_FIELD.top) / span));
+            return Math.round(8 + t * 52);
+        }
+
+        function scoreRowPlan(n) {
+            if (n <= 6) return [n];
+            const front = Math.ceil(n / 2);
+            return [front, n - front];
+        }
 
         function layoutScoreBanners(groups) {
             const n = groups.length;
+            const plan = scoreRowPlan(n);
             const left = SCORE_BANNER_LEFT;
             const right = SCORE_BANNER_RIGHT;
             const span = right - left;
-            const tilts = [-0.9, 0.7, -0.45, 1.0, -0.65, 0.5];
-            return groups.map((group, index) => {
-                const x = n <= 1 ? 42 : left + ((index + 0.5) / n) * span;
-                const y = 79 + ((index % 2) * 2.2) + ((index % 3) - 1) * 0.6;
-                const width = n <= 1 ? 11.2 : Math.min(11, Math.max(9.4, (span / n) * 0.68));
-                return Object.assign({}, group, {
-                    x,
-                    y,
-                    width,
-                    tilt: tilts[index % tilts.length]
-                });
+            const tilts = [-0.9, 0.7, -0.45, 1.0, -0.65, 0.5, -0.3, 0.85];
+            const rowY = plan.length === 1 ? [79] : [85, 70];
+            const rowW = plan.map((count, row) => {
+                if (n <= 1) return 12;
+                const fill = row === 0 ? 0.62 : 0.58;
+                const minW = row === 0 ? 5.8 : 5.4;
+                const maxW = row === 0 ? 10.4 : 8.4;
+                return Math.min(maxW, Math.max(minW, (span / Math.max(1, count)) * fill));
             });
+            const out = [];
+            let i = 0;
+            plan.forEach((count, row) => {
+                const slot = span / Math.max(1, count);
+                const stagger = row % 2 ? slot * 0.12 : 0;
+                for (let col = 0; col < count; col += 1) {
+                    const group = groups[i];
+                    i += 1;
+                    if (!group) return;
+                    const x = count <= 1
+                        ? (left + right) / 2
+                        : Math.min(right - 1.2, Math.max(left + 1.2, left + (col + 0.5) * slot + stagger));
+                    const y = rowY[row] + (col % 2 ? 0.6 : 0);
+                    out.push(Object.assign({}, group, {
+                        x,
+                        y,
+                        width: rowW[row],
+                        tilt: tilts[(i + row) % tilts.length],
+                        row,
+                        z: Math.max(4, scoreBannerZ(y) - 2)
+                    }));
+                }
+            });
+            return out;
         }
 
         function scoreAnswerModels() {
@@ -1309,29 +1336,33 @@
                 players: [],
                 count: 0
             }));
-            return {
-                field: layoutScoreBanners(hits.slice(0, SCORE_BANNER_FIELD)),
-                parade: hits.slice(SCORE_BANNER_FIELD).concat(misses)
-            };
+            return { field: layoutScoreBanners(hits.concat(misses)) };
         }
 
-        function packBannerHolders(count, x, y) {
+        function packBannerHolders(count, x, y, maxHalf) {
             const n = Math.max(1, count);
+            const crowd = n > 10 ? 0.7 : n > 5 ? 0.82 : 1;
+            const cap = Math.max(2.1, Number(maxHalf) || 5.2);
+            const withZ = (slot) => Object.assign({}, slot, {
+                z: scoreBannerZ(slot.y),
+                scale: (slot.scale || 1) * crowd
+            });
             if (n === 1) {
-                return [{ x, y: y + 2.2, z: 24, scale: 1 }];
+                return [withZ({ x, y: y + 2.2, scale: 1 })];
             }
             if (n === 2) {
+                const spread = Math.min(2.6, cap);
                 return [
-                    { x: x - 3.4, y: y + 2.0, z: 23, scale: 1 },
-                    { x: x + 3.4, y: y + 2.4, z: 25, scale: 1 }
+                    withZ({ x: x - spread, y: y + 2.0, scale: 1 }),
+                    withZ({ x: x + spread, y: y + 2.4, scale: 1 })
                 ];
             }
-            const half = Math.min(6.2, 3.0 + Math.min(n, 10) * 0.32);
+            const half = Math.min(cap, n <= 4 ? 1.7 + n * 0.2 : 2.2 + Math.min(n, 14) * 0.12);
             return packTrapezoid(
                 n,
-                { left: x - half * 0.42, right: x + half * 0.42, y: y + 0.4 },
-                { left: x - half, right: x + half, y: y + 5.2 }
-            );
+                { left: x - half * 0.4, right: x + half * 0.4, y: y + 0.2 },
+                { left: x - half, right: x + half, y: y + 4.6 }
+            ).map(withZ);
         }
 
         function claimScoreMembers(list, claimed, group) {
@@ -1346,14 +1377,15 @@
         }
 
         function placeScoreFlock(list, names) {
-            const { field, parade } = scoreAnswerModels();
+            const { field } = scoreAnswerModels();
             const claimed = new Set();
             const byPlayer = new Map();
             field.forEach((banner) => {
+                if (banner.kind === 'miss') return;
                 const members = claimScoreMembers(list, claimed, banner);
                 if (!members.length) return;
                 const named = members.length <= SCORE_NAME_AT;
-                const packed = packBannerHolders(members.length, banner.x, banner.y);
+                const packed = packBannerHolders(members.length, banner.x, banner.y, banner.width * 0.38);
                 members.forEach((player, index) => {
                     const slot = resultSlot(player, names, packed[index], {
                         named,
@@ -1362,21 +1394,6 @@
                     });
                     slot.mood = 'idle';
                     byPlayer.set(player, slot);
-                });
-            });
-            parade.forEach((group) => {
-                const members = claimScoreMembers(list, claimed, group);
-                members.forEach((player, index) => {
-                    byPlayer.set(player, resultSlot(player, names, {
-                        x: PARADE_PARK_X - (index % 5) * 1.4,
-                        y: PARADE_Y + (index % 3) * 1.2,
-                        z: 40,
-                        scale: 1
-                    }, {
-                        named: false,
-                        paradeWait: true,
-                        minGy: PARADE_Y - 2
-                    }));
                 });
             });
             const leftovers = list.filter((_, index) => !claimed.has(index));
@@ -2278,7 +2295,7 @@
             const tilt = extra.tilt != null ? extra.tilt : (group.tilt || 0);
             const wait = extra.wait ? ' is-parade-wait' : '';
             return `
-                <div class="tv-banner is-${group.kind}${wait}" data-answer="${escapeDisplayText(group.answer)}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --walk:0s">
+                <div class="tv-banner is-${group.kind}${wait}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${Number(group.count) || (group.players || []).length}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
                     <aside class="tv-sign tv-banner-sign">
                         <div class="tv-banner-clip">
                             <img class="tv-sign-art" src="sprites/meadow-sign.png?v=2026-11-18T27-20-00" alt="" aria-hidden="true">
@@ -2293,33 +2310,18 @@
         }
 
         function tvScoreBannerHtml() {
-            const { field, parade } = scoreAnswerModels();
+            const { field } = scoreAnswerModels();
             return `
                 <div class="tv-score-banners">
                     ${field.map((group) => tvBannerMarkup(group)).join('')}
-                    ${parade.map((group) => tvBannerMarkup(group, {
-                        wait: true,
-                        x: PARADE_PARK_X,
-                        y: PARADE_Y,
-                        width: 13,
-                        tilt: 0.35
-                    })).join('')}
                 </div>
             `;
         }
 
         function mountScoreBanners() {
-            const pasture = document.querySelector('.tv-pasture');
             const chorus = document.getElementById('flockChorus');
             const wrap = document.querySelector('.tv-score-banners');
-            if (pasture && chorus && wrap) pasture.insertBefore(wrap, chorus);
-        }
-
-        function scoreBannerEl(group) {
-            const root = document.querySelector('.tv-score-banners');
-            if (!root || !group) return null;
-            const answer = String(group.answer || '');
-            return Array.from(root.querySelectorAll('.tv-banner')).find((el) => el.dataset.answer === answer) || null;
+            if (chorus && wrap) chorus.appendChild(wrap);
         }
 
         function tvPodiumHtml(sorted) {
@@ -2359,137 +2361,6 @@
             paintMeadowScreen('tv-score', `<div class="tv-lobby-empty">${waitSheepHtml()}</div>`);
         }
 
-        function parkParadeEwes(els) {
-            els.forEach((el, index) => {
-                bumpEweWalk(el);
-                el.classList.add('is-placed');
-                el.classList.remove('is-walking', 'is-parade');
-                el.classList.add('is-parade-wait', 'is-crowd');
-                el.style.setProperty('--gx', `${PARADE_PARK_X - (index % 5) * 1.4}%`);
-                el.style.setProperty('--gy', `${PARADE_Y + (index % 3) * 1.2}%`);
-                el.style.setProperty('--walk', '0s');
-            });
-        }
-
-        function setScoreBannerPos(el, x, y, seconds) {
-            if (!el) return;
-            const walk = Number(seconds || 0);
-            el.style.setProperty('--walk', `${walk.toFixed(2)}s`);
-            if (walk <= 0) el.classList.add('is-placed');
-            el.getBoundingClientRect();
-            el.style.setProperty('--x', `${x}%`);
-            el.style.setProperty('--y', `${y}%`);
-        }
-
-        function parkScoreBanner(el) {
-            if (!el) return;
-            el.classList.remove('is-parade');
-            el.classList.add('is-parade-wait', 'is-placed');
-            setScoreBannerPos(el, PARADE_PARK_X, PARADE_Y, 0);
-        }
-
-        function paradeScoreGroup(group, gen, onDone) {
-            if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) {
-                if (onDone) onDone();
-                return;
-            }
-            const chorus = document.getElementById('flockChorus');
-            const names = ((gameState && gameState.players) || []).map((player) => player.name || 'Sheep');
-            const members = ((gameState && gameState.players) || [])
-                .filter((player) => playerMatchesGroup(player, group))
-                .slice(0, SCORE_PARADE_HOLDERS);
-            const els = members.map((player) => {
-                const id = String(player.stableId || player.id || player.name);
-                return chorus && chorus.querySelector(`.tv-ewe[data-id="${CSS.escape(id)}"]`);
-            }).filter(Boolean);
-            const banner = scoreBannerEl(group);
-            const seconds = 6.4;
-            const finish = () => {
-                parkParadeEwes(els);
-                parkScoreBanner(banner);
-                if (onDone) onDone();
-            };
-            if (banner) {
-                banner.classList.remove('is-parade-wait');
-                banner.classList.add('is-parade', 'is-placed');
-                setScoreBannerPos(banner, PARADE_START_X, PARADE_Y, 0);
-            }
-            const startWalk = (move) => {
-                window.requestAnimationFrame(() => {
-                    window.requestAnimationFrame(() => {
-                        if (gen !== scoreParadeGen) return;
-                        move();
-                    });
-                });
-            };
-            if (!els.length) {
-                if (!banner) {
-                    if (onDone) onDone();
-                    return;
-                }
-                startWalk(() => {
-                    banner.classList.remove('is-placed');
-                    setScoreBannerPos(banner, PARADE_END_X, PARADE_Y, seconds);
-                    window.setTimeout(() => {
-                        if (gen !== scoreParadeGen) return;
-                        finish();
-                    }, seconds * 1000 + 80);
-                });
-                return;
-            }
-            const start = packBannerHolders(els.length, PARADE_START_X, PARADE_Y);
-            const dest = packBannerHolders(els.length, PARADE_END_X, PARADE_Y);
-            let left = els.length;
-            const finishOne = () => {
-                left -= 1;
-                if (left > 0) return;
-                finish();
-            };
-            els.forEach((el, index) => {
-                const startSlot = resultSlot(members[index], names, start[index], {
-                    named: false,
-                    parade: true,
-                    tight: true,
-                    minGy: PARADE_Y - 2
-                });
-                el.classList.add('is-placed');
-                applyEweSlot(el, startSlot);
-                el.classList.remove('is-parade-wait', 'is-left');
-                el.classList.add('is-parade', 'is-crowd');
-            });
-            startWalk(() => {
-                if (banner) {
-                    banner.classList.remove('is-placed');
-                    setScoreBannerPos(banner, PARADE_END_X, PARADE_Y, seconds);
-                }
-                els.forEach((el, index) => {
-                    const destSlot = resultSlot(members[index], names, dest[index], {
-                        named: false,
-                        parade: true,
-                        tight: true,
-                        minGy: PARADE_Y - 2
-                    });
-                    el.classList.remove('is-placed');
-                    walkEweOnField(el, destSlot, finishOne, { minSeconds: seconds, maxSeconds: seconds });
-                });
-            });
-        }
-
-        function startScoreParade() {
-            const gen = scoreParadeGen;
-            const parade = scoreAnswerModels().parade;
-            if (!parade.length) return;
-            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-            let i = 0;
-            const next = () => {
-                if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) return;
-                const group = parade[i % parade.length];
-                i += 1;
-                paradeScoreGroup(group, gen, () => window.setTimeout(next, 420));
-            };
-            window.setTimeout(next, 2400);
-        }
-
         function showScoringScreen() {
             scoreParadeGen += 1;
             const meta = playRoundMeta();
@@ -2510,7 +2381,6 @@
             `);
             mountScoreBanners();
             armBoardScroll('scoreRankBoard', players.length);
-            startScoreParade();
         }
 
         function layoutLobbyPlayers() {
