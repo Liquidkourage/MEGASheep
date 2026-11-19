@@ -648,6 +648,11 @@ html, body {
     font-size: clamp(1.35rem, 34cqi, 2.6rem);
 }
 
+.tv-play .tv-ewe:not(.is-in) figcaption,
+.tv-play .tv-ewe.is-walking figcaption {
+    display: none;
+}
+
 .tv-lobby-empty[hidden] {
     display: none;
 }
@@ -1361,11 +1366,7 @@ html, body {
     pointer-events: none;
 }
 
-.tv-ewe.is-in figcaption {
-    opacity: 1;
-}
-
-.tv-ewe.is-outside figcaption {
+.tv-ewe.is-in:not(.is-walking) figcaption {
     opacity: 1;
 }
 
