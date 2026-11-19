@@ -1,0 +1,14 @@
+---
+description: Lobby text is either huge or gone
+alwaysApply: true
+---
+
+# Lobby Text Earns Its Place
+
+On the audience lobby (`/display` waiting / game lobby), text is either large enough to read from across the room or it does not belong on this screen.
+
+- Keep only words that help someone join or recognize a player: the join prompt, the game code, sheep names, and an empty-flock wait line.
+- Do not add captions, status chips, URLs, “scan to join” labels, player-count lines, or screen titles that merely name the scene.
+- Size kept type for a 1920×1080 landscape TV viewed from across a room.
+- The flock of sheep is the player count. Do not duplicate it in text.
+- This is a video canvas rule. It does not apply to the host console or player phones.

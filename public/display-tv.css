@@ -233,35 +233,9 @@ html, body {
     z-index: 1;
 }
 
-.tv-lobby-heading {
-    position: absolute;
-    top: clamp(22px, 2.4vw, 40px);
-    left: clamp(28px, 3vw, 52px);
-    right: clamp(28px, 3vw, 52px);
-    z-index: 8;
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-    pointer-events: none;
-}
-
-.tv-lobby-heading h1 {
-    font-size: var(--tv-heading);
-    margin: 0;
-    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
-}
-
-.tv-lobby-heading .display-status {
-    font-size: var(--tv-body);
-    opacity: 0.85;
-    width: auto;
-    margin: 0;
-}
-
 .tv-lobby .tv-flock {
     z-index: 9;
-    left: calc(min(420px, 30vw) + clamp(28px, 3vw, 52px) + 28px);
+    left: calc(min(460px, 32vw) + clamp(28px, 3vw, 52px) + 28px);
     right: clamp(20px, 2vw, 36px);
     top: 44%;
     bottom: clamp(12px, 2.2vh, 28px);
@@ -276,27 +250,40 @@ html, body {
     top: 56%;
     transform: translateY(-50%);
     z-index: 8;
-    width: min(420px, 30vw);
+    width: min(460px, 32vw);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: clamp(20px, 2vw, 32px);
-    gap: 14px;
+    padding: clamp(22px, 2.2vw, 36px);
+    gap: 18px;
     background: var(--tv-panel);
     border: 1px solid var(--tv-border);
     border-radius: calc(var(--tv-radius) + 6px);
 }
 
 .tv-lobby-join .display-title {
-    font-size: clamp(2.2rem, 4.4vh, 3.4rem) !important;
+    font-size: clamp(2.8rem, 6vh, 4.6rem) !important;
+    line-height: 0.95;
     text-align: center;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
 }
 
 .tv-lobby-join .qr-code img {
-    width: min(280px, 26vh) !important;
-    height: min(280px, 26vh) !important;
+    width: min(320px, 30vh) !important;
+    height: min(320px, 30vh) !important;
+}
+
+.tv-lobby-code {
+    margin: 0;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: var(--tv-code);
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    color: #f6ecc4;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
 }
 
 .tv-lobby-join.is-nibbled {
@@ -318,14 +305,22 @@ html, body {
     position: absolute;
     left: 38%;
     right: 6%;
-    top: 48%;
+    top: 58%;
     z-index: 6;
     margin: 0;
     text-align: center;
-    font-size: var(--tv-heading);
-    opacity: 0.7;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(2.8rem, 6.4vh, 5.2rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: #fff;
     pointer-events: none;
     text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+}
+
+.tv-lobby .tv-ewe figcaption {
+    font-size: clamp(1.35rem, 34cqi, 2.6rem);
 }
 
 .tv-lobby-empty[hidden] {

@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T25-12-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T25-20-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -605,17 +605,12 @@
             document.getElementById('displayScreen').innerHTML = `
                 <div class="tv-stage tv-lobby">
                     ${pastureSceneHtml({ pen: false })}
-                    <div class="tv-lobby-heading">
-                        <h1>Game Lobby</h1>
-                        <p class="display-status">${count} player${count === 1 ? '' : 's'}</p>
-                    </div>
                     <aside class="tv-lobby-join">
                         <h1 class="display-title">Join the flock</h1>
-                        <p class="qr-label">Scan to join</p>
                         <div id="qrCodeWaiting" class="qr-code"></div>
-                        <p class="game-url">megasheep.liquidkourage.com<br>Game code <span class="game-code-highlight">${displayGameCode || 'XXXX'}</span></p>
+                        <p class="tv-lobby-code">${displayGameCode || 'XXXX'}</p>
                     </aside>
-                    <p class="tv-lobby-empty" id="lobbyEmpty">Waiting for the flock…</p>
+                    <p class="tv-lobby-empty" id="lobbyEmpty"${count ? ' hidden' : ''}>Waiting for the flock</p>
                 </div>
             `;
             layoutLobbyPlayers();
@@ -1774,10 +1769,6 @@
         function layoutLobbyPlayers() {
             if (!document.querySelector('.tv-lobby') || !gameState) return;
             const players = gameState.players || [];
-            const status = document.querySelector('.tv-lobby .display-status');
-            if (status) {
-                status.textContent = `${players.length} player${players.length === 1 ? '' : 's'}`;
-            }
             const chorus = document.getElementById('flockChorus');
             if (chorus && chorus.dataset.flockKey !== flockKey(players)) {
                 renderFlock(players);
