@@ -725,6 +725,12 @@ html, body {
     filter: drop-shadow(0 0 8px rgba(243, 235, 208, 0.2));
 }
 
+.tv-ewe.is-outside {
+    left: var(--ox);
+    top: var(--oy);
+    z-index: 46;
+}
+
 .tv-ewe-art {
     position: relative;
     display: block;
@@ -783,6 +789,71 @@ html, body {
     background-image: url("sprites/sheep-03-idle.png?v=2026-11-18T20-05-00");
 }
 
+.tv-ewe.is-outside:not(.is-walking) .tv-ewe-strip {
+    width: 1200%;
+    background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
+    animation: eweIdle 0.4s steps(12, jump-none) infinite;
+    animation-delay: var(--idle, 0s);
+}
+
+.tv-ewe[data-coat="2"].is-outside:not(.is-walking) .tv-ewe-strip {
+    background-image: url("sprites/sheep-02-idle.png?v=2026-11-18T20-05-00");
+}
+
+.tv-ewe[data-coat="3"].is-outside:not(.is-walking) .tv-ewe-strip {
+    background-image: url("sprites/sheep-03-idle.png?v=2026-11-18T20-05-00");
+}
+
+.tv-thought {
+    position: absolute;
+    left: 56%;
+    bottom: 92%;
+    width: 46%;
+    min-width: 26px;
+    aspect-ratio: 1;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: #f4ead0;
+    border-radius: 50%;
+    z-index: 8;
+    pointer-events: none;
+}
+
+.tv-thought::before,
+.tv-thought::after {
+    content: "";
+    position: absolute;
+    background: #f4ead0;
+    border-radius: 50%;
+}
+
+.tv-thought::before {
+    width: 30%;
+    height: 30%;
+    left: -10%;
+    bottom: -16%;
+}
+
+.tv-thought::after {
+    width: 16%;
+    height: 16%;
+    left: -22%;
+    bottom: -36%;
+}
+
+.tv-thought b {
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-weight: 800;
+    font-size: clamp(0.95rem, 2.3vh, 1.7rem);
+    color: #1b2430;
+    line-height: 1;
+}
+
+.tv-ewe.is-outside .tv-thought {
+    display: flex;
+}
+
 .tv-key .tv-ewe-strip {
     width: 1300%;
     background-image: url("sprites/sheep-01-eat.png?v=2026-11-18T20-05-00");
@@ -834,6 +905,14 @@ html, body {
     font-size: clamp(0.62rem, 1vh, 0.78rem);
     max-width: 8ch !important;
     padding: 1px 4px;
+}
+
+.tv-ewe.is-in:not(.is-walking) figcaption {
+    opacity: 0;
+}
+
+.tv-ewe.is-outside figcaption {
+    opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {

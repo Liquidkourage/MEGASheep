@@ -1894,6 +1894,16 @@ function answerUpdatePayload(game) {
             players: Array.from(game.players.values()),
             answersBySocket: rawAnswers,
             currentAnswerGroups: game.currentAnswerGroups || []
+        }),
+        sentBackPlayers: lockstep.sentBackPlayersFromState({
+            pendingEdits: Array.from((game.answersNeedingEdit || new Map()).entries()).map(([sid, info]) => {
+                const p = game.players.get(sid);
+                return {
+                    socketId: sid,
+                    stableId: p && p.stableId,
+                    playerName: p && p.name
+                };
+            })
         })
     };
 }

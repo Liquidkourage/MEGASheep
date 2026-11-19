@@ -58,6 +58,25 @@ function answeredPlayersFromState(state) {
   return out;
 }
 
+function sentBackPlayersFromState(state) {
+  const pending = Array.isArray(state && state.pendingEdits) ? state.pendingEdits : [];
+  const seen = new Set();
+  const out = [];
+  pending.forEach((entry) => {
+    if (!entry) return;
+    const name = String(entry.playerName || '').trim();
+    if (!name) return;
+    const key = name.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({
+      id: String(entry.stableId || entry.socketId || name),
+      name
+    });
+  });
+  return out;
+}
+
 function publicPlayersFromState(state) {
   const players = Array.isArray(state && state.players) ? state.players : [];
   return players.map((p) => ({
@@ -119,6 +138,7 @@ function redactStateForViewer(state, viewer) {
     view.myPendingEdit = null;
     view.players = publicPlayersFromState(state);
     view.answeredPlayers = answeredPlayersFromState(state);
+    view.sentBackPlayers = sentBackPlayersFromState(state);
     if (live) {
       view.currentAnswerGroups = [];
       view.categorizationData = null;
@@ -174,6 +194,7 @@ module.exports = {
   isLiveAnsweringPhase,
   answersReceivedFromState,
   answeredPlayersFromState,
+  sentBackPlayersFromState,
   findMyAnswer,
   viewerRoleFromInfo,
   redactStateForViewer,

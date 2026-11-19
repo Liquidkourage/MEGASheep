@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T20-41-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T20-50-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -406,7 +406,7 @@
                 console.log('Answers received:', data.answersReceived, 'Total players:', data.totalPlayers);
                 
                 // Update response indicator for both 'playing' and 'questionActive' states
-                if (gameState && (gameState.gameState === 'playing' || gameState.gameState === 'questionActive')) {
+                if (gameState && (gameState.gameState === 'playing' || gameState.gameState === 'questionActive' || gameState.gameState === 'grading')) {
                     // Prefer authoritative snapshot if provided
                     let count = data.answersReceived;
                     try {
@@ -424,6 +424,9 @@
                     } catch (_) {}
                     if (Array.isArray(data.answeredPlayers) && gameState) {
                         gameState.answeredPlayers = data.answeredPlayers;
+                    }
+                    if (Array.isArray(data.sentBackPlayers) && gameState) {
+                        gameState.sentBackPlayers = data.sentBackPlayers;
                     }
                     updateResponseIndicator(count, data.totalPlayers, data.answeredPlayers);
                     console.log('✅ Updated response indicator');
@@ -464,8 +467,17 @@
                     showPlayingScreen();
                     break;
                 case 'grading':
-                    console.log('📺 Showing grading screen');
-                    showGradingScreen();
+                    console.log('📺 Keeping pasture on screen during grading');
+                    if (!document.querySelector('#displayScreen .tv-play')) {
+                        showPlayingScreen();
+                    } else {
+                        updateDisplayTimer(typeof gameState.timeLeft === 'number' ? gameState.timeLeft : 0);
+                        updateResponseIndicator(
+                            gameState.answersReceived || 0,
+                            (gameState.players || []).length,
+                            gameState.answeredPlayers
+                        );
+                    }
                     break;
                 case 'scoring':
                     console.log('📺 Showing scoring screen');
@@ -631,7 +643,7 @@
             return `${n} of ${total} in the pen. Last ones out of the pasture!`;
         }
 
-        const EWE_ART = `<span class="tv-ewe-art" aria-hidden="true"><span class="tv-ewe-strip"></span></span>`;
+        const EWE_ART = `<span class="tv-thought" aria-hidden="true"><b>?</b></span><span class="tv-ewe-art" aria-hidden="true"><span class="tv-ewe-strip"></span></span>`;
 
         function escapeDisplayText(value) {
             return String(value || '')
@@ -711,10 +723,12 @@
             const names = list.map((p) => p.name || 'Sheep');
             const graze = packRegion(list.length, { left: 4, right: 56, top: 48, bottom: 88 });
             const pen = packRegion(list.length, { left: 70, right: 91, top: 58, bottom: 86 });
+            const gate = packRegion(list.length, { left: 56, right: 67, top: 60, bottom: 84 });
             return list.map((player, index) => {
                 const hash = nameHash(player.name || player.id || String(index));
                 const g = graze[index] || { x: 20, y: 50, z: 10, scale: 1 };
                 const p = pen[index] || { x: 80, y: 50, z: 10, scale: 1 };
+                const o = gate[index] || { x: 60, y: 70, z: 10, scale: 1 };
                 return {
                     id: player.stableId || player.id || player.name,
                     name: player.name || 'Sheep',
@@ -723,6 +737,8 @@
                     gy: Math.min(90, Math.max(46, g.y + (((hash >> 3) % 5) - 2) * 0.7)),
                     px: Math.min(95, Math.max(66, p.x + ((hash % 5) - 2) * 0.2)),
                     py: Math.min(88, Math.max(48, p.y + (((hash >> 4) % 5) - 2) * 0.35)),
+                    ox: Math.min(68, Math.max(54, o.x + ((hash % 5) - 2) * 0.25)),
+                    oy: Math.min(86, Math.max(56, o.y + (((hash >> 4) % 5) - 2) * 0.3)),
                     scale: g.scale,
                     z: g.z,
                     coat: (hash % 2) + 1,
@@ -762,58 +778,72 @@
             chorus.dataset.dense = list.length > 28 ? '1' : '0';
             chorus.style.setProperty('--ewe-base', `${eweBaseSize(list.length)}px`);
             chorus.innerHTML = slots.map((slot) => `
-                <figure class="tv-ewe" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
+                <figure class="tv-ewe" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--ox:${slot.ox}%;--oy:${slot.oy}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
                     ${EWE_ART}
                     <figcaption>${escapeDisplayText(slot.label)}</figcaption>
                 </figure>
             `).join('');
         }
 
-        function walkSeconds(el) {
+        function walkSecondsTo(el, leftVar, topVar) {
             const chorus = document.getElementById('flockChorus');
             const field = (chorus || el).getBoundingClientRect();
-            const gx = parseFloat(el.style.getPropertyValue('--gx')) || 0;
-            const gy = parseFloat(el.style.getPropertyValue('--gy')) || 0;
-            const px = parseFloat(el.style.getPropertyValue('--px')) || 0;
-            const py = parseFloat(el.style.getPropertyValue('--py')) || 0;
-            const dist = Math.hypot(((px - gx) / 100) * field.width, ((py - gy) / 100) * field.height);
-            const body = el.getBoundingClientRect().width || 56;
+            const now = el.getBoundingClientRect();
+            const leftPct = parseFloat(el.style.getPropertyValue(`--${leftVar}`)) || 0;
+            const topPct = parseFloat(el.style.getPropertyValue(`--${topVar}`)) || 0;
+            const destX = field.left + (leftPct / 100) * field.width;
+            const destY = field.top + (topPct / 100) * field.height;
+            const dist = Math.hypot(destX - (now.left + now.width / 2), destY - (now.top + now.height * 0.72));
+            const body = now.width || 56;
             const cycle = 0.6;
             const stride = body * 1.25;
             const seconds = dist / (stride / cycle);
-            return Math.min(8, Math.max(cycle * 3, seconds));
+            return Math.min(8, Math.max(cycle * 2, seconds));
         }
 
-        function paintFlock(answeredPlayers, instant) {
+        function moveEwe(el, next, skipWalk) {
+            const destLeft = next.outside ? 'ox' : 'px';
+            const destTop = next.outside ? 'oy' : 'py';
+            const seconds = skipWalk ? 0 : walkSecondsTo(el, destLeft, destTop);
+            el.classList.remove('is-walking');
+            if (!skipWalk) el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
+            el.classList.toggle('is-outside', !!next.outside);
+            el.classList.toggle('is-in', !!next.inside);
+            if (skipWalk) {
+                el.classList.add('is-placed');
+                requestAnimationFrame(() => el.classList.remove('is-placed'));
+                return;
+            }
+            el.classList.add('is-walking');
+            let done = false;
+            const finish = (event) => {
+                if (event && event.propertyName && event.propertyName !== 'left') return;
+                if (done) return;
+                done = true;
+                el.classList.remove('is-walking');
+                el.removeEventListener('transitionend', finish);
+            };
+            el.addEventListener('transitionend', finish);
+            window.setTimeout(finish, seconds * 1000 + 80);
+        }
+
+        function paintFlock(answeredPlayers, instant, sentBackPlayers) {
             const chorus = document.getElementById('flockChorus');
             const answered = answeredLookup(answeredPlayers);
+            const sentBack = answeredLookup(sentBackPlayers);
             const skipWalk = instant || (chorus && chorus.dataset.ready !== '1');
             document.querySelectorAll('#flockChorus .tv-ewe').forEach((el) => {
-                const isIn = playerHasAnswered(el, answered);
-                const wasIn = el.classList.contains('is-in');
-                if (isIn === wasIn) return;
-                if (isIn) {
-                    if (skipWalk) {
-                        el.classList.add('is-placed');
-                        el.classList.add('is-in');
-                        requestAnimationFrame(() => el.classList.remove('is-placed'));
-                    } else {
-                        const seconds = walkSeconds(el);
-                        el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
-                        el.classList.add('is-walking', 'is-in');
-                        let done = false;
-                        const finish = (event) => {
-                            if (event && event.propertyName && event.propertyName !== 'left') return;
-                            if (done) return;
-                            done = true;
-                            el.classList.remove('is-walking');
-                            el.removeEventListener('transitionend', finish);
-                        };
-                        el.addEventListener('transitionend', finish);
-                        window.setTimeout(finish, seconds * 1000 + 80);
-                    }
+                const wantsOut = playerHasAnswered(el, sentBack);
+                const wantsIn = !wantsOut && playerHasAnswered(el, answered);
+                const isOut = el.classList.contains('is-outside');
+                const isIn = el.classList.contains('is-in');
+                if (wantsOut === isOut && wantsIn === isIn) return;
+                if (wantsOut) {
+                    moveEwe(el, { outside: true, inside: false }, skipWalk);
+                } else if (wantsIn) {
+                    moveEwe(el, { outside: false, inside: true }, skipWalk);
                 } else {
-                    el.classList.remove('is-in', 'is-walking');
+                    el.classList.remove('is-in', 'is-outside', 'is-walking');
                 }
             });
             if (chorus) chorus.dataset.ready = '1';
@@ -938,7 +968,11 @@
                 renderFlock(players);
             }
             const rebuilt = chorus && chorus.dataset.ready !== '1';
-            const painted = paintFlock((gameState && gameState.answeredPlayers) || answeredPlayers || [], rebuilt);
+            const painted = paintFlock(
+                (gameState && gameState.answeredPlayers) || answeredPlayers || [],
+                rebuilt,
+                (gameState && gameState.sentBackPlayers) || []
+            );
             const inCount = painted ? painted.inCount : (Number(responses) || 0);
             const flockTotal = painted ? painted.total : total;
             if (responseText) responseText.textContent = flockResponseLine(inCount, flockTotal);

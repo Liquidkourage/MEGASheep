@@ -71,8 +71,10 @@ function testRedactDisplayNeverGetsLiveAnswers() {
   assert.deepStrictEqual(view.pendingEdits, []);
   assert.ok(view.answersReceived >= 2);
   assert.deepStrictEqual(view.answeredPlayers.map((p) => p.name).sort(), ['Ada', 'Bea']);
+  assert.deepStrictEqual(view.sentBackPlayers.map((p) => p.name), ['Ada']);
   assert.ok(view.players.every((p) => !p.answers));
   assert.ok(!JSON.stringify(view.answeredPlayers).includes('Mars'));
+  assert.ok(!JSON.stringify(view.sentBackPlayers).includes('Mar'));
   assert.ok(!JSON.stringify(view.players).includes('secret-ada'));
 }
 
