@@ -235,7 +235,7 @@ html, body {
 
 .tv-lobby .tv-flock {
     z-index: 9;
-    left: calc(min(460px, 32vw) + clamp(28px, 3vw, 52px) + 28px);
+    left: calc(min(500px, 34vw) + clamp(28px, 3vw, 52px) + 28px);
     right: clamp(20px, 2vw, 36px);
     top: 44%;
     bottom: clamp(12px, 2.2vh, 28px);
@@ -250,7 +250,7 @@ html, body {
     top: 56%;
     transform: translateY(-50%);
     z-index: 8;
-    width: min(460px, 32vw);
+    width: min(500px, 34vw);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -258,22 +258,33 @@ html, body {
     text-align: center;
     padding: clamp(22px, 2.2vw, 36px);
     gap: 18px;
-    background: var(--tv-panel);
-    border: 1px solid var(--tv-border);
-    border-radius: calc(var(--tv-radius) + 6px);
+    background: #f4efe4;
+    border: 6px solid #1a140c;
+    border-radius: 32px;
+    box-shadow: 8px 10px 0 #1a140c;
 }
 
 .tv-lobby-join .display-title {
-    font-size: clamp(3.2rem, 7vh, 5.4rem) !important;
+    font-size: clamp(2.6rem, 5.2vh, 4.2rem) !important;
     line-height: 0.92;
-    letter-spacing: -0.04em;
+    letter-spacing: -0.05em;
+    width: 100%;
     text-align: center;
-    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+    color: #1a140c !important;
+    -webkit-text-fill-color: #1a140c !important;
+    text-shadow: none;
+}
+
+.tv-lobby-join .qr-code {
+    padding: 14px !important;
+    background: #fff;
+    border: 5px solid #1a140c;
+    border-radius: 22px;
 }
 
 .tv-lobby-join .qr-code img {
-    width: min(320px, 30vh) !important;
-    height: min(320px, 30vh) !important;
+    width: min(300px, 28vh) !important;
+    height: min(300px, 28vh) !important;
 }
 
 .tv-lobby-code {
@@ -283,8 +294,8 @@ html, body {
     font-weight: 900;
     letter-spacing: 0.14em;
     line-height: 1;
-    color: #f6ecc4;
-    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.55);
+    color: #1a140c;
+    text-shadow: none;
 }
 
 .tv-lobby-join.is-nibbled {
@@ -316,61 +327,30 @@ html, body {
 }
 
 .tv-lobby-wait {
-    position: relative;
     width: min(220px, 18vw);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.35));
+    overflow: visible;
+    filter: drop-shadow(6px 8px 0 #1a140c);
 }
 
-.tv-lobby-wait-ewe {
-    display: block;
-    width: 100%;
-    aspect-ratio: 1;
-    background-image: url("sprites/sheep-01-eat.png?v=2026-11-18T20-05-00");
-    background-size: 1200% 100%;
-    background-repeat: no-repeat;
-    animation: eweEat 1.2s steps(12, jump-none) infinite;
+.tv-lobby-wait-track {
+    fill: none;
+    stroke: #1a140c;
+    stroke-width: 18;
 }
 
-.tv-lobby-wait-dots {
-    position: absolute;
-    left: 62%;
-    top: 4%;
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    height: 36px;
+.tv-lobby-wait-arc {
+    fill: none;
+    stroke: #f6ecc4;
+    stroke-width: 10;
+    stroke-linecap: round;
+    stroke-dasharray: 72 192;
+    transform-origin: 50% 50%;
+    transform-box: view-box;
+    animation: lobbyWaitSpin 0.85s linear infinite;
 }
 
-.tv-lobby-wait-dots i {
-    display: block;
-    width: 14px;
-    height: 14px;
-    margin: 0;
-    border-radius: 50%;
-    background: #f6ecc4;
-    box-shadow: 0 0 0 3px #1a140c;
-    opacity: 0.4;
-    animation: lobbyWaitDot 1.6s ease-in-out infinite;
-}
-
-.tv-lobby-wait-dots i:nth-child(2) {
-    width: 11px;
-    height: 11px;
-    animation-delay: 0.2s;
-}
-
-.tv-lobby-wait-dots i:nth-child(3) {
-    width: 8px;
-    height: 8px;
-    animation-delay: 0.4s;
-}
-
-@keyframes lobbyWaitDot {
-    0%, 100% { opacity: 0.25; transform: translateY(6px); }
-    50% { opacity: 1; transform: translateY(-8px); }
+@keyframes lobbyWaitSpin {
+    to { transform: rotate(360deg); }
 }
 
 .tv-lobby .tv-ewe figcaption {
@@ -1131,7 +1111,7 @@ html, body {
     .tv-ewe { transition: none; }
     .tv-ewe-strip { animation: none !important; }
     .tv-lobby-join.is-nibbled { animation: none !important; }
-    .tv-lobby-wait-ewe, .tv-lobby-wait-dots i { animation: none !important; }
+    .tv-lobby-wait-arc { animation: none !important; }
     .tv-ewe-poof, .tv-ewe.is-poofing .tv-ewe-art, .tv-ewe.is-poofing figcaption { animation: none !important; }
 }
 
