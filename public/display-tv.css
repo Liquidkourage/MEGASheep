@@ -649,7 +649,12 @@ html, body {
 }
 
 .tv-play .tv-ewe:not(.is-in) figcaption,
-.tv-play .tv-ewe.is-walking figcaption {
+.tv-play .tv-ewe.is-walking figcaption,
+.tv-score .tv-ewe figcaption,
+.tv-standings .tv-ewe figcaption,
+.tv-final .tv-flock .tv-ewe figcaption,
+.tv-history .tv-ewe figcaption,
+.tv-podium .tv-ewe figcaption {
     display: none;
 }
 
@@ -993,7 +998,11 @@ html, body {
     display: none;
 }
 
-.tv-play .tv-ewe {
+.tv-play .tv-ewe,
+.tv-score .tv-ewe,
+.tv-standings .tv-ewe,
+.tv-final .tv-ewe,
+.tv-history .tv-ewe {
     container-type: normal;
 }
 
@@ -1273,7 +1282,11 @@ html, body {
     background-image: url("sprites/sheep-03-jump.png?v=2026-11-18T21-40-00");
 }
 
-.tv-play .tv-flock[data-dense="1"] .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip {
+.tv-play .tv-flock[data-dense="1"] .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip,
+.tv-score .tv-flock[data-dense="1"] .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip,
+.tv-standings .tv-flock[data-dense="1"] .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip,
+.tv-final .tv-flock[data-dense="1"] .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip,
+.tv-history .tv-flock[data-dense="1"] .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip {
     animation: none !important;
 }
 
@@ -1906,4 +1919,397 @@ html, body {
 .display-mode .no-answers {
     font-size: var(--tv-body);
     opacity: 0.75;
+}
+
+/* ---------- Meadow results / standings / finale ---------- */
+.tv-score,
+.tv-standings,
+.tv-final,
+.tv-history {
+    display: block;
+    position: relative;
+    padding: 0;
+    background: #071018;
+}
+
+.tv-score .tv-flock,
+.tv-standings .tv-flock,
+.tv-final .tv-flock,
+.tv-history .tv-flock {
+    z-index: 3;
+}
+
+.tv-score-top {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    z-index: 12;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.28em;
+    width: 100%;
+    min-width: 0;
+    padding: clamp(22px, 2.4vw, 40px) clamp(28px, 3vw, 52px) 8px;
+    pointer-events: none;
+}
+
+.tv-score .question-prompt,
+.tv-standings .question-prompt {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(3.2rem, 7.4vh, 6.2rem);
+    line-height: 1.02;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    text-align: left;
+    text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55);
+    max-width: min(22ch, 96%);
+    color: #fff;
+}
+
+.tv-boards {
+    position: absolute;
+    left: clamp(28px, 3vw, 52px);
+    right: clamp(28px, 3vw, 52px);
+    top: 36%;
+    bottom: 20%;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.9fr);
+    gap: clamp(18px, 1.8vw, 32px);
+    min-height: 0;
+    align-items: start;
+    pointer-events: none;
+}
+
+.tv-boards .tv-board {
+    height: fit-content;
+    max-height: 100%;
+}
+
+.tv-board {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    padding: clamp(18px, 1.8vw, 28px) clamp(20px, 2vw, 32px);
+    background: #f3e6c4;
+    color: #1a140c;
+    border: 6px solid #1a140c;
+    border-radius: 22px;
+    box-shadow:
+        inset 0 0 0 4px #d7b36a,
+        0 10px 0 #1a140c,
+        0 18px 28px rgba(0, 0, 0, 0.38);
+}
+
+.tv-board-wide {
+    position: absolute;
+    left: clamp(28px, 3vw, 52px);
+    right: auto;
+    top: 22%;
+    bottom: auto;
+    z-index: 10;
+    width: min(calc(100% - 56px), calc(var(--rank-cols, 1) * 420px + 72px));
+    height: fit-content;
+    max-height: 62%;
+}
+
+.tv-board-rest {
+    position: absolute;
+    right: clamp(28px, 3vw, 52px);
+    top: 18%;
+    bottom: auto;
+    width: min(38vw, 620px);
+    z-index: 10;
+    height: fit-content;
+    max-height: 70%;
+}
+
+.tv-answer-list,
+.tv-rank-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+.tv-rank-list {
+    display: grid;
+    grid-template-columns: repeat(var(--rank-cols, 1), minmax(0, 1fr));
+    column-gap: clamp(18px, 1.6vw, 28px);
+    row-gap: 0.18em;
+    align-content: start;
+}
+
+.tv-answer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: baseline;
+    gap: 0.35em 0.8em;
+    padding: 0.18em 0;
+    border-bottom: 3px solid rgba(26, 20, 12, 0.12);
+    font-family: Outfit, "Segoe UI", sans-serif;
+}
+
+.tv-answer:last-child {
+    border-bottom: 0;
+}
+
+.tv-answer-text {
+    min-width: 0;
+    font-size: clamp(2rem, 4.4vh, 3.4rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tv-answer-pts {
+    font-size: clamp(2.2rem, 4.8vh, 3.6rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: #2f6b32;
+}
+
+.tv-answer-n {
+    font-size: clamp(1.6rem, 3.2vh, 2.4rem);
+    font-weight: 800;
+    opacity: 0.55;
+    min-width: 1.4ch;
+    text-align: right;
+}
+
+.tv-answer.is-miss {
+    opacity: 0.48;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.tv-answer.is-wrong .tv-answer-text {
+    color: #6a3a28;
+}
+
+.tv-answer.is-wrong .tv-answer-pts,
+.tv-answer.is-wrong .tv-answer-n {
+    color: #6a3a28;
+}
+
+.tv-rank-row {
+    display: grid;
+    grid-template-columns: 2.2ch minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 0.4em 0.7em;
+    padding: 0.12em 0;
+    font-family: Outfit, "Segoe UI", sans-serif;
+}
+
+.tv-rank-n {
+    font-size: clamp(1.8rem, 3.6vh, 2.8rem);
+    font-weight: 800;
+    opacity: 0.45;
+    letter-spacing: -0.04em;
+}
+
+.tv-rank-name {
+    min-width: 0;
+    font-size: clamp(1.9rem, 3.8vh, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tv-rank-pts {
+    font-size: clamp(2.1rem, 4.2vh, 3.3rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+}
+
+.tv-rank-row.is-1 .tv-rank-n,
+.tv-rank-row.is-1 .tv-rank-pts {
+    color: #8a5a12;
+    opacity: 1;
+}
+
+.tv-rank-row.is-2 .tv-rank-n,
+.tv-rank-row.is-2 .tv-rank-pts {
+    color: #5a5348;
+    opacity: 1;
+}
+
+.tv-rank-row.is-3 .tv-rank-n,
+.tv-rank-row.is-3 .tv-rank-pts {
+    color: #8a4a1c;
+    opacity: 1;
+}
+
+.tv-podium {
+    position: absolute;
+    left: 4%;
+    right: 42%;
+    bottom: 6%;
+    top: 18%;
+    z-index: 11;
+    display: grid;
+    grid-template-columns: 1fr 1.18fr 1fr;
+    align-items: end;
+    gap: clamp(12px, 1.4vw, 28px);
+    pointer-events: none;
+}
+
+.tv-podium-spot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
+}
+
+.tv-podium-name {
+    margin: 0 0 0.15em;
+    max-width: 100%;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(2.2rem, 4.6vh, 3.8rem);
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: #f6ecc4;
+    text-align: center;
+    text-shadow: 0 4px 18px rgba(4, 10, 18, 0.7);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tv-podium-spot.is-1 .tv-podium-name {
+    font-size: clamp(2.8rem, 6vh, 5rem);
+}
+
+.tv-podium .tv-ewe {
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+    width: 168px;
+    margin: 0 0 -8%;
+    z-index: 2;
+}
+
+.tv-podium-spot.is-1 .tv-ewe {
+    width: 214px;
+}
+
+.tv-podium-spot.is-2 .tv-ewe {
+    width: 176px;
+}
+
+.tv-podium-spot.is-3 .tv-ewe {
+    width: 160px;
+}
+
+.tv-podium .tv-ewe .tv-ewe-strip {
+    background-size: 1200% 100%;
+    background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
+    animation: eweIdle 0.4s steps(12, jump-none) infinite;
+}
+
+.tv-podium .tv-ewe[data-coat="2"] .tv-ewe-strip {
+    background-image: url("sprites/sheep-02-idle.png?v=2026-11-18T20-05-00");
+}
+
+.tv-podium .tv-ewe[data-coat="3"] .tv-ewe-strip {
+    background-image: url("sprites/sheep-03-idle.png?v=2026-11-18T20-05-00");
+}
+
+.tv-crate {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.08em;
+    padding: 0.35em 0.4em 0.5em;
+    background: #c9c2b0;
+    border: 6px solid #1a140c;
+    border-radius: 14px 14px 20px 20px;
+    box-shadow:
+        inset 0 0 0 4px #e8dfc8,
+        0 10px 0 #1a140c;
+    color: #1a140c;
+    font-family: Outfit, "Segoe UI", sans-serif;
+}
+
+.tv-podium-spot.is-1 .tv-crate {
+    min-height: 28vh;
+    background: #e4c56b;
+    box-shadow:
+        inset 0 0 0 4px #f3e6c4,
+        0 10px 0 #1a140c;
+}
+
+.tv-podium-spot.is-2 .tv-crate {
+    min-height: 21vh;
+}
+
+.tv-podium-spot.is-3 .tv-crate {
+    min-height: 16vh;
+    background: #c4844a;
+    box-shadow:
+        inset 0 0 0 4px #e8c9a4,
+        0 10px 0 #1a140c;
+}
+
+.tv-crate span {
+    font-size: clamp(2.2rem, 5vh, 3.6rem);
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 1;
+    opacity: 0.55;
+}
+
+.tv-crate b {
+    font-size: clamp(2.8rem, 6.2vh, 4.6rem);
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 0.9;
+}
+
+.tv-history-boards {
+    position: absolute;
+    left: clamp(28px, 3vw, 52px);
+    right: clamp(28px, 3vw, 52px);
+    top: 18%;
+    bottom: 18%;
+    z-index: 10;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: clamp(16px, 1.6vw, 28px);
+    min-height: 0;
+}
+
+.tv-history-boards .tv-play-meta {
+    margin: 0 0 0.4em;
+    color: #1a140c;
+    text-shadow: none;
+    font-size: clamp(2rem, 4vh, 3rem);
+}
+
+.tv-standings .tv-score-top .tv-play-meta {
+    font-size: clamp(3.4rem, 8vh, 6.4rem);
+}
+
+@keyframes autoScrollDown {
+    0%, 12% { transform: translateY(0); }
+    88%, 100% { transform: translateY(-45%); }
 }

@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T04-45-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T09-00-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -734,6 +734,14 @@
             return !!document.querySelector('.tv-play');
         }
 
+        function isBoardPasture() {
+            return !!document.querySelector('.tv-score, .tv-standings, .tv-final, .tv-history');
+        }
+
+        function isQuietPasture() {
+            return isPlayPasture() || isBoardPasture();
+        }
+
         function flockSize() {
             return document.querySelectorAll('#flockChorus .tv-ewe').length;
         }
@@ -744,6 +752,7 @@
 
         function shouldRoam(el) {
             if (!el || !canPastureWander(el)) return false;
+            if (isBoardPasture()) return false;
             if (!isPlayPasture()) return true;
             const n = flockSize();
             if (n <= 24) return true;
@@ -836,6 +845,9 @@
 
         const LOBBY_FIELD = { left: 2, right: 98, top: 18, bottom: 90 };
         const PLAY_FIELD = { left: 3, right: 50, top: 52, bottom: 91 };
+        const RESULTS_FIELD = { left: 8, right: 92, top: 64, bottom: 93 };
+        const RESULTS_FAR = { left: 22, right: 78, y: 66 };
+        const RESULTS_NEAR = { left: 8, right: 92, y: 92 };
         const PEN_FAR = { left: 70, right: 84, y: 62 };
         const PEN_NEAR = { left: 64, right: 88, y: 86 };
         const PEN_FIELD = { left: 64, right: 88, top: 62, bottom: 86 };
@@ -843,11 +855,13 @@
         const GRASS_LINE = 0.55;
 
         function isPastureScene() {
-            return !!(document.querySelector('.tv-lobby') || document.querySelector('.tv-play'));
+            return !!document.querySelector('.tv-lobby, .tv-play, .tv-score, .tv-standings, .tv-final, .tv-history, .tv-intro');
         }
 
         function pastureField() {
-            return document.querySelector('.tv-play') ? PLAY_FIELD : LOBBY_FIELD;
+            if (document.querySelector('.tv-play')) return PLAY_FIELD;
+            if (isBoardPasture()) return RESULTS_FIELD;
+            return LOBBY_FIELD;
         }
 
         function canPastureWander(el) {
@@ -1055,7 +1069,7 @@
 
         function lobbySpotCrowded(gx, gy, occupied, selfEl) {
             const crowd = occupied || [];
-            if (!selfEl || crowd.length > 20 || isPlayPasture()) {
+            if (!selfEl || crowd.length > 20 || isQuietPasture()) {
                 return crowd.some((other) => {
                     if (!Number.isFinite(other.gx) || !Number.isFinite(other.gy)) return false;
                     return Math.hypot((other.gx || 0) - gx, ((other.gy || 0) - gy) * 1.15) < 9;
@@ -1205,6 +1219,30 @@
             });
         }
 
+        function placeResultsFlock(list, names) {
+            const graze = packTrapezoid(list.length, RESULTS_FAR, RESULTS_NEAR);
+            return list.map((player, index) => {
+                const hash = nameHash(player.name || player.id || String(index));
+                const g = graze[index] || { x: 50, y: 78, z: 10, scale: 1 };
+                return {
+                    id: player.stableId || player.id || player.name,
+                    name: player.name || 'Sheep',
+                    label: flockLabel(player.name || 'Sheep', names),
+                    gx: Math.min(RESULTS_NEAR.right, Math.max(RESULTS_NEAR.left, g.x + ((hash % 5) - 2) * 0.4)),
+                    gy: Math.min(RESULTS_NEAR.y, Math.max(RESULTS_FAR.y, g.y + (((hash >> 3) % 5) - 2) * 0.35)),
+                    px: 80,
+                    py: 70,
+                    ox: 60,
+                    oy: 70,
+                    scale: g.scale,
+                    z: g.z,
+                    coat: (hash % 2) + 1,
+                    idle: ((hash % 17) * 0.18).toFixed(2),
+                    mood: (hash % 3 === 0) ? 'eat' : 'idle'
+                };
+            });
+        }
+
         function placeFlock(players) {
             const list = sortedFlockPlayers(players);
             const names = list.map((p) => p.name || 'Sheep');
@@ -1213,6 +1251,9 @@
             }
             if (document.querySelector('.tv-play')) {
                 return placePlayFlock(list, names);
+            }
+            if (isBoardPasture()) {
+                return placeResultsFlock(list, names);
             }
             const graze = packRegion(list.length, { left: 4, right: 56, top: 48, bottom: 88 });
             const pen = packRegion(list.length, { left: 70, right: 91, top: 58, bottom: 86 });
@@ -1610,7 +1651,7 @@
 
         function nudgeOverlappingLobbyEwes() {
             const chorus = document.getElementById('flockChorus');
-            if (!chorus || !isPastureScene() || isPlayPasture()) return;
+            if (!chorus || !isPastureScene() || isQuietPasture()) return;
             const ewes = roamingEwes();
             if (ewes.length > 40) return;
             const boxes = ewes.map((el) => eweWorldBox(el));
@@ -1763,12 +1804,12 @@
             if (roaming) {
                 if (existing) {
                     syncLobbyFlock(chorus, slots);
-                    if (!isPlayPasture()) {
+                    if (!isQuietPasture()) {
                         chorus.querySelectorAll('.tv-ewe').forEach(pinEweToGrass);
                         chorus.getBoundingClientRect();
                     }
                     chorus.style.setProperty('--ewe-base', nextBase);
-                    if (!isPlayPasture()) window.setTimeout(nudgeOverlappingLobbyEwes, 480);
+                    if (!isQuietPasture()) window.setTimeout(nudgeOverlappingLobbyEwes, 480);
                     return;
                 }
                 chorus.style.setProperty('--ewe-base', nextBase);
@@ -1947,92 +1988,172 @@
             if (responseText) responseText.textContent = flockResponseLine(inCount, flockTotal);
         }
 
-        function showGradingScreen() {
+        function playRoundMeta() {
+            const questionNumber = (Number(gameState && gameState.currentQuestion) || 0) + 1;
+            const perRound = (gameState && gameState.questionsPerRound) || 1;
+            const roundNumber = Math.ceil(questionNumber / Math.max(1, perRound));
+            const questionInRound = ((questionNumber - 1) % Math.max(1, perRound)) + 1;
+            return { questionNumber, perRound, roundNumber, questionInRound };
+        }
+
+        function currentPromptText() {
+            const fromData = gameState && gameState.currentQuestionData && gameState.currentQuestionData.prompt;
+            if (fromData) return fromData;
+            const questions = gameState && gameState.questions;
+            const q = Array.isArray(questions) ? questions[gameState.currentQuestion] : null;
+            return (q && q.prompt) || '';
+        }
+
+        function rankedPlayers(list) {
+            return (list || []).slice().sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+        }
+
+        function paintMeadowScreen(kind, overlayHtml, players) {
+            preventAllScrolling();
+            const sky = (kind === 'tv-score' || kind === 'tv-standings') ? '' : skyNameHtml();
             document.getElementById('displayScreen').innerHTML = `
-                <div class="grading-container">
-                    <div class="grading-header">
-                        <h1>📝 Host Grading in Progress</h1>
-                        <p class="grading-subtitle">Please wait while answers are being reviewed</p>
-                    </div>
-                    
-                    <div class="grading-content">
-                        <div class="grading-animation">
-                            <div class="grading-spinner"></div>
-                            <h3>🎯 Categorizing Answers</h3>
-                            <p>The host is reviewing and grouping similar responses</p>
-                            <p>This ensures fair and accurate scoring</p>
-                        </div>
-                        
-                        <div class="grading-stats">
-                            <div class="stat-box">
-                                <span class="stat-number">${gameState.answers ? Object.keys(gameState.answers).length : gameState.players?.length || 0}</span>
-                                <span class="stat-label">Responses Received</span>
+                <div class="tv-stage ${kind}">
+                    ${pastureSceneHtml({ pen: false })}
+                    ${sky}
+                    ${overlayHtml}
+                </div>
+            `;
+            renderFlock(players || (gameState && gameState.players) || []);
+        }
+
+        function tvRankRowsHtml(players, startAt) {
+            return (players || []).map((player, index) => {
+                const rank = (startAt || 0) + index + 1;
+                return `
+                    <li class="tv-rank-row${rank <= 3 ? ` is-${rank}` : ''}">
+                        <span class="tv-rank-n">${rank}</span>
+                        <span class="tv-rank-name">${escapeDisplayText(player.name)}</span>
+                        <span class="tv-rank-pts">${Number(player.score) || 0}</span>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        function rankCols(count) {
+            const n = Number(count) || 0;
+            if (n > 24) return 3;
+            if (n > 8) return 2;
+            return 1;
+        }
+
+        function tvRankListHtml(players, startAt) {
+            const rows = players || [];
+            const cols = rankCols(rows.length);
+            return `
+                <ol class="tv-rank-list auto-scroll-content" style="--rank-cols:${cols}">
+                    ${tvRankRowsHtml(rows, startAt)}
+                </ol>
+            `;
+        }
+
+        function armBoardScroll(id, count) {
+            window.setTimeout(() => {
+                const box = document.getElementById(id);
+                if (box && box.scrollHeight > box.clientHeight + 8) {
+                    startAutoScroll(id, count || 12);
+                }
+            }, 80);
+        }
+
+        function tvAnswerRowsHtml() {
+            const { submittedAnswers, correctNotGiven, wrongAnswers } = categorizeAnswersForDisplay();
+            const hits = (submittedAnswers || [])
+                .slice()
+                .sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))
+                .slice(0, 10);
+            const misses = (correctNotGiven || []).slice(0, 6);
+            const wrongs = (wrongAnswers || []).slice(0, 6);
+            const rows = [];
+            hits.forEach((group) => {
+                rows.push(`
+                    <li class="tv-answer is-hit">
+                        <span class="tv-answer-text">${escapeDisplayText(group.answer)}</span>
+                        <span class="tv-answer-pts">${Number(group.points) || 0}</span>
+                        <span class="tv-answer-n">${Number(group.count) || 0}</span>
+                    </li>
+                `);
+            });
+            misses.forEach((answer) => {
+                rows.push(`
+                    <li class="tv-answer is-miss">
+                        <span class="tv-answer-text">${escapeDisplayText(answer)}</span>
+                    </li>
+                `);
+            });
+            wrongs.forEach((group) => {
+                rows.push(`
+                    <li class="tv-answer is-wrong">
+                        <span class="tv-answer-text">${escapeDisplayText(group.answer)}</span>
+                        <span class="tv-answer-n">${Number(group.count) || 0}</span>
+                    </li>
+                `);
+            });
+            if (!rows.length) return '';
+            return `<ul class="tv-answer-list auto-scroll-content">${rows.join('')}</ul>`;
+        }
+
+        function tvPodiumHtml(sorted) {
+            const spots = [
+                { player: sorted[1], place: 2 },
+                { player: sorted[0], place: 1 },
+                { player: sorted[2], place: 3 }
+            ];
+            return `
+                <div class="tv-podium">
+                    ${spots.map(({ player, place }) => {
+                        if (!player) return `<div class="tv-podium-spot is-${place}"></div>`;
+                        const hash = nameHash(player.name || player.id);
+                        const coat = (hash % 3) + 1;
+                        return `
+                            <div class="tv-podium-spot is-${place}">
+                                <p class="tv-podium-name">${escapeDisplayText(player.name)}</p>
+                                <figure class="tv-ewe" data-coat="${coat}" data-mood="idle" aria-hidden="true">
+                                    ${EWE_ART}
+                                </figure>
+                                <div class="tv-crate">
+                                    <span>${place}</span>
+                                    <b>${Number(player.score) || 0}</b>
+                                </div>
                             </div>
-                            <div class="stat-box">
-                                <span class="stat-number">${gameState.players?.length || 0}</span>
-                                <span class="stat-label">Players</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="grading-message">
-                        <p>✨ Results will appear shortly after grading is complete</p>
-                    </div>
+                        `;
+                    }).join('')}
                 </div>
             `;
         }
 
+        function showGradingScreen() {
+            if (gameState && Array.isArray(gameState.questions) && gameState.questions.length) {
+                showPlayingScreen();
+                return;
+            }
+            paintMeadowScreen('tv-score', `<div class="tv-lobby-empty">${waitSheepHtml()}</div>`);
+        }
+
         function showScoringScreen() {
-            // Get the correct and wrong answers for this question
-            const { submittedAnswers, correctNotGiven, wrongAnswers } = categorizeAnswersForDisplay();
-            
-            document.getElementById('displayScreen').innerHTML = `
-                <div class="display-main-container">
-                    <!-- Left Column: Question Results (75%) -->
-                    <div class="question-results-section">
-                        <div class="scoring-header">
-                            <h1>📊 Question Results</h1>
-                            <p class="scoring-subtitle">${gameState.currentQuestionData?.prompt || 'Answer Breakdown'}</p>
-                        </div>
-                        
-                        <div class="scoring-content">
-                            <!-- Top Submitted Answers -->
-                            <div class="answers-section">
-                                <h3>🏆 Top Submitted Answers</h3>
-                                ${generateTopAnswersDisplay(submittedAnswers)}
-                            </div>
-                            
-                            <!-- Correct Answers Not Given -->
-                            <div class="correct-not-given-section">
-                                <h3>✅ Correct Answers Not Given</h3>
-                                ${generateCorrectNotGivenDisplay(correctNotGiven)}
-                            </div>
-                            
-                            <!-- Wrong Answers Submitted -->
-                            <div class="wrong-answers-section">
-                                <h3>❌ Wrong Answers Submitted</h3>
-                                ${generateWrongAnswersDisplay(wrongAnswers)}
-                            </div>
-                        </div>
-                        
-                        <div class="scoring-navigation">
-                            <p>Next question starting soon...</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Right Column: Current Scores (25%) -->
-                    <div class="current-scores-section">
-                        <div class="scores-header">
-                            <h1>📈 Current Scores</h1>
-                            <p class="scoring-subtitle">Round ${Math.ceil((gameState.currentQuestion + 1) / gameState.questionsPerRound)}/5 • Question ${((gameState.currentQuestion) % gameState.questionsPerRound) + 1} of 5</p>
-                        </div>
-                        
-                        <div class="scores-content">
-                            ${generateCompactScoresDisplay(gameState.players)}
-                        </div>
-                    </div>
+            const meta = playRoundMeta();
+            const prompt = currentPromptText();
+            const players = rankedPlayers(gameState.players);
+            paintMeadowScreen('tv-score', `
+                <div class="tv-score-top">
+                    <p class="tv-play-meta"><span>Round ${meta.roundNumber}</span><span>${meta.questionInRound} of ${meta.perRound}</span></p>
+                    <h1 class="question-prompt">${escapeDisplayText(prompt)}</h1>
                 </div>
-            `;
+                <div class="tv-boards">
+                    <section class="tv-board tv-board-answers" id="scoreAnswerBoard">
+                        ${tvAnswerRowsHtml()}
+                    </section>
+                    <section class="tv-board tv-board-scores" id="scoreRankBoard">
+                        ${tvRankListHtml(players, 0)}
+                    </section>
+                </div>
+            `);
+            armBoardScroll('scoreAnswerBoard', 10);
+            armBoardScroll('scoreRankBoard', players.length);
         }
 
         function layoutLobbyPlayers() {
@@ -2242,140 +2363,45 @@
         }
 
         function showRoundCompleteScreen() {
-            const roundHistory = gameState.roundHistory;
-            const currentRoundData = roundHistory[roundHistory.length - 1];
-            const currentRound = currentRoundData.roundNumber; // Use the actual round number from the round data
-            
-            const playerCount = gameState.players.length;
-            
-            // Determine column layout based on player count
-            let columnClass = 'leaderboard-single-column';
-            if (playerCount > 20) {
-                columnClass = 'leaderboard-three-column';
-            } else if (playerCount > 10) {
-                columnClass = 'leaderboard-two-column';
+            const roundHistory = gameState.roundHistory || [];
+            const roundData = roundHistory[roundHistory.length - 1];
+            if (!roundData) {
+                showOverallLeaderboardScreen(gameState);
+                return;
             }
-            
-            document.getElementById('displayScreen').innerHTML = `
-                <div class="round-leaderboard-container ${columnClass}">
-                    <div class="round-leaderboard-header">
-                        <h1>🎯 Round ${currentRound} Complete!</h1>
-                        <p class="round-subtitle">Round ${currentRound} Scores • Questions ${currentRoundData.questionStart} - ${currentRoundData.questionEnd} • ${gameState.players.length} Players</p>
-                    </div>
-                    
-                    <div class="round-leaderboard-content" id="roundLeaderboardContent">
-                        <div class="auto-scroll-content">
-                            ${generateAdvancedRoundDisplay(currentRoundData, columnClass)}
-                        </div>
-                    </div>
+            const players = rankedPlayers(roundData.players || gameState.players);
+            paintMeadowScreen('tv-standings', `
+                <div class="tv-score-top">
+                    <p class="tv-play-meta"><span>Round ${escapeDisplayText(roundData.roundNumber)}</span></p>
                 </div>
-            `;
-            
-            // Set up auto-scrolling for the round leaderboard
-            setTimeout(() => {
-                const content = document.getElementById('roundLeaderboardContent');
-                if (content && content.scrollHeight > content.clientHeight) {
-                    startAutoScroll('roundLeaderboardContent', gameState.players.length);
-                }
-            }, 100);
+                <section class="tv-board tv-board-wide" id="roundRankBoard" style="--rank-cols:${rankCols(players.length)}">
+                    ${tvRankListHtml(players, 0)}
+                </section>
+            `);
+            armBoardScroll('roundRankBoard', players.length);
         }
 
         function showLeaderboardScreen() {
-            const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
-            
-            document.getElementById('displayScreen').innerHTML = `
-                <div class="display-content">
-                    <div class="display-section">
-                        <div class="display-header">
-                            <h1 class="display-title">🏆 Overall Leaderboard</h1>
-                            <p class="display-subtitle">Final Standings</p>
-                            <p class="display-brand">by Liquid Kourage Entertainment</p>
-                    </div>
-                    
-                    <div class="leaderboard-content">
-                        ${generateLeaderboardDisplay(sortedPlayers)}
-                    </div>
-                    
-                    <div class="leaderboard-navigation">
-                        <button onclick="showRoundHistory()" class="btn btn-secondary">View Round History</button>
-                        <button onclick="showIntroScreen()" class="btn btn-primary">Back to Intro</button>
-                        </div>
-                    </div>
-                </div>
-            `;
+            showOverallLeaderboardScreen(gameState);
         }
 
         function showGameFinishedScreen() {
-            const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
-            const winner = sortedPlayers[0];
-            
-            document.getElementById('displayScreen').innerHTML = `
-                <div class="display-content">
-                    <div class="display-section">
-                        <div class="display-header">
-                            <h1 class="display-title">🎉 Game Complete!</h1>
-                            <p class="display-subtitle">Final Results</p>
-                            <p class="display-brand">by Liquid Kourage Entertainment</p>
-                        </div>
-                        
-                    <div class="winner-announcement">
-                        <div class="winner-card">
-                            <h2>🏆 Winner: ${winner.name}</h2>
-                            <p class="winner-score">Final Score: ${winner.score} points</p>
-                        </div>
-                    </div>
-                    
-                    <div class="final-leaderboard">
-                        <h3>📊 Final Standings</h3>
-                        ${generateLeaderboardDisplay(sortedPlayers)}
-                    </div>
-                    
-                    <div class="game-navigation">
-                        <button onclick="showRoundHistory()" class="btn btn-secondary">View Round History</button>
-                        <button onclick="showIntroScreen()" class="btn btn-primary">Play Again</button>
-                        </div>
-                    </div>
-                </div>
-            `;
+            showOverallLeaderboardScreen(gameState);
         }
 
         function showOverallLeaderboardScreen(gameStateData) {
-            // Accept provided state directly to avoid feedback loop
-            if (gameStateData) { gameState = gameStateData; }
-            
-            const roundHistory = gameState.roundHistory || [];
-            const sortedPlayers = [...gameState.players].sort((a, b) => b.score - a.score);
-            
-            // Determine column layout based on player count
-            const playerCount = gameState.players.length;
-            let columnClass = '';
-            if (playerCount <= 3) columnClass = 'three-columns';
-            else if (playerCount <= 6) columnClass = 'four-columns';
-            else if (playerCount <= 10) columnClass = 'five-columns';
-            else columnClass = 'six-columns';
-            
-            const podiumHtml = generatePodium(sortedPlayers);
-            document.getElementById('displayScreen').innerHTML = `
-                <div class="round-leaderboard-container ${columnClass}">
-                    <div class="round-leaderboard-header">
-                        <h1>🏆 Overall Leaderboard</h1>
-                        <p class="round-subtitle">Cumulative Scores • ${gameState.players.length} Players</p>
-                    </div>
-                    
-                    <div class="round-leaderboard-content" id="roundLeaderboardContent">
-                        ${podiumHtml}
-                        <div class="podium-message">🐑 Thank you for playing!<br/>Congratulations to our top performers — the bellwethers of the flock.</div>
-                        <div class="overall-list-container" id="overallListContainer">
-                            <div class="auto-scroll-content">
-                                ${generateOverallLeaderboardDisplay(sortedPlayers.slice(3), roundHistory, 3)}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Start auto-scroll for the leaderboard
-            startAutoScroll('overallListContainer', gameState.players.length);
+            if (gameStateData) gameState = gameStateData;
+            const players = rankedPlayers(gameState && gameState.players);
+            const rest = players.slice(3);
+            paintMeadowScreen('tv-final', `
+                ${tvPodiumHtml(players)}
+                ${rest.length ? `
+                    <section class="tv-board tv-board-rest" id="finalRankBoard">
+                        ${tvRankListHtml(rest, 3)}
+                    </section>
+                ` : ''}
+            `);
+            if (rest.length) armBoardScroll('finalRankBoard', rest.length);
         }
         
         function generatePodium(sortedPlayers) {
@@ -2829,43 +2855,17 @@
         }
 
         function showRoundHistory() {
-            const roundHistory = gameState.roundHistory;
-            
-            document.getElementById('displayScreen').innerHTML = `
-                <div class="round-history-container">
-                    <div class="history-header">
-                        <h1>📚 Round History</h1>
-                        <p class="history-subtitle">Complete Game Breakdown</p>
-                    </div>
-                    
-                    <div class="history-content">
-                        ${roundHistory.map((round, index) => `
-                            <div class="history-round">
-                                <h3>Round ${round.roundNumber}</h3>
-                                <p>Questions ${round.questionStart} - ${round.questionEnd}</p>
-                                <div class="round-summary">
-                                    <div class="top-answers">
-                                        <h4>Top Answers:</h4>
-                                        ${round.answerGroups.slice(0, 3).map(group => 
-                                            `<span class="answer-tag">${group.answer} (${group.points}pts)</span>`
-                                        ).join('')}
-                                    </div>
-                                    <div class="top-players">
-                                        <h4>Top Players:</h4>
-                                        ${round.players.slice(0, 3).map(player => 
-                                            `<span class="player-tag">${player.name} (${player.score}pts)</span>`
-                                        ).join('')}
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    
-                    <div class="history-navigation">
-                        <button onclick="showLeaderboardScreen()" class="btn btn-primary">Back to Leaderboard</button>
-                    </div>
-                </div>
-            `;
+            const roundHistory = (gameState && gameState.roundHistory) || [];
+            const boards = roundHistory.map((round) => {
+                const top = rankedPlayers(round.players).slice(0, 8);
+                return `
+                    <section class="tv-board">
+                        <p class="tv-play-meta"><span>Round ${escapeDisplayText(round.roundNumber)}</span></p>
+                        ${tvRankListHtml(top, 0)}
+                    </section>
+                `;
+            }).join('');
+            paintMeadowScreen('tv-history', `<div class="tv-history-boards">${boards}</div>`);
         }
 
         function showLeaderboard() {
