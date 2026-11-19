@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T25-00-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T25-12-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -588,24 +588,9 @@
             const withPen = !options || options.pen !== false;
             const pastureId = options && options.pastureId ? ` id="${options.pastureId}"` : '';
             return `
-                <div class="tv-play-stars" aria-hidden="true"></div>
-                <div class="tv-moon" aria-hidden="true"></div>
                 <div class="tv-pasture"${pastureId}>
-                    <div class="tv-horizon-glow" aria-hidden="true"></div>
-                    <div class="tv-hills" aria-hidden="true">
-                        <svg class="tv-hill tv-hill-far" viewBox="0 0 1600 420" preserveAspectRatio="none">
-                            <path d="M0 210 C 180 120, 340 260, 560 168 C 780 80, 980 230, 1180 150 C 1360 88, 1480 180, 1600 120 L 1600 420 L 0 420 Z"></path>
-                        </svg>
-                        <svg class="tv-hill tv-hill-mid" viewBox="0 0 1600 420" preserveAspectRatio="none">
-                            <path d="M0 248 C 220 170, 420 300, 700 210 C 940 140, 1160 280, 1600 188 L 1600 420 L 0 420 Z"></path>
-                        </svg>
-                        <svg class="tv-hill tv-hill-near" viewBox="0 0 1600 420" preserveAspectRatio="none">
-                            <path d="M0 300 C 260 230, 480 340, 760 268 C 1040 196, 1280 330, 1600 250 L 1600 420 L 0 420 Z"></path>
-                        </svg>
-                        <svg class="tv-hill tv-hill-fore" viewBox="0 0 1600 420" preserveAspectRatio="none">
-                            <path d="M0 368 C 220 340, 480 390, 780 360 C 1100 328, 1360 392, 1600 350 L 1600 420 L 0 420 Z"></path>
-                        </svg>
-                    </div>
+                    <img class="tv-pasture-art" src="sprites/pasture-night.jpg?v=2026-11-18T25-10-00" alt="" aria-hidden="true">
+                    <div class="tv-pasture-shade" aria-hidden="true"></div>
                     ${withPen ? `<div class="tv-fold" aria-hidden="true">
                         <img class="tv-fold-art" src="sprites/pen.png?v=2026-11-18T19-40-00" alt="">
                     </div>` : ''}
@@ -750,7 +735,7 @@
             return `${first} ${parts[parts.length - 1].charAt(0)}.`;
         }
 
-        const LOBBY_FIELD = { left: 8, right: 94, top: 16, bottom: 88 };
+        const LOBBY_FIELD = { left: 8, right: 94, top: 14, bottom: 88 };
         const PLAY_FIELD = { left: 5, right: 56, top: 46, bottom: 90 };
 
         function isPastureScene() {
