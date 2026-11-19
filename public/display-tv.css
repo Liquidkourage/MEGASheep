@@ -807,7 +807,7 @@ html, body {
     z-index: 3;
     overflow: visible;
     --ewe-base: 118px;
-    --ewe-min: 52px;
+    --ewe-min: 72px;
     --ewe-max: 132px;
 }
 
@@ -815,7 +815,7 @@ html, body {
     position: absolute;
     left: var(--gx);
     top: var(--gy);
-    width: clamp(var(--ewe-min, 52px), calc(var(--ewe-base, 118px) * var(--s, 1)), var(--ewe-max, 132px));
+    width: clamp(var(--ewe-min, 72px), calc(var(--ewe-base, 118px) * var(--s, 1)), var(--ewe-max, 132px));
     min-width: 0;
     margin: 0;
     transform: translate(-50%, -72%);
