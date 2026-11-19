@@ -704,11 +704,15 @@ html, body {
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    transition: left var(--walk, 1.3s) cubic-bezier(0.37, 0.02, 0.16, 1), top var(--walk, 1.3s) cubic-bezier(0.37, 0.02, 0.16, 1);
+    transition: left var(--walk, 4s) linear, top var(--walk, 4s) linear;
 }
 
 .tv-ewe.is-placed {
     transition: none;
+}
+
+.tv-ewe.is-walking {
+    z-index: 48;
 }
 
 .tv-ewe.is-in {
@@ -819,18 +823,13 @@ html, body {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    opacity: 0;
-    transform: translateY(4px);
-    transition: opacity 0.25s linear 0.85s, transform 0.25s ease 0.85s;
+    pointer-events: none;
 }
 
-.tv-ewe.is-in figcaption {
-    opacity: 1;
-    transform: none;
-}
-
-.tv-ewe.is-placed figcaption {
-    transition: none;
+.tv-flock[data-dense="1"] .tv-ewe figcaption {
+    font-size: clamp(0.62rem, 1vh, 0.78rem);
+    max-width: 8ch !important;
+    padding: 1px 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {

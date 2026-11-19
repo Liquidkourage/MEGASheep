@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T20-05-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T20-30-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -726,7 +726,6 @@
                     scale: g.scale,
                     z: g.z,
                     coat: (hash % 2) + 1,
-                    walk: (2.05 + (hash % 8) * 0.12).toFixed(2),
                     idle: ((hash % 17) * 0.18).toFixed(2)
                 };
             });
@@ -763,11 +762,26 @@
             chorus.dataset.dense = list.length > 28 ? '1' : '0';
             chorus.style.setProperty('--ewe-base', `${eweBaseSize(list.length)}px`);
             chorus.innerHTML = slots.map((slot) => `
-                <figure class="tv-ewe" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--s:${slot.scale};--z:${slot.z};--walk:${slot.walk}s;--idle:${slot.idle}s">
+                <figure class="tv-ewe" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
                     ${EWE_ART}
                     <figcaption>${escapeDisplayText(slot.label)}</figcaption>
                 </figure>
             `).join('');
+        }
+
+        function walkSeconds(el) {
+            const chorus = document.getElementById('flockChorus');
+            const field = (chorus || el).getBoundingClientRect();
+            const gx = parseFloat(el.style.getPropertyValue('--gx')) || 0;
+            const gy = parseFloat(el.style.getPropertyValue('--gy')) || 0;
+            const px = parseFloat(el.style.getPropertyValue('--px')) || 0;
+            const py = parseFloat(el.style.getPropertyValue('--py')) || 0;
+            const dist = Math.hypot(((px - gx) / 100) * field.width, ((py - gy) / 100) * field.height);
+            const body = el.getBoundingClientRect().width || 56;
+            const cycle = 0.6;
+            const stride = body * 1.25;
+            const seconds = dist / (stride / cycle);
+            return Math.min(8, Math.max(cycle * 3, seconds));
         }
 
         function paintFlock(answeredPlayers, instant) {
@@ -784,6 +798,8 @@
                         el.classList.add('is-in');
                         requestAnimationFrame(() => el.classList.remove('is-placed'));
                     } else {
+                        const seconds = walkSeconds(el);
+                        el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
                         el.classList.add('is-walking', 'is-in');
                         let done = false;
                         const finish = (event) => {
@@ -794,8 +810,7 @@
                             el.removeEventListener('transitionend', finish);
                         };
                         el.addEventListener('transitionend', finish);
-                        const walkMs = (parseFloat(getComputedStyle(el).getPropertyValue('--walk')) || 2) * 1000;
-                        window.setTimeout(finish, walkMs + 80);
+                        window.setTimeout(finish, seconds * 1000 + 80);
                     }
                 } else {
                     el.classList.remove('is-in', 'is-walking');
