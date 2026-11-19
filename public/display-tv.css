@@ -838,6 +838,50 @@ html, body {
     background-image: url("sprites/sheep-03-idle.png?v=2026-11-18T20-05-00");
 }
 
+.tv-lobby .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip {
+    width: 1200%;
+    background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
+    animation: eweIdle 0.4s steps(12, jump-none) infinite;
+    animation-delay: var(--idle, 0s);
+}
+
+.tv-lobby .tv-ewe[data-coat="2"]:not(.is-walking):not(.is-joining) .tv-ewe-strip {
+    background-image: url("sprites/sheep-02-idle.png?v=2026-11-18T20-05-00");
+}
+
+.tv-lobby .tv-ewe[data-coat="3"]:not(.is-walking):not(.is-joining) .tv-ewe-strip {
+    background-image: url("sprites/sheep-03-idle.png?v=2026-11-18T20-05-00");
+}
+
+.tv-lobby .tv-ewe[data-mood="eat"]:not(.is-walking):not(.is-joining) .tv-ewe-strip {
+    width: 1300%;
+    background-image: url("sprites/sheep-01-eat.png?v=2026-11-18T20-05-00");
+    animation: eweEat 0.45s steps(13, jump-none) infinite;
+    animation-delay: var(--idle, 0s);
+}
+
+.tv-lobby .tv-ewe[data-coat="2"][data-mood="eat"]:not(.is-walking):not(.is-joining) .tv-ewe-strip {
+    background-image: url("sprites/sheep-02-eat.png?v=2026-11-18T20-05-00");
+}
+
+.tv-lobby .tv-ewe[data-coat="3"][data-mood="eat"]:not(.is-walking):not(.is-joining) .tv-ewe-strip {
+    background-image: url("sprites/sheep-03-eat.png?v=2026-11-18T20-05-00");
+}
+
+.tv-lobby .tv-ewe.is-joining .tv-ewe-strip {
+    width: 1200%;
+    background-image: url("sprites/sheep-01-jump.png?v=2026-11-18T21-40-00");
+    animation: eweJump 0.5s steps(12, jump-none) forwards;
+}
+
+.tv-lobby .tv-ewe[data-coat="2"].is-joining .tv-ewe-strip {
+    background-image: url("sprites/sheep-02-jump.png?v=2026-11-18T21-40-00");
+}
+
+.tv-lobby .tv-ewe[data-coat="3"].is-joining .tv-ewe-strip {
+    background-image: url("sprites/sheep-03-jump.png?v=2026-11-18T21-40-00");
+}
+
 .tv-thought {
     position: absolute;
     left: 56%;
@@ -911,6 +955,11 @@ html, body {
 }
 
 @keyframes eweIdle {
+    from { transform: translateX(0); }
+    to { transform: translateX(-91.6667%); }
+}
+
+@keyframes eweJump {
     from { transform: translateX(0); }
     to { transform: translateX(-91.6667%); }
 }

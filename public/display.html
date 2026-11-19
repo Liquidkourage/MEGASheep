@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T21-20-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T21-40-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -779,7 +779,8 @@
                     scale: g.scale,
                     z: g.z,
                     coat: (hash % 2) + 1,
-                    idle: ((hash % 17) * 0.18).toFixed(2)
+                    idle: ((hash % 17) * 0.18).toFixed(2),
+                    mood: (hash % 5 === 0) ? 'eat' : 'idle'
                 };
             });
         }
@@ -805,21 +806,111 @@
             return (id && answered.has(id)) || (name && answered.has(name));
         }
 
+        function eweFigureHtml(slot) {
+            return `
+                <figure class="tv-ewe" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" data-mood="${escapeDisplayText(slot.mood || 'idle')}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--ox:${slot.ox}%;--oy:${slot.oy}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
+                    ${EWE_ART}
+                    <figcaption>${escapeDisplayText(slot.label)}</figcaption>
+                </figure>
+            `;
+        }
+
+        function applyEweSlot(el, slot) {
+            el.dataset.name = slot.name;
+            el.dataset.coat = String(slot.coat);
+            el.dataset.mood = slot.mood || 'idle';
+            el.style.setProperty('--gx', `${slot.gx}%`);
+            el.style.setProperty('--gy', `${slot.gy}%`);
+            el.style.setProperty('--px', `${slot.px}%`);
+            el.style.setProperty('--py', `${slot.py}%`);
+            el.style.setProperty('--ox', `${slot.ox}%`);
+            el.style.setProperty('--oy', `${slot.oy}%`);
+            el.style.setProperty('--s', String(slot.scale));
+            el.style.setProperty('--z', String(slot.z));
+            el.style.setProperty('--idle', `${slot.idle}s`);
+            const cap = el.querySelector('figcaption');
+            if (cap) cap.textContent = slot.label;
+        }
+
+        function playJoinJump(el) {
+            el.classList.add('is-joining');
+            const done = () => el.classList.remove('is-joining');
+            const onEnd = (event) => {
+                if (event.animationName && event.animationName !== 'eweJump') return;
+                el.removeEventListener('animationend', onEnd);
+                done();
+            };
+            el.addEventListener('animationend', onEnd);
+            window.setTimeout(done, 700);
+        }
+
+        function walkEweOnField(el, slot) {
+            const chorus = document.getElementById('flockChorus');
+            const field = (chorus || el).getBoundingClientRect();
+            const now = el.getBoundingClientRect();
+            const destX = field.left + (slot.gx / 100) * field.width;
+            const destY = field.top + (slot.gy / 100) * field.height;
+            const dist = Math.hypot(destX - (now.left + now.width / 2), destY - (now.top + now.height * 0.72));
+            if (dist < 10) {
+                applyEweSlot(el, slot);
+                return;
+            }
+            const cycle = 0.6;
+            const stride = (now.width || 56) * 1.25;
+            const seconds = Math.min(8, Math.max(cycle * 2, dist / (stride / cycle)));
+            el.classList.remove('is-walking');
+            el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
+            applyEweSlot(el, slot);
+            el.classList.add('is-walking');
+            let done = false;
+            const finish = (event) => {
+                if (event && event.propertyName && event.propertyName !== 'left') return;
+                if (done) return;
+                done = true;
+                el.classList.remove('is-walking');
+                el.removeEventListener('transitionend', finish);
+            };
+            el.addEventListener('transitionend', finish);
+            window.setTimeout(finish, seconds * 1000 + 80);
+        }
+
+        function syncLobbyFlock(chorus, slots) {
+            const byId = new Map();
+            chorus.querySelectorAll('.tv-ewe').forEach((el) => byId.set(el.dataset.id, el));
+            const keep = new Set();
+            slots.forEach((slot) => {
+                const id = String(slot.id);
+                keep.add(id);
+                const el = byId.get(id);
+                if (!el) {
+                    chorus.insertAdjacentHTML('beforeend', eweFigureHtml(slot));
+                    const born = chorus.querySelector(`.tv-ewe[data-id="${CSS.escape(id)}"]`);
+                    if (born) playJoinJump(born);
+                    return;
+                }
+                walkEweOnField(el, slot);
+            });
+            byId.forEach((el, id) => {
+                if (!keep.has(id)) el.remove();
+            });
+        }
+
         function renderFlock(players) {
             const chorus = document.getElementById('flockChorus');
             if (!chorus) return;
             const list = sortedFlockPlayers(players);
             const slots = placeFlock(list);
+            const lobby = !!document.querySelector('.tv-lobby');
+            const existing = chorus.querySelectorAll('.tv-ewe').length;
             chorus.dataset.flockKey = flockKey(list);
-            chorus.dataset.ready = '0';
             chorus.dataset.dense = list.length > 28 ? '1' : '0';
             chorus.style.setProperty('--ewe-base', `${eweBaseSize(list.length)}px`);
-            chorus.innerHTML = slots.map((slot) => `
-                <figure class="tv-ewe" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--ox:${slot.ox}%;--oy:${slot.oy}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
-                    ${EWE_ART}
-                    <figcaption>${escapeDisplayText(slot.label)}</figcaption>
-                </figure>
-            `).join('');
+            if (lobby && existing) {
+                syncLobbyFlock(chorus, slots);
+                return;
+            }
+            chorus.dataset.ready = '0';
+            chorus.innerHTML = slots.map((slot) => eweFigureHtml(slot)).join('');
         }
 
         function walkSecondsTo(el, leftVar, topVar) {
