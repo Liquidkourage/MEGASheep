@@ -297,7 +297,6 @@ html, body {
 
 .tv-sign.tv-intro-sign,
 .tv-sign.tv-lobby-join,
-.tv-sign.tv-answer-post,
 .tv-sign.tv-score-ranks {
     position: absolute;
 }
@@ -1427,8 +1426,7 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
     .tv-ewe, .tv-ewe figcaption { transition: none; }
-    .tv-score-sky.is-in,
-    .tv-score-sky.is-out { animation: none; }
+    .tv-banner { transition: none; }
     .tv-ewe-strip { animation: none !important; }
     .tv-lobby-join.is-nibbled,
     .tv-ewe.is-nibbling .tv-ewe-art,
@@ -1994,35 +1992,75 @@ html, body {
     color: #fff;
 }
 
-.tv-score-posts {
+.tv-score-banners {
     position: absolute;
     inset: 0;
-    z-index: 6;
+    z-index: 8;
     pointer-events: none;
 }
 
-.tv-answer-post {
+.tv-banner {
+    position: absolute;
     left: var(--x, 50%);
-    bottom: var(--plant, 29%);
-    z-index: 6;
-    width: min(var(--post-w, 16vw), 280px);
-    transform: translateX(-50%) rotate(var(--tilt, 0deg));
+    top: var(--y, 79%);
+    z-index: 8;
+    width: min(var(--w, 11vw), 210px);
+    transform: translate(-50%, calc(-100% - 28%)) rotate(var(--tilt, 0deg));
     transform-origin: 50% 100%;
+    pointer-events: none;
+    transition:
+        left var(--walk, 0s) linear,
+        top var(--walk, 0s) linear;
+}
+
+.tv-banner.is-placed {
+    transition: none;
+}
+
+.tv-banner.is-parade {
+    z-index: 12;
+}
+
+.tv-banner.is-parade-wait {
+    opacity: 0;
+}
+
+.tv-banner.is-miss {
+    opacity: 0.5;
+    filter: grayscale(0.2);
+}
+
+.tv-banner-sign {
+    width: 100%;
     container-type: inline-size;
     container-name: post;
 }
 
-.tv-answer-post.is-back {
-    z-index: 5;
+.tv-banner-clip {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 769 / 491;
+    min-height: 0;
+    line-height: 0;
 }
 
-.tv-answer-post.is-front {
-    z-index: 7;
+.tv-banner-clip .tv-sign-art {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: block;
+    width: 100%;
+    height: auto;
 }
 
-.tv-answer-post .tv-sign-face {
+.tv-banner-sign .tv-sign-face {
+    left: 8%;
+    right: 8%;
+    top: 16%;
+    bottom: 9%;
     gap: 0.04em;
-    padding: 0 0.15em;
+    padding: 0 0.12em;
 }
 
 .tv-post-answer {
@@ -2048,11 +2086,6 @@ html, body {
     letter-spacing: -0.05em;
     line-height: 0.9;
     color: #2f6b32;
-}
-
-.tv-answer-post.is-miss {
-    opacity: 0.5;
-    filter: grayscale(0.2);
 }
 
 .tv-score-ranks {
@@ -2107,68 +2140,6 @@ html, body {
 
 .tv-score .tv-ewe.is-parade {
     z-index: 48;
-}
-
-.tv-score-sky {
-    position: absolute;
-    left: 50%;
-    right: 22%;
-    top: 22%;
-    z-index: 13;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.08em;
-    text-align: center;
-    pointer-events: none;
-}
-
-.tv-score-sky[hidden] {
-    display: none;
-}
-
-.tv-score-sky-word {
-    font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(4.2rem, 10vh, 8rem);
-    font-weight: 800;
-    letter-spacing: -0.045em;
-    line-height: 0.92;
-    color: #fff;
-    text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55);
-}
-
-.tv-score-sky-pts {
-    font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(3.4rem, 8vh, 6.4rem);
-    font-weight: 800;
-    letter-spacing: -0.05em;
-    line-height: 0.9;
-    color: #d7f08a;
-    text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55);
-}
-
-.tv-score-sky.is-miss .tv-score-sky-word {
-    opacity: 0.62;
-}
-
-.tv-score-sky.is-in {
-    animation: scoreSkyIn 0.32s ease-out both;
-}
-
-.tv-score-sky.is-out {
-    animation: scoreSkyOut 0.4s ease-in both;
-}
-
-@keyframes scoreSkyIn {
-    from { opacity: 0; transform: translateY(14px) scale(0.94); }
-    to { opacity: 1; transform: none; }
-}
-
-@keyframes scoreSkyOut {
-    from { opacity: 1; transform: none; }
-    to { opacity: 0; transform: translateY(-12px); }
 }
 
 .tv-boards {
