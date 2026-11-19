@@ -340,9 +340,14 @@ html, body {
 }
 
 .tv-lobby-join .tv-sign-face {
-    flex-direction: row;
-    gap: 14px;
-    padding: 0 4px;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0 0;
+}
+
+.tv-lobby-join .qr-code img {
+    width: min(128px, 12.5vh) !important;
+    height: min(128px, 12.5vh) !important;
 }
 
 .tv-lobby-code {
