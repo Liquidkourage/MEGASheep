@@ -2968,8 +2968,14 @@
             if (pairBtn) {
                 pairBtn.addEventListener('click', () => {
                     const code = (codeInput?.value || '').toUpperCase();
-                    if (!code || code.length !== 4) { alert('Enter 4-letter display code'); return; }
-                    if (!currentGame || !currentGame.gameCode) { alert('No active game'); return; }
+                    if (!code || code.length !== 4) {
+                        showHostToast('Enter the 4-letter TV code.', 'error');
+                        return;
+                    }
+                    if (!currentGame || !currentGame.gameCode) {
+                        showHostToast('Create a game first.', 'error');
+                        return;
+                    }
                     socket.emit('pairDisplayToGame', { pairingCode: code, gameCode: currentGame.gameCode });
                 });
             }
@@ -2977,9 +2983,9 @@
                 socket.on('pairDisplayResult', (res) => {
                     if (res && res.ok) {
                         console.log('Display paired:', res.message);
-                        try { alert('Display paired to this game'); } catch (_) {}
+                        showHostToast('TV paired to this game.', 'success');
                     } else if (res) {
-                        try { alert('Pairing failed: ' + (res.message || 'Unknown error')); } catch (_) {}
+                        showHostToast(res.message || 'TV pairing failed.', 'error');
                     }
                 });
             }
