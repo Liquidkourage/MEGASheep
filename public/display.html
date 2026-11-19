@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T23-50-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T24-37-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -1394,8 +1394,23 @@
         }
 
         function playJoinJump(el) {
+            if (!el) return;
             el.classList.add('is-joining');
+            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (!reduce) {
+                el.classList.add('is-poofing');
+                const poof = document.createElement('span');
+                poof.className = 'tv-ewe-poof';
+                poof.setAttribute('aria-hidden', 'true');
+                poof.innerHTML = '<i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>';
+                el.appendChild(poof);
+                window.setTimeout(() => {
+                    el.classList.remove('is-poofing');
+                    if (poof.parentNode) poof.remove();
+                }, 900);
+            }
             const done = () => {
+                if (!el.classList.contains('is-joining')) return;
                 el.classList.remove('is-joining');
                 scheduleLobbyWander(el);
             };
@@ -1407,7 +1422,7 @@
             el.addEventListener('animationend', onEnd);
             window.setTimeout(() => {
                 el.removeEventListener('animationend', onEnd);
-                if (el.classList.contains('is-joining')) done();
+                done();
             }, 700);
         }
 
