@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T17-55-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T19-20-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -1105,37 +1105,12 @@
 
         function generateCompactScoresDisplay(players) {
             if (!players || players.length === 0) {
-                return '<p style="color: #cccccc; text-align: center;">No players yet</p>';
+                return '<p class="no-answers">No players yet</p>';
             }
-            
-            // Sort players by score (highest first)
+
             const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
-            
-            // If 20 or fewer players, show all without scrolling
-            if (sortedPlayers.length <= 20) {
-                let html = '<div class="compact-scores-list">';
-                sortedPlayers.forEach((player, index) => {
-                    const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
-                    html += `
-                        <div class="compact-score-item">
-                            <div class="compact-score-name">
-                                <span style="margin-right: 8px;">${rankEmoji}</span>
-                                ${player.name}
-                            </div>
-                            <div class="compact-score-value">${player.score}</div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-                return html;
-            }
-            
-            // For more than 20 players, create auto-scrolling list
-            const scrollId = `scroll-scores-${Date.now()}`;
-            let html = `<div class="auto-scroll-container" id="${scrollId}">`;
-            html += '<div class="auto-scroll-content">';
-            
-            // Create the scrolling content - just one list (no duplication needed)
+            const cols = sortedPlayers.length > 12 ? 2 : 1;
+            let html = `<div class="compact-scores-list" style="--score-cols:${cols}">`;
             sortedPlayers.forEach((player, index) => {
                 const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
                 html += `
@@ -1148,19 +1123,7 @@
                     </div>
                 `;
             });
-            
-            html += '</div></div>';
-            
-            // Add scroll indicator
-            html += `<div style="text-align: center; color: #cccccc; margin-top: 10px; font-size: 0.9rem;">
-                📋 Cycling through all ${sortedPlayers.length} players
-            </div>`;
-            
-            // Start auto-scroll after a delay
-            setTimeout(() => {
-                startAutoScroll(scrollId, sortedPlayers.length);
-            }, 1000);
-            
+            html += '</div>';
             return html;
         }
 
