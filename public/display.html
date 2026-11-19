@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T25-52-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-18T25-59-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -525,12 +525,12 @@
             }
         }
 
-        function waitSpinnerHtml() {
+        function waitSheepHtml() {
             return `
-                <svg class="tv-lobby-wait" viewBox="0 0 120 120" aria-hidden="true">
-                    <circle class="tv-lobby-wait-track" cx="60" cy="60" r="42"></circle>
-                    <circle class="tv-lobby-wait-arc" cx="60" cy="60" r="42"></circle>
-                </svg>
+                <div class="tv-wait-ewe" aria-hidden="true">
+                    <span class="tv-wait-think"><i></i><i></i><i></i></span>
+                    <span class="tv-wait-art"><span class="tv-wait-strip"></span></span>
+                </div>
             `;
         }
 
@@ -551,8 +551,8 @@
                         ` : `
                             <p class="tv-pair-code">${pairCode}</p>
                         `}
-                        ${waitSpinnerHtml()}
                     </aside>
+                    <div class="tv-intro-wait">${waitSheepHtml()}</div>
                 </div>
             `;
             if (!connecting) return;
@@ -612,7 +612,7 @@
                         <p class="tv-lobby-code">${displayGameCode || 'XXXX'}</p>
                     </aside>
                     <div class="tv-lobby-empty" id="lobbyEmpty"${count ? ' hidden' : ''} aria-hidden="true">
-                        ${waitSpinnerHtml()}
+                        ${waitSheepHtml()}
                     </div>
                 </div>
             `;
