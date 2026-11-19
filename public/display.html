@@ -872,16 +872,36 @@
         }
 
         function pointsCollinear(a, b, c) {
-            const abx = b.x - a.x;
-            const aby = b.y - a.y;
-            const acx = c.x - a.x;
-            const acy = c.y - a.y;
-            const ab = Math.hypot(abx, aby);
-            const ac = Math.hypot(acx, acy);
-            const bc = Math.hypot(c.x - b.x, c.y - b.y);
+            const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+            const ab = dist(a, b);
+            const ac = dist(a, c);
+            const bc = dist(b, c);
             const span = Math.max(ab, ac, bc);
-            if (ab < 24 || ac < 24 || bc < 24 || span < 110) return false;
-            return Math.abs(abx * acy - aby * acx) / (ab * ac) < 0.1;
+            const gap = Math.min(ab, ac, bc);
+            if (gap < 52 || span < 130 || span > 320) return false;
+            let p;
+            let q;
+            let m;
+            if (ab >= ac && ab >= bc) {
+                p = a;
+                q = b;
+                m = c;
+            } else if (ac >= bc) {
+                p = a;
+                q = c;
+                m = b;
+            } else {
+                p = b;
+                q = c;
+                m = a;
+            }
+            const pq = dist(p, q) || 1;
+            const t = ((m.x - p.x) * (q.x - p.x) + (m.y - p.y) * (q.y - p.y)) / (pq * pq);
+            if (t < 0.3 || t > 0.7) return false;
+            if (dist(p, m) > 170 || dist(m, q) > 170) return false;
+            const ox = p.x + t * (q.x - p.x) - m.x;
+            const oy = p.y + t * (q.y - p.y) - m.y;
+            return Math.hypot(ox, oy) < 11;
         }
 
         function lobbySpotCrowded(gx, gy, occupied, selfEl) {
@@ -901,20 +921,8 @@
             });
         }
 
-        function lobbySpotCollinear(gx, gy, occupied, selfEl) {
-            if (!selfEl || (occupied || []).length < 2) return false;
-            const selfPt = eweLinePoint(selfEl, gx, gy);
-            const pts = (occupied || []).filter((other) => other.el).map((other) => eweLinePoint(other.el));
-            for (let i = 0; i < pts.length; i += 1) {
-                for (let j = i + 1; j < pts.length; j += 1) {
-                    if (pointsCollinear(selfPt, pts[i], pts[j])) return true;
-                }
-            }
-            return false;
-        }
-
         function spotIsClear(gx, gy, occupied, selfEl) {
-            return !lobbySpotCrowded(gx, gy, occupied, selfEl) && !lobbySpotCollinear(gx, gy, occupied, selfEl);
+            return !lobbySpotCrowded(gx, gy, occupied, selfEl);
         }
 
         function randomLobbyPoint(occupied, selfEl) {
@@ -1369,16 +1377,21 @@
                     if (separateLobbyEwe(mover)) moved.add(mover);
                 }
             }
-            const pts = ewes.filter((el) => !moved.has(el)).map((el) => eweLinePoint(el));
-            for (let i = 0; i < pts.length; i += 1) {
-                for (let j = i + 1; j < pts.length; j += 1) {
-                    for (let k = j + 1; k < pts.length; k += 1) {
-                        if (moved.has(pts[i].el) || moved.has(pts[j].el) || moved.has(pts[k].el)) continue;
+            const pts = ewes
+                .filter((el) => !moved.has(el) && !el.classList.contains('is-walking'))
+                .map((el) => eweLinePoint(el));
+            let brokeLine = false;
+            for (let i = 0; i < pts.length && !brokeLine; i += 1) {
+                for (let j = i + 1; j < pts.length && !brokeLine; j += 1) {
+                    for (let k = j + 1; k < pts.length && !brokeLine; k += 1) {
                         if (!pointsCollinear(pts[i], pts[j], pts[k])) continue;
                         const mover = pickIdleMover([pts[i].el, pts[j].el, pts[k].el], moved);
                         if (!mover) continue;
                         const line = [pts[i], pts[j], pts[k]].filter((p) => p.el !== mover).slice(0, 2);
-                        if (separateLobbyEwe(mover, { line })) moved.add(mover);
+                        if (separateLobbyEwe(mover, { line })) {
+                            moved.add(mover);
+                            brokeLine = true;
+                        }
                     }
                 }
             }
