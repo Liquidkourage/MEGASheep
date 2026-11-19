@@ -765,8 +765,8 @@ html, body {
     transition: left var(--walk, 4s) linear, top var(--walk, 4s) linear;
 }
 
-.tv-ewe.is-left {
-    transform: translate(-50%, -72%) scaleX(-1);
+.tv-ewe.is-left .tv-ewe-art {
+    transform: scaleX(-1);
 }
 
 .tv-ewe.is-placed {
@@ -797,16 +797,18 @@ html, body {
     aspect-ratio: 1 / 1;
     overflow: hidden;
     contain: paint;
+    isolation: isolate;
+    clip-path: inset(0);
 }
 
 .tv-ewe-strip {
     position: absolute;
-    top: 0;
-    left: 0;
+    inset: 0;
+    width: 100%;
     height: 100%;
-    width: 1300%;
     background-repeat: no-repeat;
-    background-size: 100% 100%;
+    background-position: 0 0;
+    background-size: 1300% 100%;
     background-image: url("sprites/sheep-01-eat.png?v=2026-11-18T20-05-00");
     animation: eweEat 0.45s steps(13, jump-none) infinite;
     animation-delay: var(--idle, 0s);
@@ -821,7 +823,7 @@ html, body {
 }
 
 .tv-ewe.is-walking .tv-ewe-strip {
-    width: 1800%;
+    background-size: 1800% 100%;
     background-image: url("sprites/sheep-01-walk.png?v=2026-11-18T20-05-00");
     animation: eweWalk 0.6s steps(18, jump-none) infinite;
 }
@@ -835,7 +837,7 @@ html, body {
 }
 
 .tv-ewe.is-in:not(.is-walking) .tv-ewe-strip {
-    width: 1200%;
+    background-size: 1200% 100%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
     animation: eweIdle 0.4s steps(12, jump-none) infinite;
     animation-delay: var(--idle, 0s);
@@ -850,7 +852,7 @@ html, body {
 }
 
 .tv-ewe.is-outside:not(.is-walking) .tv-ewe-strip {
-    width: 1200%;
+    background-size: 1200% 100%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
     animation: eweIdle 0.4s steps(12, jump-none) infinite;
     animation-delay: var(--idle, 0s);
@@ -865,7 +867,7 @@ html, body {
 }
 
 .tv-lobby .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip {
-    width: 1200%;
+    background-size: 1200% 100%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
     animation: eweIdle 0.4s steps(12, jump-none) infinite;
     animation-delay: var(--idle, 0s);
@@ -880,7 +882,7 @@ html, body {
 }
 
 .tv-lobby .tv-ewe[data-mood="eat"]:not(.is-walking):not(.is-joining) .tv-ewe-strip {
-    width: 1300%;
+    background-size: 1300% 100%;
     background-image: url("sprites/sheep-01-eat.png?v=2026-11-18T20-05-00");
     animation: eweEat 0.45s steps(13, jump-none) infinite;
     animation-delay: var(--idle, 0s);
@@ -895,7 +897,7 @@ html, body {
 }
 
 .tv-lobby .tv-ewe.is-joining .tv-ewe-strip {
-    width: 1200%;
+    background-size: 1200% 100%;
     background-image: url("sprites/sheep-01-jump.png?v=2026-11-18T21-40-00");
     animation: eweJump 0.5s steps(12, jump-none) forwards;
 }
@@ -959,39 +961,35 @@ html, body {
 }
 
 .tv-key .tv-ewe-strip {
-    width: 1300%;
+    background-size: 1300% 100%;
     background-image: url("sprites/sheep-01-eat.png?v=2026-11-18T20-05-00");
     animation: eweEat 0.45s steps(13, jump-none) infinite;
 }
 
 .tv-key.is-in .tv-ewe-strip {
-    width: 1200%;
+    background-size: 1200% 100%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
     animation: eweIdle 0.4s steps(12, jump-none) infinite;
 }
 
 @keyframes eweEat {
-    from { transform: translateX(0); }
-    to { transform: translateX(-92.3077%); }
+    from { background-position: 0 0; }
+    to { background-position: 100% 0; }
 }
 
 @keyframes eweWalk {
-    from { transform: translateX(0); }
-    to { transform: translateX(-94.4444%); }
+    from { background-position: 0 0; }
+    to { background-position: 100% 0; }
 }
 
 @keyframes eweIdle {
-    from { transform: translateX(0); }
-    to { transform: translateX(-91.6667%); }
+    from { background-position: 0 0; }
+    to { background-position: 100% 0; }
 }
 
 @keyframes eweJump {
-    from { transform: translateX(0); }
-    to { transform: translateX(-91.6667%); }
-}
-
-.tv-ewe.is-left figcaption {
-    transform: scaleX(-1);
+    from { background-position: 0 0; }
+    to { background-position: 100% 0; }
 }
 
 .tv-ewe figcaption {
