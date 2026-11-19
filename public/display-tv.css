@@ -130,55 +130,40 @@ html, body {
 }
 
 /* ---------- Intro / pairing ---------- */
-.tv-intro {
-    grid-template-columns: minmax(0, 1.15fr) minmax(420px, 0.85fr);
-    align-items: stretch;
+.tv-intro.tv-stage {
+    display: block;
+    position: relative;
+    padding: 0;
+    background: #071018;
 }
 
-.tv-intro-brand,
-.tv-intro-join {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    min-width: 0;
-    height: 100%;
-    padding: clamp(28px, 3vw, 56px);
-    background: var(--tv-panel);
-    border: 1px solid var(--tv-border);
-    border-radius: calc(var(--tv-radius) + 6px);
+.tv-intro .tv-pasture {
+    z-index: 1;
 }
 
-.tv-intro-brand .display-title {
-    font-size: clamp(4rem, 9vh, 7.2rem) !important;
+.tv-intro-sign {
+    position: absolute;
+    left: 50%;
+    top: 52%;
+    transform: translate(-50%, -50%);
+    z-index: 8;
+    width: min(620px, 46vw);
 }
 
-.tv-intro-brand .display-subtitle {
-    font-size: clamp(1.35rem, 2.6vh, 2rem) !important;
-    max-width: 22em;
-}
-
-.tv-intro-join {
-    align-items: center;
-    text-align: center;
-    gap: 18px;
-}
-
-.tv-pair-label {
-    font-size: var(--tv-body);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    opacity: 0.8;
-    margin: 0;
+.tv-intro-sign .tv-lobby-wait {
+    width: min(108px, 10vw);
+    filter: drop-shadow(4px 5px 0 #1a140c);
 }
 
 .tv-pair-code {
-    font-size: var(--tv-code);
+    margin: 0;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(4.6rem, 12vh, 8rem);
     font-weight: 900;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.16em;
     line-height: 1;
-    color: #fff;
+    color: #1a140c;
     white-space: nowrap;
-    text-shadow: 0 0 28px rgba(80, 160, 255, 0.35);
 }
 
 .display-mode .qr-code-section {
@@ -244,13 +229,7 @@ html, body {
     pointer-events: none;
 }
 
-.tv-lobby-join {
-    position: absolute;
-    left: clamp(28px, 3vw, 52px);
-    top: 56%;
-    transform: translateY(-50%);
-    z-index: 8;
-    width: min(500px, 34vw);
+.tv-sign {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -264,7 +243,7 @@ html, body {
     box-shadow: 8px 10px 0 #1a140c;
 }
 
-.tv-lobby-join .display-title {
+.tv-sign .display-title {
     font-size: clamp(2.6rem, 5.2vh, 4.2rem) !important;
     line-height: 0.92;
     letter-spacing: -0.05em;
@@ -275,16 +254,25 @@ html, body {
     text-shadow: none;
 }
 
-.tv-lobby-join .qr-code {
+.tv-sign .qr-code {
     padding: 14px !important;
     background: #fff;
     border: 5px solid #1a140c;
     border-radius: 22px;
 }
 
-.tv-lobby-join .qr-code img {
+.tv-sign .qr-code img {
     width: min(300px, 28vh) !important;
     height: min(300px, 28vh) !important;
+}
+
+.tv-lobby-join {
+    position: absolute;
+    left: clamp(28px, 3vw, 52px);
+    top: 56%;
+    transform: translateY(-50%);
+    z-index: 8;
+    width: min(500px, 34vw);
 }
 
 .tv-lobby-code {
