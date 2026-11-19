@@ -243,7 +243,7 @@ html, body {
 }
 
 .tv-lobby .tv-pasture {
-    z-index: 1;
+    z-index: auto;
 }
 
 .tv-lobby .tv-flock {
@@ -319,6 +319,7 @@ html, body {
     transform-origin: 90% 55%;
 }
 
+.tv-ewe.is-snackish,
 .tv-ewe.is-nibbling {
     z-index: 80;
 }
