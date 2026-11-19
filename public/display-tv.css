@@ -1427,6 +1427,8 @@ html, body {
 
 @media (prefers-reduced-motion: reduce) {
     .tv-ewe, .tv-ewe figcaption { transition: none; }
+    .tv-score-sky.is-in,
+    .tv-score-sky.is-out { animation: none; }
     .tv-ewe-strip { animation: none !important; }
     .tv-lobby-join.is-nibbled,
     .tv-ewe.is-nibbling .tv-ewe-art,
@@ -1951,7 +1953,7 @@ html, body {
 }
 
 .tv-score .tv-flock {
-    z-index: 8;
+    z-index: 9;
 }
 
 .tv-standings .tv-flock,
@@ -2092,8 +2094,81 @@ html, body {
     font-size: clamp(1.15rem, 28cqi, 2.15rem);
 }
 
-.tv-score .tv-ewe.is-crowd figcaption {
+.tv-score .tv-ewe.is-crowd figcaption,
+.tv-score .tv-ewe.is-parade figcaption,
+.tv-score .tv-ewe.is-parade-wait figcaption {
     display: none;
+}
+
+.tv-score .tv-ewe.is-parade-wait {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.tv-score .tv-ewe.is-parade {
+    z-index: 48;
+}
+
+.tv-score-sky {
+    position: absolute;
+    left: 50%;
+    right: 22%;
+    top: 22%;
+    z-index: 13;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.08em;
+    text-align: center;
+    pointer-events: none;
+}
+
+.tv-score-sky[hidden] {
+    display: none;
+}
+
+.tv-score-sky-word {
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(4.2rem, 10vh, 8rem);
+    font-weight: 800;
+    letter-spacing: -0.045em;
+    line-height: 0.92;
+    color: #fff;
+    text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55);
+}
+
+.tv-score-sky-pts {
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(3.4rem, 8vh, 6.4rem);
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 0.9;
+    color: #d7f08a;
+    text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55);
+}
+
+.tv-score-sky.is-miss .tv-score-sky-word {
+    opacity: 0.62;
+}
+
+.tv-score-sky.is-in {
+    animation: scoreSkyIn 0.32s ease-out both;
+}
+
+.tv-score-sky.is-out {
+    animation: scoreSkyOut 0.4s ease-in both;
+}
+
+@keyframes scoreSkyIn {
+    from { opacity: 0; transform: translateY(14px) scale(0.94); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes scoreSkyOut {
+    from { opacity: 1; transform: none; }
+    to { opacity: 0; transform: translateY(-12px); }
 }
 
 .tv-boards {
