@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T00-50-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T00-55-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -752,7 +752,7 @@
             return `${first} ${parts[parts.length - 1].charAt(0)}.`;
         }
 
-        const LOBBY_FIELD = { left: 8, right: 94, top: 22, bottom: 88 };
+        const LOBBY_FIELD = { left: 2, right: 98, top: 18, bottom: 90 };
         const PLAY_FIELD = { left: 5, right: 56, top: 55, bottom: 90 };
         const GRASS_LINE = 0.55;
 
@@ -779,7 +779,10 @@
 
         function fieldXRange(gy) {
             const field = pastureField();
-            const inset = 4 + (1 - depthT(gy)) * 14;
+            const lobby = !!document.querySelector('.tv-lobby');
+            const inset = lobby
+                ? 2 + (1 - depthT(gy)) * 7
+                : 4 + (1 - depthT(gy)) * 14;
             return {
                 left: field.left + inset,
                 right: field.right - inset
@@ -811,7 +814,7 @@
             const span = field.right - field.left;
             const t = span <= 0 ? 0.5 : (gx - field.left) / span;
             const towardTrees = Math.max(0, (t - 0.62) / 0.38);
-            return minGy + towardTrees * towardTrees * 5;
+            return minGy + towardTrees * towardTrees * (document.querySelector('.tv-lobby') ? 3 : 5);
         }
 
         function clampLobbyPoint(gx, gy) {
