@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T09-00-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T09-10-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -752,12 +752,8 @@
 
         function shouldRoam(el) {
             if (!el || !canPastureWander(el)) return false;
-            if (isBoardPasture()) return false;
-            if (!isPlayPasture()) return true;
-            const n = flockSize();
-            if (n <= 24) return true;
-            const hash = nameHash(el.dataset.id || el.dataset.name || '');
-            return (hash % Math.max(2, Math.ceil(n / 10))) === 0;
+            if (isQuietPasture()) return false;
+            return true;
         }
 
         function packRegion(n, box) {
@@ -1851,6 +1847,9 @@
             const seconds = skipWalk ? 0 : walkSecondsTo(el, destLeft, destTop);
             el.classList.remove('is-walking');
             if (!skipWalk) el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
+            const fromX = parseFloat(el.style.getPropertyValue('--gx')) || 0;
+            const toX = parseFloat(el.style.getPropertyValue(`--${destLeft}`)) || 0;
+            el.classList.toggle('is-left', toX < fromX);
             el.classList.toggle('is-outside', !!next.outside);
             el.classList.toggle('is-in', !!next.inside);
             const destGy = parseFloat(el.style.getPropertyValue(`--${destTop}`)) || 70;
@@ -2906,99 +2905,6 @@
             element.innerHTML = `<img src="${qrCodeUrl}" alt="QR Code to join game">`;
         }
 
-        // Dynamic Sheep Carousel System
-        async function initializeSheepCarousel() {
-            try {
-                console.log('🐑 Fetching sheep photos...');
-                const response = await fetch('/api/sheep-urls');
-                console.log('🐑 API Response status:', response.status);
-                const data = await response.json();
-                console.log('🐑 API Response data:', data);
-                
-                if (data.urls && data.urls.length > 0) {
-                    // Preload a subset before starting the carousel
-                    const decoded = await (async () => {
-                        const decodedUrls = new Set();
-                        const limit = Math.min(data.urls.length, 20);
-                        const firstBatch = data.urls.slice(0, limit);
-                        await Promise.all(firstBatch.map(url => new Promise(resolve => {
-                            const img = new Image();
-                            let done = false;
-                            const to = setTimeout(() => { if (!done) { done = true; resolve(); } }, 4000);
-                            img.onload = () => { if (!done) { done = true; clearTimeout(to); decodedUrls.add(url); resolve(); } };
-                            img.onerror = () => { if (!done) { done = true; clearTimeout(to); resolve(); } };
-                            img.src = url;
-                            if (img.decode) { img.decode().then(() => { decodedUrls.add(url); }).catch(() => {}); }
-                        })));
-                        return Array.from(decodedUrls);
-                    })();
-                    const prioritized = decoded.length > 0 ? [...decoded, ...data.urls.filter(u => !decoded.includes(u))] : data.urls;
-                    updateSheepCarousel(prioritized);
-                    console.log(`🐑 Preloaded ${decoded.length}/${data.urls.length} sheep photos; carousel started`);
-                } else {
-                    console.log('🐑 No uploaded sheep photos found, using default background');
-                }
-            } catch (error) {
-                console.error('Failed to load sheep photos:', error);
-            }
-        }
-
-        function updateSheepCarousel(sheepUrls) {
-            console.log('🐑 Updating carousel with', sheepUrls.length, 'sheep photos');
-            
-            // Remove existing animation if it exists
-            const existingStyle = document.getElementById('dynamic-sheep-carousel');
-            if (existingStyle) {
-                existingStyle.remove();
-            }
-
-            if (sheepUrls.length === 0) {
-                console.log('🐑 No sheep URLs provided');
-                return;
-            }
-
-            // Calculate timing for smooth transitions with 10 seconds static time per image
-            const staticTimePerImage = 10; // 10 seconds static time per image
-            const transitionTime = 2; // 2 seconds for transition
-            const totalTimePerImage = staticTimePerImage + transitionTime;
-            const totalDuration = Math.max(60, sheepUrls.length * totalTimePerImage);
-            const stepPercentage = 100 / sheepUrls.length;
-
-            // Generate CSS keyframes with static periods
-            let keyframes = '@keyframes sheepCarousel {\n';
-            sheepUrls.forEach((url, index) => {
-                const startPercentage = (index * stepPercentage).toFixed(2);
-                const endPercentage = ((index + 1) * stepPercentage).toFixed(2);
-                
-                // Add static period for this image (most of the time)
-                const staticStart = parseFloat(startPercentage);
-                const staticEnd = parseFloat(endPercentage) - (transitionTime / totalTimePerImage * stepPercentage);
-                
-                keyframes += `    ${staticStart}% { background-image: url('${url}'); }\n`;
-                keyframes += `    ${staticEnd.toFixed(2)}% { background-image: url('${url}'); }\n`;
-            });
-            // Loop back to first image
-            keyframes += `    100% { background-image: url('${sheepUrls[0]}'); }\n`;
-            keyframes += '}\n\n';
-
-            // Set initial background and animation
-            keyframes += `.playing-container::after {\n`;
-            keyframes += `    background-image: url('${sheepUrls[0]}');\n`;
-            keyframes += `    animation: sheepCarousel ${totalDuration}s linear infinite;\n`;
-            keyframes += `}\n`;
-
-            console.log('🐑 Generated CSS for carousel:', keyframes.slice(0, 200) + '...');
-            console.log('🐑 Total duration:', totalDuration + 's, Static time per image:', staticTimePerImage + 's');
-
-            // Inject the CSS
-            const style = document.createElement('style');
-            style.id = 'dynamic-sheep-carousel';
-            style.textContent = keyframes;
-            document.head.appendChild(style);
-            
-            console.log('🐑 Carousel CSS injected, total duration:', totalDuration + 's');
-        }
-
         // Initialize socket connection on page load
         document.addEventListener('DOMContentLoaded', () => {
             if ('serviceWorker' in navigator) {
@@ -3007,11 +2913,7 @@
                 }).catch(() => {});
             }
             initializeSocket();
-            initializeSheepCarousel();
         });
-
-        // Refresh carousel every 5 minutes to pick up new uploads
-        setInterval(initializeSheepCarousel, 5 * 60 * 1000);
         
 
         // Helper functions for the new question results layout

@@ -523,8 +523,8 @@ html, body {
 }
 
 @keyframes nibbleNudge {
-    0%, 100% { transform: scaleX(-1); }
-    42% { transform: scaleX(-1) translate(10%, -4%); }
+    0%, 100% { transform: none; }
+    42% { transform: translate(10%, -4%); }
 }
 
 @keyframes lobbyCardChew {
@@ -1048,7 +1048,7 @@ html, body {
     pointer-events: none;
 }
 
-.tv-ewe.is-left .tv-ewe-art {
+.tv-ewe.is-left .tv-ewe-strip {
     transform: scaleX(-1);
 }
 
@@ -1096,7 +1096,7 @@ html, body {
 }
 
 .tv-ewe.is-poofing.is-left .tv-ewe-art {
-    animation-name: ewePopInLeft;
+    animation-name: ewePopIn;
 }
 
 .tv-ewe.is-poofing figcaption {
@@ -1155,6 +1155,8 @@ html, body {
     min-width: 0;
     aspect-ratio: 1 / 1;
     overflow: hidden;
+    overflow: clip;
+    overflow-clip-margin: 0;
     contain: paint;
     isolation: isolate;
     clip-path: inset(0);
@@ -1164,6 +1166,7 @@ html, body {
     position: absolute;
     inset: 0;
     width: 100%;
+    max-width: 100%;
     height: 100%;
     background-repeat: no-repeat;
     background-position: 0 0;
@@ -1171,6 +1174,7 @@ html, body {
     background-image: url("sprites/sheep-01-eat.png?v=2026-11-18T20-05-00");
     animation: eweEat 0.45s steps(13, jump-none) infinite;
     animation-delay: var(--idle, 0s);
+    transform-origin: 50% 50%;
 }
 
 .tv-ewe[data-coat="2"] .tv-ewe-strip {
