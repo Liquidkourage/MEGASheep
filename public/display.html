@@ -725,7 +725,7 @@
                     py: Math.min(78, Math.max(16, p.y + (((hash >> 4) % 5) - 2) * 0.35)),
                     scale: g.scale,
                     z: g.z,
-                    coat: (hash % 3) + 1,
+                    coat: (hash % 2) + 1,
                     walk: (2.05 + (hash % 8) * 0.12).toFixed(2),
                     idle: ((hash % 17) * 0.18).toFixed(2)
                 };
