@@ -2010,6 +2010,14 @@ html, body {
     container-name: post;
 }
 
+.tv-answer-post.is-back {
+    z-index: 5;
+}
+
+.tv-answer-post.is-front {
+    z-index: 7;
+}
+
 .tv-answer-post .tv-sign-face {
     gap: 0.04em;
     padding: 0 0.15em;

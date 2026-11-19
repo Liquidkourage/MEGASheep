@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T12-52-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T13-00-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -844,8 +844,9 @@
         const RESULTS_FIELD = { left: 8, right: 92, top: 64, bottom: 93 };
         const RESULTS_FAR = { left: 22, right: 78, y: 66 };
         const RESULTS_NEAR = { left: 8, right: 92, y: 92 };
-        const SCORE_POST_LEFT = 22;
+        const SCORE_POST_LEFT = 16;
         const SCORE_POST_RIGHT = 77;
+        const SCORE_POST_MAX = 20;
         const SCORE_NAME_AT = 1;
         const PEN_FAR = { left: 70, right: 84, y: 62 };
         const PEN_NEAR = { left: 64, right: 88, y: 86 };
@@ -1234,7 +1235,7 @@
                 score: Number(player.score) || 0,
                 named,
                 gx: Math.min(96, Math.max(2, g.x + ((hash % 5) - 2) * scatter)),
-                gy: Math.min(93, Math.max(58, g.y + (((hash >> 3) % 5) - 2) * bounce)),
+                gy: Math.min(93, Math.max(extra.minGy != null ? extra.minGy : 58, g.y + (((hash >> 3) % 5) - 2) * bounce)),
                 px: 80,
                 py: 70,
                 ox: 60,
@@ -1262,30 +1263,53 @@
             });
         }
 
+        function layoutScorePosts(posts) {
+            const n = posts.length;
+            const rows = n <= 7 ? 1 : 2;
+            const frontN = rows === 1 ? n : Math.ceil(n / 2);
+            const left = rows === 1 ? 20 : SCORE_POST_LEFT;
+            const right = SCORE_POST_RIGHT;
+            const span = right - left;
+            return posts.map((post, index) => {
+                const front = index < frontN;
+                const rowCount = front ? frontN : Math.max(1, n - frontN);
+                const rowIndex = front ? index : index - frontN;
+                const fill = front ? 0.82 : 0.76;
+                const width = rowCount <= 1 ? (front ? 16 : 12) : Math.min(front ? 15.5 : 11, (span / rowCount) * fill);
+                return Object.assign(post, {
+                    x: rowCount <= 1 ? 48 : left + ((rowIndex + 0.5) / rowCount) * span,
+                    front,
+                    rowCount,
+                    rowIndex,
+                    width,
+                    plant: front
+                        ? 22.8 + (rowIndex % 2) * 1.5
+                        : 49.2 + (rowIndex % 2) * 1.3
+                });
+            });
+        }
+
         function scorePostModels() {
             const { submittedAnswers, correctNotGiven } = categorizeAnswersForDisplay();
-            const hits = (submittedAnswers || [])
-                .slice()
-                .sort((a, b) => (Number(b.points) || 0) - (Number(a.points) || 0))
-                .slice(0, 6);
-            const misses = (correctNotGiven || []).slice(0, Math.max(0, 6 - hits.length));
-            const posts = hits.map((group) => ({
+            const misses = (correctNotGiven || []).map((answer) => ({
+                kind: 'miss',
+                answer,
+                points: 0,
+                players: []
+            }));
+            const hits = (submittedAnswers || []).slice().sort((a, b) => {
+                const byPoints = (Number(b.points) || 0) - (Number(a.points) || 0);
+                if (byPoints) return byPoints;
+                return (Number(b.count) || 0) - (Number(a.count) || 0);
+            }).map((group) => ({
                 kind: 'hit',
                 answer: group.answer,
                 points: Number(group.points) || 0,
-                players: group.players || []
-            })).concat(misses.map((answer) => ({
-                kind: 'miss',
-                answer: answer,
-                points: 0,
-                players: []
-            })));
-            const n = posts.length;
-            const left = SCORE_POST_LEFT;
-            const right = SCORE_POST_RIGHT;
-            return posts.map((post, index) => Object.assign(post, {
-                x: n <= 1 ? 48 : left + ((index + 0.5) / n) * (right - left)
+                players: group.players || [],
+                count: Number(group.count) || (group.players || []).length
             }));
+            const hitBudget = Math.max(0, SCORE_POST_MAX - misses.length);
+            return layoutScorePosts(hits.slice(0, hitBudget).concat(misses));
         }
 
         function placeScoreFlock(list, names) {
@@ -1303,34 +1327,41 @@
             });
             const leftovers = list.filter((_, index) => !claimed.has(index));
             const byPlayer = new Map();
-            const spacing = posts.length <= 1 ? 24 : (SCORE_POST_RIGHT - SCORE_POST_LEFT) / posts.length;
             buckets.forEach(({ post, members }) => {
                 if (!members.length) return;
                 const named = members.length <= SCORE_NAME_AT;
+                const spacing = (SCORE_POST_RIGHT - SCORE_POST_LEFT) / Math.max(1, post.rowCount || posts.length);
                 const half = Math.min(
-                    spacing * 0.4,
-                    named ? 4.8 + members.length * 0.55 : 3.6 + Math.min(members.length, 10) * 0.22
+                    spacing * 0.38,
+                    named ? 4.6 + members.length * 0.5 : 3.2 + Math.min(members.length, 8) * 0.2
                 );
+                const farY = post.front ? 76 : 51;
+                const nearY = post.front ? 91 : 58;
                 const packed = packTrapezoid(
                     members.length,
-                    { left: post.x - half * 0.45, right: post.x + half * 0.45, y: 72 },
-                    { left: post.x - half, right: post.x + half, y: 91 }
+                    { left: post.x - half * 0.45, right: post.x + half * 0.45, y: farY },
+                    { left: post.x - half, right: post.x + half, y: nearY }
                 );
                 members.forEach((player, index) => {
-                    byPlayer.set(player, resultSlot(player, names, packed[index], { named }));
+                    byPlayer.set(player, resultSlot(player, names, packed[index], {
+                        named,
+                        scale: post.front ? 1 : 0.78,
+                        minGy: post.front ? 74 : 49
+                    }));
                 });
             });
             if (leftovers.length) {
                 const hasHits = buckets.some((bucket) => bucket.members.length);
                 const packed = packTrapezoid(
                     leftovers.length,
-                    hasHits ? { left: 2, right: 14, y: 60 } : RESULTS_FAR,
-                    hasHits ? { left: 1, right: 18, y: 90 } : RESULTS_NEAR
+                    hasHits ? { left: 1.5, right: 11, y: 62 } : RESULTS_FAR,
+                    hasHits ? { left: 1, right: 14, y: 91 } : RESULTS_NEAR
                 );
                 leftovers.forEach((player, index) => {
                     byPlayer.set(player, resultSlot(player, names, packed[index], {
                         named: leftovers.length <= SCORE_NAME_AT,
-                        scale: 0.86
+                        scale: 0.84,
+                        minGy: 58
                     }));
                 });
             }
@@ -2209,13 +2240,10 @@
         function tvAnswerPostHtml() {
             const posts = scorePostModels();
             const tilts = [-1.1, 0.8, -0.45, 1.05, -0.85, 0.55];
-            const n = Math.max(1, posts.length);
-            const span = SCORE_POST_RIGHT - SCORE_POST_LEFT;
-            const width = n <= 1 ? 16 : Math.min(16, (span / n) * 0.82);
             return `
-                <div class="tv-score-posts" style="--post-w:${width}vw; --post-n:${n}">
+                <div class="tv-score-posts" style="--post-n:${posts.length}">
                     ${posts.map((post, index) => `
-                        <aside class="tv-sign tv-answer-post is-${post.kind}" style="--x:${post.x.toFixed(2)}%; --tilt:${tilts[index % tilts.length]}deg; --plant:${28.4 + (index % 2) * 2.4}%">
+                        <aside class="tv-sign tv-answer-post is-${post.kind} ${post.front ? 'is-front' : 'is-back'}" style="--x:${post.x.toFixed(2)}%; --tilt:${tilts[index % tilts.length]}deg; --plant:${post.plant}%; --post-w:${post.width}vw">
                             <img class="tv-sign-art" src="sprites/meadow-sign.png?v=2026-11-18T27-20-00" alt="" aria-hidden="true">
                             <div class="tv-sign-face">
                                 <p class="tv-post-answer">${escapeDisplayText(post.answer)}</p>
