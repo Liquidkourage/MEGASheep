@@ -739,7 +739,9 @@ html, body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
+    gap: 0.12em;
+    container-type: inline-size;
+    container-name: ewe;
     transition: left var(--walk, 4s) linear, top var(--walk, 4s) linear;
 }
 
@@ -877,7 +879,7 @@ html, body {
 .tv-thought b {
     font-family: Outfit, "Segoe UI", sans-serif;
     font-weight: 800;
-    font-size: clamp(0.95rem, 2.3vh, 1.7rem);
+    font-size: clamp(0.85rem, 28cqi, 1.7rem);
     color: #1b2430;
     line-height: 1;
 }
@@ -916,13 +918,13 @@ html, body {
 .tv-ewe figcaption {
     margin: 0;
     width: max-content;
-    max-width: 9ch !important;
-    padding: 2px 5px;
-    border-radius: 6px;
+    max-width: min(12ch, 160cqi);
+    padding: 0.18em 0.42em;
+    border-radius: 0.42em;
     background: rgba(8, 16, 24, 0.82);
     font-family: Outfit, "Segoe UI", sans-serif;
     font-weight: 800;
-    font-size: clamp(0.7rem, 1.15vh, 0.9rem);
+    font-size: clamp(1rem, 26cqi, 2rem);
     line-height: 1.1;
     letter-spacing: -0.03em;
     text-align: center;
@@ -931,12 +933,6 @@ html, body {
     white-space: nowrap;
     text-overflow: ellipsis;
     pointer-events: none;
-}
-
-.tv-flock[data-dense="1"] .tv-ewe figcaption {
-    font-size: clamp(0.62rem, 1vh, 0.78rem);
-    max-width: 8ch !important;
-    padding: 1px 4px;
 }
 
 .tv-ewe.is-in:not(.is-walking) figcaption {
