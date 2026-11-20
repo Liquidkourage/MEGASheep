@@ -2357,9 +2357,24 @@ html, body {
     display: none;
 }
 
+.tv-score .tv-ewe.is-parade:not(.is-parade-wait) {
+    container-type: normal;
+    contain: none;
+    overflow: visible;
+}
+
 .tv-score .tv-ewe.is-parade:not(.is-parade-wait) figcaption {
     display: flex;
     z-index: 6;
+    width: max-content;
+    max-width: none;
+    overflow: visible;
+}
+
+.tv-score .tv-ewe.is-parade:not(.is-parade-wait) .tv-ewe-name {
+    min-width: auto;
+    overflow: visible;
+    text-overflow: clip;
 }
 
 .tv-score .tv-ewe.is-wrong figcaption {
