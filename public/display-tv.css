@@ -2331,8 +2331,8 @@ html, body {
     --rank-cols: 1;
     grid-template-columns: minmax(0, 1fr);
     width: 100%;
-    height: 100%;
-    overflow: hidden;
+    height: auto;
+    overflow: visible;
     align-content: start;
 }
 
@@ -2364,11 +2364,20 @@ html, body {
 }
 
 .tv-score .tv-ewe.is-parade:not(.is-parade-wait) figcaption {
+    position: absolute;
+    left: 50%;
+    top: auto;
+    bottom: 6%;
     display: flex;
     z-index: 6;
     width: max-content;
     max-width: none;
     overflow: visible;
+    transform: translate(calc(-50% + var(--tag-x, 0px) + var(--sep-x, 0px)), var(--sep-y, 0px));
+}
+
+.tv-score .tv-ewe.is-parade.is-tag-lift:not(.is-parade-wait) figcaption {
+    bottom: 72%;
 }
 
 .tv-score .tv-ewe.is-parade:not(.is-parade-wait) .tv-ewe-name {
@@ -2460,8 +2469,7 @@ html, body {
     max-height: 70%;
 }
 
-.tv-answer-list,
-.tv-rank-list {
+.tv-answer-list {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -2470,6 +2478,11 @@ html, body {
 }
 
 .tv-rank-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    height: auto;
+    overflow: visible;
     display: grid;
     grid-template-columns: repeat(var(--rank-cols, 1), minmax(0, 1fr));
     column-gap: clamp(18px, 1.6vw, 28px);
@@ -2742,5 +2755,5 @@ html, body {
 
 @keyframes autoScrollDown {
     0%, 12% { transform: translateY(0); }
-    88%, 100% { transform: translateY(-45%); }
+    88%, 100% { transform: translateY(var(--scroll-to, -45%)); }
 }

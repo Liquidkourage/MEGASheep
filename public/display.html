@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T14-25-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T14-50-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1234,6 +1234,8 @@
                 named,
                 paradeWait: !!extra.paradeWait,
                 parade: !!extra.parade,
+                tagLift: !!extra.tagLift,
+                tagNudge: Number(extra.tagNudge) || 0,
                 wrong: extra.wrong || '',
                 faceLeft: !!extra.faceLeft,
                 gx: offstage ? gxRaw : Math.min(96, Math.max(2, gxRaw)),
@@ -1568,6 +1570,7 @@
             el.classList.toggle('is-crowd', slot.named === false && !slot.wrong);
             el.classList.toggle('is-parade-wait', !!slot.paradeWait);
             el.classList.toggle('is-parade', !!slot.parade);
+            el.classList.toggle('is-tag-lift', !!(slot.parade && slot.tagLift));
             el.classList.toggle('is-wrong', !!slot.wrong);
             el.classList.toggle('is-sad', !!slot.sad);
             if (!slot.parade && !slot.paradeWait && Object.prototype.hasOwnProperty.call(slot, 'faceLeft')) {
@@ -1581,9 +1584,10 @@
             const parade = slot.parade ? ' is-parade' : '';
             const wrong = slot.wrong ? ' is-wrong' : '';
             const sad = slot.sad ? ' is-sad' : '';
+            const lift = slot.parade && slot.tagLift ? ' is-tag-lift' : '';
             const face = slot.faceLeft && !slot.parade && !slot.paradeWait ? ' is-left' : '';
             return `
-                <figure class="tv-ewe${crowd}${wait}${parade}${wrong}${sad}${face}" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" data-mood="${escapeDisplayText(slot.mood || 'idle')}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--ox:${slot.ox}%;--oy:${slot.oy}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
+                <figure class="tv-ewe${crowd}${wait}${parade}${wrong}${sad}${lift}${face}" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" data-mood="${escapeDisplayText(slot.mood || 'idle')}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--ox:${slot.ox}%;--oy:${slot.oy}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s;--tag-x:${(Number(slot.tagNudge) || 0) * 22}px">
                     ${EWE_ART}
                     <figcaption>${eweCaptionHtml(slot)}</figcaption>
                 </figure>
@@ -1603,6 +1607,9 @@
             el.style.setProperty('--s', String(slot.scale));
             el.style.setProperty('--z', String(slot.z));
             el.style.setProperty('--idle', `${slot.idle}s`);
+            el.style.setProperty('--tag-x', `${(Number(slot.tagNudge) || 0) * 22}px`);
+            el.style.setProperty('--sep-x', '0px');
+            el.style.setProperty('--sep-y', '0px');
             const cap = el.querySelector('figcaption');
             if (cap) cap.innerHTML = eweCaptionHtml(slot);
             applyEweLook(el, slot);
@@ -2361,7 +2368,9 @@
         function armBoardScroll(id, count) {
             window.setTimeout(() => {
                 const box = document.getElementById(id);
-                if (box && box.scrollHeight > box.clientHeight + 8) {
+                if (!box) return;
+                const content = box.querySelector('.auto-scroll-content') || box;
+                if (content.scrollHeight > box.clientHeight + 8) {
                     startAutoScroll(id, count || 12);
                 }
             }, 80);
@@ -2476,11 +2485,11 @@
             const n = Math.max(1, count);
             const s = Number(laneScale) || 1;
             const bannerZ = Number(zBase) || 40;
-            if (n === 1) return [{ x: cx, y: cy, z: bannerZ + 8, scale: 1.1 * s }];
+            if (n === 1) return [{ x: cx, y: cy, z: bannerZ + 8, scale: 1.1 * s, tagNudge: 0 }];
             const half = Math.max(5.4, Number(width) * 0.44);
             const slots = [
-                { x: cx - half, y: cy, z: bannerZ + 8, scale: 1.08 * s },
-                { x: cx + half, y: cy, z: bannerZ + 8, scale: 1.08 * s }
+                { x: cx - half, y: cy, z: bannerZ + 8, scale: 1.08 * s, tagNudge: -1.8 },
+                { x: cx + half, y: cy, z: bannerZ + 8, scale: 1.08 * s, tagNudge: 1.8 }
             ];
             const extras = n - 2;
             for (let i = 0; i < extras; i += 1) {
@@ -2489,7 +2498,8 @@
                     x: cx - half + t * half * 2,
                     y: cy + 1.15,
                     z: bannerZ + 5,
-                    scale: 0.94 * s
+                    scale: 0.94 * s,
+                    tagNudge: (t - 0.5) * 1.4
                 });
             }
             return slots;
@@ -2570,6 +2580,13 @@
             const laneY = paradeLaneY(lane, lanes);
             const laneScale = paradeLaneScale(lane, lanes);
             const laneZ = paradeLaneZ(lane, lanes);
+            const laneLift = paradeLaneT(lane, lanes) > 0.35;
+            const tagLiftFor = (index) => {
+                if (n <= 1) return laneLift;
+                if (index === 0) return laneLift;
+                if (index === 1) return !laneLift;
+                return false;
+            };
             const width = paradeBannerWidth(group, n) * (0.94 + 0.06 * (1 - paradeLaneT(lane, lanes)));
             const { startX, destX } = paradeTravel(width, n);
             const start = packFlagHolders(n, startX, laneY, width, laneScale, laneZ);
@@ -2632,7 +2649,9 @@
                 const startSlot = resultSlot(members[index], names, start[index] || start[0], {
                     named: true,
                     parade: true,
-                    minGy
+                    minGy,
+                    tagLift: tagLiftFor(index),
+                    tagNudge: (start[index] || start[0]).tagNudge || 0
                 });
                 el.classList.add('is-placed');
                 applyEweSlot(el, startSlot);
@@ -2647,7 +2666,9 @@
                     const destSlot = resultSlot(members[index], names, dest[index] || dest[0], {
                         named: true,
                         parade: true,
-                        minGy
+                        minGy,
+                        tagLift: tagLiftFor(index),
+                        tagNudge: (dest[index] || dest[0]).tagNudge || 0
                     });
                     walkEweOnField(el, destSlot, finishOne, {
                         seconds,
@@ -2679,6 +2700,50 @@
                 else last.groups.push(group);
             });
             return waves;
+        }
+
+        function separateParadeNametags() {
+            const ewes = [...document.querySelectorAll('.tv-score .tv-ewe.is-parade:not(.is-parade-wait)')].filter((el) => {
+                const tag = el.querySelector('figcaption');
+                if (!tag) return false;
+                const box = tag.getBoundingClientRect();
+                return box.width > 8 && box.right > 48 && box.left < window.innerWidth - 48;
+            });
+            if (ewes.length < 2) return;
+            ewes.forEach((el) => {
+                el.style.setProperty('--sep-x', '0px');
+                el.style.setProperty('--sep-y', '0px');
+            });
+            for (let pass = 0; pass < 5; pass += 1) {
+                const boxes = ewes.map((el) => el.querySelector('figcaption').getBoundingClientRect());
+                for (let i = 0; i < ewes.length; i += 1) {
+                    for (let j = i + 1; j < ewes.length; j += 1) {
+                        const a = boxes[i];
+                        const b = boxes[j];
+                        const overlapX = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+                        const overlapY = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+                        if (overlapX <= 4 || overlapY <= 2) continue;
+                        const ax = parseFloat(elStyle(ewes[i], '--sep-x')) || 0;
+                        const ay = parseFloat(elStyle(ewes[i], '--sep-y')) || 0;
+                        const bx = parseFloat(elStyle(ewes[j], '--sep-x')) || 0;
+                        const by = parseFloat(elStyle(ewes[j], '--sep-y')) || 0;
+                        if (overlapX <= overlapY + 8) {
+                            const push = overlapX / 2 + 10;
+                            const leftFirst = a.left <= b.left;
+                            ewes[i].style.setProperty('--sep-x', `${ax + (leftFirst ? -push : push)}px`);
+                            ewes[j].style.setProperty('--sep-x', `${bx + (leftFirst ? push : -push)}px`);
+                        } else {
+                            const push = overlapY + 8;
+                            if (a.top > b.top) ewes[i].style.setProperty('--sep-y', `${ay - push}px`);
+                            else ewes[j].style.setProperty('--sep-y', `${by - push}px`);
+                        }
+                    }
+                }
+            }
+        }
+
+        function elStyle(el, name) {
+            return el.style.getPropertyValue(name);
         }
 
         function startScoreParade() {
@@ -2755,6 +2820,12 @@
                 });
             };
             runWave(0);
+            const tickTags = () => {
+                if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) return;
+                separateParadeNametags();
+                window.setTimeout(tickTags, 280);
+            };
+            window.setTimeout(tickTags, 80);
         }
 
         function tvPodiumHtml(sorted) {
@@ -2800,7 +2871,10 @@
             const players = rankedPlayers((gameState && gameState.players) || []);
             if (stage && stage.dataset.answerKey === key) {
                 const board = document.getElementById('scoreRankBoard');
-                if (board) board.innerHTML = tvRankListHtml(players, 0, { short: true });
+                if (board) {
+                    board.innerHTML = tvRankListHtml(players, 0, { short: true });
+                    armBoardScroll('scoreRankBoard', players.length);
+                }
                 return;
             }
             scoreParadeGen += 1;
@@ -2980,19 +3054,15 @@
         function startAutoScroll(scrollId, playerCount) {
             const container = document.getElementById(scrollId);
             if (!container) return;
-            
             const content = container.querySelector('.auto-scroll-content');
             if (!content) return;
-            
-            // Calculate cycle time: 1.5x faster across the board
-            // About 2 seconds per player visible, minimum 10 seconds total
+            const extra = content.scrollHeight - container.clientHeight;
+            if (extra <= 8) return;
+            const pct = Math.min(72, Math.max(28, Math.round((extra / content.scrollHeight) * 100)));
             const baseTime = Math.max(playerCount * 1.0, 10);
-            const totalCycleTime = baseTime / 1.5; // 1.5x speed increase
-            
-            // Start the scroll animation - down, pause, reset
+            const totalCycleTime = baseTime / 1.5;
+            content.style.setProperty('--scroll-to', `-${pct}%`);
             content.style.animation = `autoScrollDown ${totalCycleTime}s ease-in-out infinite`;
-            
-            console.log(`🔄 Started auto-scroll for ${playerCount} players, cycle time: ${totalCycleTime}s (1.5x faster)`);
         }
 
         function generateScoresDisplay(players) {
