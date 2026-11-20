@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T00-28-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T00-32-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1272,7 +1272,7 @@
             return Math.round(8 + t * 52);
         }
 
-        const PARADE_LANES = 5;
+        const PARADE_LANES = 12;
         const MISS_SIGN_AT = { x: 18, y: 64 };
         const RANK_SIGN_AT = { x: 83, y: 61.5 };
 
@@ -2417,7 +2417,9 @@
 
         function tvScoreBannerHtml() {
             const { hits, misses } = scoreAnswerModels();
-            const lanes = paradeLaneCount(hits.length);
+            const waves = paradeWaves(hits);
+            const widest = waves.reduce((max, wave) => Math.max(max, wave.groups.length), 1);
+            const lanes = paradeLaneCount(widest);
             const players = rankedPlayers((gameState && gameState.players) || []);
             return `
                 <div class="tv-score-banners">
@@ -2659,42 +2661,34 @@
             const waves = paradeWaves(scoreAnswerModels().hits);
             if (!waves.length) return;
             const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            const SET_BREAK_MS = 1600;
             const runWave = (waveIndex) => {
                 if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) return;
                 const wave = waves[waveIndex];
                 if (!wave) {
-                    window.setTimeout(() => runWave(0), SET_BREAK_MS);
+                    window.setTimeout(() => runWave(0), 400);
                     return;
                 }
                 const groups = wave.groups.slice();
                 const lanes = paradeLaneCount(groups.length);
+                const stagger = wave.size === 1 ? 280 : 420;
+                const handoff = wave.size === 1 ? 5200 : 5800;
                 let next = 0;
-                let running = 0;
                 let closed = false;
                 const finishWave = () => {
                     if (closed) return;
                     closed = true;
                     const following = waveIndex + 1 < waves.length ? waveIndex + 1 : 0;
-                    window.setTimeout(() => runWave(following), SET_BREAK_MS);
+                    window.setTimeout(() => runWave(following), 320);
                 };
                 const runLane = (lane) => {
                     if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) return;
-                    if (next >= groups.length) {
-                        if (running === 0) finishWave();
-                        return;
-                    }
+                    if (next >= groups.length) return;
                     const group = groups[next];
                     next += 1;
-                    running += 1;
                     const release = () => {
-                        running -= 1;
-                        if (next < groups.length) {
-                            window.setTimeout(() => runLane(lane), 80);
-                            return;
-                        }
-                        if (running === 0) finishWave();
+                        if (next < groups.length) window.setTimeout(() => runLane(lane), 60);
                     };
+                    if (next >= groups.length) window.setTimeout(finishWave, handoff);
                     if (reduce) {
                         const n = paradeSetSize(group);
                         const parked = 16 + lane * 18;
@@ -2708,7 +2702,7 @@
                     paradeScoreGroup(group, gen, lane, lanes, release);
                 };
                 for (let lane = 0; lane < lanes; lane += 1) {
-                    window.setTimeout(() => runLane(lane), 90 + lane * 720);
+                    window.setTimeout(() => runLane(lane), 50 + lane * stagger);
                 }
             };
             runWave(0);
