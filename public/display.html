@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T15-24-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T15-35-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1341,7 +1341,7 @@
         }
 
         function paradeLaneY(lane, lanes) {
-            return 93.7 - paradeLaneT(lane, lanes) * 3.1;
+            return 91.8 - paradeLaneT(lane, lanes) * 5.4;
         }
 
         function paradeLaneScale(lane, lanes) {
@@ -1569,7 +1569,6 @@
             el.classList.toggle('is-crowd', slot.named === false && !slot.wrong);
             el.classList.toggle('is-parade-wait', !!slot.paradeWait);
             el.classList.toggle('is-parade', !!slot.parade);
-            el.classList.toggle('is-tag-body', !!(slot.parade && slot.tagPlace === 'body'));
             el.classList.toggle('is-tag-hide', !!(slot.parade && slot.tagPlace === 'hide'));
             el.classList.toggle('is-wrong', !!slot.wrong);
             el.classList.toggle('is-sad', !!slot.sad);
@@ -1584,11 +1583,10 @@
             const parade = slot.parade ? ' is-parade' : '';
             const wrong = slot.wrong ? ' is-wrong' : '';
             const sad = slot.sad ? ' is-sad' : '';
-            const tagBody = slot.parade && slot.tagPlace === 'body' ? ' is-tag-body' : '';
             const tagHide = slot.parade && slot.tagPlace === 'hide' ? ' is-tag-hide' : '';
             const face = slot.faceLeft && !slot.parade && !slot.paradeWait ? ' is-left' : '';
             return `
-                <figure class="tv-ewe${crowd}${wait}${parade}${wrong}${sad}${tagBody}${tagHide}${face}" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" data-mood="${escapeDisplayText(slot.mood || 'idle')}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--ox:${slot.ox}%;--oy:${slot.oy}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
+                <figure class="tv-ewe${crowd}${wait}${parade}${wrong}${sad}${tagHide}${face}" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" data-mood="${escapeDisplayText(slot.mood || 'idle')}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--ox:${slot.ox}%;--oy:${slot.oy}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
                     ${EWE_ART}
                     <figcaption>${eweCaptionHtml(slot)}</figcaption>
                 </figure>
@@ -2596,9 +2594,7 @@
             const laneScale = paradeLaneScale(lane, lanes);
             const laneZ = paradeLaneZ(lane, lanes);
             const tagPlaceFor = (index, packed) => {
-                const place = (packed[index] || packed[0] || {}).tagPlace || 'under';
-                if (place === 'hide') return 'hide';
-                return paradeLaneT(lane, lanes) > 0.35 ? 'body' : 'under';
+                return (packed[index] || packed[0] || {}).tagPlace || 'under';
             };
             const width = paradeBannerWidth(group, n) * (0.94 + 0.06 * (1 - paradeLaneT(lane, lanes)));
             const { startX, destX } = paradeTravel(width, n);
