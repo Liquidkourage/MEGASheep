@@ -2065,7 +2065,7 @@ html, body {
 
 .tv-banner.is-cloth {
     width: var(--w, 24vw);
-    height: 10.5vh;
+    height: 12.5vh;
     overflow: visible;
     transform: translate(-50%, calc(-100% - 18vh)) rotate(var(--tilt, 0deg));
     transform-origin: 50% 100%;
@@ -2140,8 +2140,12 @@ html, body {
 }
 
 .tv-banner.is-cloth .tv-flag-face {
-    top: 12%;
-    bottom: 24%;
+    top: 10%;
+    bottom: 20%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.02em;
 }
 
 .tv-flag-face {
@@ -2297,6 +2301,14 @@ html, body {
 .tv-flag-face .tv-post-pts {
     flex: 0 0 auto;
     font-size: clamp(1.9rem, 4.6vh, 3.4rem);
+}
+
+.tv-banner.is-cloth .tv-post-answer {
+    font-size: clamp(1.7rem, 3.7vh, 2.9rem);
+}
+
+.tv-banner.is-cloth .tv-post-pts {
+    font-size: clamp(1.45rem, 3vh, 2.35rem);
 }
 
 .tv-banner.is-pennant .tv-post-pts {
