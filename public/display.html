@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T00-18-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T00-28-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1220,8 +1220,8 @@
             const g = point || { x: 50, y: 80, z: 12, scale: 1 };
             const depth = lobbyDepth(g.y);
             const named = extra.named !== false;
-            const scatter = extra.tight ? 0 : (named ? 0.12 : 0.7);
-            const bounce = extra.tight ? 0 : (named ? 0.7 : 1.15);
+            const scatter = extra.tight || extra.parade || extra.paradeWait ? 0 : (named ? 0.12 : 0.7);
+            const bounce = extra.tight || extra.parade || extra.paradeWait ? 0 : (named ? 0.7 : 1.15);
             const scale = (g.scale || depth.scale) * (extra.scale || 1);
             const offstage = extra.paradeWait || extra.parade;
             const gxRaw = g.x + ((hash % 5) - 2) * scatter;
@@ -2026,8 +2026,9 @@
             const seconds = (opts && opts.seconds) || Math.min(maxSeconds, Math.max(minSeconds, dist / (stride / cycle)));
             const gen = bumpEweWalk(el);
             const fromX = parseFloat(el.style.getPropertyValue('--gx')) || 0;
+            const keepStride = !!(opts && opts.keepStride);
             el.classList.remove('is-joining');
-            el.classList.remove('is-walking');
+            if (!keepStride) el.classList.remove('is-walking');
             el.classList.toggle('is-left', slot.gx < fromX);
             el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
             el.style.transitionDuration = `${seconds.toFixed(2)}s`;
@@ -2499,7 +2500,7 @@
             el.style.setProperty('--w', `${Number(width).toFixed(2)}vw`);
             el.style.setProperty('--z', String(paradeLaneZ(lane, Number(el.dataset.lanes) || PARADE_LANES)));
             el.style.setProperty('--walk', `${Number(walk || 0).toFixed(2)}s`);
-            el.style.transitionDuration = `${Number(walk || 0).toFixed(2)}s`;
+            el.style.transitionDuration = walk ? `${Number(walk).toFixed(2)}s` : '';
             const faceWord = el.querySelector('.tv-flag-face .tv-post-answer');
             const facePts = el.querySelector('.tv-flag-face .tv-post-pts');
             if (faceWord && faceWord.textContent !== word) faceWord.textContent = word;
@@ -2525,7 +2526,8 @@
                     minGy: 84
                 });
                 el.classList.add('is-placed');
-                el.style.transitionDuration = '0s';
+                el.style.transitionDuration = '';
+                el.style.setProperty('--walk', '0s');
                 applyEweSlot(el, slot);
                 el.classList.remove('is-walking', 'is-parade', 'is-left');
                 window.requestAnimationFrame(() => el.classList.remove('is-placed'));
@@ -2552,7 +2554,7 @@
             const { startX, destX } = paradeTravel(width, n);
             const start = packFlagHolders(n, startX, laneY, width, laneScale, laneZ);
             const dest = packFlagHolders(n, destX, laneY, width, laneScale, laneZ);
-            const seconds = n === 1 ? 8.6 : 9.4;
+            const seconds = n === 1 ? 8.4 : 9.6;
             const minGy = Math.max(72, laneY - 6);
             const banner = paradeBannerEl(lane);
             const finish = () => {
@@ -2568,17 +2570,21 @@
             const armWalk = (onGo) => {
                 window.requestAnimationFrame(() => {
                     if (gen !== scoreParadeGen) return;
-                    if (banner) {
-                        banner.classList.remove('is-placed');
-                        banner.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
-                    }
-                    els.forEach((el) => {
-                        el.classList.remove('is-placed');
-                        el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
-                    });
                     if (banner) banner.getBoundingClientRect();
+                    if (els[0]) els[0].getBoundingClientRect();
                     window.requestAnimationFrame(() => {
                         if (gen !== scoreParadeGen) return;
+                        const dur = `${seconds.toFixed(2)}s`;
+                        if (banner) {
+                            banner.classList.remove('is-placed');
+                            banner.style.setProperty('--walk', dur);
+                            banner.style.transitionDuration = dur;
+                        }
+                        els.forEach((el) => {
+                            el.classList.remove('is-placed');
+                            el.style.setProperty('--walk', dur);
+                            el.style.transitionDuration = dur;
+                        });
                         onGo();
                     });
                 });
@@ -2605,7 +2611,7 @@
                 el.classList.add('is-placed');
                 applyEweSlot(el, startSlot);
                 el.classList.remove('is-parade-wait', 'is-left');
-                el.classList.add('is-parade', 'is-crowd');
+                el.classList.add('is-parade', 'is-crowd', 'is-walking');
             });
             if (els[0]) els[0].getBoundingClientRect();
             armWalk(() => {
@@ -2616,51 +2622,96 @@
                         parade: true,
                         minGy
                     });
-                    walkEweOnField(el, destSlot, finishOne, { seconds, minSeconds: seconds, maxSeconds: seconds });
+                    walkEweOnField(el, destSlot, finishOne, {
+                        seconds,
+                        minSeconds: seconds,
+                        maxSeconds: seconds,
+                        keepStride: true
+                    });
                 });
             });
         }
 
+        function paradeSetSize(group) {
+            return Math.max(1, Number(group && group.count) || ((group && group.players) || []).length || 1);
+        }
+
+        function paradeWaves(hits) {
+            const sorted = (hits || []).slice().sort((a, b) => {
+                const byCount = paradeSetSize(a) - paradeSetSize(b);
+                if (byCount) return byCount;
+                const byPts = (Number(b.points) || 0) - (Number(a.points) || 0);
+                if (byPts) return byPts;
+                return String(a.answer || '').localeCompare(String(b.answer || ''));
+            });
+            const waves = [];
+            sorted.forEach((group) => {
+                const size = paradeSetSize(group);
+                const last = waves[waves.length - 1];
+                if (!last || last.size !== size) waves.push({ size, groups: [group] });
+                else last.groups.push(group);
+            });
+            return waves;
+        }
+
         function startScoreParade() {
             const gen = scoreParadeGen;
-            const hits = scoreAnswerModels().hits;
-            if (!hits.length) return;
-            const lanes = paradeLaneCount(hits.length);
+            const waves = paradeWaves(scoreAnswerModels().hits);
+            if (!waves.length) return;
             const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            const active = new Set();
-            let nextHit = 0;
-            const takeNext = () => {
-                for (let step = 0; step < hits.length; step += 1) {
-                    const group = hits[nextHit % hits.length];
-                    nextHit += 1;
-                    if (!active.has(group.answer)) return group;
-                }
-                return hits[nextHit % hits.length];
-            };
-            const runLane = (lane) => {
+            const SET_BREAK_MS = 1600;
+            const runWave = (waveIndex) => {
                 if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) return;
-                const group = takeNext();
-                if (!group) return;
-                active.add(group.answer);
-                const release = () => {
-                    active.delete(group.answer);
-                    window.setTimeout(() => runLane(lane), 80);
-                };
-                if (reduce) {
-                    const n = Math.max(1, Number(group.count) || 1);
-                    const parked = 16 + lane * 18;
-                    setParadeBanner(lane, group, parked, paradeLaneY(lane, lanes), paradeBannerWidth(group, n), 0, false);
-                    window.setTimeout(() => {
-                        setParadeBanner(lane, group, parked, paradeLaneY(lane, lanes), paradeBannerWidth(group, n), 0, true);
-                        release();
-                    }, 2400);
+                const wave = waves[waveIndex];
+                if (!wave) {
+                    window.setTimeout(() => runWave(0), SET_BREAK_MS);
                     return;
                 }
-                paradeScoreGroup(group, gen, lane, lanes, release);
+                const groups = wave.groups.slice();
+                const lanes = paradeLaneCount(groups.length);
+                let next = 0;
+                let running = 0;
+                let closed = false;
+                const finishWave = () => {
+                    if (closed) return;
+                    closed = true;
+                    const following = waveIndex + 1 < waves.length ? waveIndex + 1 : 0;
+                    window.setTimeout(() => runWave(following), SET_BREAK_MS);
+                };
+                const runLane = (lane) => {
+                    if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) return;
+                    if (next >= groups.length) {
+                        if (running === 0) finishWave();
+                        return;
+                    }
+                    const group = groups[next];
+                    next += 1;
+                    running += 1;
+                    const release = () => {
+                        running -= 1;
+                        if (next < groups.length) {
+                            window.setTimeout(() => runLane(lane), 80);
+                            return;
+                        }
+                        if (running === 0) finishWave();
+                    };
+                    if (reduce) {
+                        const n = paradeSetSize(group);
+                        const parked = 16 + lane * 18;
+                        setParadeBanner(lane, group, parked, paradeLaneY(lane, lanes), paradeBannerWidth(group, n), 0, false);
+                        window.setTimeout(() => {
+                            setParadeBanner(lane, group, parked, paradeLaneY(lane, lanes), paradeBannerWidth(group, n), 0, true);
+                            release();
+                        }, 2400);
+                        return;
+                    }
+                    paradeScoreGroup(group, gen, lane, lanes, release);
+                };
+                for (let lane = 0; lane < lanes; lane += 1) {
+                    window.setTimeout(() => runLane(lane), 90 + lane * 720);
+                }
             };
-            for (let lane = 0; lane < lanes; lane += 1) {
-                window.setTimeout(() => runLane(lane), 80 + lane * 760);
-            }
+            runWave(0);
         }
 
         function tvPodiumHtml(sorted) {

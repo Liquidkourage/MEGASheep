@@ -1132,7 +1132,7 @@ html, body {
     100% { transform: scaleX(-1); opacity: 1; }
 }
 
-.tv-ewe.is-walking {
+.tv-ewe.is-walking:not(.is-parade) {
     z-index: 48;
 }
 
@@ -2029,6 +2029,31 @@ html, body {
 
 .tv-banner.is-placed {
     transition: none;
+}
+
+.tv-score .tv-banner.is-parade {
+    will-change: left, top;
+    backface-visibility: hidden;
+    transform: translateZ(0) translate(-50%, -58%) rotate(var(--tilt, 0deg));
+}
+
+.tv-score .tv-banner.is-parade.is-cloth {
+    transform: translateZ(0) translate(-50%, -72%) rotate(var(--tilt, 0deg));
+}
+
+.tv-score .tv-banner.is-parade.is-pennant {
+    transform: translateZ(0) translate(-14%, -100%) rotate(var(--tilt, 0.4deg));
+}
+
+.tv-score .tv-ewe.is-parade {
+    z-index: var(--z, 48);
+    contain: paint;
+    will-change: left, top;
+    backface-visibility: hidden;
+    transform: translate3d(-50%, -72%, 0) scale(var(--s, 1));
+    transition:
+        left var(--walk, 0s) linear,
+        top var(--walk, 0s) linear;
 }
 
 .tv-banner.is-parade,
