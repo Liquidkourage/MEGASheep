@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T00-36-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T12-25-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1359,26 +1359,27 @@
             return Array.from({ length: n }, (_, index) => {
                 const h = Math.abs(seed + index * 97);
                 const ang = ((h % 628) / 100);
-                const rad = 1.05 + (index % 4) * 0.9 + (h % 5) * 0.12;
+                const rad = 3.1 + (index % 4) * 1.7 + (h % 5) * 0.28;
                 return withZ({
-                    x: x + Math.cos(ang) * rad * 1.85,
-                    y: y + Math.sin(ang) * rad * 0.52 + (index % 3 ? 0.35 : 0),
+                    x: x + Math.cos(ang) * rad * 2.45,
+                    y: y + Math.sin(ang) * rad * 0.85 + (index % 3 ? 0.55 : 0),
                     scale: 0.9 + (index % 3) * 0.05
                 });
             });
         }
 
         function pickWrongPatch(occupied, hash, avoid) {
-            for (let tryAt = 0; tryAt < 24; tryAt += 1) {
-                const gx = 42 + ((hash + tryAt * 17) % 26);
-                const gy = 62 + ((hash + tryAt * 13) % 14);
-                if (gx > 70 || gx < 40) continue;
+            for (let tryAt = 0; tryAt < 48; tryAt += 1) {
+                const gx = 22 + ((hash + tryAt * 17) % 54);
+                const gy = 64 + ((hash + tryAt * 13) % 22);
+                if (gx > 76 || gx < 22) continue;
+                if (gy > 86 || gy < 64) continue;
                 if (avoid && Math.hypot(gx - avoid.x, (gy - avoid.y) * 1.4) < 26) continue;
                 if (Math.hypot(gx - RANK_SIGN_AT.x, (gy - RANK_SIGN_AT.y) * 1.4) < 22) continue;
-                if (occupied.some((spot) => Math.hypot(spot.x - gx, (spot.y - gy) * 1.25) < 12)) continue;
+                if (occupied.some((spot) => Math.hypot(spot.x - gx, (spot.y - gy) * 1.25) < 20)) continue;
                 return { x: gx, y: gy };
             }
-            return { x: 48 + (hash % 18), y: 62 + (hash % 10) };
+            return { x: 28 + (hash % 44), y: 70 + (hash % 12) };
         }
 
         function claimScoreMembers(list, claimed, group) {
@@ -2406,8 +2407,8 @@
             const rows = players || [];
             if (!rows.length) return '';
             return `
-                <aside class="tv-sign tv-score-ranks" style="--x:${RANK_SIGN_AT.x}%; --y:${RANK_SIGN_AT.y}%; --w:15.5vw; --tilt:0.45deg; --z:4">
-                    <img class="tv-sign-art" src="sprites/meadow-sign.png?v=2026-11-18T27-20-00" alt="" aria-hidden="true">
+                <aside class="tv-sign tv-score-ranks" style="--x:${RANK_SIGN_AT.x}%; --y:${RANK_SIGN_AT.y}%; --w:19vw; --tilt:0.45deg; --z:4">
+                    <img class="tv-sign-art" src="sprites/meadow-sign-tall.png?v=2026-11-19T00-20-00" alt="" aria-hidden="true">
                     <div class="tv-sign-face" id="scoreRankBoard">
                         ${tvRankListHtml(rows, 0, { short: true })}
                     </div>
@@ -2469,11 +2470,12 @@
             ];
             const extras = n - 2;
             for (let i = 0; i < extras; i += 1) {
+                const t = extras === 1 ? 0.5 : (i + 1) / (extras + 1);
                 slots.push({
-                    x: cx - half - 2.2 - i * 2.7,
-                    y: cy - 1.4 - (i % 2) * 0.5,
-                    z: bannerZ + 4 - Math.min(i, 3),
-                    scale: (0.78 - Math.min(i, 5) * 0.035) * s
+                    x: cx - half + t * half * 2,
+                    y: cy + 1.15,
+                    z: bannerZ + 5,
+                    scale: 0.94 * s
                 });
             }
             return slots;
@@ -2689,36 +2691,42 @@
                 if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) return;
                 const wave = waves[waveIndex];
                 if (!wave) {
-                    window.setTimeout(() => runWave(0), 450);
+                    const waitClear = () => {
+                        if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) return;
+                        if (busy.size) {
+                            window.setTimeout(waitClear, 200);
+                            return;
+                        }
+                        window.setTimeout(() => runWave(0), 450);
+                    };
+                    waitClear();
                     return;
                 }
                 const groups = wave.groups.slice();
                 const depthCount = Math.max(1, groups.length);
-                const stagger = wave.size === 1 ? 1050 : 1850;
+                const stagger = wave.size === 1 ? 880 : 1700;
                 let next = 0;
-                let inFlight = 0;
                 let closed = false;
                 const finishWave = () => {
                     if (closed) return;
                     closed = true;
-                    window.setTimeout(() => runWave(waveIndex + 1), 450);
+                    window.setTimeout(() => runWave(waveIndex + 1), 280);
                 };
                 const launchOne = (depthLane) => {
                     if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) return;
                     if (next >= groups.length) return;
                     const bannerLane = acquireBanner();
                     if (bannerLane < 0) {
-                        window.setTimeout(() => launchOne(depthLane), 180);
+                        window.setTimeout(() => launchOne(depthLane), 160);
                         return;
                     }
                     const group = groups[next];
                     next += 1;
-                    inFlight += 1;
+                    if (next >= groups.length) {
+                        window.setTimeout(finishWave, wave.size === 1 ? 2400 : 2800);
+                    }
                     const release = () => {
                         busy.delete(bannerLane);
-                        inFlight -= 1;
-                        if (next < groups.length) window.setTimeout(() => launchOne(depthLane), 80);
-                        else if (inFlight === 0) finishWave();
                     };
                     if (reduce) {
                         const n = paradeSetSize(group);

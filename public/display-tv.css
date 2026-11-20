@@ -2056,8 +2056,32 @@ html, body {
 .tv-banner.is-cloth {
     width: var(--w, 24vw);
     height: 10.5vh;
-    transform: translate(-50%, -72%) rotate(var(--tilt, 0deg));
-    transform-origin: 50% 14%;
+    overflow: visible;
+    transform: translate(-50%, calc(-100% - 18vh)) rotate(var(--tilt, 0deg));
+    transform-origin: 50% 100%;
+}
+
+.tv-banner.is-cloth::before,
+.tv-banner.is-cloth::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    width: 0.65vh;
+    height: 18vh;
+    margin-top: -0.35vh;
+    background: linear-gradient(90deg, #2d1a0e, #6b4423 45%, #3f2714);
+    box-shadow: 1px 0 0 #1a140c, -1px 0 0 #1a140c;
+    border-radius: 1px;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.tv-banner.is-cloth::before {
+    left: 5.5%;
+}
+
+.tv-banner.is-cloth::after {
+    right: 5.5%;
 }
 
 .tv-banner.is-pennant {
@@ -2271,21 +2295,21 @@ html, body {
     right: auto;
     bottom: auto;
     z-index: var(--z, 4);
-    width: min(var(--w, 15.5vw), 300px);
+    width: var(--w, 19vw);
     transform: translate(-50%, -100%) rotate(var(--tilt, 0.45deg));
     transform-origin: 50% 100%;
     pointer-events: none;
 }
 
 .tv-score-ranks .tv-sign-face {
-    left: 7%;
-    right: 7%;
-    top: 7%;
-    bottom: 30%;
+    left: 8%;
+    right: 8%;
+    top: 6%;
+    bottom: 15%;
     justify-content: flex-start;
     align-items: stretch;
     overflow: hidden;
-    padding: 0.15em 0.1em 0.2em;
+    padding: 0.08em 0.06em 0.1em;
 }
 
 .tv-score-ranks .tv-rank-list {
@@ -2296,10 +2320,16 @@ html, body {
     overflow: visible;
 }
 
+.tv-score-ranks .tv-rank-row {
+    padding: 0.02em 0;
+    gap: 0.15em 0.4em;
+}
+
 .tv-score-ranks .tv-rank-n,
 .tv-score-ranks .tv-rank-name,
 .tv-score-ranks .tv-rank-pts {
-    font-size: clamp(1.45rem, 2.9vh, 2.2rem);
+    font-size: clamp(1.05rem, 2.05vh, 1.55rem);
+    line-height: 1.02;
 }
 
 .tv-score .tv-ewe figcaption {
