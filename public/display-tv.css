@@ -2085,7 +2085,8 @@ html, body {
 }
 
 .tv-banner.is-pennant {
-    width: calc(30vh * 0.432);
+    width: var(--w, calc(30vh * 0.432));
+    min-width: calc(30vh * 0.432);
     height: 30vh;
     transform: translate(-14%, -100%) rotate(var(--tilt, 0.4deg));
     transform-origin: 14% 100%;
@@ -2124,7 +2125,7 @@ html, body {
 .tv-banner.is-pennant .tv-flag-art {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: fill;
     object-position: left bottom;
 }
 
@@ -2151,12 +2152,13 @@ html, body {
 }
 
 .tv-banner.is-pennant .tv-flag-face {
-    left: 24%;
-    right: 10%;
+    left: 20%;
+    right: 8%;
     top: 7%;
     bottom: 48%;
     flex-direction: column;
     gap: 0.08em;
+    overflow: visible;
 }
 
 .tv-miss-sign {
@@ -2264,9 +2266,12 @@ html, body {
 }
 
 .tv-banner.is-pennant .tv-post-answer {
-    font-size: clamp(1.6rem, 3.6vh, 2.8rem);
-    white-space: normal;
+    font-size: clamp(1.45rem, 3.2vh, 2.55rem);
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
     display: block;
+    max-width: none;
 }
 
 .tv-post-pts {

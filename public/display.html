@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T12-50-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T13-15-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -2457,14 +2457,18 @@
 
         function paradeBannerWidth(group, count) {
             const n = Math.max(1, Number(count) || 1);
-            if (n === 1) return 8.4;
             const letters = String((group && group.answer) || '').length;
+            if (n === 1) return Math.min(16.5, Math.max(9.6, 4.2 + letters * 1.35));
             return Math.min(26, Math.max(20, 18 + Math.min(n, 8) * 0.7, 12 + letters * 0.9));
         }
 
         function paradeTravel(width, n) {
-            if (n === 1) return { startX: -18, destX: 114 };
-            const pad = Math.max(22, Number(width) * 0.78);
+            const w = Number(width) || 10;
+            if (n === 1) {
+                const pad = Math.max(18, w * 0.72);
+                return { startX: -pad, destX: 100 + pad };
+            }
+            const pad = Math.max(22, w * 0.78);
             return { startX: -pad, destX: 100 + pad };
         }
 
