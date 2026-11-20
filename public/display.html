@@ -1547,7 +1547,7 @@
             el.classList.toggle('is-parade', !!slot.parade);
             el.classList.toggle('is-wrong', !!slot.wrong);
             el.classList.toggle('is-sad', !!slot.sad);
-            if (!slot.parade && !slot.paradeWait) {
+            if (!slot.parade && !slot.paradeWait && Object.prototype.hasOwnProperty.call(slot, 'faceLeft')) {
                 el.classList.toggle('is-left', !!slot.faceLeft);
             }
         }
@@ -1910,49 +1910,56 @@
             return true;
         }
 
-        function nudgeOverlappingLobbyEwes() {
+        function nudgeOverlappingLobbyEwes(maxMoves) {
             const chorus = document.getElementById('flockChorus');
             if (!chorus || !isPastureScene() || isQuietPasture()) return;
             const ewes = roamingEwes();
             if (ewes.length > 40) return;
+            const limit = Math.max(1, Number(maxMoves) || 1);
             const boxes = ewes.map((el) => eweWorldBox(el));
             const moved = new Set();
             for (let i = 0; i < boxes.length; i += 1) {
+                if (moved.size >= limit) return;
                 for (let j = i + 1; j < boxes.length; j += 1) {
+                    if (moved.size >= limit) return;
                     if (!boxesOverlap(boxes[i], boxes[j])) continue;
                     const mover = pickIdleMover([ewes[i], ewes[j]], moved);
                     if (!mover) continue;
                     if (separateLobbyEwe(mover)) moved.add(mover);
                 }
             }
-            if (ewes.length > 18) return;
+            if (moved.size || ewes.length > 18) return;
             const pts = ewes
                 .filter((el) => !moved.has(el) && !el.classList.contains('is-walking'))
                 .map((el) => eweLinePoint(el));
-            let brokeLine = false;
-            for (let i = 0; i < pts.length && !brokeLine; i += 1) {
-                for (let j = i + 1; j < pts.length && !brokeLine; j += 1) {
-                    for (let k = j + 1; k < pts.length && !brokeLine; k += 1) {
+            for (let i = 0; i < pts.length; i += 1) {
+                for (let j = i + 1; j < pts.length; j += 1) {
+                    for (let k = j + 1; k < pts.length; k += 1) {
                         if (!pointsCollinear(pts[i], pts[j], pts[k])) continue;
                         const mover = pickIdleMover([pts[i].el, pts[j].el, pts[k].el], moved);
                         if (!mover) continue;
                         const line = [pts[i], pts[j], pts[k]].filter((p) => p.el !== mover).slice(0, 2);
-                        if (separateLobbyEwe(mover, { line })) {
-                            moved.add(mover);
-                            brokeLine = true;
-                        }
+                        if (separateLobbyEwe(mover, { line })) return;
                     }
                 }
             }
+        }
+
+        function unstickJoinedEwe(el) {
+            if (!el || !el.isConnected || isQuietPasture()) return;
+            const others = roamingEwes(el);
+            const mine = eweWorldBox(el);
+            const hits = others.some((other) => boxesOverlap(mine, eweWorldBox(other)));
+            if (hits) separateLobbyEwe(el);
         }
 
         function armLobbySeparate() {
             window.clearTimeout(lobbySeparateTimer);
             if (!document.querySelector('.tv-lobby')) return;
             lobbySeparateTimer = window.setTimeout(() => {
-                nudgeOverlappingLobbyEwes();
+                nudgeOverlappingLobbyEwes(1);
                 armLobbySeparate();
-            }, 1400);
+            }, 5200);
         }
 
         function playJoinJump(el) {
@@ -2032,19 +2039,24 @@
             const byId = new Map();
             chorus.querySelectorAll('.tv-ewe').forEach((el) => byId.set(el.dataset.id, el));
             const keep = new Set();
+            const born = [];
+            const roaming = !!document.querySelector('.tv-lobby, .tv-play');
             slots.forEach((slot) => {
                 const id = String(slot.id);
                 keep.add(id);
                 const el = byId.get(id);
                 if (!el) {
                     chorus.insertAdjacentHTML('beforeend', eweFigureHtml(slot));
-                    const born = chorus.querySelector(`.tv-ewe[data-id="${CSS.escape(id)}"]`);
-                    if (born) playJoinJump(born);
+                    const joiner = chorus.querySelector(`.tv-ewe[data-id="${CSS.escape(id)}"]`);
+                    if (joiner) {
+                        playJoinJump(joiner);
+                        born.push(joiner);
+                    }
                     return;
                 }
                 const cap = el.querySelector('figcaption');
                 if (cap) cap.innerHTML = eweCaptionHtml(slot);
-                applyEweLook(el, slot);
+                if (!roaming) applyEweLook(el, slot);
             });
             byId.forEach((el, id) => {
                 if (keep.has(id)) return;
@@ -2054,6 +2066,7 @@
                 clearEweWander(el);
                 el.remove();
             });
+            return born;
         }
 
         function renderFlock(players) {
@@ -2068,13 +2081,11 @@
             const nextBase = `${eweBaseSize(list.length)}px`;
             if (roaming) {
                 if (existing) {
-                    syncLobbyFlock(chorus, slots);
-                    if (!isQuietPasture()) {
-                        chorus.querySelectorAll('.tv-ewe').forEach(pinEweToGrass);
-                        chorus.getBoundingClientRect();
-                    }
+                    const born = syncLobbyFlock(chorus, slots);
                     chorus.style.setProperty('--ewe-base', nextBase);
-                    if (!isQuietPasture()) window.setTimeout(nudgeOverlappingLobbyEwes, 480);
+                    if (!isQuietPasture() && born && born.length) {
+                        window.setTimeout(() => born.forEach(unstickJoinedEwe), 900);
+                    }
                     return;
                 }
                 chorus.style.setProperty('--ewe-base', nextBase);
