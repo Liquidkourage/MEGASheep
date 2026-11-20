@@ -2034,23 +2034,14 @@ html, body {
 .tv-score .tv-banner.is-parade {
     will-change: left, top;
     backface-visibility: hidden;
-    transform: translateZ(0) translate(-50%, -58%) rotate(var(--tilt, 0deg));
-}
-
-.tv-score .tv-banner.is-parade.is-cloth {
-    transform: translateZ(0) translate(-50%, -72%) rotate(var(--tilt, 0deg));
-}
-
-.tv-score .tv-banner.is-parade.is-pennant {
-    transform: translateZ(0) translate(-14%, -100%) rotate(var(--tilt, 0.4deg));
 }
 
 .tv-score .tv-ewe.is-parade {
-    z-index: var(--z, 48);
+    z-index: var(--z, 80);
     contain: paint;
     will-change: left, top;
     backface-visibility: hidden;
-    transform: translate3d(-50%, -72%, 0) scale(var(--s, 1));
+    transform: translate(-50%, -72%) scale(var(--s, 1));
     transition:
         left var(--walk, 0s) linear,
         top var(--walk, 0s) linear;
@@ -2059,7 +2050,7 @@ html, body {
 .tv-banner.is-parade,
 .tv-banner.is-cloth,
 .tv-banner.is-pennant {
-    z-index: var(--z, 56);
+    z-index: var(--z, 20);
 }
 
 .tv-banner.is-cloth {
@@ -2343,7 +2334,7 @@ html, body {
 }
 
 .tv-score .tv-ewe.is-parade {
-    z-index: var(--z, 48);
+    z-index: var(--z, 80);
 }
 
 .tv-boards {

@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T00-32-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T00-36-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1346,7 +1346,7 @@
         }
 
         function paradeLaneZ(lane, lanes) {
-            return Math.round(58 - paradeLaneT(lane, lanes) * 22);
+            return Math.round(26 + (1 - paradeLaneT(lane, lanes)) * 46);
         }
 
         function packGrazeKnot(count, x, y, seed) {
@@ -2462,19 +2462,19 @@
         function packFlagHolders(count, cx, cy, width, laneScale, zBase) {
             const n = Math.max(1, count);
             const s = Number(laneScale) || 1;
-            const z = Number(zBase) || 50;
-            if (n === 1) return [{ x: cx, y: cy, z: z + 6, scale: 1.1 * s }];
+            const bannerZ = Number(zBase) || 40;
+            if (n === 1) return [{ x: cx, y: cy, z: bannerZ + 8, scale: 1.1 * s }];
             const half = Math.max(5.4, Number(width) * 0.44);
             const slots = [
-                { x: cx - half, y: cy, z: z + 6, scale: 1.08 * s },
-                { x: cx + half, y: cy, z: z + 6, scale: 1.08 * s }
+                { x: cx - half, y: cy, z: bannerZ + 8, scale: 1.08 * s },
+                { x: cx + half, y: cy, z: bannerZ + 8, scale: 1.08 * s }
             ];
             const extras = n - 2;
             for (let i = 0; i < extras; i += 1) {
                 slots.push({
                     x: cx - half - 2.2 - i * 2.7,
                     y: cy - 1.4 - (i % 2) * 0.5,
-                    z: z - 4 - i,
+                    z: bannerZ + 4 - Math.min(i, 3),
                     scale: (0.78 - Math.min(i, 5) * 0.035) * s
                 });
             }
