@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T13-15-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T13-25-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -2630,14 +2630,14 @@
             };
             els.forEach((el, index) => {
                 const startSlot = resultSlot(members[index], names, start[index] || start[0], {
-                    named: false,
+                    named: true,
                     parade: true,
                     minGy
                 });
                 el.classList.add('is-placed');
                 applyEweSlot(el, startSlot);
-                el.classList.remove('is-parade-wait', 'is-left');
-                el.classList.add('is-parade', 'is-crowd', 'is-walking');
+                el.classList.remove('is-parade-wait', 'is-left', 'is-crowd');
+                el.classList.add('is-parade', 'is-walking');
             });
             if (els[0]) els[0].getBoundingClientRect();
             window.setTimeout(finish, seconds * 1000 + 80);
@@ -2645,7 +2645,7 @@
                 paint(destX, seconds, false);
                 els.forEach((el, index) => {
                     const destSlot = resultSlot(members[index], names, dest[index] || dest[0], {
-                        named: false,
+                        named: true,
                         parade: true,
                         minGy
                     });

@@ -2342,10 +2342,14 @@ html, body {
     font-size: clamp(1.15rem, 28cqi, 2.15rem);
 }
 
-.tv-score .tv-ewe.is-crowd:not(.is-wrong) figcaption,
-.tv-score .tv-ewe.is-parade figcaption,
+.tv-score .tv-ewe.is-crowd:not(.is-wrong):not(.is-parade) figcaption,
 .tv-score .tv-ewe.is-parade-wait figcaption {
     display: none;
+}
+
+.tv-score .tv-ewe.is-parade:not(.is-parade-wait) figcaption {
+    display: flex;
+    z-index: 6;
 }
 
 .tv-score .tv-ewe.is-wrong figcaption {
