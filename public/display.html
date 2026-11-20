@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T17-55-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T18-36-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <style>
@@ -1329,8 +1329,10 @@
         }
 
         function paradeLaneY(lane, lanes) {
-            if (lanes <= 1) return 92.4;
-            return 88.8 + (lanes - 1 - lane) * 2.2;
+            if (lanes <= 1) return 91.2;
+            const back = 80.4;
+            const front = 93.6;
+            return back + ((lanes - 1 - lane) / Math.max(1, lanes - 1)) * (front - back);
         }
 
         function packGrazeKnot(count, x, y, seed) {
@@ -2329,19 +2331,23 @@
             const width = extra.width != null ? extra.width : group.width;
             const tilt = extra.tilt != null ? extra.tilt : (group.tilt || 0);
             const wait = extra.wait ? ' is-parade-wait' : '';
-            const parade = extra.parade ? ' is-parade' : '';
             const id = extra.id ? ` id="${extra.id}"` : '';
             return `
-                <div${id} class="tv-banner is-${group.kind}${wait}${parade}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${Number(group.count) || (group.players || []).length}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
-                    <aside class="tv-sign tv-banner-sign">
-                        <div class="tv-banner-clip">
-                            <img class="tv-sign-art" src="sprites/meadow-sign.png?v=2026-11-18T27-20-00" alt="" aria-hidden="true">
-                        </div>
-                        <div class="tv-sign-face">
+                <div${id} class="tv-banner is-parade${wait}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${Number(group.count) || (group.players || []).length}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
+                    <div class="tv-flag">
+                        <svg class="tv-flag-art" viewBox="0 0 1000 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+                            <path d="M22 30 H978 V142 L862 142 L800 188 L738 142 H262 L200 188 L138 142 H22 Z" fill="#f6ecc4" stroke="#1a140c" stroke-width="10" stroke-linejoin="round"></path>
+                            <path d="M250 36 V136" fill="none" stroke="#e4d4a4" stroke-width="16" opacity="0.5"></path>
+                            <path d="M750 36 V136" fill="none" stroke="#e4d4a4" stroke-width="16" opacity="0.5"></path>
+                            <rect x="8" y="10" width="984" height="26" rx="12" fill="#8a6840" stroke="#1a140c" stroke-width="8"></rect>
+                            <circle cx="26" cy="23" r="12" fill="#d8c089" stroke="#1a140c" stroke-width="7"></circle>
+                            <circle cx="974" cy="23" r="12" fill="#d8c089" stroke="#1a140c" stroke-width="7"></circle>
+                        </svg>
+                        <div class="tv-flag-face">
                             <p class="tv-post-answer">${escapeDisplayText(group.answer)}</p>
-                            ${group.kind === 'hit' ? `<p class="tv-post-pts">${Number(group.points) || 0}</p>` : ''}
+                            <p class="tv-post-pts">${Number(group.points) || 0}</p>
                         </div>
-                    </aside>
+                    </div>
                 </div>
             `;
         }
@@ -2374,8 +2380,8 @@
                         count: 0,
                         x: -24,
                         y: paradeLaneY(lane, lanes),
-                        width: 14,
-                        tilt: -0.35 + lane * 0.28,
+                        width: 22,
+                        tilt: -0.6 + lane * 0.4,
                         z: 50 - lane
                     }, { wait: true, parade: true, id: `scoreParadeBanner-${lane}` })).join('')}
                 </div>
@@ -2391,15 +2397,26 @@
         function paradeBannerWidth(group, count) {
             const n = Math.max(1, Number(count) || 1);
             const letters = String((group && group.answer) || '').length;
-            return Math.min(16, Math.max(11.5, 10 + Math.min(n, 6) * 0.28, letters * 0.72));
+            return Math.min(38, Math.max(24, 22 + Math.min(n, 8) * 1.55, 15 + letters * 1.3));
         }
 
-        function packParadeLane(count, x0, x1, y0, y1) {
-            return packTrapezoid(
-                Math.max(1, count),
-                { left: x0, right: x1, y: y0 },
-                { left: x0 + 2, right: x1 + 2, y: y1 }
-            );
+        function packFlagHolders(count, cx, cy, width) {
+            const n = Math.max(1, count);
+            const half = Math.max(7, Number(width) * 0.52);
+            const holder = (slot, end) => Object.assign(slot, {
+                z: end ? 58 : 46,
+                scale: slot.scale || 1
+            });
+            if (n === 1) return [holder({ x: cx - half * 0.92, y: cy, scale: 1.12 }, true)];
+            return Array.from({ length: n }, (_, index) => {
+                const t = index / (n - 1);
+                const end = index === 0 || index === n - 1;
+                return holder({
+                    x: cx - half + t * half * 2,
+                    y: cy + (end ? 0 : -2.2),
+                    scale: end ? 1.12 : 0.86
+                }, end);
+            });
         }
 
         function paradeBannerEl(lane) {
@@ -2464,11 +2481,11 @@
             }).filter(Boolean);
             const n = Math.max(1, els.length || members.length || 1);
             const laneY = paradeLaneY(lane, lanes);
-            const start = packParadeLane(n, 3, Math.min(22, 3 + n * 1.1), laneY - 2.2, laneY + 1.6);
-            const dest = packParadeLane(n, 103, Math.min(125, 103 + n * 1.1), laneY - 2.2, laneY + 1.6);
             const width = paradeBannerWidth(group, n);
-            const startX = start.reduce((sum, slot) => sum + slot.x, 0) / start.length;
-            const destX = dest.reduce((sum, slot) => sum + slot.x, 0) / dest.length;
+            const startX = 10 + Math.min(8, n * 0.7);
+            const destX = 108 - Math.min(8, n * 0.7);
+            const start = packFlagHolders(n, startX, laneY, width);
+            const dest = packFlagHolders(n, destX, laneY, width);
             const seconds = 8.2;
             const banner = paradeBannerEl(lane);
             const finish = () => {

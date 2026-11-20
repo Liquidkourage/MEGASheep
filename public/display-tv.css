@@ -2011,9 +2011,9 @@ html, body {
     left: var(--x, 50%);
     top: var(--y, 79%);
     z-index: var(--z, 8);
-    width: min(var(--w, 12vw), 220px);
-    transform: translate(-50%, -100%) rotate(var(--tilt, 0deg));
-    transform-origin: 50% 100%;
+    width: var(--w, 30vw);
+    transform: translate(-50%, -58%) rotate(var(--tilt, 0deg));
+    transform-origin: 50% 14%;
     pointer-events: none;
     filter: drop-shadow(0 10px 12px rgba(4, 10, 18, 0.38));
     transition:
@@ -2026,12 +2026,42 @@ html, body {
 }
 
 .tv-banner.is-parade {
-    z-index: var(--z, 46);
-    width: min(var(--w, 13vw), 240px);
+    z-index: 56;
+    width: var(--w, 32vw);
 }
 
 .tv-banner.is-parade-wait {
     opacity: 0;
+}
+
+.tv-flag {
+    position: relative;
+    width: 100%;
+    container-type: inline-size;
+    container-name: flag;
+}
+
+.tv-flag-art {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+.tv-flag-face {
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    top: 18%;
+    bottom: 32%;
+    z-index: 2;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+    text-align: center;
+    overflow: hidden;
 }
 
 .tv-miss-sign {
@@ -2086,37 +2116,6 @@ html, body {
     color: #1a140c;
 }
 
-.tv-banner-sign {
-    width: 100%;
-    container-type: inline-size;
-    container-name: post;
-}
-
-.tv-banner-clip {
-    position: relative;
-    overflow: hidden;
-    width: 100%;
-    line-height: 0;
-}
-
-.tv-banner-clip .tv-sign-art {
-    position: relative;
-    display: block;
-    width: 100%;
-    height: auto;
-    clip-path: inset(0 0 12.5% 0);
-    margin-bottom: calc(-1 * 100% * 706 / 769 * 0.125);
-}
-
-.tv-banner-sign .tv-sign-face {
-    left: 10%;
-    right: 10%;
-    top: 7%;
-    bottom: 44%;
-    gap: 0.02em;
-    padding: 0 0.08em;
-}
-
 .tv-post-answer {
     margin: 0;
     max-width: 100%;
@@ -2132,6 +2131,14 @@ html, body {
     -webkit-line-clamp: 3;
 }
 
+.tv-flag-face .tv-post-answer {
+    flex: 0 1 auto;
+    font-size: clamp(2.2rem, 5.4vh, 4.4rem);
+    -webkit-line-clamp: 1;
+    white-space: nowrap;
+    display: block;
+}
+
 .tv-post-pts {
     margin: 0;
     font-family: Outfit, "Segoe UI", sans-serif;
@@ -2140,6 +2147,11 @@ html, body {
     letter-spacing: -0.05em;
     line-height: 0.9;
     color: #2f6b32;
+}
+
+.tv-flag-face .tv-post-pts {
+    flex: 0 0 auto;
+    font-size: clamp(2.4rem, 5.8vh, 4.8rem);
 }
 
 .tv-score-ranks {
@@ -2209,7 +2221,7 @@ html, body {
 }
 
 .tv-score .tv-ewe.is-parade {
-    z-index: 52;
+    z-index: var(--z, 48);
 }
 
 .tv-boards {
