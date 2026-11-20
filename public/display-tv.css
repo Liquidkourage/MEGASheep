@@ -2031,14 +2031,15 @@ html, body {
     transition: none;
 }
 
-.tv-banner.is-parade {
-    z-index: 56;
+.tv-banner.is-parade,
+.tv-banner.is-cloth,
+.tv-banner.is-pennant {
+    z-index: var(--z, 56);
 }
 
 .tv-banner.is-cloth {
     width: var(--w, 24vw);
     height: 10.5vh;
-    z-index: 56;
     transform: translate(-50%, -72%) rotate(var(--tilt, 0deg));
     transform-origin: 50% 14%;
 }
@@ -2046,7 +2047,6 @@ html, body {
 .tv-banner.is-pennant {
     width: calc(30vh * 0.432);
     height: 30vh;
-    z-index: 54;
     transform: translate(-14%, -100%) rotate(var(--tilt, 0.4deg));
     transform-origin: 14% 100%;
 }

@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T00-12-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T00-18-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1272,7 +1272,7 @@
             return Math.round(8 + t * 52);
         }
 
-        const PARADE_LANES = 1;
+        const PARADE_LANES = 5;
         const MISS_SIGN_AT = { x: 18, y: 64 };
         const RANK_SIGN_AT = { x: 83, y: 61.5 };
 
@@ -1332,14 +1332,21 @@
             return Math.max(1, Math.min(PARADE_LANES, Number(hitCount) || 0));
         }
 
+        function paradeLaneT(lane, lanes) {
+            if (lanes <= 1) return 0;
+            return Number(lane) / Math.max(1, lanes - 1);
+        }
+
         function paradeLaneY(lane, lanes) {
-            if (lanes <= 1) return 92.2;
-            return lane === 0 ? 92.6 : 83.4;
+            return 93.3 - paradeLaneT(lane, lanes) * 14.6;
         }
 
         function paradeLaneScale(lane, lanes) {
-            if (lanes <= 1) return 1;
-            return lane === 0 ? 1.06 : 0.72;
+            return 1.08 - paradeLaneT(lane, lanes) * 0.44;
+        }
+
+        function paradeLaneZ(lane, lanes) {
+            return Math.round(58 - paradeLaneT(lane, lanes) * 22);
         }
 
         function packGrazeKnot(count, x, y, seed) {
@@ -2359,7 +2366,7 @@
             const n = Number(group.count) || (group.players || []).length || 0;
             const kind = n === 1 ? ' is-pennant' : ' is-cloth';
             return `
-                <div${id} class="tv-banner is-parade${kind}${wait}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${n}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
+                <div${id} class="tv-banner is-parade${kind}${wait}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${n}" data-lanes="${Number(extra.lanes || PARADE_LANES)}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
                     <div class="tv-flag tv-flag-cloth">
                         <img class="tv-flag-art" src="sprites/parade-banner.png?v=2026-11-19T23-20-00" alt="" aria-hidden="true">
                     </div>
@@ -2424,8 +2431,8 @@
                         y: paradeLaneY(lane, lanes),
                         width: 22,
                         tilt: -0.6 + lane * 0.4,
-                        z: 50 - lane
-                    }, { wait: true, parade: true, id: `scoreParadeBanner-${lane}` })).join('')}
+                        z: paradeLaneZ(lane, lanes)
+                    }, { wait: true, parade: true, id: `scoreParadeBanner-${lane}`, lanes })).join('')}
                 </div>
             `;
         }
@@ -2449,21 +2456,22 @@
             return { startX: -pad, destX: 100 + pad };
         }
 
-        function packFlagHolders(count, cx, cy, width, laneScale) {
+        function packFlagHolders(count, cx, cy, width, laneScale, zBase) {
             const n = Math.max(1, count);
             const s = Number(laneScale) || 1;
-            if (n === 1) return [{ x: cx, y: cy, z: 58, scale: 1.1 * s }];
-            const half = Math.max(6, Number(width) * 0.46);
+            const z = Number(zBase) || 50;
+            if (n === 1) return [{ x: cx, y: cy, z: z + 6, scale: 1.1 * s }];
+            const half = Math.max(5.4, Number(width) * 0.44);
             const slots = [
-                { x: cx - half, y: cy, z: 58, scale: 1.08 * s },
-                { x: cx + half, y: cy, z: 58, scale: 1.08 * s }
+                { x: cx - half, y: cy, z: z + 6, scale: 1.08 * s },
+                { x: cx + half, y: cy, z: z + 6, scale: 1.08 * s }
             ];
             const extras = n - 2;
             for (let i = 0; i < extras; i += 1) {
                 slots.push({
-                    x: cx - half - 2.8 - i * 3.4,
-                    y: cy - 1.6 - (i % 2) * 0.55,
-                    z: 44 - i,
+                    x: cx - half - 2.2 - i * 2.7,
+                    y: cy - 1.4 - (i % 2) * 0.5,
+                    z: z - 4 - i,
                     scale: (0.78 - Math.min(i, 5) * 0.035) * s
                 });
             }
@@ -2489,7 +2497,7 @@
             el.style.setProperty('--x', `${Number(x).toFixed(2)}%`);
             el.style.setProperty('--y', `${Number(y).toFixed(2)}%`);
             el.style.setProperty('--w', `${Number(width).toFixed(2)}vw`);
-            el.style.setProperty('--z', String(50 - Number(lane || 0)));
+            el.style.setProperty('--z', String(paradeLaneZ(lane, Number(el.dataset.lanes) || PARADE_LANES)));
             el.style.setProperty('--walk', `${Number(walk || 0).toFixed(2)}s`);
             el.style.transitionDuration = `${Number(walk || 0).toFixed(2)}s`;
             const faceWord = el.querySelector('.tv-flag-face .tv-post-answer');
@@ -2537,13 +2545,15 @@
                 return chorus && chorus.querySelector(`.tv-ewe[data-id="${CSS.escape(id)}"]`);
             }).filter(Boolean);
             const n = Math.max(1, els.length || members.length || 1);
-            const laneY = paradeLaneY(lane, lanes);
+            const laneY = n === 1 ? Math.max(90.4, paradeLaneY(lane, lanes)) : paradeLaneY(lane, lanes);
             const laneScale = paradeLaneScale(lane, lanes);
-            const width = paradeBannerWidth(group, n) * (lanes > 1 && lane ? 0.78 : 1);
+            const laneZ = paradeLaneZ(lane, lanes);
+            const width = paradeBannerWidth(group, n) * (0.7 + 0.3 * (1 - paradeLaneT(lane, lanes)));
             const { startX, destX } = paradeTravel(width, n);
-            const start = packFlagHolders(n, startX, laneY, width, laneScale);
-            const dest = packFlagHolders(n, destX, laneY, width, laneScale);
-            const seconds = n === 1 ? 9.4 : 10.6;
+            const start = packFlagHolders(n, startX, laneY, width, laneScale, laneZ);
+            const dest = packFlagHolders(n, destX, laneY, width, laneScale, laneZ);
+            const seconds = n === 1 ? 8.6 : 9.4;
+            const minGy = Math.max(72, laneY - 6);
             const banner = paradeBannerEl(lane);
             const finish = () => {
                 parkParadeEwes(els);
@@ -2590,7 +2600,7 @@
                 const startSlot = resultSlot(members[index], names, start[index] || start[0], {
                     named: false,
                     parade: true,
-                    minGy: 84
+                    minGy
                 });
                 el.classList.add('is-placed');
                 applyEweSlot(el, startSlot);
@@ -2604,7 +2614,7 @@
                     const destSlot = resultSlot(members[index], names, dest[index] || dest[0], {
                         named: false,
                         parade: true,
-                        minGy: 84
+                        minGy
                     });
                     walkEweOnField(el, destSlot, finishOne, { seconds, minSeconds: seconds, maxSeconds: seconds });
                 });
@@ -2634,11 +2644,11 @@
                 active.add(group.answer);
                 const release = () => {
                     active.delete(group.answer);
-                    window.setTimeout(() => runLane(lane), 320);
+                    window.setTimeout(() => runLane(lane), 80);
                 };
                 if (reduce) {
                     const n = Math.max(1, Number(group.count) || 1);
-                    const parked = 18 + lane * 24;
+                    const parked = 16 + lane * 18;
                     setParadeBanner(lane, group, parked, paradeLaneY(lane, lanes), paradeBannerWidth(group, n), 0, false);
                     window.setTimeout(() => {
                         setParadeBanner(lane, group, parked, paradeLaneY(lane, lanes), paradeBannerWidth(group, n), 0, true);
@@ -2649,7 +2659,7 @@
                 paradeScoreGroup(group, gen, lane, lanes, release);
             };
             for (let lane = 0; lane < lanes; lane += 1) {
-                window.setTimeout(() => runLane(lane), 400 + lane * 1800);
+                window.setTimeout(() => runLane(lane), 80 + lane * 760);
             }
         }
 
