@@ -1558,7 +1558,7 @@
             }
             const name = escapeDisplayText(slot.label || slot.name || 'Sheep');
             const score = Number(slot.score);
-            const pts = (slot.score != null && Number.isFinite(score))
+            const pts = (!slot.parade && slot.score != null && Number.isFinite(score))
                 ? `<span class="tv-ewe-pts">${score}</span>`
                 : '';
             return `<span class="tv-ewe-name">${name}</span>${pts}`;
