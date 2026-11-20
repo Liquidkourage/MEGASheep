@@ -2397,6 +2397,38 @@ html, body {
     display: none;
 }
 
+.tv-banner-roster {
+    display: none;
+}
+
+.tv-banner.is-cloth:not(.is-parade-wait).has-roster .tv-banner-roster {
+    position: absolute;
+    left: 16%;
+    right: 16%;
+    top: calc(100% + 10.4vh);
+    z-index: 8;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.1em 0.5em;
+    margin: 0;
+    padding: 0.16em 0.46em 0.14em;
+    background: rgba(8, 16, 24, 0.86);
+    border-radius: 0.45em;
+    pointer-events: none;
+}
+
+.tv-banner-roster span {
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-weight: 800;
+    font-size: clamp(1rem, 1.9vh, 1.4rem);
+    letter-spacing: -0.035em;
+    line-height: 1.02;
+    color: #f6ecc4;
+    white-space: nowrap;
+}
+
 .tv-score .tv-ewe.is-parade:not(.is-parade-wait) .tv-ewe-name {
     min-width: auto;
     overflow: visible;

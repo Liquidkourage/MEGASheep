@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T15-12-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T15-24-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -2396,6 +2396,7 @@
                         <p class="tv-post-answer">${escapeDisplayText(group.answer)}</p>
                         <p class="tv-post-pts">${Number(group.points) || 0}</p>
                     </div>
+                    <div class="tv-banner-roster"></div>
                 </div>
             `;
         }
@@ -2507,12 +2508,22 @@
             return document.getElementById(`scoreParadeBanner-${lane}`);
         }
 
-        function setParadeBanner(lane, group, x, y, width, walk, wait, depthLane, depthCount) {
+        function extraParadeNames(group, members) {
+            const people = (members && members.length ? members : (group && group.players) || []);
+            if (people.length < 3) return [];
+            return people.slice(2).map((entry) => {
+                if (typeof entry === 'string') return entry;
+                return String((entry && entry.name) || 'Sheep');
+            });
+        }
+
+        function setParadeBanner(lane, group, x, y, width, walk, wait, depthLane, depthCount, rosterNames) {
             const el = paradeBannerEl(lane);
             if (!el) return;
             const n = Number((group && group.count) || 0);
             const word = (group && group.answer) || '';
             const pts = String(Number((group && group.points) || 0));
+            const extras = Array.isArray(rosterNames) ? rosterNames : extraParadeNames(group);
             const dLane = depthLane == null ? lane : depthLane;
             const dCount = Math.max(1, depthCount == null ? Number(el.dataset.lanes) || PARADE_LANES : depthCount);
             if (wait) el.classList.add('is-parade-wait');
@@ -2520,6 +2531,7 @@
             el.dataset.holders = String(n);
             el.classList.toggle('is-pennant', n === 1);
             el.classList.toggle('is-cloth', n !== 1);
+            el.classList.toggle('has-roster', extras.length > 0);
             el.classList.add('is-parade', 'is-hit');
             el.style.setProperty('--x', `${Number(x).toFixed(2)}%`);
             el.style.setProperty('--y', `${Number(y).toFixed(2)}%`);
@@ -2531,6 +2543,11 @@
             const facePts = el.querySelector('.tv-flag-face .tv-post-pts');
             if (faceWord && faceWord.textContent !== word) faceWord.textContent = word;
             if (facePts && facePts.textContent !== pts) facePts.textContent = pts;
+            const roster = el.querySelector('.tv-banner-roster');
+            if (roster) {
+                const html = extras.map((name) => `<span>${escapeDisplayText(name)}</span>`).join('');
+                if (roster.innerHTML !== html) roster.innerHTML = html;
+            }
             if (!wait) el.classList.remove('is-parade-wait');
         }
 
@@ -2590,7 +2607,8 @@
             const seconds = n === 1 ? 8.4 : 9.6;
             const minGy = Math.max(72, laneY - 6);
             const banner = paradeBannerEl(bannerLane);
-            const paint = (x, walk, wait) => setParadeBanner(bannerLane, group, x, laneY, width, walk, wait, lane, lanes);
+            const extras = extraParadeNames(group, members);
+            const paint = (x, walk, wait) => setParadeBanner(bannerLane, group, x, laneY, width, walk, wait, lane, lanes, extras);
             let finished = false;
             const startedAt = performance.now();
             const finish = () => {
