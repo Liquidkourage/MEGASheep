@@ -8,9 +8,11 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T18-36-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T23-40-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
+    <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
+    <link rel="preload" as="image" href="sprites/parade-pennant.png?v=2026-11-19T23-20-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -1244,7 +1246,8 @@
                 z: g.z || depth.z,
                 coat: (hash % 2) + 1,
                 idle: ((hash % 17) * 0.18).toFixed(2),
-                mood: (hash % 3 === 0) ? 'eat' : 'idle'
+                mood: extra.mood || ((hash % 3 === 0) ? 'eat' : 'idle'),
+                sad: !!extra.sad
             };
         }
 
@@ -1281,7 +1284,7 @@
                 answers: list,
                 x: MISS_SIGN_AT.x,
                 y: MISS_SIGN_AT.y,
-                width: n > 8 ? 17.5 : n > 4 ? 16 : 14,
+                width: n > 8 ? 19 : n > 4 ? 17 : 15,
                 tilt: -0.7,
                 z: 5
             };
@@ -1413,6 +1416,8 @@
                     byPlayer.set(player, resultSlot(player, names, packed[index], {
                         named: false,
                         wrong: index === frontAt ? group.answer : '',
+                        sad: true,
+                        mood: 'sleep',
                         faceLeft,
                         tight: true,
                         minGy: 50,
@@ -1541,6 +1546,7 @@
             el.classList.toggle('is-parade-wait', !!slot.paradeWait);
             el.classList.toggle('is-parade', !!slot.parade);
             el.classList.toggle('is-wrong', !!slot.wrong);
+            el.classList.toggle('is-sad', !!slot.sad);
             if (!slot.parade && !slot.paradeWait) {
                 el.classList.toggle('is-left', !!slot.faceLeft);
             }
@@ -1551,9 +1557,10 @@
             const wait = slot.paradeWait ? ' is-parade-wait' : '';
             const parade = slot.parade ? ' is-parade' : '';
             const wrong = slot.wrong ? ' is-wrong' : '';
+            const sad = slot.sad ? ' is-sad' : '';
             const face = slot.faceLeft && !slot.parade && !slot.paradeWait ? ' is-left' : '';
             return `
-                <figure class="tv-ewe${crowd}${wait}${parade}${wrong}${face}" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" data-mood="${escapeDisplayText(slot.mood || 'idle')}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--ox:${slot.ox}%;--oy:${slot.oy}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
+                <figure class="tv-ewe${crowd}${wait}${parade}${wrong}${sad}${face}" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" data-mood="${escapeDisplayText(slot.mood || 'idle')}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--ox:${slot.ox}%;--oy:${slot.oy}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
                     ${EWE_ART}
                     <figcaption>${eweCaptionHtml(slot)}</figcaption>
                 </figure>
@@ -1597,7 +1604,8 @@
                 z: parseFloat(el.style.getPropertyValue('--z')) || 10,
                 coat: Number(el.dataset.coat) || 1,
                 idle: parseFloat(el.style.getPropertyValue('--idle')) || 0,
-                mood: el.dataset.mood || 'idle'
+                mood: el.dataset.mood || 'idle',
+                sad: el.classList.contains('is-sad')
             }, overrides || {});
         }
 
@@ -2324,6 +2332,15 @@
             }, 80);
         }
 
+        function tvFlagFaceHtml(group) {
+            return `
+                <div class="tv-flag-face">
+                    <p class="tv-post-answer">${escapeDisplayText(group.answer)}</p>
+                    <p class="tv-post-pts">${Number(group.points) || 0}</p>
+                </div>
+            `;
+        }
+
         function tvBannerMarkup(group, extras) {
             const extra = extras || {};
             const x = extra.x != null ? extra.x : group.x;
@@ -2332,24 +2349,25 @@
             const tilt = extra.tilt != null ? extra.tilt : (group.tilt || 0);
             const wait = extra.wait ? ' is-parade-wait' : '';
             const id = extra.id ? ` id="${extra.id}"` : '';
+            const n = Number(group.count) || (group.players || []).length || 0;
+            const kind = n === 1 ? ' is-pennant' : ' is-cloth';
             return `
-                <div${id} class="tv-banner is-parade${wait}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${Number(group.count) || (group.players || []).length}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
-                    <div class="tv-flag">
-                        <svg class="tv-flag-art" viewBox="0 0 1000 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-                            <path d="M22 30 H978 V142 L862 142 L800 188 L738 142 H262 L200 188 L138 142 H22 Z" fill="#f6ecc4" stroke="#1a140c" stroke-width="10" stroke-linejoin="round"></path>
-                            <path d="M250 36 V136" fill="none" stroke="#e4d4a4" stroke-width="16" opacity="0.5"></path>
-                            <path d="M750 36 V136" fill="none" stroke="#e4d4a4" stroke-width="16" opacity="0.5"></path>
-                            <rect x="8" y="10" width="984" height="26" rx="12" fill="#8a6840" stroke="#1a140c" stroke-width="8"></rect>
-                            <circle cx="26" cy="23" r="12" fill="#d8c089" stroke="#1a140c" stroke-width="7"></circle>
-                            <circle cx="974" cy="23" r="12" fill="#d8c089" stroke="#1a140c" stroke-width="7"></circle>
-                        </svg>
-                        <div class="tv-flag-face">
-                            <p class="tv-post-answer">${escapeDisplayText(group.answer)}</p>
-                            <p class="tv-post-pts">${Number(group.points) || 0}</p>
-                        </div>
+                <div${id} class="tv-banner is-parade${kind}${wait}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${n}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
+                    <div class="tv-flag tv-flag-cloth">
+                        <img class="tv-flag-art" src="sprites/parade-banner.png?v=2026-11-19T23-20-00" alt="" aria-hidden="true">
+                        ${tvFlagFaceHtml(group)}
+                    </div>
+                    <div class="tv-flag tv-flag-pennant">
+                        <img class="tv-flag-art" src="sprites/parade-pennant.png?v=2026-11-19T23-20-00" alt="" aria-hidden="true">
+                        ${tvFlagFaceHtml(group)}
                     </div>
                 </div>
             `;
+        }
+
+        function missChipTilt(answer, index) {
+            const h = nameHash(String(answer || '') + ':' + index);
+            return ((h % 13) - 6) * 1.35;
         }
 
         function tvMissSignHtml(sign) {
@@ -2360,7 +2378,7 @@
                     <div class="tv-sign-face">
                         <p class="tv-miss-kicker">Nobody said</p>
                         <ul class="tv-miss-list">
-                            ${sign.answers.map((answer) => `<li>${escapeDisplayText(answer)}</li>`).join('')}
+                            ${sign.answers.map((answer, index) => `<li class="tv-miss-chip" style="--tilt:${missChipTilt(answer, index).toFixed(2)}deg">${escapeDisplayText(answer)}</li>`).join('')}
                         </ul>
                     </div>
                 </aside>
@@ -2396,27 +2414,43 @@
 
         function paradeBannerWidth(group, count) {
             const n = Math.max(1, Number(count) || 1);
+            if (n === 1) return 8.8;
             const letters = String((group && group.answer) || '').length;
-            return Math.min(38, Math.max(24, 22 + Math.min(n, 8) * 1.55, 15 + letters * 1.3));
+            return Math.min(36, Math.max(26, 24 + Math.min(n, 8) * 1.2, 14 + letters * 1.1));
         }
 
         function packFlagHolders(count, cx, cy, width) {
             const n = Math.max(1, count);
-            const half = Math.max(7, Number(width) * 0.52);
-            const holder = (slot, end) => Object.assign(slot, {
-                z: end ? 58 : 46,
-                scale: slot.scale || 1
-            });
-            if (n === 1) return [holder({ x: cx - half * 0.92, y: cy, scale: 1.12 }, true)];
-            return Array.from({ length: n }, (_, index) => {
-                const t = index / (n - 1);
-                const end = index === 0 || index === n - 1;
-                return holder({
-                    x: cx - half + t * half * 2,
-                    y: cy + (end ? 0 : -2.2),
-                    scale: end ? 1.12 : 0.86
-                }, end);
-            });
+            if (n === 1) return [{ x: cx, y: cy, z: 58, scale: 1.14 }];
+            const half = Math.max(7, Number(width) * 0.48);
+            const slots = [
+                { x: cx - half, y: cy, z: 58, scale: 1.12 },
+                { x: cx + half, y: cy, z: 58, scale: 1.12 }
+            ];
+            const extras = n - 2;
+            if (!extras) return slots;
+            const back = extras > 4 ? Math.ceil(extras / 2) : 0;
+            const front = extras - back;
+            const place = (howMany, y, scale, z, inset) => {
+                if (howMany <= 0) return;
+                const span = half * inset * 2;
+                if (howMany === 1) {
+                    slots.push({ x: cx, y, z, scale });
+                    return;
+                }
+                for (let i = 0; i < howMany; i += 1) {
+                    const t = i / (howMany - 1);
+                    slots.push({
+                        x: cx - span / 2 + t * span,
+                        y: y + ((i % 2) ? 0.4 : 0),
+                        z,
+                        scale
+                    });
+                }
+            };
+            place(front, cy + 0.45, 0.94, 50, 0.58);
+            place(back, cy - 2.6, 0.8, 42, 0.5);
+            return slots;
         }
 
         function paradeBannerEl(lane) {
@@ -2428,7 +2462,10 @@
             if (!el) return;
             el.dataset.answer = String((group && group.answer) || '');
             el.dataset.holders = String(Number((group && group.count) || 0));
+            const n = Number((group && group.count) || 0);
             el.classList.toggle('is-parade-wait', !!wait);
+            el.classList.toggle('is-pennant', n === 1);
+            el.classList.toggle('is-cloth', n !== 1);
             el.classList.add('is-parade', 'is-hit');
             el.style.setProperty('--x', `${Number(x).toFixed(2)}%`);
             el.style.setProperty('--y', `${Number(y).toFixed(2)}%`);
@@ -2436,10 +2473,10 @@
             el.style.setProperty('--z', String(50 - Number(lane || 0)));
             el.style.setProperty('--walk', `${Number(walk || 0).toFixed(2)}s`);
             el.style.transitionDuration = `${Number(walk || 0).toFixed(2)}s`;
-            const word = el.querySelector('.tv-post-answer');
-            const pts = el.querySelector('.tv-post-pts');
-            if (word) word.textContent = (group && group.answer) || '';
-            if (pts) pts.textContent = String(Number((group && group.points) || 0));
+            const word = (group && group.answer) || '';
+            const pts = String(Number((group && group.points) || 0));
+            el.querySelectorAll('.tv-post-answer').forEach((node) => { node.textContent = word; });
+            el.querySelectorAll('.tv-post-pts').forEach((node) => { node.textContent = pts; });
         }
 
         function parkParadeEwes(els) {
@@ -2482,8 +2519,8 @@
             const n = Math.max(1, els.length || members.length || 1);
             const laneY = paradeLaneY(lane, lanes);
             const width = paradeBannerWidth(group, n);
-            const startX = 10 + Math.min(8, n * 0.7);
-            const destX = 108 - Math.min(8, n * 0.7);
+            const startX = n === 1 ? 28 : 10 + Math.min(8, n * 0.7);
+            const destX = n === 1 ? 104 : 108 - Math.min(8, n * 0.7);
             const start = packFlagHolders(n, startX, laneY, width);
             const dest = packFlagHolders(n, destX, laneY, width);
             const seconds = 8.2;

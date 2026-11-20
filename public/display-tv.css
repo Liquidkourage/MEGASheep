@@ -1203,18 +1203,24 @@ html, body {
     background-image: url("sprites/sheep-03-walk.png?v=2026-11-18T20-05-00");
 }
 
-.tv-ewe.is-in:not(.is-walking) .tv-ewe-strip {
+.tv-ewe.is-in:not(.is-walking) .tv-ewe-strip,
+.tv-ewe.is-sad:not(.is-walking) .tv-ewe-strip,
+.tv-ewe[data-mood="sleep"]:not(.is-walking) .tv-ewe-strip {
     background-size: 600% 100%;
     background-image: url("sprites/sheep-01-sleep.png?v=2026-11-19T04-20-00");
     animation: eweSleep 1.8s steps(6, jump-none) infinite;
     animation-delay: var(--idle, 0s);
 }
 
-.tv-ewe[data-coat="2"].is-in:not(.is-walking) .tv-ewe-strip {
+.tv-ewe[data-coat="2"].is-in:not(.is-walking) .tv-ewe-strip,
+.tv-ewe[data-coat="2"].is-sad:not(.is-walking) .tv-ewe-strip,
+.tv-ewe[data-coat="2"][data-mood="sleep"]:not(.is-walking) .tv-ewe-strip {
     background-image: url("sprites/sheep-02-sleep.png?v=2026-11-19T04-20-00");
 }
 
-.tv-ewe[data-coat="3"].is-in:not(.is-walking) .tv-ewe-strip {
+.tv-ewe[data-coat="3"].is-in:not(.is-walking) .tv-ewe-strip,
+.tv-ewe[data-coat="3"].is-sad:not(.is-walking) .tv-ewe-strip,
+.tv-ewe[data-coat="3"][data-mood="sleep"]:not(.is-walking) .tv-ewe-strip {
     background-image: url("sprites/sheep-03-sleep.png?v=2026-11-19T04-20-00");
 }
 
@@ -1251,7 +1257,7 @@ html, body {
     background-image: url("sprites/sheep-03-idle.png?v=2026-11-18T20-05-00");
 }
 
-.tv-ewe[data-mood="eat"]:not(.is-walking):not(.is-joining):not(.is-in) .tv-ewe-strip,
+.tv-ewe[data-mood="eat"]:not(.is-walking):not(.is-joining):not(.is-in):not(.is-sad) .tv-ewe-strip,
 .tv-lobby .tv-ewe[data-mood="eat"]:not(.is-walking):not(.is-joining) .tv-ewe-strip,
 .tv-play .tv-ewe[data-mood="eat"]:not(.is-walking):not(.is-joining):not(.is-in):not(.is-outside) .tv-ewe-strip {
     background-size: 1300% 100%;
@@ -2027,16 +2033,36 @@ html, body {
 
 .tv-banner.is-parade {
     z-index: 56;
+}
+
+.tv-banner.is-cloth {
     width: var(--w, 32vw);
+    z-index: 56;
+    transform: translate(-50%, -58%) rotate(var(--tilt, 0deg));
+    transform-origin: 50% 14%;
+}
+
+.tv-banner.is-pennant {
+    width: calc(30vh * 0.432);
+    height: 30vh;
+    z-index: 54;
+    transform: translate(-14%, -100%) rotate(var(--tilt, 0.4deg));
+    transform-origin: 14% 100%;
 }
 
 .tv-banner.is-parade-wait {
     opacity: 0;
 }
 
+.tv-banner.is-pennant .tv-flag-cloth,
+.tv-banner.is-cloth .tv-flag-pennant {
+    display: none;
+}
+
 .tv-flag {
     position: relative;
     width: 100%;
+    height: 100%;
     container-type: inline-size;
     container-name: flag;
 }
@@ -2045,15 +2071,23 @@ html, body {
     display: block;
     width: 100%;
     height: auto;
-    overflow: visible;
+    pointer-events: none;
+    user-select: none;
+}
+
+.tv-banner.is-pennant .tv-flag-art {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: left bottom;
 }
 
 .tv-flag-face {
     position: absolute;
-    left: 8%;
-    right: 8%;
-    top: 18%;
-    bottom: 32%;
+    left: 10%;
+    right: 10%;
+    top: 16%;
+    bottom: 34%;
     z-index: 2;
     display: flex;
     flex-direction: row;
@@ -2062,6 +2096,15 @@ html, body {
     gap: 0.4em;
     text-align: center;
     overflow: hidden;
+}
+
+.tv-flag-pennant .tv-flag-face {
+    left: 24%;
+    right: 10%;
+    top: 7%;
+    bottom: 48%;
+    flex-direction: column;
+    gap: 0.08em;
 }
 
 .tv-miss-sign {
@@ -2076,12 +2119,14 @@ html, body {
 }
 
 .tv-miss-sign .tv-sign-face {
-    left: 8%;
-    right: 8%;
-    top: 8%;
-    bottom: 32%;
-    gap: 0.1em;
-    padding: 0.06em 0.08em;
+    left: 7%;
+    right: 7%;
+    top: 7%;
+    bottom: 30%;
+    justify-content: flex-start;
+    gap: 0.28em;
+    padding: 0.18em 0.12em 0.1em;
+    overflow: visible;
 }
 
 .tv-miss-kicker {
@@ -2099,21 +2144,45 @@ html, body {
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    gap: 0.06em 0.38em;
+    gap: 0.28em 0.32em;
     width: 100%;
     margin: 0;
-    padding: 0;
+    padding: 0.08em 0.04em;
     list-style: none;
 }
 
-.tv-miss-list li {
+.tv-miss-chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     margin: 0;
+    padding: 0.2em 0.46em 0.16em 0.58em;
+    background: #efe4b8;
+    border: 3px solid #1a140c;
+    border-radius: 0.42em;
+    box-shadow:
+        0 2px 0 #1a140c,
+        1px 4px 0 rgba(16, 10, 4, 0.28);
+    transform: rotate(var(--tilt, 0deg));
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(1.15rem, 2.35vh, 1.8rem);
+    font-size: clamp(1.05rem, 2.15vh, 1.65rem);
     font-weight: 800;
     letter-spacing: -0.04em;
-    line-height: 0.95;
+    line-height: 1;
     color: #1a140c;
+}
+
+.tv-miss-chip::before {
+    content: "";
+    position: absolute;
+    top: 0.18em;
+    left: 0.2em;
+    width: 0.34em;
+    height: 0.34em;
+    border-radius: 50%;
+    background: #d2c49a;
+    box-shadow: inset 0 0 0 2px #1a140c;
 }
 
 .tv-post-answer {
@@ -2139,6 +2208,13 @@ html, body {
     display: block;
 }
 
+.tv-flag-pennant .tv-post-answer {
+    font-size: clamp(1.6rem, 3.6vh, 2.8rem);
+    white-space: normal;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+}
+
 .tv-post-pts {
     margin: 0;
     font-family: Outfit, "Segoe UI", sans-serif;
@@ -2152,6 +2228,10 @@ html, body {
 .tv-flag-face .tv-post-pts {
     flex: 0 0 auto;
     font-size: clamp(2.4rem, 5.8vh, 4.8rem);
+}
+
+.tv-flag-pennant .tv-post-pts {
+    font-size: clamp(1.8rem, 4vh, 3.1rem);
 }
 
 .tv-score-ranks {
