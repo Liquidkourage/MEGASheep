@@ -2549,8 +2549,12 @@
                 return chorus && chorus.querySelector(`.tv-ewe[data-id="${CSS.escape(id)}"]`);
             }).filter(Boolean);
             const n = Math.max(1, els.length || members.length || 1);
-            const laneY = n === 1 ? Math.max(90.4, paradeLaneY(lane, lanes)) : paradeLaneY(lane, lanes);
-            const laneScale = paradeLaneScale(lane, lanes);
+            const laneY = n === 1
+                ? 92.6 - paradeLaneT(lane, lanes) * 2.6
+                : paradeLaneY(lane, lanes);
+            const laneScale = n === 1
+                ? 1.06 - paradeLaneT(lane, lanes) * 0.12
+                : paradeLaneScale(lane, lanes);
             const laneZ = paradeLaneZ(lane, lanes);
             const width = paradeBannerWidth(group, n) * (0.7 + 0.3 * (1 - paradeLaneT(lane, lanes)));
             const { startX, destX } = paradeTravel(width, n);
@@ -2670,7 +2674,7 @@
                 }
                 const groups = wave.groups.slice();
                 const lanes = paradeLaneCount(groups.length);
-                const stagger = wave.size === 1 ? 280 : 420;
+                const stagger = wave.size === 1 ? 520 : 420;
                 const handoff = wave.size === 1 ? 5200 : 5800;
                 let next = 0;
                 let closed = false;
