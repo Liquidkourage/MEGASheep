@@ -8,12 +8,12 @@ alwaysApply: true
 On the audience scoring, round-standings, and finale screens (`/display` scoring, roundComplete, overallLeaderboard, finished), text is either large enough to read from across the room or it does not belong on this screen.
 
 - These screens share the cartoon night meadow. Panels are opaque outlined signs, not glass cards.
-- On scoring, ungiven correct answers share one modest planted field sign. Head it with “Nobody said” and pin each leftover answer on as its own wooden plaque. Do not let that sign dominate the meadow.
+- On scoring, ungiven correct answers share one modest planted field sign. Head it with “Pasteur-ized Answers” and pin each leftover answer on as its own wooden plaque. Do not let that sign dominate the meadow.
 - A unique correct answer (one sheep) parades as a vertical pennant on a pole that sheep is carrying.
 - Correct answers given by more than one sheep parade as a wide cloth banner sprite. Two sheep hold the ends; any extra sheep walk between them, a second row deep if the flock is large. Do not use a planted wooden post for those answers.
 - Wrong-answer sheep use the lying-down sleep strip. Keep them labeled in the field, away from the leftover-answer sign.
 - Plant the leftover-answer sign and any grazing sheep on the grass. Nothing in the back sits in the sky.
-- Wrong answers are not boards. Those sheep graze in loose knots in the field, labeled with the wrong answer they gave. Keep them away from the “Nobody said” sign. Do not line them up.
+- Wrong answers are not boards. Those sheep graze in loose knots in the field, labeled with the wrong answer they gave. Keep them away from the leftover-answer sign. Do not line them up.
 - Do not reveal leftover answers as sky words. Sheep grazing aside scored nothing on this question.
 - Keep only words that carry the reveal: the prompt (on scoring), the round, ranks, sheep names, scores, and answers with their points.
 - Do not duplicate a player count in text. The flock at a banner is the count.

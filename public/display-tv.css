@@ -2021,7 +2021,7 @@ html, body {
     transform: translate(-50%, -58%) rotate(var(--tilt, 0deg));
     transform-origin: 50% 14%;
     pointer-events: none;
-    filter: drop-shadow(0 10px 12px rgba(4, 10, 18, 0.38));
+    filter: none;
     transition:
         left var(--walk, 0s) linear,
         top var(--walk, 0s) linear;
@@ -2051,7 +2051,7 @@ html, body {
 }
 
 .tv-banner.is-parade-wait {
-    opacity: 0;
+    visibility: hidden;
 }
 
 .tv-banner.is-pennant .tv-flag-cloth,
@@ -2063,8 +2063,6 @@ html, body {
     position: relative;
     width: 100%;
     height: 100%;
-    container-type: inline-size;
-    container-name: flag;
 }
 
 .tv-flag-art {
@@ -2073,6 +2071,7 @@ html, body {
     height: auto;
     pointer-events: none;
     user-select: none;
+    filter: drop-shadow(0 10px 12px rgba(4, 10, 18, 0.38));
 }
 
 .tv-banner.is-pennant .tv-flag-art {
@@ -2096,9 +2095,10 @@ html, body {
     gap: 0.4em;
     text-align: center;
     overflow: hidden;
+    backface-visibility: hidden;
 }
 
-.tv-flag-pennant .tv-flag-face {
+.tv-banner.is-pennant .tv-flag-face {
     left: 24%;
     right: 10%;
     top: 7%;
@@ -2131,8 +2131,9 @@ html, body {
 
 .tv-miss-kicker {
     margin: 0;
+    max-width: 14ch;
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(1.45rem, 2.8vh, 2.2rem);
+    font-size: clamp(1.25rem, 2.45vh, 1.9rem);
     font-weight: 800;
     letter-spacing: -0.045em;
     line-height: 0.92;
@@ -2203,16 +2204,17 @@ html, body {
 .tv-flag-face .tv-post-answer {
     flex: 0 1 auto;
     font-size: clamp(2.2rem, 5.4vh, 4.4rem);
-    -webkit-line-clamp: 1;
     white-space: nowrap;
     display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -webkit-line-clamp: unset;
 }
 
-.tv-flag-pennant .tv-post-answer {
+.tv-banner.is-pennant .tv-post-answer {
     font-size: clamp(1.6rem, 3.6vh, 2.8rem);
     white-space: normal;
-    -webkit-line-clamp: 2;
-    display: -webkit-box;
+    display: block;
 }
 
 .tv-post-pts {
@@ -2230,7 +2232,7 @@ html, body {
     font-size: clamp(2.4rem, 5.8vh, 4.8rem);
 }
 
-.tv-flag-pennant .tv-post-pts {
+.tv-banner.is-pennant .tv-post-pts {
     font-size: clamp(1.8rem, 4vh, 3.1rem);
 }
 

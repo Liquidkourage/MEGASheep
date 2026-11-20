@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T23-40-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T23-50-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -2343,15 +2343,6 @@
             }, 80);
         }
 
-        function tvFlagFaceHtml(group) {
-            return `
-                <div class="tv-flag-face">
-                    <p class="tv-post-answer">${escapeDisplayText(group.answer)}</p>
-                    <p class="tv-post-pts">${Number(group.points) || 0}</p>
-                </div>
-            `;
-        }
-
         function tvBannerMarkup(group, extras) {
             const extra = extras || {};
             const x = extra.x != null ? extra.x : group.x;
@@ -2366,11 +2357,13 @@
                 <div${id} class="tv-banner is-parade${kind}${wait}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${n}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
                     <div class="tv-flag tv-flag-cloth">
                         <img class="tv-flag-art" src="sprites/parade-banner.png?v=2026-11-19T23-20-00" alt="" aria-hidden="true">
-                        ${tvFlagFaceHtml(group)}
                     </div>
                     <div class="tv-flag tv-flag-pennant">
                         <img class="tv-flag-art" src="sprites/parade-pennant.png?v=2026-11-19T23-20-00" alt="" aria-hidden="true">
-                        ${tvFlagFaceHtml(group)}
+                    </div>
+                    <div class="tv-flag-face">
+                        <p class="tv-post-answer">${escapeDisplayText(group.answer)}</p>
+                        <p class="tv-post-pts">${Number(group.points) || 0}</p>
                     </div>
                 </div>
             `;
@@ -2387,7 +2380,7 @@
                 <aside class="tv-sign tv-miss-sign" style="--x:${Number(sign.x).toFixed(2)}%; --y:${Number(sign.y).toFixed(2)}%; --w:${Number(sign.width).toFixed(2)}vw; --tilt:${Number(sign.tilt || 0).toFixed(2)}deg; --z:${Number(sign.z || 6)}">
                     <img class="tv-sign-art" src="sprites/meadow-sign.png?v=2026-11-18T27-20-00" alt="" aria-hidden="true">
                     <div class="tv-sign-face">
-                        <p class="tv-miss-kicker">Nobody said</p>
+                        <p class="tv-miss-kicker">Pasteur-ized Answers</p>
                         <ul class="tv-miss-list">
                             ${sign.answers.map((answer, index) => `<li class="tv-miss-chip" style="--tilt:${missChipTilt(answer, index).toFixed(2)}deg">${escapeDisplayText(answer)}</li>`).join('')}
                         </ul>
@@ -2471,10 +2464,12 @@
         function setParadeBanner(lane, group, x, y, width, walk, wait) {
             const el = paradeBannerEl(lane);
             if (!el) return;
-            el.dataset.answer = String((group && group.answer) || '');
-            el.dataset.holders = String(Number((group && group.count) || 0));
             const n = Number((group && group.count) || 0);
-            el.classList.toggle('is-parade-wait', !!wait);
+            const word = (group && group.answer) || '';
+            const pts = String(Number((group && group.points) || 0));
+            if (wait) el.classList.add('is-parade-wait');
+            el.dataset.answer = word;
+            el.dataset.holders = String(n);
             el.classList.toggle('is-pennant', n === 1);
             el.classList.toggle('is-cloth', n !== 1);
             el.classList.add('is-parade', 'is-hit');
@@ -2484,10 +2479,11 @@
             el.style.setProperty('--z', String(50 - Number(lane || 0)));
             el.style.setProperty('--walk', `${Number(walk || 0).toFixed(2)}s`);
             el.style.transitionDuration = `${Number(walk || 0).toFixed(2)}s`;
-            const word = (group && group.answer) || '';
-            const pts = String(Number((group && group.points) || 0));
-            el.querySelectorAll('.tv-post-answer').forEach((node) => { node.textContent = word; });
-            el.querySelectorAll('.tv-post-pts').forEach((node) => { node.textContent = pts; });
+            const faceWord = el.querySelector('.tv-flag-face .tv-post-answer');
+            const facePts = el.querySelector('.tv-flag-face .tv-post-pts');
+            if (faceWord && faceWord.textContent !== word) faceWord.textContent = word;
+            if (facePts && facePts.textContent !== pts) facePts.textContent = pts;
+            if (!wait) el.classList.remove('is-parade-wait');
         }
 
         function parkParadeEwes(els) {
