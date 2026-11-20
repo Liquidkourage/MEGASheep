@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-19T23-50-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T00-12-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1272,8 +1272,9 @@
             return Math.round(8 + t * 52);
         }
 
-        const PARADE_LANES = 3;
-        const MISS_SIGN_AT = { x: 20, y: 66 };
+        const PARADE_LANES = 1;
+        const MISS_SIGN_AT = { x: 18, y: 64 };
+        const RANK_SIGN_AT = { x: 83, y: 61.5 };
 
         function layoutMissSign(answers) {
             const list = (answers || []).filter(Boolean);
@@ -1332,10 +1333,13 @@
         }
 
         function paradeLaneY(lane, lanes) {
-            if (lanes <= 1) return 91.2;
-            const back = 80.4;
-            const front = 93.6;
-            return back + ((lanes - 1 - lane) / Math.max(1, lanes - 1)) * (front - back);
+            if (lanes <= 1) return 92.2;
+            return lane === 0 ? 92.6 : 83.4;
+        }
+
+        function paradeLaneScale(lane, lanes) {
+            if (lanes <= 1) return 1;
+            return lane === 0 ? 1.06 : 0.72;
         }
 
         function packGrazeKnot(count, x, y, seed) {
@@ -1363,6 +1367,7 @@
                 const gy = 62 + ((hash + tryAt * 13) % 14);
                 if (gx > 70 || gx < 40) continue;
                 if (avoid && Math.hypot(gx - avoid.x, (gy - avoid.y) * 1.4) < 26) continue;
+                if (Math.hypot(gx - RANK_SIGN_AT.x, (gy - RANK_SIGN_AT.y) * 1.4) < 22) continue;
                 if (occupied.some((spot) => Math.hypot(spot.x - gx, (spot.y - gy) * 1.25) < 12)) continue;
                 return { x: gx, y: gy };
             }
@@ -2389,12 +2394,27 @@
             `;
         }
 
+        function tvRankSignHtml(players) {
+            const rows = players || [];
+            if (!rows.length) return '';
+            return `
+                <aside class="tv-sign tv-score-ranks" style="--x:${RANK_SIGN_AT.x}%; --y:${RANK_SIGN_AT.y}%; --w:15.5vw; --tilt:0.45deg; --z:4">
+                    <img class="tv-sign-art" src="sprites/meadow-sign.png?v=2026-11-18T27-20-00" alt="" aria-hidden="true">
+                    <div class="tv-sign-face" id="scoreRankBoard">
+                        ${tvRankListHtml(rows, 0, { short: true })}
+                    </div>
+                </aside>
+            `;
+        }
+
         function tvScoreBannerHtml() {
             const { hits, misses } = scoreAnswerModels();
             const lanes = paradeLaneCount(hits.length);
+            const players = rankedPlayers((gameState && gameState.players) || []);
             return `
                 <div class="tv-score-banners">
                     ${tvMissSignHtml(misses)}
+                    ${tvRankSignHtml(players)}
                     ${Array.from({ length: lanes }, (_, lane) => tvBannerMarkup({
                         kind: 'hit',
                         answer: '',
@@ -2418,42 +2438,35 @@
 
         function paradeBannerWidth(group, count) {
             const n = Math.max(1, Number(count) || 1);
-            if (n === 1) return 8.8;
+            if (n === 1) return 8.4;
             const letters = String((group && group.answer) || '').length;
-            return Math.min(36, Math.max(26, 24 + Math.min(n, 8) * 1.2, 14 + letters * 1.1));
+            return Math.min(26, Math.max(20, 18 + Math.min(n, 8) * 0.7, 12 + letters * 0.9));
         }
 
-        function packFlagHolders(count, cx, cy, width) {
+        function paradeTravel(width, n) {
+            if (n === 1) return { startX: -18, destX: 114 };
+            const pad = Math.max(22, Number(width) * 0.78);
+            return { startX: -pad, destX: 100 + pad };
+        }
+
+        function packFlagHolders(count, cx, cy, width, laneScale) {
             const n = Math.max(1, count);
-            if (n === 1) return [{ x: cx, y: cy, z: 58, scale: 1.14 }];
-            const half = Math.max(7, Number(width) * 0.48);
+            const s = Number(laneScale) || 1;
+            if (n === 1) return [{ x: cx, y: cy, z: 58, scale: 1.1 * s }];
+            const half = Math.max(6, Number(width) * 0.46);
             const slots = [
-                { x: cx - half, y: cy, z: 58, scale: 1.12 },
-                { x: cx + half, y: cy, z: 58, scale: 1.12 }
+                { x: cx - half, y: cy, z: 58, scale: 1.08 * s },
+                { x: cx + half, y: cy, z: 58, scale: 1.08 * s }
             ];
             const extras = n - 2;
-            if (!extras) return slots;
-            const back = extras > 4 ? Math.ceil(extras / 2) : 0;
-            const front = extras - back;
-            const place = (howMany, y, scale, z, inset) => {
-                if (howMany <= 0) return;
-                const span = half * inset * 2;
-                if (howMany === 1) {
-                    slots.push({ x: cx, y, z, scale });
-                    return;
-                }
-                for (let i = 0; i < howMany; i += 1) {
-                    const t = i / (howMany - 1);
-                    slots.push({
-                        x: cx - span / 2 + t * span,
-                        y: y + ((i % 2) ? 0.4 : 0),
-                        z,
-                        scale
-                    });
-                }
-            };
-            place(front, cy + 0.45, 0.94, 50, 0.58);
-            place(back, cy - 2.6, 0.8, 42, 0.5);
+            for (let i = 0; i < extras; i += 1) {
+                slots.push({
+                    x: cx - half - 2.8 - i * 3.4,
+                    y: cy - 1.6 - (i % 2) * 0.55,
+                    z: 44 - i,
+                    scale: (0.78 - Math.min(i, 5) * 0.035) * s
+                });
+            }
             return slots;
         }
 
@@ -2525,12 +2538,12 @@
             }).filter(Boolean);
             const n = Math.max(1, els.length || members.length || 1);
             const laneY = paradeLaneY(lane, lanes);
-            const width = paradeBannerWidth(group, n);
-            const startX = n === 1 ? 28 : 10 + Math.min(8, n * 0.7);
-            const destX = n === 1 ? 104 : 108 - Math.min(8, n * 0.7);
-            const start = packFlagHolders(n, startX, laneY, width);
-            const dest = packFlagHolders(n, destX, laneY, width);
-            const seconds = 8.2;
+            const laneScale = paradeLaneScale(lane, lanes);
+            const width = paradeBannerWidth(group, n) * (lanes > 1 && lane ? 0.78 : 1);
+            const { startX, destX } = paradeTravel(width, n);
+            const start = packFlagHolders(n, startX, laneY, width, laneScale);
+            const dest = packFlagHolders(n, destX, laneY, width, laneScale);
+            const seconds = n === 1 ? 9.4 : 10.6;
             const banner = paradeBannerEl(lane);
             const finish = () => {
                 parkParadeEwes(els);
@@ -2695,12 +2708,6 @@
                     <h1 class="question-prompt">${escapeDisplayText(prompt)}</h1>
                 </div>
                 ${tvScoreBannerHtml()}
-                <aside class="tv-sign tv-score-ranks">
-                    <img class="tv-sign-art" src="sprites/meadow-sign-tall.png?v=2026-11-19T00-20-00" alt="" aria-hidden="true">
-                    <div class="tv-sign-face" id="scoreRankBoard">
-                        ${tvRankListHtml(players, 0, { short: true })}
-                    </div>
-                </aside>
             `);
             const painted = document.querySelector('#displayScreen .tv-score');
             if (painted) painted.dataset.answerKey = key;

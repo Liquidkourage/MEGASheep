@@ -2036,9 +2036,10 @@ html, body {
 }
 
 .tv-banner.is-cloth {
-    width: var(--w, 32vw);
+    width: var(--w, 24vw);
+    height: 10.5vh;
     z-index: 56;
-    transform: translate(-50%, -58%) rotate(var(--tilt, 0deg));
+    transform: translate(-50%, -72%) rotate(var(--tilt, 0deg));
     transform-origin: 50% 14%;
 }
 
@@ -2074,11 +2075,22 @@ html, body {
     filter: drop-shadow(0 10px 12px rgba(4, 10, 18, 0.38));
 }
 
+.tv-banner.is-cloth .tv-flag-art {
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+}
+
 .tv-banner.is-pennant .tv-flag-art {
     width: 100%;
     height: 100%;
     object-fit: contain;
     object-position: left bottom;
+}
+
+.tv-banner.is-cloth .tv-flag-face {
+    top: 12%;
+    bottom: 24%;
 }
 
 .tv-flag-face {
@@ -2203,7 +2215,7 @@ html, body {
 
 .tv-flag-face .tv-post-answer {
     flex: 0 1 auto;
-    font-size: clamp(2.2rem, 5.4vh, 4.4rem);
+    font-size: clamp(1.8rem, 4.2vh, 3.2rem);
     white-space: nowrap;
     display: block;
     overflow: hidden;
@@ -2229,7 +2241,7 @@ html, body {
 
 .tv-flag-face .tv-post-pts {
     flex: 0 0 auto;
-    font-size: clamp(2.4rem, 5.8vh, 4.8rem);
+    font-size: clamp(1.9rem, 4.6vh, 3.4rem);
 }
 
 .tv-banner.is-pennant .tv-post-pts {
@@ -2237,20 +2249,23 @@ html, body {
 }
 
 .tv-score-ranks {
-    right: 0.4%;
-    bottom: 3.2%;
-    z-index: 10;
-    width: min(22vw, 360px);
-    transform: rotate(0.55deg);
+    position: absolute;
+    left: var(--x, 84%);
+    top: var(--y, 61.5%);
+    right: auto;
+    bottom: auto;
+    z-index: var(--z, 4);
+    width: min(var(--w, 15.5vw), 300px);
+    transform: translate(-50%, -100%) rotate(var(--tilt, 0.45deg));
     transform-origin: 50% 100%;
     pointer-events: none;
 }
 
 .tv-score-ranks .tv-sign-face {
-    left: 8%;
-    right: 8%;
-    top: 8.4%;
-    bottom: 22.5%;
+    left: 7%;
+    right: 7%;
+    top: 7%;
+    bottom: 30%;
     justify-content: flex-start;
     align-items: stretch;
     overflow: hidden;
@@ -2268,7 +2283,7 @@ html, body {
 .tv-score-ranks .tv-rank-n,
 .tv-score-ranks .tv-rank-name,
 .tv-score-ranks .tv-rank-pts {
-    font-size: clamp(1.55rem, 3.1vh, 2.35rem);
+    font-size: clamp(1.45rem, 2.9vh, 2.2rem);
 }
 
 .tv-score .tv-ewe figcaption {
