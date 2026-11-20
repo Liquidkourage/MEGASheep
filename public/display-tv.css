@@ -2048,7 +2048,7 @@ html, body {
 
 .tv-score .tv-ewe.is-parade {
     z-index: var(--z, 80);
-    contain: paint;
+    contain: none;
     will-change: left, top;
     backface-visibility: hidden;
     transform: translate(-50%, -72%) scale(var(--s, 1));
@@ -2379,17 +2379,22 @@ html, body {
     position: absolute;
     left: 50%;
     top: auto;
-    bottom: 6%;
+    bottom: 4%;
     display: flex;
     z-index: 6;
     width: max-content;
     max-width: none;
     overflow: visible;
-    transform: translate(calc(-50% + var(--tag-x, 0px) + var(--sep-x, 0px)), var(--sep-y, 0px));
+    transform: translate(-50%, 0);
+    font-size: calc(clamp(var(--ewe-min, 72px), var(--ewe-base, 118px), var(--ewe-max, 132px)) * 0.2);
 }
 
-.tv-score .tv-ewe.is-parade.is-tag-lift:not(.is-parade-wait) figcaption {
-    bottom: 72%;
+.tv-score .tv-ewe.is-parade.is-tag-body:not(.is-parade-wait) figcaption {
+    bottom: 28%;
+}
+
+.tv-score .tv-ewe.is-parade.is-tag-hide figcaption {
+    display: none;
 }
 
 .tv-score .tv-ewe.is-parade:not(.is-parade-wait) .tv-ewe-name {
