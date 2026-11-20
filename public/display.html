@@ -2417,9 +2417,7 @@
 
         function tvScoreBannerHtml() {
             const { hits, misses } = scoreAnswerModels();
-            const waves = paradeWaves(hits);
-            const widest = waves.reduce((max, wave) => Math.max(max, wave.groups.length), 1);
-            const lanes = paradeLaneCount(widest);
+            const lanes = PARADE_LANES;
             const players = rankedPlayers((gameState && gameState.players) || []);
             return `
                 <div class="tv-score-banners">
@@ -2485,12 +2483,14 @@
             return document.getElementById(`scoreParadeBanner-${lane}`);
         }
 
-        function setParadeBanner(lane, group, x, y, width, walk, wait) {
+        function setParadeBanner(lane, group, x, y, width, walk, wait, depthLane, depthCount) {
             const el = paradeBannerEl(lane);
             if (!el) return;
             const n = Number((group && group.count) || 0);
             const word = (group && group.answer) || '';
             const pts = String(Number((group && group.points) || 0));
+            const dLane = depthLane == null ? lane : depthLane;
+            const dCount = Math.max(1, depthCount == null ? Number(el.dataset.lanes) || PARADE_LANES : depthCount);
             if (wait) el.classList.add('is-parade-wait');
             el.dataset.answer = word;
             el.dataset.holders = String(n);
@@ -2500,7 +2500,7 @@
             el.style.setProperty('--x', `${Number(x).toFixed(2)}%`);
             el.style.setProperty('--y', `${Number(y).toFixed(2)}%`);
             el.style.setProperty('--w', `${Number(width).toFixed(2)}vw`);
-            el.style.setProperty('--z', String(paradeLaneZ(lane, Number(el.dataset.lanes) || PARADE_LANES)));
+            el.style.setProperty('--z', String(paradeLaneZ(dLane, dCount)));
             el.style.setProperty('--walk', `${Number(walk || 0).toFixed(2)}s`);
             el.style.transitionDuration = walk ? `${Number(walk).toFixed(2)}s` : '';
             const faceWord = el.querySelector('.tv-flag-face .tv-post-answer');
@@ -2536,11 +2536,13 @@
             });
         }
 
-        function paradeScoreGroup(group, gen, lane, lanes, onDone) {
+        function paradeScoreGroup(group, gen, bannerLane, depthLane, depthCount, onDone) {
             if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) {
                 if (onDone) onDone();
                 return;
             }
+            const lanes = Math.max(1, Number(depthCount) || 1);
+            const lane = Number(depthLane) || 0;
             const chorus = document.getElementById('flockChorus');
             const names = ((gameState && gameState.players) || []).map((player) => player.name || 'Sheep');
             const members = ((gameState && gameState.players) || []).filter((player) => playerMatchesGroup(player, group));
@@ -2562,15 +2564,21 @@
             const dest = packFlagHolders(n, destX, laneY, width, laneScale, laneZ);
             const seconds = n === 1 ? 8.4 : 9.6;
             const minGy = Math.max(72, laneY - 6);
-            const banner = paradeBannerEl(lane);
+            const banner = paradeBannerEl(bannerLane);
+            const paint = (x, walk, wait) => setParadeBanner(bannerLane, group, x, laneY, width, walk, wait, lane, lanes);
+            let finished = false;
+            const startedAt = performance.now();
             const finish = () => {
+                if (finished) return;
+                if (performance.now() - startedAt < seconds * 1000 - 400) return;
+                finished = true;
                 parkParadeEwes(els);
-                setParadeBanner(lane, group, destX, laneY, width, 0, true);
+                paint(destX, 0, true);
                 if (onDone) onDone();
             };
             if (banner) {
                 banner.classList.add('is-placed');
-                setParadeBanner(lane, group, startX, laneY, width, 0, false);
+                paint(startX, 0, false);
                 banner.getBoundingClientRect();
             }
             const armWalk = (onGo) => {
@@ -2597,7 +2605,7 @@
             };
             if (!els.length) {
                 armWalk(() => {
-                    setParadeBanner(lane, group, destX, laneY, width, seconds, false);
+                    paint(destX, seconds, false);
                     window.setTimeout(finish, seconds * 1000 + 80);
                 });
                 return;
@@ -2620,8 +2628,9 @@
                 el.classList.add('is-parade', 'is-crowd', 'is-walking');
             });
             if (els[0]) els[0].getBoundingClientRect();
+            window.setTimeout(finish, seconds * 1000 + 80);
             armWalk(() => {
-                setParadeBanner(lane, group, destX, laneY, width, seconds, false);
+                paint(destX, seconds, false);
                 els.forEach((el, index) => {
                     const destSlot = resultSlot(members[index], names, dest[index] || dest[0], {
                         named: false,
@@ -2665,49 +2674,67 @@
             const waves = paradeWaves(scoreAnswerModels().hits);
             if (!waves.length) return;
             const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const bannerCount = document.querySelectorAll('[id^="scoreParadeBanner-"]').length || PARADE_LANES;
+            const busy = new Set();
+            const acquireBanner = () => {
+                for (let i = 0; i < bannerCount; i += 1) {
+                    if (!busy.has(i) && paradeBannerEl(i)) {
+                        busy.add(i);
+                        return i;
+                    }
+                }
+                return -1;
+            };
             const runWave = (waveIndex) => {
                 if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) return;
                 const wave = waves[waveIndex];
                 if (!wave) {
-                    window.setTimeout(() => runWave(0), 400);
+                    window.setTimeout(() => runWave(0), 450);
                     return;
                 }
                 const groups = wave.groups.slice();
-                const lanes = paradeLaneCount(groups.length);
-                const stagger = wave.size === 1 ? 520 : 420;
-                const handoff = wave.size === 1 ? 5200 : 5800;
+                const depthCount = Math.max(1, groups.length);
+                const stagger = wave.size === 1 ? 680 : 480;
                 let next = 0;
+                let inFlight = 0;
                 let closed = false;
                 const finishWave = () => {
                     if (closed) return;
                     closed = true;
-                    const following = waveIndex + 1 < waves.length ? waveIndex + 1 : 0;
-                    window.setTimeout(() => runWave(following), 320);
+                    window.setTimeout(() => runWave(waveIndex + 1), 450);
                 };
-                const runLane = (lane) => {
+                const launchOne = (depthLane) => {
                     if (gen !== scoreParadeGen || !document.querySelector('.tv-score')) return;
                     if (next >= groups.length) return;
+                    const bannerLane = acquireBanner();
+                    if (bannerLane < 0) {
+                        window.setTimeout(() => launchOne(depthLane), 180);
+                        return;
+                    }
                     const group = groups[next];
                     next += 1;
+                    inFlight += 1;
                     const release = () => {
-                        if (next < groups.length) window.setTimeout(() => runLane(lane), 60);
+                        busy.delete(bannerLane);
+                        inFlight -= 1;
+                        if (next < groups.length) window.setTimeout(() => launchOne(depthLane), 80);
+                        else if (inFlight === 0) finishWave();
                     };
-                    if (next >= groups.length) window.setTimeout(finishWave, handoff);
                     if (reduce) {
                         const n = paradeSetSize(group);
-                        const parked = 16 + lane * 18;
-                        setParadeBanner(lane, group, parked, paradeLaneY(lane, lanes), paradeBannerWidth(group, n), 0, false);
+                        const parked = 16 + depthLane * 18;
+                        setParadeBanner(bannerLane, group, parked, paradeLaneY(depthLane, depthCount), paradeBannerWidth(group, n), 0, false, depthLane, depthCount);
                         window.setTimeout(() => {
-                            setParadeBanner(lane, group, parked, paradeLaneY(lane, lanes), paradeBannerWidth(group, n), 0, true);
+                            setParadeBanner(bannerLane, group, parked, paradeLaneY(depthLane, depthCount), paradeBannerWidth(group, n), 0, true, depthLane, depthCount);
                             release();
                         }, 2400);
                         return;
                     }
-                    paradeScoreGroup(group, gen, lane, lanes, release);
+                    paradeScoreGroup(group, gen, bannerLane, depthLane, depthCount, release);
                 };
-                for (let lane = 0; lane < lanes; lane += 1) {
-                    window.setTimeout(() => runLane(lane), 50 + lane * stagger);
-                }
+                groups.forEach((_, depthLane) => {
+                    window.setTimeout(() => launchOne(depthLane), 50 + depthLane * stagger);
+                });
             };
             runWave(0);
         }
