@@ -650,8 +650,14 @@ html, body {
     font-size: clamp(1.35rem, 34cqi, 2.6rem);
 }
 
-.tv-play .tv-ewe:not(.is-in) figcaption,
-.tv-play .tv-ewe.is-walking figcaption,
+.tv-play .tv-ewe figcaption {
+    display: none;
+}
+
+.tv-play .tv-ewe.is-in.is-walking:not(.is-outside) figcaption {
+    display: flex;
+}
+
 .tv-standings .tv-ewe figcaption,
 .tv-final .tv-flock .tv-ewe figcaption,
 .tv-history .tv-ewe figcaption,

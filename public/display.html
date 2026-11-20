@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T13-25-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T13-40-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -969,8 +969,8 @@
             const r = el.getBoundingClientRect();
             const cap = el.querySelector('figcaption');
             const capR = cap ? cap.getBoundingClientRect() : null;
-            const nameOn = cap && getComputedStyle(cap).opacity !== '0' &&
-                !(el.classList.contains('is-in') && !el.classList.contains('is-walking'));
+            const capStyle = cap ? getComputedStyle(cap) : null;
+            const nameOn = !!(capStyle && capStyle.display !== 'none' && capStyle.opacity !== '0');
             let left;
             let right;
             let top;
