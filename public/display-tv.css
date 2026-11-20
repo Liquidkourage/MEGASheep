@@ -656,6 +656,10 @@ html, body {
 
 .tv-play .tv-ewe.is-in.is-walking:not(.is-outside) figcaption {
     display: flex;
+    font-size: calc(clamp(var(--ewe-min, 72px), var(--ewe-base, 118px), var(--ewe-max, 132px)) * 0.2);
+    max-width: 115%;
+    padding: 0.12em 0.3em;
+    line-height: 1.05;
 }
 
 .tv-standings .tv-ewe figcaption,
