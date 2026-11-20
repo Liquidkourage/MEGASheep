@@ -2304,31 +2304,32 @@ html, body {
 .tv-score-ranks .tv-sign-face {
     left: 8%;
     right: 8%;
-    top: 6%;
-    bottom: 15%;
+    top: 7%;
+    bottom: 23%;
     justify-content: flex-start;
     align-items: stretch;
     overflow: hidden;
-    padding: 0.08em 0.06em 0.1em;
+    padding: 0.06em 0.06em 0.04em;
 }
 
 .tv-score-ranks .tv-rank-list {
     --rank-cols: 1;
     grid-template-columns: minmax(0, 1fr);
     width: 100%;
-    height: auto;
-    overflow: visible;
+    height: 100%;
+    overflow: hidden;
+    align-content: start;
 }
 
 .tv-score-ranks .tv-rank-row {
-    padding: 0.02em 0;
-    gap: 0.15em 0.4em;
+    padding: 0;
+    gap: 0.12em 0.4em;
 }
 
 .tv-score-ranks .tv-rank-n,
 .tv-score-ranks .tv-rank-name,
 .tv-score-ranks .tv-rank-pts {
-    font-size: clamp(1.05rem, 2.05vh, 1.55rem);
+    font-size: clamp(1.08rem, 2.12vh, 1.6rem);
     line-height: 1.02;
 }
 

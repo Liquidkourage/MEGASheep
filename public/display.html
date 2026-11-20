@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T12-25-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T12-50-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1273,6 +1273,7 @@
         }
 
         const PARADE_LANES = 12;
+        const PARADE_ROWS = 2;
         const MISS_SIGN_AT = { x: 18, y: 64 };
         const RANK_SIGN_AT = { x: 83, y: 61.5 };
 
@@ -1328,25 +1329,26 @@
             });
         }
 
-        function paradeLaneCount(hitCount) {
-            return Math.max(1, Math.min(PARADE_LANES, Number(hitCount) || 0));
+        function paradeRowCount(hitCount) {
+            return Math.max(1, Math.min(PARADE_ROWS, Number(hitCount) || 0));
         }
 
         function paradeLaneT(lane, lanes) {
-            if (lanes <= 1) return 0;
-            return Number(lane) / Math.max(1, lanes - 1);
+            const rows = paradeRowCount(lanes);
+            if (rows <= 1) return 0;
+            return (Number(lane) % rows) / (rows - 1);
         }
 
         function paradeLaneY(lane, lanes) {
-            return 93.3 - paradeLaneT(lane, lanes) * 14.6;
+            return 93.7 - paradeLaneT(lane, lanes) * 3.1;
         }
 
         function paradeLaneScale(lane, lanes) {
-            return 1.08 - paradeLaneT(lane, lanes) * 0.44;
+            return 1.08 - paradeLaneT(lane, lanes) * 0.07;
         }
 
         function paradeLaneZ(lane, lanes) {
-            return Math.round(26 + (1 - paradeLaneT(lane, lanes)) * 46);
+            return Math.round(74 + (1 - paradeLaneT(lane, lanes)) * 12);
         }
 
         function packGrazeKnot(count, x, y, seed) {
@@ -1359,27 +1361,27 @@
             return Array.from({ length: n }, (_, index) => {
                 const h = Math.abs(seed + index * 97);
                 const ang = ((h % 628) / 100);
-                const rad = 3.1 + (index % 4) * 1.7 + (h % 5) * 0.28;
+                const rad = 1.4 + (index % 4) * 0.7 + (h % 5) * 0.12;
                 return withZ({
-                    x: x + Math.cos(ang) * rad * 2.45,
-                    y: y + Math.sin(ang) * rad * 0.85 + (index % 3 ? 0.55 : 0),
-                    scale: 0.9 + (index % 3) * 0.05
+                    x: x + Math.cos(ang) * rad * 1.6,
+                    y: Math.min(60, Math.max(53, y + Math.sin(ang) * rad * 0.28)),
+                    scale: 0.76 + (index % 3) * 0.04
                 });
             });
         }
 
         function pickWrongPatch(occupied, hash, avoid) {
             for (let tryAt = 0; tryAt < 48; tryAt += 1) {
-                const gx = 22 + ((hash + tryAt * 17) % 54);
-                const gy = 64 + ((hash + tryAt * 13) % 22);
-                if (gx > 76 || gx < 22) continue;
-                if (gy > 86 || gy < 64) continue;
-                if (avoid && Math.hypot(gx - avoid.x, (gy - avoid.y) * 1.4) < 26) continue;
-                if (Math.hypot(gx - RANK_SIGN_AT.x, (gy - RANK_SIGN_AT.y) * 1.4) < 22) continue;
-                if (occupied.some((spot) => Math.hypot(spot.x - gx, (spot.y - gy) * 1.25) < 20)) continue;
+                const gx = 22 + ((hash + tryAt * 19) % 52);
+                const gy = 53 + ((hash + tryAt * 7) % 6);
+                if (gx > 74 || gx < 22) continue;
+                if (gy > 59 || gy < 53) continue;
+                if (avoid && Math.hypot(gx - avoid.x, (gy - avoid.y) * 1.15) < 16) continue;
+                if (Math.hypot(gx - RANK_SIGN_AT.x, (gy - RANK_SIGN_AT.y) * 1.15) < 16) continue;
+                if (occupied.some((spot) => Math.abs(spot.x - gx) < 12 && Math.abs(spot.y - gy) < 5)) continue;
                 return { x: gx, y: gy };
             }
-            return { x: 28 + (hash % 44), y: 70 + (hash % 12) };
+            return { x: 24 + (hash % 48), y: 54 + (hash % 5) };
         }
 
         function claimScoreMembers(list, claimed, group) {
@@ -1433,8 +1435,8 @@
                         mood: 'sleep',
                         faceLeft,
                         tight: true,
-                        minGy: 50,
-                        scale: 0.96
+                        minGy: 54,
+                        scale: 0.82
                     }));
                 });
             });
@@ -2553,14 +2555,10 @@
                 return chorus && chorus.querySelector(`.tv-ewe[data-id="${CSS.escape(id)}"]`);
             }).filter(Boolean);
             const n = Math.max(1, els.length || members.length || 1);
-            const laneY = n === 1
-                ? 92.6 - paradeLaneT(lane, lanes) * 2.6
-                : paradeLaneY(lane, lanes);
-            const laneScale = n === 1
-                ? 1.06 - paradeLaneT(lane, lanes) * 0.12
-                : paradeLaneScale(lane, lanes);
+            const laneY = paradeLaneY(lane, lanes);
+            const laneScale = paradeLaneScale(lane, lanes);
             const laneZ = paradeLaneZ(lane, lanes);
-            const width = paradeBannerWidth(group, n) * (0.7 + 0.3 * (1 - paradeLaneT(lane, lanes)));
+            const width = paradeBannerWidth(group, n) * (0.94 + 0.06 * (1 - paradeLaneT(lane, lanes)));
             const { startX, destX } = paradeTravel(width, n);
             const start = packFlagHolders(n, startX, laneY, width, laneScale, laneZ);
             const dest = packFlagHolders(n, destX, laneY, width, laneScale, laneZ);
@@ -2703,7 +2701,7 @@
                     return;
                 }
                 const groups = wave.groups.slice();
-                const depthCount = Math.max(1, groups.length);
+                const depthCount = paradeRowCount(groups.length);
                 const stagger = wave.size === 1 ? 880 : 1700;
                 let next = 0;
                 let closed = false;
@@ -2740,8 +2738,8 @@
                     }
                     paradeScoreGroup(group, gen, bannerLane, depthLane, depthCount, release);
                 };
-                groups.forEach((_, depthLane) => {
-                    window.setTimeout(() => launchOne(depthLane), 50 + depthLane * stagger);
+                groups.forEach((_, index) => {
+                    window.setTimeout(() => launchOne(index % depthCount), 50 + index * stagger);
                 });
             };
             runWave(0);
