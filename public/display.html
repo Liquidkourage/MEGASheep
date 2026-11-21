@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T16-30-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T17-00-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1764,6 +1764,13 @@
         }
 
         function applyEweSlot(el, slot) {
+            if (el.classList.contains('tv-dog')) {
+                el.style.setProperty('--gx', String(slot.gx));
+                el.style.setProperty('--gy', String(slot.gy));
+                el.style.setProperty('--s', String(slot.scale));
+                el.style.setProperty('--z', String(slot.z));
+                return;
+            }
             el.dataset.name = slot.name;
             el.dataset.coat = String(slot.coat);
             el.dataset.mood = slot.mood || 'idle';
@@ -1798,7 +1805,7 @@
                 oy: parseFloat(el.style.getPropertyValue('--oy')) || 70,
                 scale: parseFloat(el.style.getPropertyValue('--s')) || 1,
                 z: parseFloat(el.style.getPropertyValue('--z')) || 10,
-                coat: Number(el.dataset.coat) || 1,
+                coat: Number.isFinite(Number(el.dataset.coat)) ? Number(el.dataset.coat) : (el.dataset.coat || 1),
                 idle: parseFloat(el.style.getPropertyValue('--idle')) || 0,
                 mood: el.dataset.mood || 'idle',
                 sad: el.classList.contains('is-sad')

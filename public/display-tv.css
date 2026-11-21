@@ -1344,20 +1344,6 @@ html, body {
     background-image: url("sprites/sheep-03-walk.png?v=2026-11-18T20-05-00");
 }
 
-.tv-dog .tv-ewe-strip,
-.tv-play .tv-dog:not(.is-walking) .tv-ewe-strip,
-.tv-play .tv-dog.is-outside:not(.is-walking) .tv-ewe-strip {
-    width: 1200%;
-    background-image: url("sprites/dog-01-idle.png?v=2026-11-21T16-30-00");
-    animation: eweIdle 0.4s steps(11) infinite;
-}
-
-.tv-dog.is-walking .tv-ewe-strip {
-    width: 1800%;
-    background-image: url("sprites/dog-01-walk.png?v=2026-11-21T16-30-00");
-    animation: eweWalk 0.55s steps(18, jump-none) infinite;
-}
-
 .tv-ewe.is-in:not(.is-walking) .tv-ewe-strip,
 .tv-ewe.is-sad:not(.is-walking) .tv-ewe-strip,
 .tv-ewe[data-mood="sleep"]:not(.is-walking) .tv-ewe-strip {
@@ -1394,8 +1380,8 @@ html, body {
     background-image: url("sprites/sheep-03-idle.png?v=2026-11-18T20-05-00");
 }
 
-.tv-lobby .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip,
-.tv-play .tv-ewe:not(.is-walking):not(.is-joining):not(.is-in):not(.is-outside) .tv-ewe-strip {
+.tv-lobby .tv-ewe:not(.tv-dog):not(.is-walking):not(.is-joining) .tv-ewe-strip,
+.tv-play .tv-ewe:not(.tv-dog):not(.is-walking):not(.is-joining):not(.is-in):not(.is-outside) .tv-ewe-strip {
     width: 1200%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
     animation: eweIdle 0.4s steps(11) infinite;
@@ -1450,18 +1436,33 @@ html, body {
     background-image: url("sprites/sheep-03-jump.png?v=2026-11-18T21-40-00");
 }
 
-.tv-play .tv-flock[data-dense="1"] .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip,
-.tv-score .tv-flock[data-dense="1"] .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip,
-.tv-standings .tv-flock[data-dense="1"] .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip,
-.tv-final .tv-flock[data-dense="1"] .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip,
-.tv-history .tv-flock[data-dense="1"] .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip {
+.tv-play .tv-flock[data-dense="1"] .tv-ewe:not(.tv-dog):not(.is-walking):not(.is-joining) .tv-ewe-strip,
+.tv-score .tv-flock[data-dense="1"] .tv-ewe:not(.tv-dog):not(.is-walking):not(.is-joining) .tv-ewe-strip,
+.tv-standings .tv-flock[data-dense="1"] .tv-ewe:not(.tv-dog):not(.is-walking):not(.is-joining) .tv-ewe-strip,
+.tv-final .tv-flock[data-dense="1"] .tv-ewe:not(.tv-dog):not(.is-walking):not(.is-joining) .tv-ewe-strip,
+.tv-history .tv-flock[data-dense="1"] .tv-ewe:not(.tv-dog):not(.is-walking):not(.is-joining) .tv-ewe-strip {
     animation: none !important;
 }
 
-.tv-play .tv-flock[data-dense="1"] .tv-ewe:nth-child(11n):not(.is-in):not(.is-walking):not(.is-joining) .tv-ewe-strip {
+.tv-play .tv-flock[data-dense="1"] .tv-ewe:not(.tv-dog):nth-child(11n):not(.is-in):not(.is-walking):not(.is-joining) .tv-ewe-strip {
     width: 1200% !important;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00") !important;
     animation: eweIdle 1.2s steps(11) infinite !important;
+}
+
+.tv-dog .tv-ewe-strip,
+.tv-play .tv-dog .tv-ewe-strip,
+.tv-play .tv-dog:not(.is-walking):not(.is-joining):not(.is-in):not(.is-outside) .tv-ewe-strip {
+    width: 1200%;
+    background-image: url("sprites/dog-01-idle.png?v=2026-11-21T16-30-00");
+    animation: eweIdle 0.4s steps(11) infinite;
+}
+
+.tv-dog.is-walking .tv-ewe-strip,
+.tv-play .tv-dog.is-walking .tv-ewe-strip {
+    width: 1800%;
+    background-image: url("sprites/dog-01-walk.png?v=2026-11-21T16-30-00");
+    animation: eweWalk 0.55s steps(18, jump-none) infinite;
 }
 
 .tv-thought {
