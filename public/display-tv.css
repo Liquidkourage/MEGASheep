@@ -390,19 +390,21 @@ html, body {
     top: 8.4%;
     bottom: 22.5%;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 7px;
     padding: 0.04em 0.04em 0;
 }
 
 .tv-lobby-join .qr-code {
-    padding: 7px !important;
+    padding: 8px !important;
     flex: 0 0 auto;
+    width: auto;
+    align-self: center;
 }
 
 .tv-lobby-join .qr-code img {
-    width: min(168px, 15.6vh) !important;
-    height: min(168px, 15.6vh) !important;
+    width: 208px;
+    height: 208px;
 }
 
 .tv-pitch {
