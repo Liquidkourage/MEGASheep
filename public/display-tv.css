@@ -1462,7 +1462,7 @@ html, body {
 .tv-play .tv-dog.is-walking .tv-ewe-strip {
     width: 1800%;
     background-image: url("sprites/dog-01-walk.png?v=2026-11-21T16-30-00");
-    animation: eweWalk 0.55s steps(18, jump-none) infinite;
+    animation: eweWalk 5.4s steps(18, jump-none) infinite;
 }
 
 .tv-dog.is-sitting:not(.is-walking) .tv-ewe-strip,
