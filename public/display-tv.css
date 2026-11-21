@@ -662,7 +662,6 @@ html, body {
     line-height: 1.05;
 }
 
-.tv-standings .tv-ewe figcaption,
 .tv-final .tv-flock .tv-ewe figcaption,
 .tv-history .tv-ewe figcaption,
 .tv-podium .tv-ewe figcaption {
@@ -2362,6 +2361,35 @@ html, body {
 
 .tv-score .tv-ewe figcaption {
     font-size: clamp(1.15rem, 28cqi, 2.15rem);
+}
+
+.tv-standings .tv-ewe {
+    contain: none;
+    overflow: visible;
+}
+
+.tv-standings .tv-ewe:not(.is-crowd) figcaption {
+    display: flex;
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    bottom: auto;
+    z-index: 6;
+    width: max-content;
+    max-width: none;
+    overflow: visible;
+    transform: translate(-50%, -0.15em);
+    font-size: calc(clamp(var(--ewe-min, 72px), var(--ewe-base, 118px), var(--ewe-max, 132px)) * 0.2);
+}
+
+.tv-standings .tv-ewe.is-crowd figcaption {
+    display: none;
+}
+
+.tv-standings .tv-ewe:not(.is-crowd) .tv-ewe-name {
+    min-width: auto;
+    overflow: visible;
+    text-overflow: clip;
 }
 
 .tv-score .tv-ewe.is-crowd:not(.is-wrong):not(.is-parade) figcaption,

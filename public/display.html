@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T15-35-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-20T23-45-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1235,6 +1235,7 @@
                 paradeWait: !!extra.paradeWait,
                 parade: !!extra.parade,
                 tagPlace: extra.tagPlace || '',
+                fullName: !!extra.fullName,
                 wrong: extra.wrong || '',
                 faceLeft: !!extra.faceLeft,
                 gx: offstage ? gxRaw : Math.min(96, Math.max(2, gxRaw)),
@@ -1467,8 +1468,33 @@
             return list.map((player) => byPlayer.get(player) || resultSlot(player, names));
         }
 
+        function placeStandingsFlock(list, names) {
+            const ranked = rankedPlayers(list);
+            const packed = packTrapezoid(
+                ranked.length,
+                { left: 8, right: 64, y: 66 },
+                { left: 6, right: 76, y: 91 }
+            );
+            const byPlayer = new Map();
+            ranked.forEach((player, index) => {
+                const spot = packed[packed.length - 1 - index] || packed[0] || { x: 40, y: 80, z: 12, scale: 1 };
+                byPlayer.set(player, resultSlot(player, names, {
+                    x: spot.x,
+                    y: spot.y,
+                    z: (spot.z || 12) + (index < 3 ? 8 : 0),
+                    scale: spot.scale || 1
+                }, {
+                    named: ranked.length <= 20 || spot.y >= 78,
+                    fullName: true,
+                    minGy: 64
+                }));
+            });
+            return list.map((player) => byPlayer.get(player) || resultSlot(player, names, null, { fullName: true }));
+        }
+
         function placeResultsFlock(list, names) {
             if (document.querySelector('.tv-score')) return placeScoreFlock(list, names);
+            if (document.querySelector('.tv-standings')) return placeStandingsFlock(list, names);
             const graze = packTrapezoid(list.length, RESULTS_FAR, RESULTS_NEAR);
             return list.map((player, index) => {
                 const hash = nameHash(player.name || player.id || String(index));
@@ -1557,12 +1583,12 @@
             if (slot.wrong) {
                 return `<span class="tv-ewe-wrong">${escapeDisplayText(slot.wrong)}</span>`;
             }
-            const name = escapeDisplayText((slot.parade ? slot.name : (slot.label || slot.name)) || 'Sheep');
+            const name = escapeDisplayText((slot.parade || slot.fullName ? slot.name : (slot.label || slot.name)) || 'Sheep');
             const score = Number(slot.score);
             const pts = (!slot.parade && slot.score != null && Number.isFinite(score))
                 ? `<span class="tv-ewe-pts">${score}</span>`
                 : '';
-            return `<span class="tv-ewe-name">${name}</span>${pts}`;
+            return `<span class="tv-ewe-name">${name}</span>${pts ? ` ${pts}` : ''}`;
         }
 
         function applyEweLook(el, slot) {
@@ -2419,17 +2445,25 @@
             `;
         }
 
-        function tvRankSignHtml(players) {
+        function tvRankSignHtml(players, extras) {
             const rows = players || [];
             if (!rows.length) return '';
+            const extra = extras || {};
+            const boardId = extra.boardId || 'scoreRankBoard';
             return `
                 <aside class="tv-sign tv-score-ranks" style="--x:${RANK_SIGN_AT.x}%; --y:${RANK_SIGN_AT.y}%; --w:19vw; --tilt:0.45deg; --z:4">
                     <img class="tv-sign-art" src="sprites/meadow-sign-tall.png?v=2026-11-19T00-20-00" alt="" aria-hidden="true">
-                    <div class="tv-sign-face" id="scoreRankBoard">
+                    <div class="tv-sign-face" id="${boardId}">
                         ${tvRankListHtml(rows, 0, { short: true })}
                     </div>
                 </aside>
             `;
+        }
+
+        function mountRankSign() {
+            const chorus = document.getElementById('flockChorus');
+            const sign = document.querySelector('.tv-stage > .tv-score-ranks, .tv-standings > .tv-score-ranks');
+            if (chorus && sign) chorus.appendChild(sign);
         }
 
         function tvScoreBannerHtml() {
@@ -3066,10 +3100,9 @@
                 <div class="tv-score-top">
                     <p class="tv-play-meta"><span>Round ${escapeDisplayText(roundData.roundNumber)}</span></p>
                 </div>
-                <section class="tv-board tv-board-wide" id="roundRankBoard" style="--rank-cols:${rankCols(players.length)}">
-                    ${tvRankListHtml(players, 0)}
-                </section>
-            `);
+                ${tvRankSignHtml(players, { boardId: 'roundRankBoard' })}
+            `, players);
+            mountRankSign();
             armBoardScroll('roundRankBoard', players.length);
         }
 
