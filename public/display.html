@@ -597,11 +597,11 @@
                     <div class="tv-pasture-shade" aria-hidden="true"></div>
                     <div class="tv-pasture-ground" aria-hidden="true"></div>
                     ${withPen ? `<div class="tv-pen tv-pen-back" aria-hidden="true">
-                        <img class="tv-pen-art" src="sprites/pen-back.png?v=2026-11-21T12-40-00" alt="">
+                        <img class="tv-pen-art" src="sprites/pen-back.png?v=2026-11-21T12-50-00" alt="">
                     </div>` : ''}
                     <div class="tv-flock" id="flockChorus"></div>
                     ${withPen ? `<div class="tv-pen tv-pen-front" aria-hidden="true">
-                        <img class="tv-pen-art" src="sprites/pen-front.png?v=2026-11-21T12-40-00" alt="">
+                        <img class="tv-pen-art" src="sprites/pen-front.png?v=2026-11-21T12-50-00" alt="">
                     </div>` : ''}
                 </div>
             `;
@@ -846,10 +846,10 @@
         const PEN_FAR = { left: 70, right: 84, y: 62 };
         const PEN_NEAR = { left: 64, right: 88, y: 86 };
         const PEN_FIELD = { left: 64, right: 88, top: 62, bottom: 86 };
-        const GATE_MOUTH = { x: 58.1, y: 94.6 };
+        const GATE_MOUTH = { x: 60.4, y: 71.4 };
         const PEN_SPRITE = { w: 1127, h: 628 };
-        const GATE_MOUTH_SPRITE = { x: 124, y: 558 };
-        const GATE_APPROACH_SPRITE = { x: -42, y: 575 };
+        const GATE_MOUTH_SPRITE = { x: 185, y: 228 };
+        const GATE_APPROACH_SPRITE = { x: -90, y: 248 };
         const GRASS_LINE = 0.55;
         const GRASS_FAR_Y = 55;
         const GRASS_NEAR_Y = 92;
@@ -2233,14 +2233,9 @@
         }
 
         function playGatePoints() {
-            const mouth = penSpriteToStage(GATE_MOUTH_SPRITE.x, GATE_MOUTH_SPRITE.y);
-            const approach = penSpriteToStage(GATE_APPROACH_SPRITE.x, GATE_APPROACH_SPRITE.y);
             return {
-                mouth,
-                approach: {
-                    x: Math.min(mouth.x - 5.5, approach.x),
-                    y: approach.y
-                }
+                mouth: penSpriteToStage(GATE_MOUTH_SPRITE.x, GATE_MOUTH_SPRITE.y),
+                approach: penSpriteToStage(GATE_APPROACH_SPRITE.x, GATE_APPROACH_SPRITE.y)
             };
         }
 
