@@ -391,8 +391,8 @@ html, body {
     bottom: 22.5%;
     flex-direction: column;
     justify-content: center;
-    gap: 6px;
-    padding: 0;
+    gap: 7px;
+    padding: 0.04em 0.04em 0;
 }
 
 .tv-lobby-join .qr-code {
@@ -401,20 +401,33 @@ html, body {
 }
 
 .tv-lobby-join .qr-code img {
-    width: min(176px, 16.4vh) !important;
-    height: min(176px, 16.4vh) !important;
+    width: min(168px, 15.6vh) !important;
+    height: min(168px, 15.6vh) !important;
 }
 
 .tv-pitch {
     margin: 0;
     max-width: none;
+    flex: 0 0 auto;
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(1.1rem, 2.05vh, 1.5rem);
+    font-size: clamp(1.18rem, 2.2vh, 1.6rem);
     font-weight: 700;
-    line-height: 1.14;
+    letter-spacing: -0.03em;
+    line-height: 1.12;
     color: #1a140c;
     hyphens: manual;
     overflow-wrap: normal;
+}
+
+.tv-player-code-kicker {
+    margin: 0.06em 0 0;
+    flex: 0 0 auto;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(1.2rem, 2.35vh, 1.75rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: #1a140c;
 }
 
 .tv-lobby-join .tv-lobby-code {
