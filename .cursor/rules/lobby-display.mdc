@@ -7,7 +7,9 @@ alwaysApply: true
 
 On the audience lobby (`/display` waiting / game lobby), text is either large enough to read from across the room or it does not belong on this screen.
 
-- Keep only words that help someone join or recognize a player: the game name, the game code, and sheep names.
+- Keep only words that help someone join or recognize a player: the game name, its byline, the game code, and sheep names.
+- Sit “by Liquid Kourage Entertainment” under MEGASheep in the sky, in the title’s outlined lettering, not on a wooden sign.
+- The join QR sign also carries the MEGASheep pitch (the wool / ewe-nique copy). Do not put that copy on the TV pairing sign.
 - An empty meadow uses a semitransparent idle sheep with thinking ellipses, not a sentence.
 - Do not add captions, status chips, URLs, “scan to join” labels, player-count lines, or scene titles that merely name the lobby.
 - Size kept type for a 1920×1080 landscape TV viewed from across a room.
