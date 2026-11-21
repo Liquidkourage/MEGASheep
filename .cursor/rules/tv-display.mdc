@@ -11,7 +11,7 @@ alwaysApply: true
 - Use the full viewport. Do not box content into phone or laptop cards, 800px max-widths, or leftover empty margins.
 - Size type, scores, QR codes, and timers for viewing from across a room.
 - Pairing and lobby share the cartoon night meadow. Panels are opaque outlined signs, not glass.
-- The unpaired TV sign shows only the pairing code. MEGASheep’s byline sits under the title in the sky, in that same outlined lettering, not on the sign.
+- The unpaired TV sign shows the pairing code, headed with “Host: use this code to pair with this display.” MEGASheep’s byline sits under the title in the sky, in that same outlined lettering, not on the sign.
 - The lobby join sign carries the QR code, the MEGASheep pitch copy, and the game code.
 - Do not add phone breakpoints, 44px touch targets, portrait stacking, or hover-only essential behavior.
 - Phone constraints belong to player screens. Laptop constraints belong to the host console. Neither applies here.

@@ -193,8 +193,20 @@ html, body {
 }
 
 .tv-intro-sign .tv-sign-face {
-    gap: 0;
+    gap: 0.28em;
     justify-content: center;
+    padding: 0.12em 0.2em 0.08em;
+}
+
+.tv-pair-kicker {
+    margin: 0;
+    max-width: 100%;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(1.45rem, 2.8vh, 2.15rem);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1.08;
+    color: #1a140c;
 }
 
 .tv-intro-wait {
