@@ -832,6 +832,7 @@ html, body {
 .tv-play-copy {
     flex: 1 1 auto;
     min-width: 0;
+    max-width: calc(100% - 0.2em);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -908,9 +909,10 @@ html, body {
     font-weight: 800 !important;
     letter-spacing: -0.035em;
     hyphens: none;
+    overflow-wrap: break-word;
     text-align: left;
     text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55) !important;
-    max-width: 16ch !important;
+    max-width: min(100%, 72vw) !important;
     color: #fff;
 }
 
