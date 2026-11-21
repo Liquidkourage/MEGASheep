@@ -168,8 +168,8 @@ html, body {
     left: 50%;
     top: auto;
     bottom: 7%;
-    transform: perspective(1180px) translateX(-50%) rotateX(5deg);
-    transform-origin: 50% 92%;
+    transform: perspective(2000px) translateX(-50%) rotateX(-2.5deg);
+    transform-origin: 50% 100%;
     z-index: 8;
     width: min(600px, 42vw);
 }
@@ -372,8 +372,8 @@ html, body {
     left: clamp(20px, 2.2vw, 40px);
     top: auto;
     bottom: 6%;
-    transform: perspective(1180px) rotateY(8deg) rotateX(6deg);
-    transform-origin: 50% 92%;
+    transform: perspective(2000px) rotateY(-2.2deg) rotateX(-3deg);
+    transform-origin: 50% 100%;
     z-index: 8;
     width: min(480px, 33vw);
 }
@@ -554,9 +554,9 @@ html, body {
 }
 
 @keyframes lobbyCardChew {
-    0%, 100% { transform: perspective(1180px) rotateY(8deg) rotateX(6deg); }
-    30% { transform: perspective(1180px) rotateY(8deg) rotateX(6deg) rotateZ(-1deg) translate(1px, 2px); }
-    62% { transform: perspective(1180px) rotateY(8deg) rotateX(6deg) rotateZ(0.6deg) translate(-1px, 0); }
+    0%, 100% { transform: perspective(2000px) rotateY(-2.2deg) rotateX(-3deg); }
+    30% { transform: perspective(2000px) rotateY(-2.2deg) rotateX(-3deg) rotateZ(-0.8deg) translate(1px, 2px); }
+    62% { transform: perspective(2000px) rotateY(-2.2deg) rotateX(-3deg) rotateZ(0.5deg) translate(-1px, 0); }
 }
 
 .tv-lobby-empty {
@@ -2216,7 +2216,7 @@ html, body {
     top: var(--y, 66%);
     z-index: var(--z, 5);
     width: min(var(--w, 17vw), 320px);
-    transform: perspective(1320px) translate(-50%, -100%) rotateY(9deg) rotateX(10deg) rotateZ(var(--tilt, -0.4deg));
+    transform: perspective(2000px) translate(-50%, -100%) rotateY(-2.4deg) rotateX(-3.4deg) rotateZ(var(--tilt, -0.4deg));
     transform-origin: 50% 100%;
     pointer-events: none;
 }
@@ -2367,7 +2367,7 @@ html, body {
     bottom: auto;
     z-index: var(--z, 4);
     width: var(--w, 19vw);
-    transform: perspective(1320px) translate(-50%, -100%) rotateY(-10deg) rotateX(11deg) rotateZ(var(--tilt, 0.3deg)) scale(0.96);
+    transform: perspective(2000px) translate(-50%, -100%) rotateY(2.6deg) rotateX(-3.6deg) rotateZ(var(--tilt, 0.3deg));
     transform-origin: 50% 100%;
     pointer-events: none;
 }
