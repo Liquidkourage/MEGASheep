@@ -2368,17 +2368,119 @@
             };
         }
 
-        function walkGateChain(el, points, onDone) {
-            const step = (index) => {
-                if (!playGateLive(el)) return;
-                if (index >= points.length) {
-                    if (onDone) onDone();
+        function compactGatePath(points) {
+            const out = [];
+            (points || []).forEach((point) => {
+                if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
+                const last = out[out.length - 1];
+                if (last && Math.hypot(point.x - last.x, point.y - last.y) < 0.32) return;
+                out.push({ x: point.x, y: point.y, cut: point.cut });
+            });
+            return out;
+        }
+
+        function sampleSmoothPath(points) {
+            const pts = compactGatePath(points);
+            if (pts.length <= 2) return pts.map((point) => ({ x: point.x, y: point.y }));
+            const out = [{ x: pts[0].x, y: pts[0].y }];
+            for (let i = 1; i < pts.length - 1; i += 1) {
+                const prev = pts[i - 1];
+                const corner = pts[i];
+                const next = pts[i + 1];
+                const cut = Math.min(0.46, Math.max(0.14, corner.cut == null ? 0.3 : corner.cut));
+                const p0 = {
+                    x: corner.x + (prev.x - corner.x) * cut,
+                    y: corner.y + (prev.y - corner.y) * cut
+                };
+                const p2 = {
+                    x: corner.x + (next.x - corner.x) * cut,
+                    y: corner.y + (next.y - corner.y) * cut
+                };
+                out.push(p0);
+                for (let step = 1; step <= 7; step += 1) {
+                    const t = step / 7;
+                    const u = 1 - t;
+                    out.push({
+                        x: u * u * p0.x + 2 * u * t * corner.x + t * t * p2.x,
+                        y: u * u * p0.y + 2 * u * t * corner.y + t * t * p2.y
+                    });
+                }
+            }
+            const end = pts[pts.length - 1];
+            out.push({ x: end.x, y: end.y });
+            return out;
+        }
+
+        function walkEase(t) {
+            const u = Math.min(1, Math.max(0, t));
+            return u * 0.72 + (u * u * (3 - 2 * u)) * 0.28;
+        }
+
+        function walkSmoothPath(el, points, onDone, opts) {
+            const samples = sampleSmoothPath(points);
+            if (samples.length < 2) {
+                if (onDone) onDone();
+                return;
+            }
+            const chorus = document.getElementById('flockChorus');
+            const field = (chorus || el).getBoundingClientRect();
+            const lengths = [0];
+            let distPx = 0;
+            for (let i = 1; i < samples.length; i += 1) {
+                const dx = (samples[i].x - samples[i - 1].x) * field.width / 100;
+                const dy = (samples[i].y - samples[i - 1].y) * field.height / 100;
+                distPx += Math.hypot(dx, dy);
+                lengths.push(distPx);
+            }
+            const total = lengths[lengths.length - 1] || 1;
+            const body = el.getBoundingClientRect().width || 56;
+            const seconds = Math.min(7.2, Math.max(1.7, distPx / ((body * 1.25) / 0.6)));
+            const gen = bumpEweWalk(el);
+            const insideX = opts && Number(opts.insideX);
+            let markedIn = false;
+            let lastX = parseFloat(el.style.getPropertyValue('--gx')) || samples[0].x;
+            el.classList.add('is-walking', 'is-placed');
+            el.style.transitionDuration = '0s';
+            const started = performance.now();
+            const at = (distance) => {
+                let i = 1;
+                while (i < lengths.length && lengths[i] < distance) i += 1;
+                const i1 = Math.min(i, samples.length - 1);
+                const i0 = Math.max(0, i1 - 1);
+                const span = (lengths[i1] - lengths[i0]) || 1;
+                const t = (distance - lengths[i0]) / span;
+                return {
+                    x: samples[i0].x + (samples[i1].x - samples[i0].x) * t,
+                    y: samples[i0].y + (samples[i1].y - samples[i0].y) * t
+                };
+            };
+            const tick = (now) => {
+                if (el.dataset.walkGen !== gen || !el.isConnected) return;
+                if (opts && opts.live && !opts.live(el)) return;
+                const u = Math.min(1, (now - started) / (seconds * 1000));
+                const point = at(walkEase(u) * total);
+                el.style.setProperty('--gx', String(point.x));
+                el.style.setProperty('--gy', String(point.y));
+                el.style.setProperty('--s', String(pastureScale(point.y)));
+                if (Math.abs(point.x - lastX) > 0.05) {
+                    el.classList.toggle('is-left', point.x < lastX);
+                    lastX = point.x;
+                }
+                if (!markedIn && Number.isFinite(insideX) && point.x >= insideX - 0.4) {
+                    markedIn = true;
+                    el.classList.add('is-in');
+                    el.classList.remove('is-outside');
+                    applyPenDepth(el, point.y, true);
+                }
+                if (u < 1) {
+                    window.requestAnimationFrame(tick);
                     return;
                 }
-                const point = points[index];
-                walkToGatePoint(el, point.x, point.y, () => step(index + 1));
+                el.classList.remove('is-placed');
+                el.style.transitionDuration = '';
+                if (onDone) onDone();
             };
-            step(0);
+            window.requestAnimationFrame(tick);
         }
 
         function playGateLive(el) {
@@ -2395,52 +2497,53 @@
             el.classList.remove('is-gating', 'is-entering', 'is-walking');
         }
 
-        function walkToGatePoint(el, x, y, onDone) {
-            const slot = slotFromEwe(el);
-            walkEweOnField(el, Object.assign({}, slot, {
-                gx: x,
-                gy: y,
-                scale: pastureScale(y),
-                z: Math.min(64, lobbyDepth(y).z + 12)
-            }), onDone, { keepStride: true });
+        function currentEwePoint(el) {
+            return {
+                x: parseFloat(el.style.getPropertyValue('--gx')) || 50,
+                y: parseFloat(el.style.getPropertyValue('--gy')) || 70
+            };
         }
 
-        function enterPenFromGate(el) {
-            const gen = bumpEweWalk(el);
-            const fromX = parseFloat(el.style.getPropertyValue('--gx')) || 0;
-            const px = parseFloat(el.style.getPropertyValue('--px')) || 80;
-            const py = parseFloat(el.style.getPropertyValue('--py')) || 70;
-            const seconds = walkSecondsTo(el, 'px', 'py');
-            el.classList.remove('is-outside');
-            el.classList.toggle('is-left', px < fromX);
-            el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
-            el.style.transitionDuration = `${seconds.toFixed(2)}s`;
-            el.style.setProperty('--gx', String(px));
-            el.style.setProperty('--gy', String(py));
-            applyPenDepth(el, py, true);
-            el.classList.add('is-in', 'is-walking', 'is-entering', 'is-gating');
-            onWalkFinished(el, gen, seconds, () => endGateTrip(el));
+        function enterPenAlongGate(el, fromApproach) {
+            beginGateTrip(el, true);
+            el.classList.remove('is-in', 'is-outside');
+            const slot = slotFromEwe(el);
+            const path = gatePathOf(el);
+            const start = fromApproach
+                ? { x: slot.ox, y: slot.oy }
+                : currentEwePoint(el);
+            if (fromApproach) {
+                el.style.setProperty('--gx', String(start.x));
+                el.style.setProperty('--gy', String(start.y));
+            }
+            const points = [start];
+            if (!fromApproach) points.push({ x: slot.ox, y: slot.oy, cut: 0.24 });
+            points.push(Object.assign({}, path.mouth, { cut: 0.2 }));
+            if (isAnsweringOpen()) {
+                points.push(Object.assign({}, path.drop, { cut: 0.36 }));
+                points.push(Object.assign({}, path.clear, { cut: 0.44 }));
+            }
+            points.push({ x: slot.px, y: slot.py });
+            walkSmoothPath(el, points, () => {
+                if (!playGateLive(el)) return;
+                el.classList.add('is-in');
+                el.classList.remove('is-outside');
+                applyPenDepth(el, slot.py, true);
+                el.style.setProperty('--gx', String(slot.px));
+                el.style.setProperty('--gy', String(slot.py));
+                endGateTrip(el);
+            }, {
+                live: playGateLive,
+                insideX: path.mouth.x
+            });
         }
 
         function enterPenViaGate(el) {
-            beginGateTrip(el, true);
-            el.classList.remove('is-in', 'is-outside');
-            const slot = slotFromEwe(el);
-            const path = gatePathOf(el);
-            const hops = [{ x: slot.ox, y: slot.oy }, path.mouth];
-            if (isAnsweringOpen()) hops.push(path.drop, path.clear);
-            walkGateChain(el, hops, () => enterPenFromGate(el));
+            enterPenAlongGate(el, false);
         }
 
         function enterPenFromApproach(el) {
-            beginGateTrip(el, true);
-            el.style.setProperty('--gx', el.style.getPropertyValue('--ox'));
-            el.style.setProperty('--gy', el.style.getPropertyValue('--oy'));
-            el.classList.remove('is-in', 'is-outside');
-            const path = gatePathOf(el);
-            const hops = [path.mouth];
-            if (isAnsweringOpen()) hops.push(path.drop, path.clear);
-            walkGateChain(el, hops, () => enterPenFromGate(el));
+            enterPenAlongGate(el, true);
         }
 
         function exitPenViaGate(el) {
@@ -2450,15 +2553,21 @@
             el.style.setProperty('--gx', el.style.getPropertyValue('--px'));
             el.style.setProperty('--gy', el.style.getPropertyValue('--py'));
             el.classList.remove('is-in', 'is-outside');
-            const hops = isAnsweringOpen()
-                ? [path.clear, path.drop, path.mouth, { x: slot.ox, y: slot.oy }]
-                : [path.mouth, { x: slot.ox, y: slot.oy }];
-            walkGateChain(el, hops, () => {
+            const points = [currentEwePoint(el)];
+            if (isAnsweringOpen()) {
+                points.push(Object.assign({}, path.clear, { cut: 0.4 }));
+                points.push(Object.assign({}, path.drop, { cut: 0.34 }));
+            }
+            points.push(Object.assign({}, path.mouth, { cut: 0.22 }));
+            points.push({ x: slot.ox, y: slot.oy });
+            walkSmoothPath(el, points, () => {
                 if (!playGateLive(el)) return;
                 el.classList.add('is-outside');
                 applyPenDepth(el, slot.oy, false);
+                el.style.setProperty('--gx', String(slot.ox));
+                el.style.setProperty('--gy', String(slot.oy));
                 endGateTrip(el);
-            });
+            }, { live: playGateLive });
         }
 
         function moveEwe(el, next, skipWalk) {
