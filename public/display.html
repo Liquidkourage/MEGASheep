@@ -2857,11 +2857,40 @@
             return clampLobbyPoint(gate.approach.x - 10, gate.approach.y + 4);
         }
 
+        function huddleAnchor() {
+            const gate = playGatePoints().approach;
+            return {
+                x: Math.min(PLAY_FIELD.right - 3.2, gate.x - 4.5),
+                y: gate.y
+            };
+        }
+
+        function stragglerHuddlePoint(el, pack) {
+            const list = pack || remainingFieldSheep();
+            const i = Math.max(0, list.indexOf(el));
+            const n = Math.max(1, list.length);
+            const cols = n <= 2 ? n : (n <= 6 ? 2 : 3);
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            const hash = nameHash((el && (el.dataset.id || el.dataset.name)) || String(i));
+            const anchor = huddleAnchor();
+            return clampLobbyPoint(
+                anchor.x - row * 4.1 - (hash % 3) * 0.3,
+                anchor.y + (col - (cols - 1) / 2) * 4.4 + (((hash >> 2) % 3) - 1) * 0.45
+            );
+        }
+
+        function isInHuddle(el) {
+            const dest = stragglerHuddlePoint(el);
+            const p = currentEwePoint(el);
+            return Math.hypot(dest.gx - p.x, dest.gy - p.y) < 4.2;
+        }
+
         function dogBehindSheep(el) {
             const p = currentEwePoint(el);
-            const gate = playGatePoints().approach;
-            const dx = gate.x - p.x;
-            const dy = gate.y - p.y;
+            const dest = stragglerHuddlePoint(el);
+            const dx = dest.gx - p.x;
+            const dy = dest.gy - p.y;
             const len = Math.hypot(dx, dy) || 1;
             return {
                 gx: p.x - (dx / len) * 7.5,
@@ -2870,31 +2899,34 @@
         }
 
         function pickHerdTarget(sheep) {
-            const gate = playGatePoints().approach;
             return sheep.slice().sort((a, b) => {
                 const pa = currentEwePoint(a);
                 const pb = currentEwePoint(b);
-                return Math.hypot(gate.x - pb.x, gate.y - pb.y) - Math.hypot(gate.x - pa.x, gate.y - pa.y);
+                const da = stragglerHuddlePoint(a);
+                const db = stragglerHuddlePoint(b);
+                return Math.hypot(db.gx - pb.x, db.gy - pb.y) - Math.hypot(da.gx - pa.x, da.gy - pa.y);
             })[0];
         }
 
-        function herdSheepTowardGate(el) {
+        function herdSheepTowardGate(el, pack) {
             if (!el || !el.isConnected) return;
             if (el.classList.contains('is-in') || el.classList.contains('is-gating') || el.classList.contains('is-entering')) return;
+            if (el.classList.contains('is-walking')) return;
+            const dest = stragglerHuddlePoint(el, pack);
             const p = currentEwePoint(el);
-            const gate = playGatePoints().approach;
-            if (Math.hypot(gate.x - p.x, gate.y - p.y) < 8) return;
-            const dest = clampLobbyPoint(
-                p.x + (gate.x - p.x) * 0.4 + (Math.random() - 0.5) * 2.2,
-                p.y + (gate.y - p.y) * 0.4 + (Math.random() - 0.5) * 2
-            );
+            if (Math.hypot(dest.gx - p.x, dest.gy - p.y) < 3) return;
             const depth = lobbyDepth(dest.gy);
             walkEweOnField(el, slotFromEwe(el, {
                 gx: dest.gx,
                 gy: dest.gy,
                 scale: depth.scale,
                 z: depth.z
-            }), null, { cycle: 0.5, minSeconds: 1.05, maxSeconds: 3.2 });
+            }), null, { cycle: 0.48, minSeconds: 0.9, maxSeconds: 3.6 });
+        }
+
+        function roundUpStragglers() {
+            const pack = remainingFieldSheep();
+            idleHerdSheep().forEach((el) => herdSheepTowardGate(el, pack));
         }
 
         function watchThePen(dog, gen) {
@@ -2925,13 +2957,18 @@
                 resetWrangler(true);
                 return;
             }
-            const idle = idleHerdSheep();
             const all = remainingFieldSheep();
             if (!all.length) {
                 watchThePen(dog, gen);
                 return;
             }
-            const target = pickHerdTarget(idle.length ? idle : all);
+            const stray = all.filter((el) => !isInHuddle(el));
+            if (!stray.length) {
+                watchThePen(dog, gen);
+                return;
+            }
+            const idle = idleHerdSheep().filter((el) => !isInHuddle(el));
+            const target = pickHerdTarget(idle.length ? idle : stray);
             if (!target) {
                 watchThePen(dog, gen);
                 return;
@@ -2946,18 +2983,8 @@
                 z: Math.max(depth.z, 52)
             }), () => {
                 if (gen !== wranglerGen) return;
-                if (remainingFieldSheep().includes(target) && !target.classList.contains('is-gating')) {
-                    herdSheepTowardGate(target);
-                    const nearby = idleHerdSheep().filter((el) => el !== target);
-                    nearby.some((el) => {
-                        const a = currentEwePoint(el);
-                        const b = currentEwePoint(target);
-                        if (Math.hypot(a.x - b.x, a.y - b.y) > 14) return false;
-                        herdSheepTowardGate(el);
-                        return true;
-                    });
-                }
-                window.setTimeout(() => runWrangler(dog, gen), 260);
+                roundUpStragglers();
+                window.setTimeout(() => runWrangler(dog, gen), 220);
             }, { cycle: 0.4, minSeconds: 0.7, maxSeconds: 2.6 });
         }
 
