@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T12-22-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T12-30-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -597,11 +597,11 @@
                     <div class="tv-pasture-shade" aria-hidden="true"></div>
                     <div class="tv-pasture-ground" aria-hidden="true"></div>
                     ${withPen ? `<div class="tv-pen tv-pen-back" aria-hidden="true">
-                        <img class="tv-pen-art" src="sprites/pen-back.png?v=2026-11-19T04-05-00" alt="">
+                        <img class="tv-pen-art" src="sprites/pen-back.png?v=2026-11-21T12-40-00" alt="">
                     </div>` : ''}
                     <div class="tv-flock" id="flockChorus"></div>
                     ${withPen ? `<div class="tv-pen tv-pen-front" aria-hidden="true">
-                        <img class="tv-pen-art" src="sprites/pen-front.png?v=2026-11-19T04-05-00" alt="">
+                        <img class="tv-pen-art" src="sprites/pen-front.png?v=2026-11-21T12-40-00" alt="">
                     </div>` : ''}
                 </div>
             `;
@@ -846,7 +846,10 @@
         const PEN_FAR = { left: 70, right: 84, y: 62 };
         const PEN_NEAR = { left: 64, right: 88, y: 86 };
         const PEN_FIELD = { left: 64, right: 88, top: 62, bottom: 86 };
-        const GATE_FIELD = { left: 50, right: 58, top: 66, bottom: 80 };
+        const GATE_MOUTH = { x: 58.1, y: 94.6 };
+        const PEN_SPRITE = { w: 1127, h: 628 };
+        const GATE_MOUTH_SPRITE = { x: 124, y: 558 };
+        const GATE_APPROACH_SPRITE = { x: -42, y: 575 };
         const GRASS_LINE = 0.55;
         const GRASS_FAR_Y = 55;
         const GRASS_NEAR_Y = 92;
@@ -866,6 +869,7 @@
         function canPastureWander(el) {
             if (!el || !el.isConnected || !isPastureScene()) return false;
             if (el.classList.contains('is-in') || el.classList.contains('is-outside')) return false;
+            if (el.classList.contains('is-gating') || el.classList.contains('is-entering')) return false;
             if (el.classList.contains('is-snackish') || el.classList.contains('is-nibbling')) return false;
             return true;
         }
@@ -947,7 +951,7 @@
 
         function pinEweToGrass(el) {
             if (!el || !el.isConnected) return;
-            if (el.classList.contains('is-in') || el.classList.contains('is-outside')) return;
+            if (el.classList.contains('is-in') || el.classList.contains('is-outside') || el.classList.contains('is-gating')) return;
             if (el.classList.contains('is-snackish') || el.classList.contains('is-nibbling')) return;
             if (el.classList.contains('is-walking') || el.classList.contains('is-joining')) return;
             const gx = parseFloat(el.style.getPropertyValue('--gx')) || 50;
@@ -1188,12 +1192,12 @@
             const chorus = document.getElementById('flockChorus');
             if (chorus) {
                 chorus.querySelectorAll('.tv-ewe').forEach((el) => {
-                    if (el.classList.contains('is-in') || el.classList.contains('is-outside')) return;
+                    if (el.classList.contains('is-in') || el.classList.contains('is-outside') || el.classList.contains('is-gating')) return;
                     occupied.push(readLobbyEwe(el));
                 });
             }
             const pen = packTrapezoid(list.length, PEN_FAR, PEN_NEAR);
-            const gate = packRegion(list.length, GATE_FIELD);
+            const gate = playGatePoints();
             const penOrder = list
                 .map((player, index) => ({ index, key: nameHash(player.name || player.id || String(index)) }))
                 .sort((a, b) => a.key - b.key || a.index - b.index);
@@ -1215,7 +1219,6 @@
                 }
                 const depth = lobbyDepth(spot.gy);
                 const p = pen[penAt[index]] || pen[index] || { x: 80, y: 70, z: 10, scale: 1 };
-                const o = gate[index] || { x: 60, y: 70, z: 10, scale: 1 };
                 const py = Math.min(PEN_FIELD.bottom, Math.max(PEN_FIELD.top, p.y + (((hash >> 4) % 5) - 2) * 0.4));
                 const rail = penXAt(py);
                 return {
@@ -1226,8 +1229,8 @@
                     gy: spot.gy,
                     px: Math.min(rail.right, Math.max(rail.left, p.x + ((hash % 5) - 2) * 0.35)),
                     py,
-                    ox: Math.min(GATE_FIELD.right, Math.max(GATE_FIELD.left, o.x + ((hash % 5) - 2) * 0.3)),
-                    oy: Math.min(GATE_FIELD.bottom, Math.max(GATE_FIELD.top, o.y + (((hash >> 4) % 5) - 2) * 0.35)),
+                    ox: gate.approach.x + ((hash % 5) - 2) * 0.22,
+                    oy: gate.approach.y + (((hash >> 4) % 5) - 2) * 0.12,
                     scale: depth.scale,
                     z: depth.z,
                     coat: (hash % 2) + 1,
@@ -1698,6 +1701,23 @@
             return next;
         }
 
+        function onWalkFinished(el, gen, seconds, callback) {
+            let done = false;
+            const started = performance.now();
+            const minMs = Math.max(160, seconds * 1000 * 0.55);
+            const finish = (event) => {
+                if (el.dataset.walkGen !== gen) return;
+                if (event && event.propertyName && event.propertyName !== 'left') return;
+                if (event && (performance.now() - started) < minMs) return;
+                if (done) return;
+                done = true;
+                el.removeEventListener('transitionend', finish);
+                callback();
+            };
+            el.addEventListener('transitionend', finish);
+            window.setTimeout(finish, seconds * 1000 + 80);
+        }
+
         function scheduleLobbyWander(el) {
             clearEweWander(el);
             if (!canPastureWander(el) || !shouldRoam(el)) return;
@@ -2099,18 +2119,10 @@
             el.style.transitionDuration = `${seconds.toFixed(2)}s`;
             applyEweSlot(el, slot);
             el.classList.add('is-walking');
-            let done = false;
-            const finish = (event) => {
-                if (el.dataset.walkGen !== gen) return;
-                if (event && event.propertyName && event.propertyName !== 'left') return;
-                if (done) return;
-                done = true;
-                el.classList.remove('is-walking');
-                el.removeEventListener('transitionend', finish);
+            onWalkFinished(el, gen, seconds, () => {
+                if (!keepStride) el.classList.remove('is-walking');
                 if (onDone) onDone();
-            };
-            el.addEventListener('transitionend', finish);
-            window.setTimeout(finish, seconds * 1000 + 80);
+            });
         }
 
         function syncLobbyFlock(chorus, slots) {
@@ -2196,41 +2208,171 @@
             return Math.min(8, Math.max(cycle * 2, seconds));
         }
 
+        function applyPenDepth(el, gy, inside) {
+            const destDepth = lobbyDepth(gy);
+            el.style.setProperty('--s', String(destDepth.scale));
+            el.style.setProperty('--z', String(Math.min(64, destDepth.z + (inside ? 6 : 12))));
+        }
+
+        function penSpriteToStage(sx, sy) {
+            const pasture = document.querySelector('.tv-pasture');
+            const img = document.querySelector('.tv-play .tv-pen-art');
+            if (!pasture || !img) return { x: GATE_MOUTH.x, y: GATE_MOUTH.y };
+            const stage = pasture.getBoundingClientRect();
+            const box = img.getBoundingClientRect();
+            if (!stage.width || !stage.height || !box.width || !box.height) {
+                return { x: GATE_MOUTH.x, y: GATE_MOUTH.y };
+            }
+            const scale = Math.min(box.width / PEN_SPRITE.w, box.height / PEN_SPRITE.h);
+            const left = box.right - PEN_SPRITE.w * scale;
+            const top = box.bottom - PEN_SPRITE.h * scale;
+            return {
+                x: ((left + sx * scale) / stage.width) * 100,
+                y: ((top + sy * scale) / stage.height) * 100
+            };
+        }
+
+        function playGatePoints() {
+            const mouth = penSpriteToStage(GATE_MOUTH_SPRITE.x, GATE_MOUTH_SPRITE.y);
+            const approach = penSpriteToStage(GATE_APPROACH_SPRITE.x, GATE_APPROACH_SPRITE.y);
+            return {
+                mouth,
+                approach: {
+                    x: Math.min(mouth.x - 5.5, approach.x),
+                    y: approach.y
+                }
+            };
+        }
+
+        function gateMouthOf(el) {
+            const hash = nameHash(el.dataset.name || el.dataset.id || '');
+            const mouth = playGatePoints().mouth;
+            return {
+                x: mouth.x + ((hash % 5) - 2) * 0.16,
+                y: mouth.y + (((hash >> 3) % 5) - 2) * 0.1
+            };
+        }
+
+        function playGateLive(el) {
+            return el.isConnected && !!document.querySelector('.tv-play') && el.classList.contains('is-gating');
+        }
+
+        function beginGateTrip(el, inbound) {
+            clearEweWander(el);
+            el.classList.add('is-gating');
+            el.classList.toggle('is-entering', !!inbound);
+        }
+
+        function endGateTrip(el) {
+            el.classList.remove('is-gating', 'is-entering', 'is-walking');
+        }
+
+        function walkToGatePoint(el, x, y, onDone) {
+            const slot = slotFromEwe(el);
+            walkEweOnField(el, Object.assign({}, slot, {
+                gx: x,
+                gy: y,
+                scale: pastureScale(y),
+                z: Math.min(64, lobbyDepth(y).z + 12)
+            }), onDone, { keepStride: true });
+        }
+
+        function enterPenFromGate(el) {
+            const gen = bumpEweWalk(el);
+            const fromX = parseFloat(el.style.getPropertyValue('--gx')) || 0;
+            const px = parseFloat(el.style.getPropertyValue('--px')) || 80;
+            const py = parseFloat(el.style.getPropertyValue('--py')) || 70;
+            const seconds = walkSecondsTo(el, 'px', 'py');
+            el.classList.remove('is-outside');
+            el.classList.toggle('is-left', px < fromX);
+            el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
+            el.style.transitionDuration = `${seconds.toFixed(2)}s`;
+            applyPenDepth(el, py, true);
+            el.classList.add('is-in', 'is-walking', 'is-entering', 'is-gating');
+            onWalkFinished(el, gen, seconds, () => endGateTrip(el));
+        }
+
+        function enterPenViaGate(el) {
+            beginGateTrip(el, true);
+            el.classList.remove('is-in', 'is-outside');
+            const slot = slotFromEwe(el);
+            const mouth = gateMouthOf(el);
+            walkToGatePoint(el, slot.ox, slot.oy, () => {
+                if (!playGateLive(el)) return;
+                walkToGatePoint(el, mouth.x, mouth.y, () => {
+                    if (!playGateLive(el)) return;
+                    enterPenFromGate(el);
+                });
+            });
+        }
+
+        function enterPenFromApproach(el) {
+            beginGateTrip(el, true);
+            el.style.setProperty('--gx', el.style.getPropertyValue('--ox'));
+            el.style.setProperty('--gy', el.style.getPropertyValue('--oy'));
+            el.classList.remove('is-in', 'is-outside');
+            const mouth = gateMouthOf(el);
+            walkToGatePoint(el, mouth.x, mouth.y, () => {
+                if (!playGateLive(el)) return;
+                enterPenFromGate(el);
+            });
+        }
+
+        function exitPenViaGate(el) {
+            beginGateTrip(el, false);
+            const mouth = gateMouthOf(el);
+            const slot = slotFromEwe(el);
+            el.style.setProperty('--gx', el.style.getPropertyValue('--px'));
+            el.style.setProperty('--gy', el.style.getPropertyValue('--py'));
+            el.classList.remove('is-in', 'is-outside');
+            walkToGatePoint(el, mouth.x, mouth.y, () => {
+                if (!playGateLive(el)) return;
+                walkToGatePoint(el, slot.ox, slot.oy, () => {
+                    if (!playGateLive(el)) return;
+                    el.classList.add('is-outside');
+                    applyPenDepth(el, slot.oy, false);
+                    endGateTrip(el);
+                });
+            });
+        }
+
         function moveEwe(el, next, skipWalk) {
             clearEweWander(el);
-            const gen = bumpEweWalk(el);
+            if (!skipWalk && isPlayPasture() && walkingCount() >= 8) skipWalk = true;
             const destLeft = next.outside ? 'ox' : 'px';
             const destTop = next.outside ? 'oy' : 'py';
-            if (!skipWalk && isPlayPasture() && walkingCount() >= 8) skipWalk = true;
-            const seconds = skipWalk ? 0 : walkSecondsTo(el, destLeft, destTop);
-            el.classList.remove('is-walking');
-            if (!skipWalk) el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
+            const destGy = parseFloat(el.style.getPropertyValue(`--${destTop}`)) || 70;
+            if (skipWalk) {
+                el.classList.remove('is-walking', 'is-entering', 'is-gating');
+                el.classList.toggle('is-outside', !!next.outside);
+                el.classList.toggle('is-in', !!next.inside);
+                applyPenDepth(el, destGy, !!next.inside);
+                el.classList.add('is-placed');
+                requestAnimationFrame(() => el.classList.remove('is-placed'));
+                return;
+            }
+            if (next.inside && !el.classList.contains('is-in')) {
+                if (el.classList.contains('is-outside')) enterPenFromApproach(el);
+                else enterPenViaGate(el);
+                return;
+            }
+            if (next.outside && el.classList.contains('is-in')) {
+                exitPenViaGate(el);
+                return;
+            }
+            const gen = bumpEweWalk(el);
+            const seconds = walkSecondsTo(el, destLeft, destTop);
+            el.classList.remove('is-walking', 'is-entering', 'is-gating');
+            el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
+            el.style.transitionDuration = `${seconds.toFixed(2)}s`;
             const fromX = parseFloat(el.style.getPropertyValue('--gx')) || 0;
             const toX = parseFloat(el.style.getPropertyValue(`--${destLeft}`)) || 0;
             el.classList.toggle('is-left', toX < fromX);
             el.classList.toggle('is-outside', !!next.outside);
             el.classList.toggle('is-in', !!next.inside);
-            const destGy = parseFloat(el.style.getPropertyValue(`--${destTop}`)) || 70;
-            const destDepth = lobbyDepth(destGy);
-            el.style.setProperty('--s', String(destDepth.scale));
-            el.style.setProperty('--z', String(Math.min(64, destDepth.z + (next.inside ? 6 : 0))));
-            if (skipWalk) {
-                el.classList.add('is-placed');
-                requestAnimationFrame(() => el.classList.remove('is-placed'));
-                return;
-            }
+            applyPenDepth(el, destGy, !!next.inside);
             el.classList.add('is-walking');
-            let done = false;
-            const finish = (event) => {
-                if (el.dataset.walkGen !== gen) return;
-                if (event && event.propertyName && event.propertyName !== 'left') return;
-                if (done) return;
-                done = true;
-                el.classList.remove('is-walking');
-                el.removeEventListener('transitionend', finish);
-            };
-            el.addEventListener('transitionend', finish);
-            window.setTimeout(finish, seconds * 1000 + 80);
+            onWalkFinished(el, gen, seconds, () => endGateTrip(el));
         }
 
         function paintFlock(answeredPlayers, instant, sentBackPlayers) {
@@ -2244,12 +2386,13 @@
                 const isOut = el.classList.contains('is-outside');
                 const isIn = el.classList.contains('is-in');
                 if (wantsOut === isOut && wantsIn === isIn) return;
+                if (el.classList.contains('is-gating') || el.classList.contains('is-entering')) return;
                 if (wantsOut) {
                     moveEwe(el, { outside: true, inside: false }, skipWalk);
                 } else if (wantsIn) {
                     moveEwe(el, { outside: false, inside: true }, skipWalk);
                 } else {
-                    el.classList.remove('is-in', 'is-outside', 'is-walking');
+                    el.classList.remove('is-in', 'is-outside', 'is-walking', 'is-entering', 'is-gating');
                     const grazeGy = parseFloat(el.style.getPropertyValue('--gy')) || 70;
                     const grazeDepth = lobbyDepth(grazeGy);
                     el.style.setProperty('--s', String(grazeDepth.scale));

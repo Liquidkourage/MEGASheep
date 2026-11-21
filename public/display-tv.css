@@ -678,6 +678,7 @@ html, body {
     display: none;
 }
 
+.tv-play .tv-ewe.is-entering figcaption,
 .tv-play .tv-ewe.is-in.is-walking:not(.is-outside) figcaption {
     display: flex;
     font-size: calc(clamp(var(--ewe-min, 72px), var(--ewe-base, 118px), var(--ewe-max, 132px)) * 0.2);
@@ -1167,8 +1168,16 @@ html, body {
     100% { transform: scaleX(-1); opacity: 1; }
 }
 
+.tv-play .tv-flock {
+    z-index: auto;
+}
+
 .tv-ewe.is-walking:not(.is-parade) {
     z-index: 48;
+}
+
+.tv-play .tv-ewe.is-gating:not(.is-in) {
+    z-index: 80;
 }
 
 .tv-ewe.is-in {
