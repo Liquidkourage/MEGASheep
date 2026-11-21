@@ -1267,6 +1267,24 @@ html, body {
     z-index: 46;
 }
 
+.tv-dog {
+    z-index: 52;
+    pointer-events: none;
+}
+
+.tv-dog.is-walking:not(.is-parade) {
+    z-index: 54;
+}
+
+.tv-play .tv-dog {
+    width: clamp(84px, calc(var(--ewe-base, 118px) * 1.12), 148px);
+}
+
+.tv-dog .tv-thought,
+.tv-dog figcaption {
+    display: none !important;
+}
+
 .tv-ewe-art {
     position: relative;
     z-index: 1;
@@ -1324,6 +1342,20 @@ html, body {
 
 .tv-ewe[data-coat="3"].is-walking .tv-ewe-strip {
     background-image: url("sprites/sheep-03-walk.png?v=2026-11-18T20-05-00");
+}
+
+.tv-dog .tv-ewe-strip,
+.tv-play .tv-dog:not(.is-walking) .tv-ewe-strip,
+.tv-play .tv-dog.is-outside:not(.is-walking) .tv-ewe-strip {
+    width: 1200%;
+    background-image: url("sprites/dog-01-idle.png?v=2026-11-21T16-30-00");
+    animation: eweIdle 0.4s steps(11) infinite;
+}
+
+.tv-dog.is-walking .tv-ewe-strip {
+    width: 1800%;
+    background-image: url("sprites/dog-01-walk.png?v=2026-11-21T16-30-00");
+    animation: eweWalk 0.55s steps(18, jump-none) infinite;
 }
 
 .tv-ewe.is-in:not(.is-walking) .tv-ewe-strip,

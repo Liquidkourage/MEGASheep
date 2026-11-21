@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T15-00-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T16-30-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -23,6 +23,8 @@
     <link rel="preload" as="image" href="sprites/sheep-01-walk.png?v=2026-11-18T20-05-00">
     <link rel="preload" as="image" href="sprites/sheep-02-walk.png?v=2026-11-18T20-05-00">
     <link rel="preload" as="image" href="sprites/sheep-03-walk.png?v=2026-11-18T20-05-00">
+    <link rel="preload" as="image" href="sprites/dog-01-idle.png?v=2026-11-21T16-30-00">
+    <link rel="preload" as="image" href="sprites/dog-01-walk.png?v=2026-11-21T16-30-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -848,12 +850,16 @@
             return isPlayPasture() || isBoardPasture();
         }
 
+        function playerEwes() {
+            return document.querySelectorAll('#flockChorus .tv-ewe:not(.tv-dog)');
+        }
+
         function flockSize() {
-            return document.querySelectorAll('#flockChorus .tv-ewe').length;
+            return playerEwes().length;
         }
 
         function walkingCount() {
-            return document.querySelectorAll('#flockChorus .tv-ewe.is-walking').length;
+            return document.querySelectorAll('#flockChorus .tv-ewe.is-walking:not(.tv-dog)').length;
         }
 
         function shouldRoam(el) {
@@ -1089,7 +1095,7 @@
         }
 
         function roamingEwes(exceptEl) {
-            return [...document.querySelectorAll('#flockChorus .tv-ewe')].filter((el) =>
+            return [...document.querySelectorAll('#flockChorus .tv-ewe:not(.tv-dog)')].filter((el) =>
                 el !== exceptEl &&
                 !el.classList.contains('is-in') &&
                 !el.classList.contains('is-outside')
@@ -1261,7 +1267,7 @@
             const chorus = document.getElementById('flockChorus');
             const occupied = [];
             if (chorus) {
-                chorus.querySelectorAll('.tv-ewe').forEach((el) => {
+                chorus.querySelectorAll('.tv-ewe:not(.tv-dog)').forEach((el) => {
                     occupied.push(readLobbyEwe(el));
                 });
             }
@@ -1301,7 +1307,7 @@
             const occupied = [];
             const chorus = document.getElementById('flockChorus');
             if (chorus) {
-                chorus.querySelectorAll('.tv-ewe').forEach((el) => {
+                chorus.querySelectorAll('.tv-ewe:not(.tv-dog)').forEach((el) => {
                     if (el.classList.contains('is-in') || el.classList.contains('is-outside') || el.classList.contains('is-gating')) return;
                     occupied.push(readLobbyEwe(el));
                 });
@@ -2237,7 +2243,7 @@
 
         function syncLobbyFlock(chorus, slots) {
             const byId = new Map();
-            chorus.querySelectorAll('.tv-ewe').forEach((el) => byId.set(el.dataset.id, el));
+            chorus.querySelectorAll('.tv-ewe:not(.tv-dog)').forEach((el) => byId.set(el.dataset.id, el));
             const keep = new Set();
             const born = [];
             const roaming = !!document.querySelector('.tv-lobby, .tv-play');
@@ -2275,7 +2281,7 @@
             const list = sortedFlockPlayers(players);
             const slots = placeFlock(list);
             const roaming = isPastureScene();
-            const existing = chorus.querySelectorAll('.tv-ewe').length;
+            const existing = chorus.querySelectorAll('.tv-ewe:not(.tv-dog)').length;
             chorus.dataset.flockKey = flockKey(list);
             chorus.dataset.dense = list.length > 28 ? '1' : '0';
             const nextBase = `${eweBaseSize(list.length)}px`;
@@ -2290,7 +2296,7 @@
                 }
                 chorus.style.setProperty('--ewe-base', nextBase);
                 chorus.innerHTML = slots.map((slot) => eweFigureHtml(slot)).join('');
-                const born = chorus.querySelectorAll('.tv-ewe');
+                const born = chorus.querySelectorAll('.tv-ewe:not(.tv-dog)');
                 if (born.length === 1) playJoinJump(born[0]);
                 else born.forEach((el) => {
                     if (shouldRoam(el)) scheduleLobbyWander(el);
@@ -2580,6 +2586,8 @@
                 el.classList.remove('is-walking', 'is-entering', 'is-gating');
                 el.classList.toggle('is-outside', !!next.outside);
                 el.classList.toggle('is-in', !!next.inside);
+                el.style.setProperty('--gx', el.style.getPropertyValue(`--${destLeft}`));
+                el.style.setProperty('--gy', el.style.getPropertyValue(`--${destTop}`));
                 applyPenDepth(el, destGy, !!next.inside);
                 el.classList.add('is-placed');
                 requestAnimationFrame(() => el.classList.remove('is-placed'));
@@ -2614,7 +2622,7 @@
             const answered = answeredLookup(answeredPlayers);
             const sentBack = answeredLookup(sentBackPlayers);
             const skipWalk = instant || (chorus && chorus.dataset.ready !== '1');
-            document.querySelectorAll('#flockChorus .tv-ewe').forEach((el) => {
+            document.querySelectorAll('#flockChorus .tv-ewe:not(.tv-dog)').forEach((el) => {
                 const wantsOut = playerHasAnswered(el, sentBack);
                 const wantsIn = !wantsOut && playerHasAnswered(el, answered);
                 const isOut = el.classList.contains('is-outside');
@@ -2634,8 +2642,8 @@
                 }
             });
             if (chorus) chorus.dataset.ready = '1';
-            const inCount = document.querySelectorAll('#flockChorus .tv-ewe.is-in').length;
-            const total = document.querySelectorAll('#flockChorus .tv-ewe').length;
+            const inCount = document.querySelectorAll('#flockChorus .tv-ewe.is-in:not(.tv-dog)').length;
+            const total = playerEwes().length;
             const inEl = document.getElementById('flockInCount');
             const outEl = document.getElementById('flockOutCount');
             if (inEl) inEl.textContent = String(inCount);
@@ -2644,6 +2652,7 @@
         }
 
         function showPlayingScreen() {
+            resetWrangler(true);
             const currentQuestion = gameState.questions[gameState.currentQuestion];
             const questionNumber = gameState.currentQuestion + 1;
             const perRound = gameState.questionsPerRound || 1;
@@ -2764,6 +2773,203 @@
             el.style.setProperty('font-size', `${best}px`, 'important');
         }
         
+        const WRANGLER_AT = 30;
+        let wranglerGen = 0;
+        let wranglerQuestion = '';
+
+        function wranglerKey() {
+            return `${(gameState && gameState.gameCode) || ''}|${gameState && gameState.currentQuestion}`;
+        }
+
+        function remainingFieldSheep() {
+            return Array.from(playerEwes()).filter((el) =>
+                !el.classList.contains('is-in') &&
+                !el.classList.contains('is-gating') &&
+                !el.classList.contains('is-entering')
+            );
+        }
+
+        function idleHerdSheep() {
+            return remainingFieldSheep().filter((el) => !el.classList.contains('is-walking'));
+        }
+
+        function wranglerHtml() {
+            return `<figure class="tv-ewe tv-dog" data-id="__wrangler__" data-coat="dog" data-mood="idle" style="--gx:-12;--gy:80;--px:-12;--py:80;--ox:-12;--oy:80;--s:1;--z:52;--idle:0s"><span class="tv-ewe-art" aria-hidden="true"><span class="tv-ewe-strip"></span></span></figure>`;
+        }
+
+        function ensureWrangler() {
+            const chorus = document.getElementById('flockChorus');
+            if (!chorus || !document.querySelector('.tv-play')) return null;
+            let dog = chorus.querySelector('.tv-dog');
+            if (!dog) {
+                chorus.insertAdjacentHTML('beforeend', wranglerHtml());
+                dog = chorus.querySelector('.tv-dog');
+            }
+            return dog;
+        }
+
+        function resetWrangler(instant) {
+            wranglerGen += 1;
+            wranglerQuestion = '';
+            const dog = document.querySelector('#flockChorus .tv-dog');
+            if (!dog) return;
+            if (instant || !document.querySelector('.tv-play')) {
+                dog.remove();
+                return;
+            }
+            const gy = parseFloat(dog.style.getPropertyValue('--gy')) || 80;
+            const depth = lobbyDepth(gy);
+            walkEweOnField(dog, slotFromEwe(dog, {
+                gx: -14,
+                gy,
+                scale: depth.scale,
+                z: depth.z
+            }), () => {
+                if (dog.isConnected) dog.remove();
+            }, { cycle: 0.4, minSeconds: 0.55, maxSeconds: 1.6 });
+        }
+
+        function gateWatchSpot() {
+            const gate = playGatePoints();
+            return clampLobbyPoint(gate.approach.x - 10, gate.approach.y + 4);
+        }
+
+        function dogBehindSheep(el) {
+            const p = currentEwePoint(el);
+            const gate = playGatePoints().approach;
+            const dx = gate.x - p.x;
+            const dy = gate.y - p.y;
+            const len = Math.hypot(dx, dy) || 1;
+            return {
+                gx: p.x - (dx / len) * 7.5,
+                gy: p.y - (dy / len) * 2.6
+            };
+        }
+
+        function pickHerdTarget(sheep) {
+            const gate = playGatePoints().approach;
+            return sheep.slice().sort((a, b) => {
+                const pa = currentEwePoint(a);
+                const pb = currentEwePoint(b);
+                return Math.hypot(gate.x - pb.x, gate.y - pb.y) - Math.hypot(gate.x - pa.x, gate.y - pa.y);
+            })[0];
+        }
+
+        function herdSheepTowardGate(el) {
+            if (!el || !el.isConnected) return;
+            if (el.classList.contains('is-in') || el.classList.contains('is-gating') || el.classList.contains('is-entering')) return;
+            const p = currentEwePoint(el);
+            const gate = playGatePoints().approach;
+            if (Math.hypot(gate.x - p.x, gate.y - p.y) < 8) return;
+            const dest = clampLobbyPoint(
+                p.x + (gate.x - p.x) * 0.4 + (Math.random() - 0.5) * 2.2,
+                p.y + (gate.y - p.y) * 0.4 + (Math.random() - 0.5) * 2
+            );
+            const depth = lobbyDepth(dest.gy);
+            walkEweOnField(el, slotFromEwe(el, {
+                gx: dest.gx,
+                gy: dest.gy,
+                scale: depth.scale,
+                z: depth.z
+            }), null, { cycle: 0.5, minSeconds: 1.05, maxSeconds: 3.2 });
+        }
+
+        function watchThePen(dog, gen) {
+            if (gen !== wranglerGen || !dog || !dog.isConnected) return;
+            const spot = gateWatchSpot();
+            const here = currentEwePoint(dog);
+            if (Math.hypot(spot.gx - here.x, spot.gy - here.y) < 4) {
+                dog.classList.remove('is-walking');
+                window.setTimeout(() => runWrangler(dog, gen), 1100);
+                return;
+            }
+            const depth = lobbyDepth(spot.gy);
+            walkEweOnField(dog, slotFromEwe(dog, {
+                gx: spot.gx,
+                gy: spot.gy,
+                scale: depth.scale * 1.06,
+                z: Math.max(depth.z, 50)
+            }), () => {
+                if (gen !== wranglerGen) return;
+                dog.classList.remove('is-walking');
+                window.setTimeout(() => runWrangler(dog, gen), 900);
+            }, { cycle: 0.42, minSeconds: 0.8, maxSeconds: 2.4 });
+        }
+
+        function runWrangler(dog, gen) {
+            if (gen !== wranglerGen || !dog || !dog.isConnected) return;
+            if (!isAnsweringOpen() || !document.querySelector('.tv-play')) {
+                resetWrangler(false);
+                return;
+            }
+            const idle = idleHerdSheep();
+            const all = remainingFieldSheep();
+            if (!all.length) {
+                watchThePen(dog, gen);
+                return;
+            }
+            const target = pickHerdTarget(idle.length ? idle : all);
+            if (!target) {
+                watchThePen(dog, gen);
+                return;
+            }
+            const behind = dogBehindSheep(target);
+            const gy = Math.min(PLAY_FIELD.bottom, Math.max(PLAY_FIELD.top, behind.gy));
+            const depth = lobbyDepth(gy);
+            walkEweOnField(dog, slotFromEwe(dog, {
+                gx: behind.gx,
+                gy,
+                scale: depth.scale * 1.06,
+                z: Math.max(depth.z, 52)
+            }), () => {
+                if (gen !== wranglerGen) return;
+                if (remainingFieldSheep().includes(target) && !target.classList.contains('is-gating')) {
+                    herdSheepTowardGate(target);
+                    const nearby = idleHerdSheep().filter((el) => el !== target);
+                    nearby.some((el) => {
+                        const a = currentEwePoint(el);
+                        const b = currentEwePoint(target);
+                        if (Math.hypot(a.x - b.x, a.y - b.y) > 14) return false;
+                        herdSheepTowardGate(el);
+                        return true;
+                    });
+                }
+                window.setTimeout(() => runWrangler(dog, gen), 260);
+            }, { cycle: 0.4, minSeconds: 0.7, maxSeconds: 2.6 });
+        }
+
+        function startWrangler() {
+            const key = wranglerKey();
+            const chorus = document.getElementById('flockChorus');
+            if (!chorus || !document.querySelector('.tv-play') || !isAnsweringOpen()) return;
+            let dog = chorus.querySelector('.tv-dog');
+            if (wranglerQuestion === key && dog) return;
+            wranglerQuestion = key;
+            wranglerGen += 1;
+            const gen = wranglerGen;
+            dog = ensureWrangler();
+            if (!dog) return;
+            dog.classList.add('is-placed');
+            dog.classList.remove('is-left');
+            dog.style.setProperty('--gx', '-12');
+            dog.style.setProperty('--gy', '80');
+            dog.style.setProperty('--s', String(pastureScale(80)));
+            dog.style.setProperty('--z', '52');
+            requestAnimationFrame(() => {
+                if (gen !== wranglerGen || !dog.isConnected) return;
+                dog.classList.remove('is-placed');
+                runWrangler(dog, gen);
+            });
+        }
+
+        function syncWrangler(timeLeft) {
+            if (!document.querySelector('.tv-play') || !isAnsweringOpen()) {
+                if (document.querySelector('#flockChorus .tv-dog')) resetWrangler(false);
+                return;
+            }
+            if (Number(timeLeft) <= WRANGLER_AT) startWrangler();
+        }
+
         function updateDisplayTimer(timeLeft) {
             const timerText = document.getElementById('displayTimer');
             const timerCircle = document.getElementById('timerCircle');
@@ -2788,6 +2994,7 @@
             if (gameState) {
                 gameState.timeLeft = timeLeft;
             }
+            syncWrangler(timeLeft);
         }
         
         function updateResponseIndicator(responses, totalPlayers, answeredPlayers) {
