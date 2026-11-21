@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T12-30-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T12-42-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -2441,7 +2441,7 @@
             requestAnimationFrame(() => requestAnimationFrame(fitPlayPrompt));
         }
 
-        function fitQuestionPrompt(el, maxLines) {
+        function fitQuestionPrompt(el, maxLines, minPx) {
             if (!el) return false;
             el.style.removeProperty('font-size');
             const computed = getComputedStyle(el);
@@ -2450,7 +2450,7 @@
             const rawLh = computed.lineHeight;
             const linePx = rawLh.endsWith('px') ? parseFloat(rawLh) : start * (parseFloat(rawLh) || 1.02);
             const lineRatio = linePx / start;
-            const min = Math.max(36, (window.innerHeight || 1080) * 0.048);
+            const min = Math.max(36, minPx || (window.innerHeight || 1080) * 0.048);
             const fits = (size) => {
                 el.style.setProperty('font-size', `${size}px`, 'important');
                 const lh = size * lineRatio;
@@ -2480,8 +2480,9 @@
         function fitPlayPrompt() {
             const el = document.querySelector('.tv-play .question-prompt');
             if (!el) return;
-            if (fitQuestionPrompt(el, 3)) return;
-            fitQuestionPrompt(el, 4);
+            const min = Math.max(48, (window.innerHeight || 1080) * 0.062);
+            if (fitQuestionPrompt(el, 4, min)) return;
+            fitQuestionPrompt(el, 5, min);
         }
         
         function updateDisplayTimer(timeLeft) {

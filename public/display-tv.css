@@ -905,7 +905,7 @@ html, body {
     min-width: 0;
     margin: 0;
     font-family: Outfit, "Segoe UI", sans-serif !important;
-    font-size: clamp(3.8rem, 9.2vh, 7.6rem) !important;
+    font-size: clamp(4.2rem, 10.6vh, 8.4rem) !important;
     line-height: 1.02 !important;
     font-weight: 800 !important;
     letter-spacing: -0.035em;
@@ -913,7 +913,7 @@ html, body {
     overflow-wrap: break-word;
     text-align: left;
     text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55) !important;
-    max-width: min(100%, 72vw) !important;
+    max-width: min(100%, 74vw) !important;
     color: #fff;
 }
 
