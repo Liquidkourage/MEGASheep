@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T13-51-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T15-00-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -2562,10 +2562,10 @@
             el.style.removeProperty('font-size');
             const start = parseFloat(getComputedStyle(el).fontSize);
             if (!start) return;
-            const min = Math.max(isPennant ? 14 : 22, (window.innerHeight || 1080) * (isPennant ? 0.018 : 0.026));
             const isPennant = !!el.closest('.tv-banner.is-pennant');
+            const min = Math.max(isPennant ? 14 : 22, (window.innerHeight || 1080) * (isPennant ? 0.018 : 0.026));
             const maxLines = isPennant ? 5 : 3;
-            const lineRatio = 0.95;
+            const lineRatio = 1.15;
             const room = () => {
                 const box = face.getBoundingClientRect();
                 const ptsH = pts ? pts.getBoundingClientRect().height : 0;
