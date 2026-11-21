@@ -168,7 +168,8 @@ html, body {
     left: 50%;
     top: auto;
     bottom: 7%;
-    transform: translateX(-50%) rotate(0.45deg);
+    transform: perspective(1180px) translateX(-50%) rotateX(5deg);
+    transform-origin: 50% 92%;
     z-index: 8;
     width: min(600px, 42vw);
 }
@@ -308,7 +309,7 @@ html, body {
     height: auto;
     pointer-events: none;
     user-select: none;
-    filter: drop-shadow(0 10px 12px rgba(4, 10, 18, 0.38));
+    filter: drop-shadow(-7px 16px 13px rgba(4, 10, 18, 0.44));
 }
 
 .tv-sign-art-whole {
@@ -359,7 +360,6 @@ html, body {
     box-shadow:
         inset 0 1px 0 rgba(255, 248, 230, 0.55),
         2px 3px 0 #1a140c;
-    transform: rotate(-1.1deg);
 }
 
 .tv-sign .qr-code img {
@@ -372,8 +372,8 @@ html, body {
     left: clamp(20px, 2.2vw, 40px);
     top: auto;
     bottom: 6%;
-    transform: rotate(-0.65deg);
-    transform-origin: 50% 50%;
+    transform: perspective(1180px) rotateY(8deg) rotateX(6deg);
+    transform-origin: 50% 92%;
     z-index: 8;
     width: min(480px, 33vw);
 }
@@ -554,9 +554,9 @@ html, body {
 }
 
 @keyframes lobbyCardChew {
-    0%, 100% { transform: rotate(-0.65deg); }
-    30% { transform: rotate(-1.7deg) translate(1px, 2px); }
-    62% { transform: rotate(0.15deg) translate(-1px, 0); }
+    0%, 100% { transform: perspective(1180px) rotateY(8deg) rotateX(6deg); }
+    30% { transform: perspective(1180px) rotateY(8deg) rotateX(6deg) rotateZ(-1deg) translate(1px, 2px); }
+    62% { transform: perspective(1180px) rotateY(8deg) rotateX(6deg) rotateZ(0.6deg) translate(-1px, 0); }
 }
 
 .tv-lobby-empty {
@@ -2216,7 +2216,7 @@ html, body {
     top: var(--y, 66%);
     z-index: var(--z, 5);
     width: min(var(--w, 17vw), 320px);
-    transform: translate(-50%, -100%) rotate(var(--tilt, -0.7deg));
+    transform: perspective(1320px) translate(-50%, -100%) rotateY(9deg) rotateX(10deg) rotateZ(var(--tilt, -0.4deg));
     transform-origin: 50% 100%;
     pointer-events: none;
 }
@@ -2367,7 +2367,7 @@ html, body {
     bottom: auto;
     z-index: var(--z, 4);
     width: var(--w, 19vw);
-    transform: translate(-50%, -100%) rotate(var(--tilt, 0.45deg));
+    transform: perspective(1320px) translate(-50%, -100%) rotateY(-10deg) rotateX(11deg) rotateZ(var(--tilt, 0.3deg)) scale(0.96);
     transform-origin: 50% 100%;
     pointer-events: none;
 }
