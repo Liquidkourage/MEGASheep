@@ -13,9 +13,10 @@
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
     <link rel="preload" as="image" href="sprites/parade-pennant.png?v=2026-11-19T23-20-00">
-    <link rel="preload" as="image" href="sprites/pen-back.png?v=2026-11-21T15-12-00">
-    <link rel="preload" as="image" href="sprites/pen-back-open.png?v=2026-11-21T15-12-00">
-    <link rel="preload" as="image" href="sprites/pen-front.png?v=2026-11-21T15-12-00">
+    <link rel="preload" as="image" href="sprites/pen-back.png?v=2026-11-21T15-20-00">
+    <link rel="preload" as="image" href="sprites/pen-back-open.png?v=2026-11-21T15-20-00">
+    <link rel="preload" as="image" href="sprites/pen-front.png?v=2026-11-21T15-20-00">
+    <link rel="preload" as="image" href="sprites/pen-front-open.png?v=2026-11-21T15-20-00">
     <link rel="preload" as="image" href="sprites/sheep-01-idle.png?v=2026-11-18T20-05-00">
     <link rel="preload" as="image" href="sprites/sheep-02-idle.png?v=2026-11-18T20-05-00">
     <link rel="preload" as="image" href="sprites/sheep-03-idle.png?v=2026-11-18T20-05-00">
@@ -651,9 +652,10 @@
             }
         }
 
-        const PEN_BACK_CLOSED = 'sprites/pen-back.png?v=2026-11-21T15-12-00';
-        const PEN_BACK_OPEN = 'sprites/pen-back-open.png?v=2026-11-21T15-12-00';
-        const PEN_FRONT = 'sprites/pen-front.png?v=2026-11-21T15-12-00';
+        const PEN_BACK_CLOSED = 'sprites/pen-back.png?v=2026-11-21T15-20-00';
+        const PEN_BACK_OPEN = 'sprites/pen-back-open.png?v=2026-11-21T15-20-00';
+        const PEN_FRONT_CLOSED = 'sprites/pen-front.png?v=2026-11-21T15-20-00';
+        const PEN_FRONT_OPEN = 'sprites/pen-front-open.png?v=2026-11-21T15-20-00';
 
         function isAnsweringOpen() {
             return !!(gameState && gameState.gameState === 'playing');
@@ -663,12 +665,22 @@
             return isAnsweringOpen() ? PEN_BACK_OPEN : PEN_BACK_CLOSED;
         }
 
-        function syncPenGate() {
-            const img = document.querySelector('.tv-play .tv-pen-back .tv-pen-art');
+        function penFrontSrc() {
+            return isAnsweringOpen() ? PEN_FRONT_OPEN : PEN_FRONT_CLOSED;
+        }
+
+        function syncPenLayer(img, openToken, src) {
             if (!img) return;
             const wantOpen = isAnsweringOpen();
-            const onOpen = (img.getAttribute('src') || '').includes('pen-back-open');
-            if (wantOpen !== onOpen) img.src = penBackSrc();
+            const onOpen = (img.getAttribute('src') || '').includes(openToken);
+            if (wantOpen !== onOpen) img.src = src;
+        }
+
+        function syncPenGate() {
+            const play = document.querySelector('.tv-play');
+            if (!play) return;
+            syncPenLayer(play.querySelector('.tv-pen-back .tv-pen-art'), 'pen-back-open', penBackSrc());
+            syncPenLayer(play.querySelector('.tv-pen-front .tv-pen-art'), 'pen-front-open', penFrontSrc());
         }
 
         function pastureSceneHtml(options) {
@@ -684,7 +696,7 @@
                     </div>` : ''}
                     <div class="tv-flock" id="flockChorus"></div>
                     ${withPen ? `<div class="tv-pen tv-pen-front" aria-hidden="true">
-                        <img class="tv-pen-art" src="${PEN_FRONT}" alt="">
+                        <img class="tv-pen-art" src="${penFrontSrc()}" alt="">
                     </div>` : ''}
                 </div>
             `;
