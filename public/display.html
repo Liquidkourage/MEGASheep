@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T17-00-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T17-10-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -25,6 +25,7 @@
     <link rel="preload" as="image" href="sprites/sheep-03-walk.png?v=2026-11-18T20-05-00">
     <link rel="preload" as="image" href="sprites/dog-01-idle.png?v=2026-11-21T16-30-00">
     <link rel="preload" as="image" href="sprites/dog-01-walk.png?v=2026-11-21T16-30-00">
+    <link rel="preload" as="image" href="sprites/dog-01-sit.png?v=2026-11-21T17-10-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -2929,15 +2930,25 @@
             idleHerdSheep().forEach((el) => herdSheepTowardGate(el, pack));
         }
 
+        function setBanditSit(dog, sitting) {
+            if (!dog) return;
+            dog.classList.toggle('is-sitting', !!sitting);
+            if (sitting) {
+                dog.classList.remove('is-walking');
+                dog.classList.remove('is-left');
+            }
+        }
+
         function watchThePen(dog, gen) {
             if (gen !== wranglerGen || !dog || !dog.isConnected) return;
             const spot = gateWatchSpot();
             const here = currentEwePoint(dog);
             if (Math.hypot(spot.gx - here.x, spot.gy - here.y) < 4) {
-                dog.classList.remove('is-walking');
+                setBanditSit(dog, true);
                 window.setTimeout(() => runWrangler(dog, gen), 1100);
                 return;
             }
+            setBanditSit(dog, false);
             const depth = lobbyDepth(spot.gy);
             walkEweOnField(dog, slotFromEwe(dog, {
                 gx: spot.gx,
@@ -2946,7 +2957,7 @@
                 z: Math.max(depth.z, 50)
             }), () => {
                 if (gen !== wranglerGen) return;
-                dog.classList.remove('is-walking');
+                setBanditSit(dog, true);
                 window.setTimeout(() => runWrangler(dog, gen), 900);
             }, { cycle: 0.42, minSeconds: 0.8, maxSeconds: 2.4 });
         }
@@ -2976,6 +2987,7 @@
             const behind = dogBehindSheep(target);
             const gy = Math.min(PLAY_FIELD.bottom, Math.max(PLAY_FIELD.top, behind.gy));
             const depth = lobbyDepth(gy);
+            setBanditSit(dog, false);
             walkEweOnField(dog, slotFromEwe(dog, {
                 gx: behind.gx,
                 gy,
@@ -3004,6 +3016,7 @@
             const spot = restore ? gateWatchSpot() : { gx: -12, gy: 80 };
             dog.classList.add('is-placed');
             dog.classList.remove('is-left');
+            setBanditSit(dog, restore);
             dog.style.setProperty('--gx', String(spot.gx));
             dog.style.setProperty('--gy', String(spot.gy));
             dog.style.setProperty('--s', String(pastureScale(spot.gy)));

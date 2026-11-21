@@ -1452,7 +1452,7 @@ html, body {
 
 .tv-dog .tv-ewe-strip,
 .tv-play .tv-dog .tv-ewe-strip,
-.tv-play .tv-dog:not(.is-walking):not(.is-joining):not(.is-in):not(.is-outside) .tv-ewe-strip {
+.tv-play .tv-dog:not(.is-walking):not(.is-joining):not(.is-in):not(.is-outside):not(.is-sitting) .tv-ewe-strip {
     width: 1200%;
     background-image: url("sprites/dog-01-idle.png?v=2026-11-21T16-30-00");
     animation: eweIdle 0.4s steps(11) infinite;
@@ -1463,6 +1463,13 @@ html, body {
     width: 1800%;
     background-image: url("sprites/dog-01-walk.png?v=2026-11-21T16-30-00");
     animation: eweWalk 0.55s steps(18, jump-none) infinite;
+}
+
+.tv-dog.is-sitting:not(.is-walking) .tv-ewe-strip,
+.tv-play .tv-dog.is-sitting:not(.is-walking):not(.is-joining) .tv-ewe-strip {
+    width: 600%;
+    background-image: url("sprites/dog-01-sit.png?v=2026-11-21T17-10-00");
+    animation: eweSleep 1.8s steps(6, jump-none) infinite;
 }
 
 .tv-thought {
