@@ -2402,8 +2402,27 @@ html, body {
     bottom: 23%;
     justify-content: flex-start;
     align-items: stretch;
+    gap: 0.16em;
     overflow: hidden;
-    padding: 0.06em 0.06em 0.04em;
+    padding: 0.1em 0.06em 0.04em;
+}
+
+.tv-rank-kicker {
+    margin: 0;
+    flex: 0 0 auto;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(1.28rem, 2.55vh, 1.95rem);
+    font-weight: 800;
+    letter-spacing: -0.055em;
+    line-height: 0.9;
+    color: #1a140c;
+}
+
+.tv-score-ranks .tv-rank-board {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    width: 100%;
 }
 
 .tv-score-ranks .tv-rank-list {
