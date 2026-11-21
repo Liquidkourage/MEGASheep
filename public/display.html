@@ -774,7 +774,7 @@
             for (let r = 0; r < rows; r += 1) {
                 const count = counts[r];
                 const y = box.top + ((r + 0.58) / rows) * (box.bottom - box.top);
-                const scale = rows === 1 ? 1 : 0.86 + (r / Math.max(rows - 1, 1)) * 0.16;
+                const scale = pastureScale(y);
                 for (let c = 0; c < count; c += 1) {
                     const x = box.left + ((c + 0.5) / Math.max(count, 1)) * (box.right - box.left);
                     slots.push({ x, y, z: 12 + r * 10, scale });
@@ -807,7 +807,7 @@
                 const y = far.y + u * spanY;
                 const left = far.left + u * (near.left - far.left);
                 const right = far.right + u * (near.right - far.right);
-                const scale = 0.72 + u * 0.34;
+                const scale = pastureScale(y);
                 for (let c = 0; c < count; c += 1) {
                     const x = left + ((c + 0.5) / Math.max(count, 1)) * (right - left);
                     slots.push({ x, y, z: 12 + r * 10, scale });
@@ -848,6 +848,10 @@
         const PEN_FIELD = { left: 64, right: 88, top: 62, bottom: 86 };
         const GATE_FIELD = { left: 50, right: 58, top: 66, bottom: 80 };
         const GRASS_LINE = 0.55;
+        const GRASS_FAR_Y = 55;
+        const GRASS_NEAR_Y = 92;
+        const PASTURE_SCALE_FAR = 0.82;
+        const PASTURE_SCALE_SPAN = 0.29;
 
         function isPastureScene() {
             return !!document.querySelector('.tv-lobby, .tv-play, .tv-score, .tv-standings, .tv-final, .tv-history, .tv-intro');
@@ -884,11 +888,30 @@
             };
         }
 
+        function stageYFromGy(gy) {
+            const y = Number(gy);
+            const chorus = document.getElementById('flockChorus');
+            const pasture = document.querySelector('.tv-pasture');
+            if (!chorus || !pasture) return y;
+            const box = chorus.getBoundingClientRect();
+            const stage = pasture.getBoundingClientRect();
+            if (!box.height || !stage.height) return y;
+            return ((box.top + (y / 100) * box.height) - stage.top) / stage.height * 100;
+        }
+
+        function pastureDepthT(gy) {
+            return Math.min(1, Math.max(0, (stageYFromGy(gy) - GRASS_FAR_Y) / (GRASS_NEAR_Y - GRASS_FAR_Y)));
+        }
+
+        function pastureScale(gy) {
+            const p = pastureDepthT(gy) ** 1.3;
+            return PASTURE_SCALE_FAR + p * PASTURE_SCALE_SPAN;
+        }
+
         function lobbyDepth(gy) {
-            const t = depthT(gy);
-            const p = t ** 1.25;
+            const t = pastureDepthT(gy);
             return {
-                scale: 0.74 + p * 0.44,
+                scale: pastureScale(gy),
                 z: Math.round(8 + t * 52)
             };
         }
@@ -1222,10 +1245,13 @@
             const named = extra.named !== false;
             const scatter = extra.tight || extra.parade || extra.paradeWait ? 0 : (named ? 0.12 : 0.7);
             const bounce = extra.tight || extra.parade || extra.paradeWait ? 0 : (named ? 0.7 : 1.15);
-            const scale = (g.scale || depth.scale) * (extra.scale || 1);
             const offstage = extra.paradeWait || extra.parade;
             const gxRaw = g.x + ((hash % 5) - 2) * scatter;
             const gyRaw = g.y + (((hash >> 3) % 5) - 2) * bounce;
+            const gy = offstage ? gyRaw : Math.min(93, Math.max(extra.minGy != null ? extra.minGy : 58, gyRaw));
+            const scale = (extra.parade || extra.paradeWait)
+                ? (Number(g.scale) || pastureScale(gy))
+                : pastureScale(gy) * (extra.scale || 1);
             return {
                 id: player.stableId || player.id || player.name,
                 name: player.name || 'Sheep',
@@ -1239,7 +1265,7 @@
                 wrong: extra.wrong || '',
                 faceLeft: !!extra.faceLeft,
                 gx: offstage ? gxRaw : Math.min(96, Math.max(2, gxRaw)),
-                gy: offstage ? gyRaw : Math.min(93, Math.max(extra.minGy != null ? extra.minGy : 58, gyRaw)),
+                gy,
                 px: 80,
                 py: 70,
                 ox: 60,
@@ -1346,7 +1372,7 @@
         }
 
         function paradeLaneScale(lane, lanes) {
-            return 1.08 - paradeLaneT(lane, lanes) * 0.07;
+            return 1.06 - paradeLaneT(lane, lanes) * 0.12;
         }
 
         function paradeLaneZ(lane, lanes) {
@@ -1355,7 +1381,7 @@
 
         function packGrazeKnot(count, x, y, seed) {
             const n = Math.max(1, count);
-            const depthScale = 0.72 + Math.max(0, Math.min(1, (y - 56) / 26)) * 0.22;
+            const depthScale = pastureScale(y);
             const withZ = (slot) => Object.assign({}, slot, {
                 z: scoreBannerZ(slot.y),
                 scale: slot.scale || depthScale
@@ -1369,7 +1395,7 @@
                 return withZ({
                     x: x + Math.cos(ang) * rad * 1.9,
                     y: gy,
-                    scale: 0.72 + Math.max(0, Math.min(1, (gy - 56) / 26)) * 0.22
+                    scale: pastureScale(gy)
                 });
             });
         }
@@ -1460,7 +1486,6 @@
                 leftovers.forEach((player, index) => {
                     byPlayer.set(player, resultSlot(player, names, packed[index], {
                         named: leftovers.length <= SCORE_NAME_AT,
-                        scale: 0.84,
                         minGy: 64
                     }));
                 });
