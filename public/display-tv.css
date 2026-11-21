@@ -2270,7 +2270,7 @@ html, body {
     align-items: center;
     justify-content: center;
     margin: 0;
-    padding: 0.2em 0.46em 0.16em 0.58em;
+    padding: 0.2em 0.58em 0.16em 0.58em;
     background:
         linear-gradient(180deg, rgba(255, 248, 230, 0.38), transparent 46%),
         repeating-linear-gradient(
@@ -2295,16 +2295,24 @@ html, body {
     color: #1a140c;
 }
 
-.tv-miss-chip::before {
+.tv-miss-chip::before,
+.tv-miss-chip::after {
     content: "";
     position: absolute;
     top: 0.16em;
-    left: 0.18em;
     width: 0.32em;
     height: 0.32em;
     border-radius: 50%;
     background: radial-gradient(circle at 35% 30%, #c4b48a, #8a7a58 70%);
     box-shadow: inset 0 0 0 2px #1a140c, 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.tv-miss-chip::before {
+    left: 0.18em;
+}
+
+.tv-miss-chip::after {
+    right: 0.18em;
 }
 
 .tv-post-answer {
