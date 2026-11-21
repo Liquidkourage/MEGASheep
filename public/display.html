@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T12-42-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T12-45-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -2484,6 +2484,50 @@
             if (fitQuestionPrompt(el, 4, min)) return;
             fitQuestionPrompt(el, 5, min);
         }
+
+        function fitBannerAnswer(el) {
+            if (!el || !el.isConnected) return;
+            const face = el.closest('.tv-flag-face');
+            if (!face) return;
+            const pts = face.querySelector('.tv-post-pts');
+            el.style.removeProperty('font-size');
+            const start = parseFloat(getComputedStyle(el).fontSize);
+            if (!start) return;
+            const min = Math.max(isPennant ? 14 : 22, (window.innerHeight || 1080) * (isPennant ? 0.018 : 0.026));
+            const isPennant = !!el.closest('.tv-banner.is-pennant');
+            const maxLines = isPennant ? 5 : 3;
+            const lineRatio = 0.95;
+            const room = () => {
+                const box = face.getBoundingClientRect();
+                const ptsH = pts ? pts.getBoundingClientRect().height : 0;
+                return Math.max(18, box.height - ptsH - 6);
+            };
+            const fits = (size) => {
+                el.style.setProperty('font-size', `${size}px`, 'important');
+                const lh = size * lineRatio;
+                if (el.scrollHeight > room() + 2) return false;
+                if (el.scrollHeight > lh * maxLines + 4) return false;
+                if (el.clientWidth && el.scrollWidth > el.clientWidth + 2) return false;
+                return true;
+            };
+            if (fits(start)) {
+                el.style.removeProperty('font-size');
+                return;
+            }
+            let lo = min;
+            let hi = start;
+            let best = min;
+            for (let i = 0; i < 12; i += 1) {
+                const mid = (lo + hi) / 2;
+                if (fits(mid)) {
+                    best = mid;
+                    lo = mid;
+                } else {
+                    hi = mid;
+                }
+            }
+            el.style.setProperty('font-size', `${best}px`, 'important');
+        }
         
         function updateDisplayTimer(timeLeft) {
             const timerText = document.getElementById('displayTimer');
@@ -2788,6 +2832,7 @@
             const facePts = el.querySelector('.tv-flag-face .tv-post-pts');
             if (faceWord && faceWord.textContent !== word) faceWord.textContent = word;
             if (facePts && facePts.textContent !== pts) facePts.textContent = pts;
+            if (faceWord) window.requestAnimationFrame(() => fitBannerAnswer(faceWord));
             const roster = el.querySelector('.tv-banner-roster');
             if (roster) {
                 const html = extras.map((name) => `<span>${escapeDisplayText(name)}</span>`).join('');
@@ -3986,6 +4031,7 @@
                 layoutLobbyPlayers();
             }
             if (document.querySelector('.tv-play')) fitPlayPrompt();
+            document.querySelectorAll('.tv-score .tv-flag-face .tv-post-answer').forEach(fitBannerAnswer);
         });
 
         function generateRoundHistoryDisplay(roundHistory) {

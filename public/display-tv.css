@@ -2109,7 +2109,7 @@ html, body {
 
 .tv-banner.is-cloth {
     width: var(--w, 24vw);
-    height: 12.5vh;
+    height: 16.2vh;
     overflow: visible;
     transform: translate(-50%, calc(-100% - 18vh)) rotate(var(--tilt, 0deg));
     transform-origin: 50% 100%;
@@ -2216,7 +2216,7 @@ html, body {
     bottom: 48%;
     flex-direction: column;
     gap: 0.08em;
-    overflow: visible;
+    overflow: hidden;
 }
 
 .tv-miss-sign {
@@ -2324,21 +2324,27 @@ html, body {
 
 .tv-flag-face .tv-post-answer {
     flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
     font-size: clamp(1.8rem, 4.2vh, 3.2rem);
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: none;
     display: block;
     overflow: hidden;
-    text-overflow: ellipsis;
+    text-overflow: clip;
     -webkit-line-clamp: unset;
+    line-height: 0.95;
 }
 
 .tv-banner.is-pennant .tv-post-answer {
     font-size: clamp(1.45rem, 3.2vh, 2.55rem);
-    white-space: nowrap;
-    overflow: visible;
+    white-space: normal;
+    overflow: hidden;
     text-overflow: clip;
     display: block;
-    max-width: none;
+    max-width: 100%;
 }
 
 .tv-post-pts {
