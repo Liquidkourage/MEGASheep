@@ -2024,6 +2024,12 @@ html, body {
     pointer-events: none;
 }
 
+.tv-score .tv-score-top {
+    right: 29vw;
+    width: auto;
+    padding-right: 0.35em;
+}
+
 .tv-score .question-prompt,
 .tv-standings .question-prompt {
     flex: 0 1 auto;
@@ -2038,6 +2044,10 @@ html, body {
     text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55);
     max-width: min(22ch, 96%);
     color: #fff;
+}
+
+.tv-score .question-prompt {
+    max-width: 100%;
 }
 
 .tv-score-banners {
