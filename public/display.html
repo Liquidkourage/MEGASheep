@@ -939,13 +939,15 @@
         const RESULTS_FAR = { left: 22, right: 78, y: 66 };
         const RESULTS_NEAR = { left: 8, right: 92, y: 92 };
         const SCORE_NAME_AT = 2;
-        const PEN_FAR = { left: 70, right: 84, y: 62 };
-        const PEN_NEAR = { left: 64, right: 88, y: 86 };
-        const PEN_FIELD = { left: 64, right: 88, top: 62, bottom: 86 };
+        const PEN_FAR = { left: 73, right: 86, y: 62 };
+        const PEN_NEAR = { left: 66, right: 88, y: 86 };
+        const PEN_FIELD = { left: 66, right: 88, top: 62, bottom: 86 };
         const GATE_MOUTH = { x: 59.8, y: 69.5 };
         const PEN_SPRITE = { w: 1127, h: 628 };
         const GATE_MOUTH_SPRITE = { x: 152, y: 242 };
         const GATE_APPROACH_SPRITE = { x: 48, y: 258 };
+        const GATE_DROP_SPRITE = { x: 195, y: 398 };
+        const GATE_CLEAR_SPRITE = { x: 428, y: 408 };
         const GRASS_LINE = 0.55;
         const GRASS_FAR_Y = 55;
         const GRASS_NEAR_Y = 92;
@@ -2331,17 +2333,40 @@
         function playGatePoints() {
             return {
                 mouth: penSpriteToStage(GATE_MOUTH_SPRITE.x, GATE_MOUTH_SPRITE.y),
-                approach: penSpriteToStage(GATE_APPROACH_SPRITE.x, GATE_APPROACH_SPRITE.y)
+                approach: penSpriteToStage(GATE_APPROACH_SPRITE.x, GATE_APPROACH_SPRITE.y),
+                drop: penSpriteToStage(GATE_DROP_SPRITE.x, GATE_DROP_SPRITE.y),
+                clear: penSpriteToStage(GATE_CLEAR_SPRITE.x, GATE_CLEAR_SPRITE.y)
             };
         }
 
-        function gateMouthOf(el) {
-            const hash = nameHash(el.dataset.name || el.dataset.id || '');
-            const mouth = playGatePoints().mouth;
+        function jitterGatePoint(point, el, spreadX, spreadY) {
+            const hash = nameHash((el && (el.dataset.name || el.dataset.id)) || '');
             return {
-                x: mouth.x + ((hash % 5) - 2) * 0.16,
-                y: mouth.y + (((hash >> 3) % 5) - 2) * 0.1
+                x: point.x + ((hash % 5) - 2) * spreadX,
+                y: point.y + (((hash >> 3) % 5) - 2) * spreadY
             };
+        }
+
+        function gatePathOf(el) {
+            const pts = playGatePoints();
+            return {
+                mouth: jitterGatePoint(pts.mouth, el, 0.16, 0.1),
+                drop: jitterGatePoint(pts.drop, el, 0.2, 0.12),
+                clear: jitterGatePoint(pts.clear, el, 0.22, 0.14)
+            };
+        }
+
+        function walkGateChain(el, points, onDone) {
+            const step = (index) => {
+                if (!playGateLive(el)) return;
+                if (index >= points.length) {
+                    if (onDone) onDone();
+                    return;
+                }
+                const point = points[index];
+                walkToGatePoint(el, point.x, point.y, () => step(index + 1));
+            };
+            step(0);
         }
 
         function playGateLive(el) {
@@ -2389,14 +2414,10 @@
             beginGateTrip(el, true);
             el.classList.remove('is-in', 'is-outside');
             const slot = slotFromEwe(el);
-            const mouth = gateMouthOf(el);
-            walkToGatePoint(el, slot.ox, slot.oy, () => {
-                if (!playGateLive(el)) return;
-                walkToGatePoint(el, mouth.x, mouth.y, () => {
-                    if (!playGateLive(el)) return;
-                    enterPenFromGate(el);
-                });
-            });
+            const path = gatePathOf(el);
+            const hops = [{ x: slot.ox, y: slot.oy }, path.mouth];
+            if (isAnsweringOpen()) hops.push(path.drop, path.clear);
+            walkGateChain(el, hops, () => enterPenFromGate(el));
         }
 
         function enterPenFromApproach(el) {
@@ -2404,28 +2425,27 @@
             el.style.setProperty('--gx', el.style.getPropertyValue('--ox'));
             el.style.setProperty('--gy', el.style.getPropertyValue('--oy'));
             el.classList.remove('is-in', 'is-outside');
-            const mouth = gateMouthOf(el);
-            walkToGatePoint(el, mouth.x, mouth.y, () => {
-                if (!playGateLive(el)) return;
-                enterPenFromGate(el);
-            });
+            const path = gatePathOf(el);
+            const hops = [path.mouth];
+            if (isAnsweringOpen()) hops.push(path.drop, path.clear);
+            walkGateChain(el, hops, () => enterPenFromGate(el));
         }
 
         function exitPenViaGate(el) {
             beginGateTrip(el, false);
-            const mouth = gateMouthOf(el);
+            const path = gatePathOf(el);
             const slot = slotFromEwe(el);
             el.style.setProperty('--gx', el.style.getPropertyValue('--px'));
             el.style.setProperty('--gy', el.style.getPropertyValue('--py'));
             el.classList.remove('is-in', 'is-outside');
-            walkToGatePoint(el, mouth.x, mouth.y, () => {
+            const hops = isAnsweringOpen()
+                ? [path.clear, path.drop, path.mouth, { x: slot.ox, y: slot.oy }]
+                : [path.mouth, { x: slot.ox, y: slot.oy }];
+            walkGateChain(el, hops, () => {
                 if (!playGateLive(el)) return;
-                walkToGatePoint(el, slot.ox, slot.oy, () => {
-                    if (!playGateLive(el)) return;
-                    el.classList.add('is-outside');
-                    applyPenDepth(el, slot.oy, false);
-                    endGateTrip(el);
-                });
+                el.classList.add('is-outside');
+                applyPenDepth(el, slot.oy, false);
+                endGateTrip(el);
             });
         }
 
