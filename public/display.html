@@ -13,6 +13,9 @@
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
     <link rel="preload" as="image" href="sprites/parade-pennant.png?v=2026-11-19T23-20-00">
+    <link rel="preload" as="image" href="sprites/pen-back.png?v=2026-11-21T15-12-00">
+    <link rel="preload" as="image" href="sprites/pen-back-open.png?v=2026-11-21T15-12-00">
+    <link rel="preload" as="image" href="sprites/pen-front.png?v=2026-11-21T15-12-00">
     <link rel="preload" as="image" href="sprites/sheep-01-idle.png?v=2026-11-18T20-05-00">
     <link rel="preload" as="image" href="sprites/sheep-02-idle.png?v=2026-11-18T20-05-00">
     <link rel="preload" as="image" href="sprites/sheep-03-idle.png?v=2026-11-18T20-05-00">
@@ -483,6 +486,7 @@
                             gameState.answeredPlayers
                         );
                     }
+                    syncPenGate();
                     break;
                 case 'scoring':
                     console.log('📺 Showing scoring screen');
@@ -647,6 +651,26 @@
             }
         }
 
+        const PEN_BACK_CLOSED = 'sprites/pen-back.png?v=2026-11-21T15-12-00';
+        const PEN_BACK_OPEN = 'sprites/pen-back-open.png?v=2026-11-21T15-12-00';
+        const PEN_FRONT = 'sprites/pen-front.png?v=2026-11-21T15-12-00';
+
+        function isAnsweringOpen() {
+            return !!(gameState && gameState.gameState === 'playing');
+        }
+
+        function penBackSrc() {
+            return isAnsweringOpen() ? PEN_BACK_OPEN : PEN_BACK_CLOSED;
+        }
+
+        function syncPenGate() {
+            const img = document.querySelector('.tv-play .tv-pen-back .tv-pen-art');
+            if (!img) return;
+            const wantOpen = isAnsweringOpen();
+            const onOpen = (img.getAttribute('src') || '').includes('pen-back-open');
+            if (wantOpen !== onOpen) img.src = penBackSrc();
+        }
+
         function pastureSceneHtml(options) {
             const withPen = !options || options.pen !== false;
             const pastureId = options && options.pastureId ? ` id="${options.pastureId}"` : '';
@@ -656,11 +680,11 @@
                     <div class="tv-pasture-shade" aria-hidden="true"></div>
                     <div class="tv-pasture-ground" aria-hidden="true"></div>
                     ${withPen ? `<div class="tv-pen tv-pen-back" aria-hidden="true">
-                        <img class="tv-pen-art" src="sprites/pen-back.png?v=2026-11-21T14-53-00" alt="">
+                        <img class="tv-pen-art" src="${penBackSrc()}" alt="">
                     </div>` : ''}
                     <div class="tv-flock" id="flockChorus"></div>
                     ${withPen ? `<div class="tv-pen tv-pen-front" aria-hidden="true">
-                        <img class="tv-pen-art" src="sprites/pen-front.png?v=2026-11-21T14-45-00" alt="">
+                        <img class="tv-pen-art" src="${PEN_FRONT}" alt="">
                     </div>` : ''}
                 </div>
             `;
@@ -920,8 +944,8 @@
         const PEN_FIELD = { left: 64, right: 88, top: 62, bottom: 86 };
         const GATE_MOUTH = { x: 59.8, y: 69.5 };
         const PEN_SPRITE = { w: 1127, h: 628 };
-        const GATE_MOUTH_SPRITE = { x: 168, y: 202 };
-        const GATE_APPROACH_SPRITE = { x: 50, y: 215 };
+        const GATE_MOUTH_SPRITE = { x: 152, y: 242 };
+        const GATE_APPROACH_SPRITE = { x: 48, y: 258 };
         const GRASS_LINE = 0.55;
         const GRASS_FAR_Y = 55;
         const GRASS_NEAR_Y = 92;
@@ -2501,6 +2525,7 @@
                 </div>
             `;
             renderFlock(gameState.players);
+            syncPenGate();
             
             // Set initial timer state
             updateDisplayTimer(gameState.timeLeft || 30);
