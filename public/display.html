@@ -8,11 +8,17 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T13-41-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T13-51-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
     <link rel="preload" as="image" href="sprites/parade-pennant.png?v=2026-11-19T23-20-00">
+    <link rel="preload" as="image" href="sprites/sheep-01-idle.png?v=2026-11-18T20-05-00">
+    <link rel="preload" as="image" href="sprites/sheep-02-idle.png?v=2026-11-18T20-05-00">
+    <link rel="preload" as="image" href="sprites/sheep-03-idle.png?v=2026-11-18T20-05-00">
+    <link rel="preload" as="image" href="sprites/sheep-01-walk.png?v=2026-11-18T20-05-00">
+    <link rel="preload" as="image" href="sprites/sheep-02-walk.png?v=2026-11-18T20-05-00">
+    <link rel="preload" as="image" href="sprites/sheep-03-walk.png?v=2026-11-18T20-05-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -1027,8 +1033,8 @@
             const depth = lobbyDepth(next.gy);
             el.classList.add('is-placed');
             el.style.setProperty('--walk', '0s');
-            el.style.setProperty('--gx', `${next.gx}%`);
-            el.style.setProperty('--gy', `${next.gy}%`);
+            el.style.setProperty('--gx', String(next.gx));
+            el.style.setProperty('--gy', String(next.gy));
             el.style.setProperty('--s', String(depth.scale));
             el.style.setProperty('--z', String(depth.z));
             requestAnimationFrame(() => el.classList.remove('is-placed'));
@@ -1706,7 +1712,7 @@
             const tagHide = slot.parade && slot.tagPlace === 'hide' ? ' is-tag-hide' : '';
             const face = slot.faceLeft && !slot.parade && !slot.paradeWait ? ' is-left' : '';
             return `
-                <figure class="tv-ewe${crowd}${wait}${parade}${wrong}${sad}${tagHide}${face}" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" data-mood="${escapeDisplayText(slot.mood || 'idle')}" style="--gx:${slot.gx}%;--gy:${slot.gy}%;--px:${slot.px}%;--py:${slot.py}%;--ox:${slot.ox}%;--oy:${slot.oy}%;--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
+                <figure class="tv-ewe${crowd}${wait}${parade}${wrong}${sad}${tagHide}${face}" data-id="${escapeDisplayText(slot.id)}" data-name="${escapeDisplayText(slot.name)}" data-coat="${slot.coat}" data-mood="${escapeDisplayText(slot.mood || 'idle')}" style="--gx:${slot.gx};--gy:${slot.gy};--px:${slot.px};--py:${slot.py};--ox:${slot.ox};--oy:${slot.oy};--s:${slot.scale};--z:${slot.z};--idle:${slot.idle}s">
                     ${EWE_ART}
                     <figcaption>${eweCaptionHtml(slot)}</figcaption>
                 </figure>
@@ -1717,12 +1723,12 @@
             el.dataset.name = slot.name;
             el.dataset.coat = String(slot.coat);
             el.dataset.mood = slot.mood || 'idle';
-            el.style.setProperty('--gx', `${slot.gx}%`);
-            el.style.setProperty('--gy', `${slot.gy}%`);
-            el.style.setProperty('--px', `${slot.px}%`);
-            el.style.setProperty('--py', `${slot.py}%`);
-            el.style.setProperty('--ox', `${slot.ox}%`);
-            el.style.setProperty('--oy', `${slot.oy}%`);
+            el.style.setProperty('--gx', String(slot.gx));
+            el.style.setProperty('--gy', String(slot.gy));
+            el.style.setProperty('--px', String(slot.px));
+            el.style.setProperty('--py', String(slot.py));
+            el.style.setProperty('--ox', String(slot.ox));
+            el.style.setProperty('--oy', String(slot.oy));
             el.style.setProperty('--s', String(slot.scale));
             el.style.setProperty('--z', String(slot.z));
             el.style.setProperty('--idle', `${slot.idle}s`);
@@ -2348,6 +2354,8 @@
             el.classList.toggle('is-left', px < fromX);
             el.style.setProperty('--walk', `${seconds.toFixed(2)}s`);
             el.style.transitionDuration = `${seconds.toFixed(2)}s`;
+            el.style.setProperty('--gx', String(px));
+            el.style.setProperty('--gy', String(py));
             applyPenDepth(el, py, true);
             el.classList.add('is-in', 'is-walking', 'is-entering', 'is-gating');
             onWalkFinished(el, gen, seconds, () => endGateTrip(el));
@@ -2727,7 +2735,7 @@
             const n = Number(group.count) || (group.players || []).length || 0;
             const kind = n === 1 ? ' is-pennant' : ' is-cloth';
             return `
-                <div${id} class="tv-banner is-parade${kind}${wait}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${n}" data-lanes="${Number(extra.lanes || PARADE_LANES)}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
+                <div${id} class="tv-banner is-parade${kind}${wait}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${n}" data-lanes="${Number(extra.lanes || PARADE_LANES)}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --mx:${Number(x).toFixed(2)}; --my:${Number(y).toFixed(2)}; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
                     <div class="tv-flag tv-flag-cloth">
                         <img class="tv-flag-art" src="sprites/parade-banner.png?v=2026-11-19T23-20-00" alt="" aria-hidden="true">
                     </div>
@@ -2888,6 +2896,8 @@
             el.classList.add('is-parade', 'is-hit');
             el.style.setProperty('--x', `${Number(x).toFixed(2)}%`);
             el.style.setProperty('--y', `${Number(y).toFixed(2)}%`);
+            el.style.setProperty('--mx', Number(x).toFixed(2));
+            el.style.setProperty('--my', Number(y).toFixed(2));
             el.style.setProperty('--w', `${Number(width).toFixed(2)}vw`);
             el.style.setProperty('--z', String(paradeLaneZ(dLane, dCount)));
             el.style.setProperty('--walk', `${Number(walk || 0).toFixed(2)}s`);

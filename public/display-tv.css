@@ -6,6 +6,30 @@
     initial-value: 1;
 }
 
+@property --gx {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 50;
+}
+
+@property --gy {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 64;
+}
+
+@property --mx {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 50;
+}
+
+@property --my {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 79;
+}
+
 html, body {
     margin: 0;
     padding: 0;
@@ -587,8 +611,8 @@ html, body {
 }
 
 @keyframes nibbleNudge {
-    0%, 100% { transform: none; }
-    42% { transform: translate(10%, -4%); }
+    0%, 100% { translate: 0 0; }
+    42% { translate: 10% -4%; }
 }
 
 @keyframes lobbyCardChew {
@@ -625,12 +649,12 @@ html, body {
 
 .tv-wait-strip {
     display: block;
-    width: 100%;
+    width: 1200%;
     height: 100%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
     background-repeat: no-repeat;
     background-position: 0 0;
-    background-size: 1200% 100%;
+    background-size: 100% 100%;
     animation: eweIdle 0.4s steps(11) infinite;
 }
 
@@ -1060,6 +1084,8 @@ html, body {
     bottom: 0;
     z-index: 3;
     overflow: visible;
+    container-type: size;
+    container-name: flock;
     --ewe-base: 118px;
     --ewe-min: 72px;
     --ewe-max: 132px;
@@ -1086,8 +1112,8 @@ html, body {
 
 .tv-ewe {
     position: absolute;
-    left: var(--gx);
-    top: var(--gy);
+    left: calc(var(--gx) * 1%);
+    top: calc(var(--gy) * 1%);
     width: clamp(var(--ewe-min, 72px), var(--ewe-base, 118px), var(--ewe-max, 132px));
     min-width: 0;
     margin: 0;
@@ -1104,9 +1130,23 @@ html, body {
     transition:
         left var(--walk, 4s) linear,
         top var(--walk, 4s) linear,
-        transform var(--walk, 4s) linear,
+        --gx var(--walk, 4s) linear,
+        --gy var(--walk, 4s) linear,
         --s var(--walk, 4s) linear,
         width 1.8s ease-out;
+}
+
+@container flock (min-width: 0px) {
+    .tv-ewe {
+        left: 0;
+        top: 0;
+        transform: translate3d(calc(var(--gx) * 1cqi), calc(var(--gy) * 1cqb), 0) translate(-50%, -72%) scale(var(--s, 1));
+        transition:
+            --gx var(--walk, 4s) linear,
+            --gy var(--walk, 4s) linear,
+            --s var(--walk, 4s) linear,
+            width 1.8s ease-out;
+    }
 }
 
 .tv-ewe::after {
@@ -1122,8 +1162,8 @@ html, body {
     pointer-events: none;
 }
 
-.tv-ewe.is-left .tv-ewe-strip {
-    transform: scaleX(-1);
+.tv-ewe.is-left .tv-ewe-art {
+    scale: -1 1;
 }
 
 .tv-ewe.is-placed {
@@ -1210,6 +1250,11 @@ html, body {
     z-index: auto;
 }
 
+.tv-ewe.is-walking,
+.tv-ewe.is-parade {
+    will-change: transform;
+}
+
 .tv-ewe.is-walking:not(.is-parade) {
     z-index: 48;
 }
@@ -1218,14 +1263,7 @@ html, body {
     z-index: 80;
 }
 
-.tv-ewe.is-in {
-    left: var(--px);
-    top: var(--py);
-}
-
 .tv-ewe.is-outside {
-    left: var(--ox);
-    top: var(--oy);
     z-index: 46;
 }
 
@@ -1246,17 +1284,20 @@ html, body {
 
 .tv-ewe-strip {
     position: absolute;
-    inset: 0;
-    width: 100%;
-    max-width: 100%;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    right: auto;
+    width: 1200%;
+    max-width: none;
     height: 100%;
     background-repeat: no-repeat;
     background-position: 0 0;
-    background-size: 1200% 100%;
+    background-size: 100% 100%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
     animation: eweIdle 0.4s steps(11) infinite;
     animation-delay: var(--idle, 0s);
-    transform-origin: 50% 50%;
+    transform-origin: 0 50%;
 }
 
 .tv-ewe[data-coat="2"] .tv-ewe-strip {
@@ -1268,7 +1309,7 @@ html, body {
 }
 
 .tv-ewe.is-walking .tv-ewe-strip {
-    background-size: 1800% 100%;
+    width: 1800%;
     background-image: url("sprites/sheep-01-walk.png?v=2026-11-18T20-05-00");
     animation: eweWalk 0.6s steps(18, jump-none) infinite;
 }
@@ -1288,7 +1329,7 @@ html, body {
 .tv-ewe.is-in:not(.is-walking) .tv-ewe-strip,
 .tv-ewe.is-sad:not(.is-walking) .tv-ewe-strip,
 .tv-ewe[data-mood="sleep"]:not(.is-walking) .tv-ewe-strip {
-    background-size: 600% 100%;
+    width: 600%;
     background-image: url("sprites/sheep-01-sleep.png?v=2026-11-19T04-20-00");
     animation: eweSleep 1.8s steps(6, jump-none) infinite;
     animation-delay: var(--idle, 0s);
@@ -1307,7 +1348,7 @@ html, body {
 }
 
 .tv-ewe.is-outside:not(.is-walking) .tv-ewe-strip {
-    background-size: 1200% 100%;
+    width: 1200%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
     animation: eweIdle 0.4s steps(11) infinite;
     animation-delay: var(--idle, 0s);
@@ -1323,7 +1364,7 @@ html, body {
 
 .tv-lobby .tv-ewe:not(.is-walking):not(.is-joining) .tv-ewe-strip,
 .tv-play .tv-ewe:not(.is-walking):not(.is-joining):not(.is-in):not(.is-outside) .tv-ewe-strip {
-    background-size: 1200% 100%;
+    width: 1200%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
     animation: eweIdle 0.4s steps(11) infinite;
     animation-delay: var(--idle, 0s);
@@ -1342,7 +1383,7 @@ html, body {
 .tv-ewe[data-mood="eat"]:not(.is-walking):not(.is-joining):not(.is-in):not(.is-sad) .tv-ewe-strip,
 .tv-lobby .tv-ewe[data-mood="eat"]:not(.is-walking):not(.is-joining) .tv-ewe-strip,
 .tv-play .tv-ewe[data-mood="eat"]:not(.is-walking):not(.is-joining):not(.is-in):not(.is-outside) .tv-ewe-strip {
-    background-size: 1300% 100%;
+    width: 1300%;
     background-image: url("sprites/sheep-01-eat.png?v=2026-11-18T20-05-00");
     animation: eweEat 0.45s steps(13, jump-none) infinite;
     animation-delay: var(--idle, 0s);
@@ -1362,7 +1403,7 @@ html, body {
 
 .tv-lobby .tv-ewe.is-joining .tv-ewe-strip,
 .tv-play .tv-ewe.is-joining .tv-ewe-strip {
-    background-size: 1200% 100%;
+    width: 1200%;
     background-image: url("sprites/sheep-01-jump.png?v=2026-11-18T21-40-00");
     animation: eweJump 0.5s steps(12, jump-none) forwards;
 }
@@ -1386,7 +1427,7 @@ html, body {
 }
 
 .tv-play .tv-flock[data-dense="1"] .tv-ewe:nth-child(11n):not(.is-in):not(.is-walking):not(.is-joining) .tv-ewe-strip {
-    background-size: 1200% 100% !important;
+    width: 1200% !important;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00") !important;
     animation: eweIdle 1.2s steps(11) infinite !important;
 }
@@ -1442,40 +1483,40 @@ html, body {
 }
 
 .tv-key .tv-ewe-strip {
-    background-size: 1300% 100%;
+    width: 1300%;
     background-image: url("sprites/sheep-01-eat.png?v=2026-11-18T20-05-00");
     animation: eweEat 0.45s steps(13, jump-none) infinite;
 }
 
 .tv-key.is-in .tv-ewe-strip {
-    background-size: 1200% 100%;
+    width: 1200%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
     animation: eweIdle 0.4s steps(11) infinite;
 }
 
 @keyframes eweEat {
-    from { background-position: 0 0; }
-    to { background-position: 100% 0; }
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-92.3077%, 0, 0); }
 }
 
 @keyframes eweWalk {
-    from { background-position: 0 0; }
-    to { background-position: 100% 0; }
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-94.4444%, 0, 0); }
 }
 
 @keyframes eweIdle {
-    from { background-position: 0 0; }
-    to { background-position: 100% 0; }
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-91.6667%, 0, 0); }
 }
 
 @keyframes eweSleep {
-    from { background-position: 0 0; }
-    to { background-position: 100% 0; }
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-83.3333%, 0, 0); }
 }
 
 @keyframes eweJump {
-    from { background-position: 0 0; }
-    to { background-position: 100% 0; }
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-91.6667%, 0, 0); }
 }
 
 .tv-ewe figcaption {
@@ -2102,12 +2143,14 @@ html, body {
     inset: 0;
     z-index: auto;
     pointer-events: none;
+    container-type: size;
+    container-name: parade;
 }
 
 .tv-banner {
     position: absolute;
-    left: var(--x, 50%);
-    top: var(--y, 79%);
+    left: calc(var(--mx, 50) * 1%);
+    top: calc(var(--my, 79) * 1%);
     z-index: var(--z, 8);
     width: var(--w, 30vw);
     transform: translate(-50%, -58%) rotate(var(--tilt, 0deg));
@@ -2116,7 +2159,9 @@ html, body {
     filter: none;
     transition:
         left var(--walk, 0s) linear,
-        top var(--walk, 0s) linear;
+        top var(--walk, 0s) linear,
+        --mx var(--walk, 0s) linear,
+        --my var(--walk, 0s) linear;
 }
 
 .tv-banner.is-placed {
@@ -2124,19 +2169,15 @@ html, body {
 }
 
 .tv-score .tv-banner.is-parade {
-    will-change: left, top;
+    will-change: transform;
     backface-visibility: hidden;
 }
 
 .tv-score .tv-ewe.is-parade {
     z-index: var(--z, 80);
     contain: none;
-    will-change: left, top;
+    will-change: transform;
     backface-visibility: hidden;
-    transform: translate(-50%, -72%) scale(var(--s, 1));
-    transition:
-        left var(--walk, 0s) linear,
-        top var(--walk, 0s) linear;
 }
 
 .tv-banner.is-parade,
@@ -2182,6 +2223,25 @@ html, body {
     height: 30vh;
     transform: translate(-14%, -100%) rotate(var(--tilt, 0.4deg));
     transform-origin: 14% 100%;
+}
+
+@container parade (min-width: 0px) {
+    .tv-banner {
+        left: 0;
+        top: 0;
+        transform: translate3d(calc(var(--mx, 50) * 1cqi), calc(var(--my, 79) * 1cqb), 0) translate(-50%, -58%) rotate(var(--tilt, 0deg));
+        transition:
+            --mx var(--walk, 0s) linear,
+            --my var(--walk, 0s) linear;
+    }
+
+    .tv-banner.is-cloth {
+        transform: translate3d(calc(var(--mx, 50) * 1cqi), calc(var(--my, 79) * 1cqb), 0) translate(-50%, calc(-100% - 18vh)) rotate(var(--tilt, 0deg));
+    }
+
+    .tv-banner.is-pennant {
+        transform: translate3d(calc(var(--mx, 50) * 1cqi), calc(var(--my, 79) * 1cqb), 0) translate(-14%, -100%) rotate(var(--tilt, 0.4deg));
+    }
 }
 
 .tv-banner.is-parade-wait {
@@ -2866,7 +2926,7 @@ html, body {
 }
 
 .tv-podium .tv-ewe .tv-ewe-strip {
-    background-size: 1200% 100%;
+    width: 1200%;
     background-image: url("sprites/sheep-01-idle.png?v=2026-11-18T20-05-00");
     animation: eweIdle 0.4s steps(11) infinite;
 }
