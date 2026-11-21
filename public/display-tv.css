@@ -308,6 +308,7 @@ html, body {
     height: auto;
     pointer-events: none;
     user-select: none;
+    filter: drop-shadow(0 10px 12px rgba(4, 10, 18, 0.38));
 }
 
 .tv-sign-art-whole {
@@ -329,13 +330,36 @@ html, body {
     text-align: center;
     gap: 10px;
     overflow: hidden;
+    color: #1a140c;
+    text-shadow: 0 1px 0 rgba(255, 244, 214, 0.28);
+}
+
+.tv-sign-face::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: 0.35em;
+    box-shadow:
+        inset 0 0.35em 0.7em rgba(90, 58, 28, 0.08),
+        inset 0 -0.45em 0.55em rgba(90, 58, 28, 0.1);
+}
+
+.tv-sign-face > * {
+    position: relative;
+    z-index: 1;
 }
 
 .tv-sign .qr-code {
-    padding: 8px !important;
-    background: #fff !important;
-    border: 4px solid #1a140c !important;
-    border-radius: 10px !important;
+    padding: 7px !important;
+    background: #f3e6c4 !important;
+    border: 3px solid #1a140c !important;
+    border-radius: 4px !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 248, 230, 0.55),
+        2px 3px 0 #1a140c;
+    transform: rotate(-1.1deg);
 }
 
 .tv-sign .qr-code img {
@@ -2226,12 +2250,21 @@ html, body {
     justify-content: center;
     margin: 0;
     padding: 0.2em 0.46em 0.16em 0.58em;
-    background: #efe4b8;
-    border: 3px solid #1a140c;
-    border-radius: 0.42em;
+    background:
+        linear-gradient(180deg, rgba(255, 248, 230, 0.38), transparent 46%),
+        repeating-linear-gradient(
+            94deg,
+            rgba(139, 98, 48, 0) 0 6px,
+            rgba(139, 98, 48, 0.11) 7px,
+            transparent 11px
+        ),
+        #efe4b8;
+    border: 3px solid #5a3a1c;
+    border-radius: 0.28em;
     box-shadow:
-        0 2px 0 #1a140c,
-        1px 4px 0 rgba(16, 10, 4, 0.28);
+        inset 0 1px 0 rgba(255, 248, 230, 0.62),
+        inset 0 -2px 0 rgba(90, 50, 20, 0.14),
+        0 2px 0 #1a140c;
     transform: rotate(var(--tilt, 0deg));
     font-family: Outfit, "Segoe UI", sans-serif;
     font-size: clamp(1.05rem, 2.15vh, 1.65rem);
@@ -2244,13 +2277,13 @@ html, body {
 .tv-miss-chip::before {
     content: "";
     position: absolute;
-    top: 0.18em;
-    left: 0.2em;
-    width: 0.34em;
-    height: 0.34em;
+    top: 0.16em;
+    left: 0.18em;
+    width: 0.32em;
+    height: 0.32em;
     border-radius: 50%;
-    background: #d2c49a;
-    box-shadow: inset 0 0 0 2px #1a140c;
+    background: radial-gradient(circle at 35% 30%, #c4b48a, #8a7a58 70%);
+    box-shadow: inset 0 0 0 2px #1a140c, 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .tv-post-answer {
@@ -2348,8 +2381,14 @@ html, body {
 }
 
 .tv-score-ranks .tv-rank-row {
-    padding: 0;
+    padding: 0 0 0.08em;
     gap: 0.12em 0.4em;
+    border-bottom: 2px solid rgba(90, 58, 28, 0.16);
+}
+
+.tv-score-ranks .tv-rank-row:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
 }
 
 .tv-score-ranks .tv-rank-n,
