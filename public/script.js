@@ -1955,7 +1955,8 @@ function updateGameSettings() {
         questionSet: document.getElementById('questionSet').value,
         timerDuration: parseInt(document.getElementById('timerDuration').value),
         maxPlayers: parseInt(document.getElementById('maxPlayers').value),
-        roundsPerGame: parseInt(document.getElementById('roundsPerGame').value)
+        roundsPerGame: parseInt(document.getElementById('roundsPerGame').value),
+        banditAt: parseInt((document.getElementById('banditAt') || {}).value, 10)
     };
     
     socket.emit('updateGameSettings', settings);

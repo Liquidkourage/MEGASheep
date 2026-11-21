@@ -413,10 +413,10 @@
             });
             
             socket.on('gameSettingsUpdated', (settings) => {
-                console.log('Display: Game settings updated', settings);
-                // Update display if needed for settings changes
-                if (gameState) {
-                    updateDisplayFromGameState(gameState);
+                if (!gameState || !settings || typeof settings !== 'object') return;
+                gameState.settings = Object.assign({}, gameState.settings || {}, settings.settings || settings);
+                if (gameState.gameState === 'playing' || gameState.gameState === 'grading') {
+                    syncWrangler(gameState.timeLeft);
                 }
             });
             
@@ -2652,7 +2652,9 @@
         }
 
         function showPlayingScreen() {
+            const restoreBandit = gameState && gameState.gameState === 'grading' && wranglerWasOut;
             resetWrangler(true);
+            if (restoreBandit) wranglerWasOut = true;
             const currentQuestion = gameState.questions[gameState.currentQuestion];
             const questionNumber = gameState.currentQuestion + 1;
             const perRound = gameState.questionsPerRound || 1;
@@ -2668,7 +2670,7 @@
                         </div>
                         <div class="timer-display">
                             <div class="timer-circle" id="timerCircle">
-                                <span class="timer-text" id="displayTimer">${gameState.timeLeft || 30}</span>
+                                <span class="timer-text" id="displayTimer">${Number.isFinite(Number(gameState.timeLeft)) ? gameState.timeLeft : 30}</span>
                             </div>
                         </div>
                     </div>
@@ -2678,7 +2680,8 @@
             syncPenGate();
             
             // Set initial timer state
-            updateDisplayTimer(gameState.timeLeft || 30);
+            updateDisplayTimer(Number.isFinite(Number(gameState.timeLeft)) ? gameState.timeLeft : 30);
+            if (restoreBandit) startWrangler({ restore: true });
             
             const fallbackResponseCount = gameState.answersReceived || 0;
             updateResponseIndicator(fallbackResponseCount, gameState.players.length, gameState.answeredPlayers);
@@ -2773,9 +2776,21 @@
             el.style.setProperty('font-size', `${best}px`, 'important');
         }
         
-        const WRANGLER_AT = 30;
+        const BANDIT_AT_DEFAULT = 30;
         let wranglerGen = 0;
         let wranglerQuestion = '';
+        let wranglerWasOut = false;
+
+        function banditAt() {
+            const n = Number(gameState && gameState.settings && gameState.settings.banditAt);
+            if (!Number.isFinite(n) || n < 0) return BANDIT_AT_DEFAULT;
+            return n;
+        }
+
+        function pastureHoldsBandit() {
+            const phase = gameState && gameState.gameState;
+            return !!document.querySelector('.tv-play') && (phase === 'playing' || phase === 'grading');
+        }
 
         function wranglerKey() {
             return `${(gameState && gameState.gameCode) || ''}|${gameState && gameState.currentQuestion}`;
@@ -2811,6 +2826,7 @@
         function resetWrangler(instant) {
             wranglerGen += 1;
             wranglerQuestion = '';
+            wranglerWasOut = false;
             const dog = document.querySelector('#flockChorus .tv-dog');
             if (!dog) return;
             if (instant || !document.querySelector('.tv-play')) {
@@ -2898,8 +2914,8 @@
 
         function runWrangler(dog, gen) {
             if (gen !== wranglerGen || !dog || !dog.isConnected) return;
-            if (!isAnsweringOpen() || !document.querySelector('.tv-play')) {
-                resetWrangler(false);
+            if (!pastureHoldsBandit()) {
+                resetWrangler(true);
                 return;
             }
             const idle = idleHerdSheep();
@@ -2938,22 +2954,25 @@
             }, { cycle: 0.4, minSeconds: 0.7, maxSeconds: 2.6 });
         }
 
-        function startWrangler() {
+        function startWrangler(opts) {
             const key = wranglerKey();
             const chorus = document.getElementById('flockChorus');
-            if (!chorus || !document.querySelector('.tv-play') || !isAnsweringOpen()) return;
+            if (!chorus || !pastureHoldsBandit()) return;
             let dog = chorus.querySelector('.tv-dog');
             if (wranglerQuestion === key && dog) return;
             wranglerQuestion = key;
+            wranglerWasOut = true;
             wranglerGen += 1;
             const gen = wranglerGen;
             dog = ensureWrangler();
             if (!dog) return;
+            const restore = !!(opts && opts.restore);
+            const spot = restore ? gateWatchSpot() : { gx: -12, gy: 80 };
             dog.classList.add('is-placed');
             dog.classList.remove('is-left');
-            dog.style.setProperty('--gx', '-12');
-            dog.style.setProperty('--gy', '80');
-            dog.style.setProperty('--s', String(pastureScale(80)));
+            dog.style.setProperty('--gx', String(spot.gx));
+            dog.style.setProperty('--gy', String(spot.gy));
+            dog.style.setProperty('--s', String(pastureScale(spot.gy)));
             dog.style.setProperty('--z', '52');
             requestAnimationFrame(() => {
                 if (gen !== wranglerGen || !dog.isConnected) return;
@@ -2963,11 +2982,17 @@
         }
 
         function syncWrangler(timeLeft) {
-            if (!document.querySelector('.tv-play') || !isAnsweringOpen()) {
-                if (document.querySelector('#flockChorus .tv-dog')) resetWrangler(false);
+            if (!pastureHoldsBandit()) {
+                if (document.querySelector('#flockChorus .tv-dog')) resetWrangler(true);
                 return;
             }
-            if (Number(timeLeft) <= WRANGLER_AT) startWrangler();
+            if (gameState.gameState === 'playing' && Number(timeLeft) <= banditAt()) {
+                startWrangler();
+                return;
+            }
+            if (gameState.gameState === 'grading' && wranglerWasOut && !document.querySelector('#flockChorus .tv-dog')) {
+                startWrangler({ restore: true });
+            }
         }
 
         function updateDisplayTimer(timeLeft) {

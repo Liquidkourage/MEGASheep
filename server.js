@@ -302,7 +302,8 @@ class Game {
       questionSet: 'supabase',
       timerDuration: 180,
               maxPlayers: 0,
-      questionsPerRound: 5
+      questionsPerRound: 5,
+      banditAt: 30
     };
     this.timeLeft = 180;
     this.timerInterval = null;
@@ -966,6 +967,13 @@ class Game {
         timeLeft: this.timeLeft || 0,
         roundHistory: this.roundHistory || [],
               questionsPerRound: this.settings?.questionsPerRound || 5,
+              settings: {
+                questionSet: this.settings?.questionSet || 'supabase',
+                timerDuration: this.settings?.timerDuration || 180,
+                maxPlayers: this.settings?.maxPlayers || 0,
+                questionsPerRound: this.settings?.questionsPerRound || 5,
+                banditAt: Number.isFinite(Number(this.settings?.banditAt)) ? Number(this.settings.banditAt) : 30
+              },
               createdAt: this.createdAt || new Date().toISOString(),
               playerCount: this.players ? this.players.size : 0,
               isTestMode: this.isTestMode || false,
@@ -2557,6 +2565,12 @@ io.on('connection', (socket) => {
             const n = Number(data.questionsPerRound);
             if (Number.isFinite(n) && n >= 1) game.settings.questionsPerRound = n;
         }
+        if (data.banditAt != null) {
+            const n = Number(data.banditAt);
+            if (Number.isFinite(n) && n >= 0) game.settings.banditAt = Math.min(600, Math.round(n));
+        }
+        broadcastState(game, 'gameSettingsUpdated');
+        io.to(game.gameCode).emit('gameSettingsUpdated', game.settings);
     });
 
     socket.on('startGame', async (data) => {

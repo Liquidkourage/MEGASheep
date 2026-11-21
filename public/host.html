@@ -1570,6 +1570,11 @@
                             <div class="setting-description">Default: 180 seconds (3 minutes)</div>
                         </div>
                         <div class="setting-group">
+                            <label for="banditAt">Bandit (seconds remaining):</label>
+                            <input type="number" id="banditAt" value="30" min="0" max="600">
+                            <div class="setting-description">Bandit runs in when this many seconds are left. He stays until the question is scored. Default: 30</div>
+                        </div>
+                        <div class="setting-group">
                             <label for="maxPlayers">Maximum Players:</label>
                             <input type="number" id="maxPlayers" value="0" min="0" max="50">
                             <div class="setting-description">0 = unlimited players</div>
@@ -1719,6 +1724,22 @@
             currentGame = state;
             if (typeof state.gameState === 'string') gameState = state.gameState;
             try { window._answersByName = answersByNameFromState(state); } catch (_) {}
+            fillHostSettings(state);
+        }
+
+        function fillHostSettings(state) {
+            const s = (state && state.settings) || {};
+            const setVal = (id, value) => {
+                const el = document.getElementById(id);
+                if (!el || value == null) return;
+                if (document.activeElement === el) return;
+                el.value = value;
+            };
+            if (s.questionSet) setVal('questionSet', s.questionSet);
+            if (s.timerDuration != null) setVal('timerDuration', s.timerDuration);
+            if (s.maxPlayers != null) setVal('maxPlayers', s.maxPlayers);
+            if (s.questionsPerRound != null) setVal('questionsPerRound', s.questionsPerRound);
+            if (s.banditAt != null) setVal('banditAt', s.banditAt);
         }
 
         function applyHostState(packet, source) {
@@ -3005,7 +3026,8 @@
                 questionSet: document.getElementById('questionSet')?.value,
                 timerDuration: Number(document.getElementById('timerDuration')?.value),
                 maxPlayers: Number(document.getElementById('maxPlayers')?.value),
-                questionsPerRound: Number(document.getElementById('questionsPerRound')?.value)
+                questionsPerRound: Number(document.getElementById('questionsPerRound')?.value),
+                banditAt: Number(document.getElementById('banditAt')?.value)
             });
         }
 
@@ -3079,7 +3101,7 @@
 
         const qpLoadBtn = document.getElementById('qpLoadBtn');
         if (qpLoadBtn) qpLoadBtn.addEventListener('click', qpLoad);
-        ['questionSet', 'timerDuration', 'maxPlayers', 'questionsPerRound'].forEach((id) => {
+        ['questionSet', 'timerDuration', 'maxPlayers', 'questionsPerRound', 'banditAt'].forEach((id) => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('change', () => {
                 emitGameSettings();
