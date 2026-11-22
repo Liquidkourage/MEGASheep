@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T00-30-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T00-50-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -4046,27 +4046,17 @@
             const chorus = document.getElementById('flockChorus');
             if (!chorus) return null;
             const ball = document.createElement('span');
-            ball.className = 'tv-herd-ball is-loose';
+            ball.className = 'tv-herd-ball is-loose is-placed';
             ball.setAttribute('aria-hidden', 'true');
-            ball.innerHTML = '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="14.2" fill="#d6e34a" stroke="#241c12" stroke-width="2.5"/><path d="M6.2 8.2c6.2 3.6 6.2 12 0 15.6" fill="none" stroke="#f6f8ee" stroke-width="2.2" stroke-linecap="round"/><path d="M25.8 8.2c-6.2 3.6-6.2 12 0 15.6" fill="none" stroke="#f6f8ee" stroke-width="2.2" stroke-linecap="round"/><ellipse cx="12.2" cy="11" rx="5" ry="3.1" fill="#fff" fill-opacity=".32"/></svg>';
+            ball.innerHTML = '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#d8e44c" stroke="#241c12" stroke-width="2.35"/><path d="M6.6 7.2c7.1 4.1 7.1 13.5 0 17.6" fill="none" stroke="#241c12" stroke-width="2.15" stroke-linecap="round"/><path d="M25.4 7.2c-7.1 4.1-7.1 13.5 0 17.6" fill="none" stroke="#241c12" stroke-width="2.15" stroke-linecap="round"/><path d="M7.3 8c6.3 3.6 6.3 12.2 0 15.8" fill="none" stroke="#f7f8ee" stroke-width="1.45" stroke-linecap="round"/><path d="M24.7 8c-6.3 3.6-6.3 12.2 0 15.8" fill="none" stroke="#f7f8ee" stroke-width="1.45" stroke-linecap="round"/><ellipse cx="12.2" cy="11.2" rx="5.1" ry="3.2" fill="#fff" fill-opacity=".4"/></svg>';
             ball.style.setProperty('--gx', String(spot.gx));
             ball.style.setProperty('--gy', String(spot.gy));
             ball.style.setProperty('--hop', '0');
             ball.style.setProperty('--spin', '0deg');
-            ball.style.setProperty('--z', '68');
+            ball.style.setProperty('--z', '72');
+            ball.style.transitionDuration = '0s';
             chorus.appendChild(ball);
             return ball;
-        }
-
-        function catchHerdBall(dog, ball) {
-            if (!dog || !ball || !ball.isConnected || ball.classList.contains('is-caught')) return;
-            bumpEweWalk(ball);
-            ball.classList.remove('is-loose');
-            ball.classList.add('is-caught');
-            ball.style.setProperty('--hop', '0');
-            ball.style.setProperty('--spin', '-22deg');
-            dog.appendChild(ball);
-            dog.classList.add('is-carrying');
         }
 
         function dogMouthStage(dog) {
@@ -4077,108 +4067,120 @@
             const hopGy = field.height ? hop / field.height * 100 : 0;
             const left = dog.classList.contains('is-left');
             return {
-                gx: p.x + (left ? -2.5 : 2.5),
-                gy: p.y - 3.4 + hopGy
+                gx: p.x + (left ? -2.8 : 2.8),
+                gy: p.y - 4.1 + hopGy
             };
         }
 
         function chaseTheBallOffstage(dog, gen) {
             if (gen !== wranglerGen || !dog || !dog.isConnected) return;
-            dog.classList.remove('is-latching', 'is-yipping', 'is-sitting');
-            dog.classList.add('is-chasing', 'is-left', 'is-placed');
+            bumpEweWalk(dog);
+            dog.classList.remove('is-latching', 'is-yipping', 'is-sitting', 'is-jumping');
+            dog.classList.add('is-chasing', 'is-carrying', 'is-left', 'is-placed', 'is-walking', 'is-running');
             dog.style.setProperty('--walk', '0s');
             dog.style.transitionDuration = '0s';
+            dog.style.setProperty('--hop', '0');
             const here = currentEwePoint(dog);
-            const runY = Math.min(PLAY_FIELD.bottom - 1.6, Math.max(PLAY_FIELD.top + 12, here.y + 0.8));
-            const throwFrom = { gx: Math.min(74, here.x + 8), gy: Math.max(PLAY_FIELD.top + 0.6, 53.5) };
-            const leapAt = { gx: 22.5, gy: runY };
-            const catchAt = { gx: 13.4, gy: runY - 0.6 };
-            const ball = spawnHerdBall(throwFrom);
+            const runY = Math.min(PLAY_FIELD.bottom - 4, Math.max(PLAY_FIELD.top + 14, here.y));
+            const startX = here.x;
+            const catchX = Math.max(18, Math.min(30, startX - 24));
+            const exitX = BANDIT_OFFSTAGE_X;
             const body = dog.getBoundingClientRect().width || 96;
-            if (ball) {
-                walkSmoothPath(ball, [
-                    { x: throwFrom.gx, y: throwFrom.gy },
-                    { x: (throwFrom.gx + catchAt.gx) * 0.48, y: 49.5, cut: 0.22 },
-                    { x: catchAt.gx + 1.4, y: catchAt.gy - 1.2 }
-                ], () => {}, {
-                    noGait: true,
-                    hop: Math.round(body * 1.15),
-                    minSeconds: 0.82,
-                    maxSeconds: 0.95,
-                    pace: 2400,
-                    face: () => {}
-                });
-            }
-            const finishOff = () => {
-                if (gen !== wranglerGen || !dog.isConnected) return;
-                dog.style.setProperty('--hop', '0');
-                dog.classList.remove('is-jumping');
-                setBanditGait(dog, 'run');
-                dog.classList.add('is-left', 'is-chasing');
-                walkBanditTo(dog, BANDIT_OFFSTAGE_X, runY, () => {
-                    if (dog.isConnected) dog.remove();
-                    clearHerdBall();
-                }, {
-                    gait: 'run',
-                    fromJump: true,
-                    skipFace: true,
-                    direct: true,
-                    minSeconds: 0.55,
-                    maxSeconds: 0.78,
-                    pace: body * 2.9
-                });
+            const throwFrom = {
+                x: Math.min(70, startX + 4.2),
+                y: runY - 5.2
             };
-            let steerFrom = null;
+            const throwApex = {
+                x: throwFrom.x + (catchX - throwFrom.x) * 0.46,
+                y: Math.max(PLAY_FIELD.top - 0.8, 51.2)
+            };
+            const throwCatch = {
+                x: catchX + 2.4,
+                y: runY - 4.6
+            };
+            const ball = spawnHerdBall({ gx: throwFrom.x, gy: throwFrom.y });
+            const seconds = 1.62;
+            const catchU = 0.46;
+            const chaseGen = bumpEweWalk(dog);
             let caught = false;
-            const leap = () => {
-                if (gen !== wranglerGen || !dog.isConnected) return;
-                banditJumpToward(dog, catchAt, () => {
-                    if (!caught) catchHerdBall(dog, ball);
-                    finishOff();
-                }, {
-                    reach: true,
-                    keepMoving: true,
-                    onTick: (el, point, u) => {
-                        const grab = Math.max(0, Math.min(1, (u - 0.16) / 0.34));
-                        if (grab > 0 && ball && !steerFrom) {
-                            bumpEweWalk(ball);
-                            steerFrom = {
-                                gx: parseFloat(ball.style.getPropertyValue('--gx')) || catchAt.gx,
-                                gy: parseFloat(ball.style.getPropertyValue('--gy')) || catchAt.gy,
-                                hop: parseFloat(ball.style.getPropertyValue('--hop')) || 0
-                            };
-                        }
-                        if (grab > 0 && ball && ball.classList.contains('is-loose') && steerFrom) {
-                            const s = grab * grab * (3 - 2 * grab);
-                            const mouth = dogMouthStage(el);
-                            const dogHop = parseFloat(el.style.getPropertyValue('--hop')) || 0;
-                            ball.style.setProperty('--gx', String(steerFrom.gx + (mouth.gx - steerFrom.gx) * s));
-                            ball.style.setProperty('--gy', String(steerFrom.gy + (mouth.gy - steerFrom.gy) * s));
-                            ball.style.setProperty('--hop', String(steerFrom.hop + (dogHop - steerFrom.hop) * s));
-                        }
-                        if (!caught && grab >= 0.86) {
-                            caught = true;
-                            catchHerdBall(el, ball);
-                        }
-                    }
-                });
+            let jumpStarted = false;
+            const started = performance.now();
+            const mix = (a, b, t) => a + (b - a) * t;
+            const bez = (a, b, c, t) => {
+                const u = 1 - t;
+                return u * u * a + 2 * u * t * b + t * t * c;
             };
-            window.setTimeout(() => {
-                if (gen !== wranglerGen || !dog.isConnected) return;
-                walkBanditTo(dog, leapAt.gx, leapAt.gy, () => {
-                    if (gen !== wranglerGen || !dog.isConnected) return;
-                    leap();
-                }, {
-                    gait: 'run',
-                    fromJump: true,
-                    skipFace: true,
-                    direct: true,
-                    keepMoving: true,
-                    minSeconds: 0.55,
-                    maxSeconds: 0.7,
-                    pace: body * 2.7
-                });
-            }, 90);
+            const placeBall = (gx, gy, spin) => {
+                if (!ball || !ball.isConnected) return;
+                ball.style.setProperty('--gx', String(gx));
+                ball.style.setProperty('--gy', String(gy));
+                ball.style.setProperty('--hop', '0');
+                ball.style.setProperty('--spin', `${spin}deg`);
+                ball.style.setProperty('--z', caught ? '71' : '74');
+            };
+            const finish = () => {
+                if (dog.dataset.walkGen !== chaseGen) return;
+                if (dog.isConnected) dog.remove();
+                clearHerdBall();
+            };
+            const tick = (now) => {
+                if (gen !== wranglerGen || !dog.isConnected || dog.dataset.walkGen !== chaseGen) return;
+                const u = Math.min(1, (now - started) / (seconds * 1000));
+                const gx = mix(startX, exitX, u);
+                const gy = mix(here.y, runY, Math.min(1, u / 0.14));
+                const leap = Math.max(0, 1 - ((u - catchU) / 0.15) ** 2);
+                const lift = leap > 0 ? leap * leap * (3 - 2 * leap) : 0;
+                dog.style.setProperty('--gx', String(gx));
+                dog.style.setProperty('--gy', String(gy));
+                dog.style.setProperty('--hop', (-body * 0.82 * lift).toFixed(1));
+                dog.style.setProperty('--s', String(pastureScale(gy) * 1.06 * (1 + 0.12 * lift)));
+                dog.style.setProperty('--z', '70');
+                dog.classList.add('is-left', 'is-walking', 'is-running', 'is-placed', 'is-chasing');
+                if (lift > 0.18) {
+                    if (!jumpStarted) {
+                        jumpStarted = true;
+                        dog.classList.remove('is-jumping');
+                        const strip = dog.querySelector('.tv-ewe-strip');
+                        if (strip) {
+                            strip.style.animation = 'none';
+                            void strip.offsetWidth;
+                            strip.style.animation = '';
+                        }
+                        void dog.offsetWidth;
+                    }
+                    dog.classList.add('is-jumping');
+                } else if (jumpStarted) {
+                    dog.classList.remove('is-jumping');
+                }
+                const mouth = dogMouthStage(dog);
+                if (!caught && ball && ball.isConnected) {
+                    const tBall = Math.min(1, u / catchU);
+                    let bx = bez(throwFrom.x, throwApex.x, throwCatch.x, tBall);
+                    let by = bez(throwFrom.y, throwApex.y, throwCatch.y, tBall);
+                    const grab = Math.max(0, Math.min(1, (tBall - 0.78) / 0.22));
+                    if (grab > 0) {
+                        const s = grab * grab * (3 - 2 * grab);
+                        bx = mix(bx, mouth.gx, s);
+                        by = mix(by, mouth.gy, s);
+                    }
+                    placeBall(bx, by, tBall * 420);
+                    if (grab >= 1 || (tBall >= 0.9 && Math.hypot(bx - mouth.gx, by - mouth.gy) < 2.2)) {
+                        caught = true;
+                        ball.classList.remove('is-loose');
+                        ball.classList.add('is-caught');
+                    }
+                }
+                if (caught && ball && ball.isConnected) {
+                    placeBall(mouth.gx, mouth.gy, -28);
+                }
+                if (u < 1) {
+                    window.requestAnimationFrame(tick);
+                    return;
+                }
+                finish();
+            };
+            window.requestAnimationFrame(tick);
+            window.setTimeout(finish, seconds * 1000 + 180);
         }
 
         function shutTheGateAndLeave(dog, gen) {
