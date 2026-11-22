@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T18-55-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T19-10-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -2830,7 +2830,7 @@
         function wranglerHtml(spot) {
             const gx = spot && Number.isFinite(spot.gx) ? spot.gx : PLAY_FIELD.left + 6;
             const gy = spot && Number.isFinite(spot.gy) ? spot.gy : PLAY_FIELD.bottom - 1.2;
-            return `<figure class="tv-ewe tv-dog" data-id="__wrangler__" data-coat="dog" data-mood="idle" style="--gx:${gx};--gy:${gy};--px:${gx};--py:${gy};--ox:${gx};--oy:${gy};--s:1;--z:52;--idle:0s"><span class="tv-dog-yips" aria-hidden="true"><i></i><i></i><i></i></span><span class="tv-ewe-art" aria-hidden="true"><span class="tv-ewe-strip"></span></span></figure>`;
+            return `<figure class="tv-ewe tv-dog" data-id="__wrangler__" data-coat="dog" data-mood="idle" style="--gx:${gx};--gy:${gy};--px:${gx};--py:${gy};--ox:${gx};--oy:${gy};--s:1;--z:52;--idle:0s"><span class="tv-ewe-art" aria-hidden="true"><span class="tv-ewe-strip"></span></span></figure>`;
         }
 
         function ensureWrangler(spot) {
@@ -2841,8 +2841,8 @@
                 chorus.insertAdjacentHTML('beforeend', wranglerHtml(spot));
                 dog = chorus.querySelector('.tv-dog');
             }
-            if (dog && !dog.querySelector('.tv-dog-yips')) {
-                dog.insertAdjacentHTML('afterbegin', '<span class="tv-dog-yips" aria-hidden="true"><i></i><i></i><i></i></span>');
+            if (dog) {
+                dog.querySelectorAll('.tv-dog-yips').forEach((el) => el.remove());
             }
             return dog;
         }
