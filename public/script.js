@@ -3635,7 +3635,7 @@ function displayFinalResults() {
     const overallCount = document.getElementById('overallQuestionsCount');
     
     // Set titles for overall leaderboard
-    if (overallTitle) overallTitle.textContent = 'Bleat-erboard';
+    if (overallTitle) overallTitle.textContent = 'Grand Total';
     if (overallSubtitle) {
         overallSubtitle.hidden = true;
     }
@@ -3656,7 +3656,8 @@ function displayFinalResults() {
                 total: playerScoreOf(player)
             })), {
                 myName,
-                kind: 'event'
+                kind: 'event',
+                title: 'Bleat-erboard'
             });
             revealPlayerBoardYou(finalScoresList);
         } else {

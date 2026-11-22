@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T10-56-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T17-58-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1753,39 +1753,39 @@
             const rest = rankedPlayers(list).slice(3);
             if (!rest.length) return [];
             const n = rest.length;
-            const rows = n <= 8 ? 2 : n <= 18 ? 3 : n <= 32 ? 4 : n <= 48 ? 5 : 6;
-            const counts = [];
-            let remaining = n;
-            for (let r = 0; r < rows; r += 1) {
-                const leftRows = rows - r;
-                const take = r === rows - 1 ? remaining : Math.ceil(remaining / leftRows);
-                counts.push(take);
-                remaining -= take;
-            }
-            const packed = [];
-            const far = { left: 5, right: 54, y: 53 };
-            const near = { left: 3, right: 56, y: 86 };
-            for (let r = 0; r < rows; r += 1) {
-                const t = rows <= 1 ? 0.5 : r / (rows - 1);
-                const y = far.y + t * (near.y - far.y);
-                const left = far.left + t * (near.left - far.left);
-                const right = far.right + t * (near.right - far.right);
-                const count = counts[r];
-                for (let c = 0; c < count; c += 1) {
-                    packed.push({
-                        x: left + ((c + 0.5) / Math.max(count, 1)) * (right - left),
-                        y,
-                        z: 6 + r * 5,
-                        scale: pastureScale(y) * 0.78
+            const rings = n <= 9 ? 1 : n <= 20 ? 2 : 3;
+            const slots = [];
+            let placed = 0;
+            for (let ring = 0; ring < rings; ring += 1) {
+                const leftHere = n - placed;
+                const leftRings = rings - ring;
+                const take = ring === rings - 1 ? leftHere : Math.ceil(leftHere / leftRings);
+                const radius = 0.82 + ring * 0.14;
+                for (let i = 0; i < take; i += 1) {
+                    const t = take <= 1 ? 0.5 : i / (take - 1);
+                    const a = Math.PI * (1.14 + t * 0.74);
+                    slots.push({
+                        x: 40 + Math.cos(a) * 34 * radius,
+                        y: 58 + Math.sin(a) * 9 * radius,
+                        z: 5 + ring * 4
                     });
                 }
+                placed += take;
             }
             return rest.map((player, index) => {
-                const spot = packed[packed.length - 1 - index] || packed[0];
-                return resultSlot(player, names, spot, {
+                const spot = slots[index] || slots[0];
+                const gx = Math.min(66, Math.max(3, spot.x));
+                const gy = Math.min(61, Math.max(52, spot.y));
+                return resultSlot(player, names, {
+                    x: gx,
+                    y: gy,
+                    z: spot.z,
+                    scale: pastureScale(gy) * 0.8
+                }, {
                     named: false,
-                    minGy: 51,
-                    scale: 0.78
+                    minGy: 52,
+                    scale: 0.8,
+                    faceLeft: gx > 40
                 });
             });
         }
@@ -4782,14 +4782,17 @@
             if (kind !== 'tv-score') scoreParadeGen += 1;
             preventAllScrolling();
             const sky = (kind === 'tv-score' || kind === 'tv-standings') ? '' : skyNameHtml();
+            const fair = kind === 'tv-final' ? tvFairHtml() : '';
             document.getElementById('displayScreen').innerHTML = `
                 <div class="tv-stage ${kind}">
                     ${pastureSceneHtml({ pen: false })}
                     ${sky}
+                    ${fair}
                     ${overlayHtml}
                 </div>
             `;
             renderFlock(players || (gameState && gameState.players) || []);
+            mountFinaleFair();
         }
 
         function tvRankRowsHtml(players, startAt, options) {
@@ -4952,8 +4955,37 @@
         function mountRankSign() {
             if (document.querySelector('.tv-board-stack')) return;
             const chorus = document.getElementById('flockChorus');
-            const sign = document.querySelector('.tv-stage > .tv-score-ranks, .tv-standings > .tv-score-ranks');
+            const sign = document.querySelector('.tv-stage > .tv-score-ranks, .tv-standings > .tv-score-ranks, .tv-final > .tv-score-ranks');
             if (chorus && sign) chorus.appendChild(sign);
+        }
+
+        function tvFairHtml() {
+            const lights = Array.from({ length: 15 }, (_, i) => {
+                const t = i / 14;
+                const x = 7 + t * 66;
+                const y = 37.5 + Math.sin(t * Math.PI) * 7;
+                return `<i style="--x:${x.toFixed(2)}%; --y:${y.toFixed(2)}%"></i>`;
+            }).join('');
+            const flags = Array.from({ length: 12 }, (_, i) => {
+                const t = i / 11;
+                const x = 12 + t * 56;
+                const y = 27 + Math.sin(t * Math.PI) * 4.8;
+                const rot = -16 + (i % 3) * 11;
+                return `<b style="--x:${x.toFixed(2)}%; --y:${y.toFixed(2)}%; --rot:${rot}deg"></b>`;
+            }).join('');
+            return `
+                <div class="tv-fair" aria-hidden="true">
+                    <div class="tv-fair-bunting">${flags}</div>
+                    <div class="tv-fair-lights">${lights}</div>
+                    <div class="tv-fair-ring"></div>
+                </div>
+            `;
+        }
+
+        function mountFinaleFair() {
+            const pasture = document.querySelector('.tv-final .tv-pasture');
+            const fair = document.querySelector('.tv-final > .tv-fair');
+            if (pasture && fair) pasture.appendChild(fair);
         }
 
         function tvScoreBannerHtml() {
@@ -5625,14 +5657,15 @@
             if (gameStateData) gameState = gameStateData;
             const players = rankedPlayers(gameState && gameState.players);
             paintMeadowScreen('tv-final', `
-                <div class="tv-board-stack is-event">
-                    ${tvRankSignHtml(players, {
-                        boardId: 'finalRankBoard',
-                        cols: 1,
-                        planted: 'finale'
-                    })}
-                    ${tvPodiumHtml(players)}
-                </div>
+                ${tvRankSignHtml(players, {
+                    boardId: 'finalRankBoard',
+                    cols: 1,
+                    x: 86,
+                    y: 63,
+                    width: 18,
+                    subhead: 'Grand Total'
+                })}
+                ${tvPodiumHtml(players)}
             `, players);
             mountRankSign();
             armBoardScroll('finalRankBoard', players.length);

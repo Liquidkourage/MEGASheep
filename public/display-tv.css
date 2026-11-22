@@ -3391,3 +3391,154 @@ html, body {
     0%, 12% { transform: translateY(0); }
     88%, 100% { transform: translateY(var(--scroll-to, -45%)); }
 }
+
+/* Championship night — overall / finale board */
+.tv-final .tv-pasture-art {
+    filter: saturate(1.2) hue-rotate(-22deg) brightness(1.05) contrast(1.05);
+}
+
+.tv-final .tv-pasture-shade {
+    background:
+        radial-gradient(ellipse 58% 48% at 82% 9%, rgba(255, 220, 120, 0.42), transparent 64%),
+        radial-gradient(ellipse 72% 42% at 48% 40%, rgba(255, 176, 72, 0.16), transparent 72%),
+        linear-gradient(180deg, rgba(42, 16, 6, 0.2) 0%, rgba(22, 10, 4, 0.05) 34%, rgba(46, 22, 8, 0.12) 58%, rgba(16, 8, 4, 0.46) 100%);
+}
+
+.tv-final .tv-pasture-ground {
+    background:
+        radial-gradient(ellipse 48% 26% at 41% 78%, rgba(228, 197, 107, 0.32) 0%, transparent 64%),
+        radial-gradient(ellipse 90% 30% at 50% 48%, rgba(214, 176, 96, 0.16) 0%, transparent 62%),
+        radial-gradient(ellipse 130% 62% at 50% 64%, transparent 36%, rgba(18, 8, 4, 0.28) 100%);
+}
+
+.tv-fair {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.tv-fair-bunting b {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    width: 0;
+    height: 0;
+    border-left: 0.85vw solid transparent;
+    border-right: 0.85vw solid transparent;
+    border-top: 1.7vw solid #e4c56b;
+    transform: translateX(-50%) rotate(var(--rot, 0deg));
+    filter: drop-shadow(0 2px 0 #1a140c);
+}
+
+.tv-fair-bunting b:nth-child(odd) {
+    border-top-color: #f3e6c4;
+}
+
+.tv-fair-bunting b:nth-child(3n) {
+    border-top-color: #c4844a;
+}
+
+.tv-fair-lights i {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    width: 0.72vw;
+    height: 0.92vw;
+    margin: 0;
+    border-radius: 50% 50% 46% 46%;
+    background: radial-gradient(circle at 40% 32%, #fff8d2, #f0c14a 58%, #b77818);
+    box-shadow:
+        0 0 0.7vw 0.18vw rgba(255, 214, 110, 0.7),
+        0 0 1.8vw rgba(255, 196, 80, 0.4);
+    transform: translate(-50%, -50%);
+}
+
+.tv-fair-lights i::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 92%;
+    width: 0.12vw;
+    height: 0.7vw;
+    background: #1a140c;
+    transform: translateX(-50%);
+}
+
+.tv-fair-ring {
+    position: absolute;
+    left: 44%;
+    top: 78%;
+    width: 34%;
+    height: 24%;
+    border: 0.55vw solid rgba(228, 197, 107, 0.78);
+    border-radius: 50%;
+    box-shadow:
+        0 0 2.6vw rgba(255, 210, 110, 0.38),
+        inset 0 0 2.2vw rgba(255, 220, 140, 0.2);
+    transform: translate(-50%, -12%);
+}
+
+.tv-final .tv-flock {
+    z-index: 4;
+}
+
+.tv-final .tv-score-ranks {
+    width: var(--w, 18vw);
+    aspect-ratio: 769 / 986;
+    max-height: 42vh;
+}
+
+.tv-final .tv-score-ranks .tv-sign-art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: bottom center;
+    filter: sepia(0.3) saturate(1.24) hue-rotate(-14deg);
+}
+
+.tv-final .tv-rank-kicker,
+.tv-final .tv-rank-sub {
+    color: #8a5a12;
+}
+
+.tv-final .tv-podium {
+    left: 18%;
+    right: 30%;
+    top: auto;
+    bottom: 2.4%;
+    height: 36vh;
+    z-index: 12;
+}
+
+.tv-final .tv-podium-name {
+    color: #ffe9a8;
+    text-shadow:
+        0 0 18px rgba(255, 210, 96, 0.45),
+        0 4px 18px rgba(4, 10, 18, 0.7);
+}
+
+.tv-final .tv-crate {
+    position: relative;
+}
+
+.tv-final .tv-podium-spot.is-1 .tv-crate::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -0.55em;
+    width: 1.15em;
+    height: 1.15em;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 50% 50%, #fff3c0 0 18%, transparent 19%),
+        conic-gradient(#e4c56b 0 12%, #8a5a12 0 20%, #e4c56b 0 37%, #8a5a12 0 45%, #e4c56b 0 62%, #8a5a12 0 70%, #e4c56b 0 87%, #8a5a12 0 95%, #e4c56b 0);
+    box-shadow: 0 2px 0 #1a140c;
+    transform: translateX(-50%);
+}
+
+.tv-final .tv-sky-name img {
+    filter: drop-shadow(0 0 18px rgba(255, 210, 110, 0.35));
+}

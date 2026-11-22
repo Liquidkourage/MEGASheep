@@ -1212,9 +1212,30 @@ body.player-app .player-board.is-event .player-board-you {
     box-shadow: 0 0 0 2px #e4c56b;
 }
 
+body.player-app .player-board.is-event .player-board-title {
+    color: #f3d56a;
+}
+
+body.player-app:has(#gameOverScreen.active)::before {
+    filter: saturate(1.18) hue-rotate(-18deg) brightness(1.04);
+}
+
+body.player-app:has(#gameOverScreen.active)::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 70% 40% at 80% 8%, rgba(255, 220, 120, 0.28), transparent 60%),
+        radial-gradient(ellipse 90% 36% at 50% 100%, rgba(228, 197, 107, 0.16), transparent 70%);
+}
+
 body.player-app #gameOverScreen .screen-content h2 {
     color: #f3d56a;
-    text-shadow: 0 2px 0 #0b1018;
+    text-shadow:
+        0 0 16px rgba(255, 210, 96, 0.35),
+        0 2px 0 #0b1018;
 }
 
 body.player-app .player-board-list {
