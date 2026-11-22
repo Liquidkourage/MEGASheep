@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T21-52-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T22-00-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -28,8 +28,8 @@
     <link rel="preload" as="image" href="sprites/dog-01-gait.png?v=2026-11-21T19-35-00">
     <link rel="preload" as="image" href="sprites/dog-01-jump.png?v=2026-11-21T16-30-00">
     <link rel="preload" as="image" href="sprites/dog-01-sit.png?v=2026-11-21T17-10-00">
-    <link rel="preload" as="image" href="sprites/dog-01-yip.png?v=2026-11-21T19-25-00">
-    <link rel="preload" as="image" href="sprites/dog-01-yip-sit.png?v=2026-11-21T19-25-00">
+    <link rel="preload" as="image" href="sprites/dog-01-yip.png?v=2026-11-21T22-00-00">
+    <link rel="preload" as="image" href="sprites/dog-01-yip-sit.png?v=2026-11-21T22-00-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -2543,7 +2543,7 @@
             };
             const tick = (now) => {
                 if (el.dataset.walkGen !== gen || !el.isConnected) return;
-                if (el.classList.contains('tv-dog') && el.classList.contains('is-sitting')) {
+                if (el.classList.contains('tv-dog') && banditIsPlanted(el)) {
                     el.classList.remove('is-walking', 'is-running', 'is-jumping');
                     return;
                 }
@@ -2949,7 +2949,7 @@
         function wranglerHtml(spot) {
             const gx = spot && Number.isFinite(spot.gx) ? spot.gx : PLAY_FIELD.left + 6;
             const gy = spot && Number.isFinite(spot.gy) ? spot.gy : PLAY_FIELD.bottom - 1.2;
-            return `<figure class="tv-ewe tv-dog" data-id="__wrangler__" data-coat="dog" data-mood="idle" style="--gx:${gx};--gy:${gy};--px:${gx};--py:${gy};--ox:${gx};--oy:${gy};--s:1;--z:52;--idle:0s"><span class="tv-dog-yips" aria-hidden="true"><i></i><i></i><i></i></span><span class="tv-ewe-art" aria-hidden="true"><span class="tv-ewe-strip"></span></span></figure>`;
+            return `<figure class="tv-ewe tv-dog" data-id="__wrangler__" data-coat="dog" data-mood="idle" style="--gx:${gx};--gy:${gy};--px:${gx};--py:${gy};--ox:${gx};--oy:${gy};--s:1;--z:52;--idle:0s"><span class="tv-ewe-art" aria-hidden="true"><span class="tv-ewe-strip"></span></span></figure>`;
         }
 
         function ensureWrangler(spot) {
@@ -2959,9 +2959,6 @@
             if (!dog) {
                 chorus.insertAdjacentHTML('beforeend', wranglerHtml(spot));
                 dog = chorus.querySelector('.tv-dog');
-            }
-            if (dog && !dog.querySelector('.tv-dog-yips')) {
-                dog.insertAdjacentHTML('afterbegin', '<span class="tv-dog-yips" aria-hidden="true"><i></i><i></i><i></i></span>');
             }
             return dog;
         }
@@ -3194,8 +3191,12 @@
             return { x: hem.gx, y: hem.gy };
         }
 
+        function banditIsPlanted(dog) {
+            return !!(dog && (dog.classList.contains('is-sitting') || dog.classList.contains('is-yipping')));
+        }
+
         function parkBandit(dog, point) {
-            if (dog.classList.contains('is-sitting')) return currentEwePoint(dog);
+            if (banditIsPlanted(dog)) return currentEwePoint(dog);
             const x = Number.isFinite(point.x) ? point.x : point.gx;
             const y = Number.isFinite(point.y) ? point.y : point.gy;
             const leaving = x < BANDIT_ONSTAGE_LEFT - 0.4;
@@ -3275,19 +3276,29 @@
             let dx = tx - here.x;
             let dy = ty - here.y;
             const len = Math.hypot(dx, dy) || 1;
-            const span = Math.min(15, Math.max(8.5, len * 0.42));
-            const land = banditClearPoint(dog, here.x + (dx / len) * span, here.y + (dy / len) * span, 8.8);
+            const chorus = document.getElementById('flockChorus');
+            const field = (chorus || dog).getBoundingClientRect();
+            const body = dog.getBoundingClientRect().width || 96;
+            const bodyGx = (body / Math.max(1, field.width)) * 100;
+            const span = Math.min(len, Math.max(bodyGx * 0.95, Math.min(bodyGx * 1.45, len)));
+            let land = banditClearPoint(dog, here.x + (dx / len) * span, here.y + (dy / len) * span, 7.4);
+            const jumpDist = Math.hypot(land.gx - here.x, land.gy - here.y);
+            if (jumpDist > bodyGx * 1.7) {
+                land = clampBanditPoint(here.x + (dx / len) * span, here.y + (dy / len) * span);
+            }
             dog.classList.toggle('is-left', land.gx < here.x);
             dog.classList.remove('is-jumping');
             void dog.offsetWidth;
             setBanditGait(dog, 'jump');
-            const hopLift = Math.round((dog.getBoundingClientRect().height || 120) * 0.62);
+            const hopLift = Math.round(body * 0.26);
             walkSmoothPath(dog, [
                 { x: here.x, y: here.y },
                 { x: land.gx, y: land.gy }
             ], () => {
                 dog.style.setProperty('--hop', '0');
                 dog.classList.remove('is-jumping', 'is-walking', 'is-running');
+                dog.classList.add('is-placed');
+                dog.style.transitionDuration = '0s';
                 parkBandit(dog, currentEwePoint(dog));
                 faceWranglerAtSheep(dog);
                 if (onDone) onDone();
@@ -3295,8 +3306,8 @@
                 live: () => dog.isConnected && pastureHoldsBandit(),
                 hop: hopLift,
                 minSeconds: 0.5,
-                maxSeconds: 0.64,
-                pace: 3200
+                maxSeconds: 0.56,
+                pace: 2800
             });
         }
 
@@ -3449,7 +3460,7 @@
 
         function faceWranglerAtSheep(dog) {
             if (!dog || !dog.isConnected) return;
-            if (dog.classList.contains('is-walking') || dog.classList.contains('is-jumping') || dog.classList.contains('is-sitting')) return;
+            if (dog.classList.contains('is-walking') || dog.classList.contains('is-jumping') || dog.classList.contains('is-sitting') || dog.classList.contains('is-yipping')) return;
             const look = wranglerLookPoint(dog);
             if (!look) return;
             const here = visualEwePoint(dog);
@@ -3631,7 +3642,7 @@
 
         function corralNearBandit(dog) {
             flowFlockFromDog(dog, dog.classList.contains('is-yipping'));
-            if (!dog.classList.contains('is-walking') && !dog.classList.contains('is-jumping') && !dog.classList.contains('is-sitting')) {
+            if (!dog.classList.contains('is-walking') && !dog.classList.contains('is-jumping') && !banditIsPlanted(dog)) {
                 faceWranglerAtSheep(dog);
             }
         }
@@ -3655,13 +3666,20 @@
         function banditYip(dog, gen) {
             if (!dog || !dog.isConnected || gen !== wranglerGen) return;
             if (dog.classList.contains('is-walking') || dog.classList.contains('is-jumping')) return;
-            faceWranglerAtSheep(dog);
+            bumpEweWalk(dog);
+            dog.classList.remove('is-walking', 'is-running', 'is-jumping');
+            dog.style.transitionDuration = '0s';
+            dog.style.setProperty('--walk', '0s');
+            dog.style.setProperty('--hop', '0');
+            dog.classList.add('is-placed');
+            if (!dog.classList.contains('is-sitting')) faceWranglerAtSheep(dog);
             dog.classList.remove('is-yipping');
-            dog.querySelectorAll('.tv-dog-yips i').forEach((el) => {
-                el.style.animation = 'none';
-                void el.offsetWidth;
-                el.style.animation = '';
-            });
+            const strip = dog.querySelector('.tv-ewe-strip');
+            if (strip) {
+                strip.style.animation = 'none';
+                void strip.offsetWidth;
+                strip.style.animation = '';
+            }
             void dog.offsetWidth;
             dog.classList.add('is-yipping');
             window.clearTimeout(banditYipEnd);
@@ -3787,7 +3805,7 @@
             const loop = () => {
                 if (gen !== wranglerGen || !dog || !dog.isConnected || !pastureHoldsBandit()) return;
                 banditYipLoop = window.setTimeout(loop, 360);
-                if (dog.classList.contains('is-walking') || dog.classList.contains('is-jumping') || dog.dataset.latching === '1') {
+                if (dog.classList.contains('is-walking') || dog.classList.contains('is-jumping') || dog.classList.contains('is-yipping') || dog.dataset.latching === '1') {
                     banditIdleSince = 0;
                     return;
                 }
@@ -3947,7 +3965,7 @@
 
         function runWrangler(dog, gen) {
             if (gen !== wranglerGen || !dog || !dog.isConnected) return;
-            if (dog.classList.contains('is-walking') || dog.classList.contains('is-jumping')) return;
+            if (dog.classList.contains('is-walking') || dog.classList.contains('is-jumping') || dog.classList.contains('is-yipping')) return;
             if (dog.dataset.latching === '1') return;
             if (!pastureHoldsBandit()) {
                 resetWrangler(true);
