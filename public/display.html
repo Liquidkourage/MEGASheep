@@ -4923,6 +4923,7 @@
                     <img class="tv-sign-art" src="sprites/meadow-sign-tall.png?v=2026-11-21T12-00-00" alt="" aria-hidden="true">
                     <div class="tv-sign-face">
                         <p class="tv-rank-kicker">Bleat-erboard</p>
+                        ${extra.subhead ? `<p class="tv-rank-sub">${escapeDisplayText(extra.subhead)}</p>` : ''}
                         <div class="tv-rank-board" id="${boardId}">
                             ${tvRankListHtml(rows, extra.startAt || 0, extra)}
                         </div>
@@ -5581,11 +5582,12 @@
                 <div class="tv-score-top">
                     <p class="tv-play-meta"><span>Round ${escapeDisplayText(roundData.roundNumber)}</span></p>
                     </div>
-                <div class="tv-board-stack">
+                <div class="tv-board-stack is-round">
                     ${tvRankSignHtml(players, {
                         boardId: 'roundRankBoard',
                         cols: 1,
-                        planted: 'finale'
+                        planted: 'finale',
+                        subhead: `Round ${roundData.roundNumber}`
                     })}
                     ${tvPodiumHtml(players)}
                 </div>
@@ -5606,7 +5608,7 @@
             if (gameStateData) gameState = gameStateData;
             const players = rankedPlayers(gameState && gameState.players);
             paintMeadowScreen('tv-final', `
-                <div class="tv-board-stack">
+                <div class="tv-board-stack is-event">
                     ${tvRankSignHtml(players, {
                         boardId: 'finalRankBoard',
                         cols: 1,

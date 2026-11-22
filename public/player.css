@@ -859,6 +859,7 @@ body.player-app #scoringScreen .screen-content h2 {
     margin: 0 0 6px;
     padding: 0 12px;
     text-align: center;
+    color: var(--cream);
     font-size: clamp(1.7rem, 7vw, 2.2rem);
     line-height: 1.05;
 }
@@ -1200,6 +1201,20 @@ body.player-app .player-board-title {
     font-family: var(--title);
     font-size: 1.15rem;
     font-weight: 800;
+}
+
+body.player-app .player-board.is-round .player-board-title {
+    color: #dce6ff;
+}
+
+body.player-app .player-board.is-event .player-board-you {
+    border-color: #8a5a12;
+    box-shadow: 0 0 0 2px #e4c56b;
+}
+
+body.player-app #gameOverScreen .screen-content h2 {
+    color: #f3d56a;
+    text-shadow: 0 2px 0 #0b1018;
 }
 
 body.player-app .player-board-list {

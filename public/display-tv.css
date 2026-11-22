@@ -2735,6 +2735,29 @@ html, body {
     color: #1a140c;
 }
 
+.tv-rank-sub {
+    margin: 0 0 0.1em;
+    flex: 0 0 auto;
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(1.85rem, 3.7vh, 2.9rem);
+    font-weight: 800;
+    letter-spacing: -0.055em;
+    line-height: 0.9;
+    color: #1a3878;
+}
+
+.tv-board-stack.is-event .tv-sign-art {
+    filter: sepia(0.24) saturate(1.18) hue-rotate(-12deg);
+}
+
+.tv-board-stack.is-event .tv-rank-kicker {
+    color: #8a5a12;
+}
+
+.tv-board-stack.is-event {
+    width: min(44vw, 800px);
+}
+
 .tv-score-ranks .tv-rank-board {
     flex: 1 1 auto;
     min-height: 0;
@@ -3266,6 +3289,34 @@ html, body {
 
 .tv-board-stack .tv-podium-spot.is-1 .tv-ewe {
     width: 148px;
+}
+
+.tv-board-stack.is-event .tv-podium .tv-ewe {
+    width: 132px;
+}
+
+.tv-board-stack.is-event .tv-podium-spot.is-1 .tv-ewe {
+    width: 168px;
+}
+
+.tv-board-stack.is-event .tv-podium-spot.is-2 .tv-ewe {
+    width: 140px;
+}
+
+.tv-board-stack.is-event .tv-podium-spot.is-3 .tv-ewe {
+    width: 124px;
+}
+
+.tv-board-stack.is-event .tv-podium-spot.is-1 .tv-crate {
+    min-height: 18vh;
+}
+
+.tv-board-stack.is-event .tv-podium-spot.is-2 .tv-crate {
+    min-height: 13.5vh;
+}
+
+.tv-board-stack.is-event .tv-podium-spot.is-3 .tv-crate {
+    min-height: 11vh;
 }
 
 .tv-board-stack .tv-podium-spot.is-2 .tv-ewe {

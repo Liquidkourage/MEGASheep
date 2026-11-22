@@ -3487,9 +3487,13 @@ function playerBoardHtml(ranked, extras) {
         const pts = player.total != null ? player.total : playerScoreOf(player);
         return playerBoardRowHtml(player, rank, mine, pts);
     }).join('');
-    return `<div class="player-board">
+    const kind = extra.kind ? ` is-${extra.kind}` : '';
+    const title = extra.title
+        ? `<h3 class="player-board-title">${escapePlayer(extra.title)}</h3>`
+        : '';
+    return `<div class="player-board${kind}">
         ${youCard}
-        <h3 class="player-board-title">${escapePlayer(extra.title || 'Bleat-erboard')}</h3>
+        ${title}
         <div class="player-board-list">${rows}</div>
     </div>`;
 }
@@ -3580,18 +3584,27 @@ function displayRoundResults() {
         </div>`;
 
     if (IS_PLAYER_ROUTE) {
-        if (scoringTitle) scoringTitle.textContent = 'Bleat-erboard';
-        const youMeta = [
-            myRoundDelta ? `+${myRoundDelta} this round` : 'even this round',
-            upDown !== 'even' ? upDown : ''
-        ].filter(Boolean).join(' · ');
+        const roundNum = lastRound?.roundNumber || 1;
+        if (scoringTitle) scoringTitle.textContent = `Round ${roundNum}`;
+        const eventByName = new Map();
+        (gameState.players || []).forEach((player) => {
+            eventByName.set(String(player.name || '').toLowerCase(), playerScoreOf(player));
+        });
+        const roundRanked = [...(lastRound && lastRound.players ? lastRound.players : [])]
+            .map((player) => ({
+                name: player.name,
+                total: Number(player.score || 0)
+            }))
+            .sort((a, b) => b.total - a.total);
+        const youEvent = eventByName.get(myName.toLowerCase());
         answersList.style.setProperty('overflow', 'hidden', 'important');
         answersList.style.setProperty('display', 'flex', 'important');
         answersList.style.setProperty('flex-direction', 'column', 'important');
-        answersList.innerHTML = playerBoardHtml(rankAfterList, {
+        answersList.innerHTML = playerBoardHtml(roundRanked, {
             myName,
-            title: `Round ${lastRound?.roundNumber || 1}`,
-            youMeta
+            kind: 'round',
+            title: 'Bleat-erboard',
+            youMeta: youEvent != null ? `${youEvent} total` : ''
         });
         revealPlayerBoardYou(answersList);
         return;
@@ -3623,13 +3636,8 @@ function displayFinalResults() {
     
     // Set titles for overall leaderboard
     if (overallTitle) overallTitle.textContent = 'Bleat-erboard';
-    if (overallSubtitle && overallCount) {
-        try {
-            const perRound = Number(gameState.questionsPerRound || 5);
-            const roundsCompleted = Array.isArray(gameState.roundHistory) ? gameState.roundHistory.length : 0;
-            const asked = Math.max(0, roundsCompleted * perRound);
-            overallCount.textContent = String(asked || 0);
-        } catch (_) { overallCount.textContent = '0'; }
+    if (overallSubtitle) {
+        overallSubtitle.hidden = true;
     }
 
     // Display scores
@@ -3648,7 +3656,7 @@ function displayFinalResults() {
                 total: playerScoreOf(player)
             })), {
                 myName,
-                title: 'Final standings'
+                kind: 'event'
             });
             revealPlayerBoardYou(finalScoresList);
         } else {
