@@ -256,6 +256,7 @@ function clearPlayerQuestionLocks(code) {
 }
 
 function presentSendBack(reason, originalAnswer) {
+    const alreadyEditing = !!window._playerEditing;
     window._submitInFlight = false;
     window._playerEditing = true;
     window._playerEditReason = reason || 'The host wants a more specific answer.';
@@ -269,18 +270,21 @@ function presentSendBack(reason, originalAnswer) {
         const qIndex = (typeof gameState?.currentQuestion === 'number') ? gameState.currentQuestion : (typeof currentQuestionIndex === 'number' ? currentQuestionIndex : 0);
         if (code) {
             localStorage.removeItem(`player.submitted.${code}.q${qIndex}`);
-            if (originalAnswer) localStorage.setItem(`player.answer.${code}.q${qIndex}`, originalAnswer);
+            if (originalAnswer && !alreadyEditing) localStorage.setItem(`player.answer.${code}.q${qIndex}`, originalAnswer);
             sessionStorage.setItem('gameCode', String(code));
             localStorage.setItem('player.gameCode', String(code));
         }
     } catch (_) {}
     const input = document.getElementById('answerInput');
     if (input) {
-        if (originalAnswer) input.value = originalAnswer;
-        input.focus();
+        input.disabled = false;
+        if (!alreadyEditing && originalAnswer) input.value = originalAnswer;
+        if (!alreadyEditing) input.focus();
     }
-    showToast(`✏️ Edit requested by host: ${reason || 'Please be more specific'}`, 'warning');
-    if (navigator && navigator.vibrate) navigator.vibrate(120);
+    if (!alreadyEditing) {
+        showToast(`✏️ Edit requested by host: ${reason || 'Please be more specific'}`, 'warning');
+        if (navigator && navigator.vibrate) navigator.vibrate(120);
+    }
 }
 let currentPlayerName;
 let gameState = {};
@@ -2331,7 +2335,14 @@ function applyPlayerState(packet, source) {
         const phase = packet.gameState;
         if (!result.epochChanged) {
             if (phase === 'waiting') updateLobbyDisplay();
-            if (phase === 'playing' && packet.myAnswer) setPlayerSubmitEnabled(false);
+            if (phase === 'playing' && packet.myAnswer && !window._playerEditing && !window._submitInFlight) {
+                try {
+                    const code = playerGameCode();
+                    const q = currentQIndex();
+                    const lockedHere = !!(code && localStorage.getItem(`player.submitted.${code}.q${q}`) === '1');
+                    if (lockedHere) setPlayerSubmitEnabled(false);
+                } catch (_) {}
+            }
             return;
         }
 
@@ -3063,9 +3074,10 @@ function displayCurrentQuestion() {
             const qIndex = currentQuestionIndex;
             alreadySubmitted = !!(code && localStorage.getItem(`player.submitted.${code}.q${qIndex}`) === '1');
             const storedAnswer = code ? localStorage.getItem(`player.answer.${code}.q${qIndex}`) : '';
-            if (input && storedAnswer) input.value = storedAnswer;
+            if (alreadySubmitted && input && storedAnswer) input.value = storedAnswer;
         } catch(_) {}
-        setPlayerSubmitEnabled(!alreadySubmitted);
+        if (window._playerEditing) setPlayerSubmitEnabled(true);
+        else setPlayerSubmitEnabled(!alreadySubmitted);
     }
     
     // Update players list
