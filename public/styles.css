@@ -7729,6 +7729,28 @@ body.player-app #joinGameScreen .screen-content {
     overflow: auto;
 }
 
+body.player-app .player-dev-note {
+    margin: 18px auto 0;
+    max-width: 34rem;
+    padding: 0 4px 8px;
+}
+
+body.player-app .player-dev-note p {
+    margin: 0;
+    color: #c5d0e4;
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.45;
+    text-align: center;
+    text-transform: none;
+    letter-spacing: 0.01em;
+}
+
+body.player-app .player-dev-note strong {
+    color: #e8eef8;
+    font-weight: 700;
+}
+
 body.player-app #lobbyScreen .lobby-header {
     margin-bottom: 8px;
     flex-shrink: 0;
