@@ -7788,7 +7788,10 @@ body.player-app .player-ai-disclosure-card .modal-header {
 }
 
 body.player-app .player-ai-disclosure-card .modal-header h4 {
+    flex: 1;
+    min-width: 0;
     font-size: 1.1rem;
+    line-height: 1.2;
 }
 
 body.player-app .player-ai-disclosure-close {
