@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T23-50-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T00-15-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -2534,7 +2534,10 @@
             const insideX = opts && Number(opts.insideX);
             let markedIn = false;
             let lastX = parseFloat(el.style.getPropertyValue('--gx')) || samples[0].x;
+            const bounces = Number(opts && opts.bounces) || 0;
+            const bounceHop = Number(opts && opts.bounceHop) || 24;
             if (hopPx) el.classList.add('is-placed');
+            else if (opts && opts.noGait) el.classList.add('is-placed');
             else el.classList.add('is-walking', 'is-placed');
             el.style.transitionDuration = '0s';
             const started = performance.now();
@@ -2572,10 +2575,16 @@
                     const lift = Math.sin(Math.PI * u);
                     el.style.setProperty('--hop', (-hop * lift).toFixed(1));
                     el.style.setProperty('--s', String(pastureScale(point.y) * (1 + 0.18 * lift)));
+                } else if (bounces) {
+                    const lift = Math.abs(Math.sin(u * Math.PI * bounces));
+                    el.style.setProperty('--hop', (-bounceHop * lift).toFixed(1));
+                    el.style.setProperty('--s', String(pastureScale(point.y)));
+                    el.style.setProperty('--spin', `${Math.round(u * 360 * Math.max(1, bounces / 2))}deg`);
                 } else {
                     el.style.setProperty('--hop', '0');
                     el.style.setProperty('--s', String(pastureScale(point.y)));
                 }
+                if (opts && typeof opts.onTick === 'function') opts.onTick(el, point, u);
                 if (opts && typeof opts.face === 'function') {
                     opts.face(el);
                 } else if (Math.abs(point.x - lastX) > 0.05) {
@@ -2970,6 +2979,7 @@
             wranglerQuestion = '';
             wranglerWasOut = false;
             banditFocus = null;
+            clearHerdBall();
             const dog = document.querySelector('#flockChorus .tv-dog');
             stopBanditYips(dog);
             window.clearTimeout(banditHerdTimer);
@@ -3299,18 +3309,21 @@
             const body = dog.getBoundingClientRect().width || 96;
             const running = gait === 'run';
             walkSmoothPath(dog, points, () => {
-                dog.classList.remove('is-walking', 'is-running', 'is-jumping');
-                dog.classList.add('is-placed');
-                dog.style.transitionDuration = '0s';
-                parkBandit(dog, currentEwePoint(dog));
-                if (!(opts && opts.skipFace)) faceWranglerAtSheep(dog);
+                if (!(opts && opts.keepMoving)) {
+                    dog.classList.remove('is-walking', 'is-running', 'is-jumping');
+                    dog.classList.add('is-placed');
+                    dog.style.transitionDuration = '0s';
+                    parkBandit(dog, currentEwePoint(dog));
+                    if (!(opts && opts.skipFace)) faceWranglerAtSheep(dog);
+                }
                 if (onDone) onDone();
             }, {
                 live: () => dog.isConnected && pastureHoldsBandit(),
                 minSeconds: (opts && opts.minSeconds) || (running ? 0.55 : 0.8),
                 maxSeconds: (opts && opts.maxSeconds) || (running ? 3.6 : 4.8),
                 pace: (opts && opts.pace) || (body * (running ? 2.45 : 1.08)),
-                face: opts && opts.face
+                face: opts && opts.face,
+                onTick: opts && opts.onTick
             });
         }
 
@@ -3321,18 +3334,19 @@
             }
             const leaving = gx < BANDIT_ONSTAGE_LEFT - 1;
             const latching = !!(opts && opts.latch);
-            const dest = leaving || latching
+            const direct = leaving || latching || !!(opts && opts.direct);
+            const dest = direct
                 ? { gx, gy: Math.min(PLAY_FIELD.bottom - 0.5, Math.max(PLAY_FIELD.top + 1.2, gy)) }
                 : banditClearPoint(dog, gx, gy);
             const here = currentEwePoint(dog);
-            if (!leaving && !latching && banditInTheFlock(dog) && !(opts && opts.fromJump)) {
+            if (!direct && banditInTheFlock(dog) && !(opts && opts.fromJump)) {
                 const exit = banditExtractSpot(dog);
                 walkBanditTo(dog, exit.gx, exit.gy, () => {
                     walkBanditTo(dog, gx, gy, onDone, Object.assign({}, opts, { fromJump: true }));
                 }, { gait: 'run', outrun: true, fromJump: true });
                 return;
             }
-            if (!leaving && !latching && !(opts && opts.fromJump) && banditBlocked(here.x, here.y, dog, 6.6)) {
+            if (!direct && !(opts && opts.fromJump) && banditBlocked(here.x, here.y, dog, 6.6)) {
                 banditJumpToward(dog, dest, () => walkBanditTo(dog, gx, gy, onDone, Object.assign({}, opts, { fromJump: true })));
                 return;
             }
@@ -3342,7 +3356,7 @@
                 if (onDone) onDone();
                 return;
             }
-            const points = leaving || latching
+            const points = direct
                 ? [{ x: here.x, y: here.y }, { x: dest.gx, y: dest.gy }]
                 : ((opts && opts.outrun) ? banditOutrunRoute(dog, dest) : banditRoute(dog, dest));
             walkBanditPath(dog, points, onDone, opts);
@@ -3910,6 +3924,99 @@
             };
         }
 
+        function clearHerdBall() {
+            document.querySelectorAll('.tv-herd-ball').forEach((el) => el.remove());
+        }
+
+        function spawnHerdBall(spot) {
+            clearHerdBall();
+            const chorus = document.getElementById('flockChorus');
+            if (!chorus) return null;
+            const ball = document.createElement('span');
+            ball.className = 'tv-herd-ball is-loose';
+            ball.setAttribute('aria-hidden', 'true');
+            ball.innerHTML = '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="14.2" fill="#d6e34a" stroke="#241c12" stroke-width="2.5"/><path d="M6.2 8.2c6.2 3.6 6.2 12 0 15.6" fill="none" stroke="#f6f8ee" stroke-width="2.2" stroke-linecap="round"/><path d="M25.8 8.2c-6.2 3.6-6.2 12 0 15.6" fill="none" stroke="#f6f8ee" stroke-width="2.2" stroke-linecap="round"/><ellipse cx="12.2" cy="11" rx="5" ry="3.1" fill="#fff" fill-opacity=".32"/></svg>';
+            ball.style.setProperty('--gx', String(spot.gx));
+            ball.style.setProperty('--gy', String(spot.gy));
+            ball.style.setProperty('--hop', '0');
+            ball.style.setProperty('--spin', '0deg');
+            ball.style.setProperty('--z', '68');
+            chorus.appendChild(ball);
+            return ball;
+        }
+
+        function catchHerdBall(dog, ball) {
+            if (!dog || !ball || !ball.isConnected || ball.classList.contains('is-caught')) return;
+            bumpEweWalk(ball);
+            ball.classList.remove('is-loose');
+            ball.classList.add('is-caught');
+            ball.style.setProperty('--hop', '0');
+            ball.style.setProperty('--spin', '-18deg');
+            dog.appendChild(ball);
+            dog.classList.add('is-carrying');
+        }
+
+        function chaseTheBallOffstage(dog, gen) {
+            if (gen !== wranglerGen || !dog || !dog.isConnected) return;
+            dog.classList.remove('is-latching', 'is-yipping', 'is-sitting');
+            dog.classList.add('is-chasing', 'is-left', 'is-placed');
+            dog.style.setProperty('--walk', '0s');
+            dog.style.transitionDuration = '0s';
+            const here = currentEwePoint(dog);
+            const runY = Math.min(PLAY_FIELD.bottom - 1.4, Math.max(PLAY_FIELD.top + 10, here.y + 1.4));
+            const catchX = 7.2;
+            const ballStart = {
+                gx: Math.max(22, Math.min(here.x - 10, 44)),
+                gy: runY - 0.5
+            };
+            const ball = spawnHerdBall(ballStart);
+            const body = dog.getBoundingClientRect().width || 96;
+            if (ball) {
+                walkSmoothPath(ball, [
+                    { x: ballStart.gx, y: ballStart.gy },
+                    { x: (ballStart.gx + catchX) * 0.52, y: runY - 0.25, cut: 0.18 },
+                    { x: catchX + 1.1, y: runY }
+                ], () => {}, {
+                    noGait: true,
+                    bounces: 5,
+                    bounceHop: 28,
+                    minSeconds: 1.35,
+                    maxSeconds: 1.55,
+                    pace: body * 1.18,
+                    face: () => {}
+                });
+            }
+            const finishOff = () => {
+                if (gen !== wranglerGen || !dog.isConnected) return;
+                walkBanditTo(dog, BANDIT_OFFSTAGE_X, runY, () => {
+                    if (dog.isConnected) dog.remove();
+                    clearHerdBall();
+                }, {
+                    gait: 'run',
+                    fromJump: true,
+                    skipFace: true,
+                    direct: true,
+                    minSeconds: 0.52,
+                    maxSeconds: 0.72,
+                    pace: body * 2.85
+                });
+            };
+            walkBanditTo(dog, catchX, runY, () => {
+                if (gen !== wranglerGen || !dog.isConnected) return;
+                catchHerdBall(dog, ball);
+                finishOff();
+            }, {
+                gait: 'run',
+                fromJump: true,
+                skipFace: true,
+                direct: true,
+                keepMoving: true,
+                minSeconds: 1.35,
+                maxSeconds: 1.55,
+                pace: body * 2.55
+            });
+        }
+
         function shutTheGateAndLeave(dog, gen) {
             if (gen !== wranglerGen || !dog || !dog.isConnected) return;
             if (dog.dataset.latching === '1' || wranglerFinishedKey === wranglerKey()) return;
@@ -3921,14 +4028,6 @@
             banditFocus = null;
             setBanditSit(dog, false);
             const latch = gateLatchSpot();
-            const leave = () => {
-                if (gen !== wranglerGen || !dog.isConnected) return;
-                dog.classList.remove('is-latching', 'is-yipping');
-                const gy = parseFloat(dog.style.getPropertyValue('--gy')) || 80;
-                walkBanditTo(dog, BANDIT_OFFSTAGE_X, gy, () => {
-                    if (dog.isConnected) dog.remove();
-                }, { gait: 'run', fromJump: true, skipFace: true });
-            };
             walkBanditTo(dog, latch.gx, latch.gy, () => {
                 if (gen !== wranglerGen || !dog.isConnected) return;
                 dog.classList.remove('is-left', 'is-walking', 'is-running', 'is-yipping');
@@ -3940,8 +4039,8 @@
                     wranglerFinishedKey = wranglerKey();
                     wranglerWasOut = false;
                     syncPenGate();
-                    window.setTimeout(leave, 420);
-                }, 280);
+                    window.setTimeout(() => chaseTheBallOffstage(dog, gen), 280);
+                }, 260);
             }, { gait: 'run', fromJump: true, skipFace: true, latch: true });
         }
 

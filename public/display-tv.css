@@ -1296,8 +1296,48 @@ html, body {
     z-index: 64;
 }
 
+.tv-play .tv-dog.is-chasing,
+.tv-play .tv-dog.is-carrying {
+    z-index: 70;
+    overflow: visible;
+}
+
 .tv-play .tv-dog {
     width: clamp(84px, calc(var(--ewe-base, 118px) * 1.12), 148px);
+}
+
+.tv-herd-ball {
+    position: absolute;
+    left: calc(var(--gx) * 1%);
+    top: calc(var(--gy) * 1%);
+    width: clamp(28px, 2.2vw, 42px);
+    aspect-ratio: 1;
+    margin: 0;
+    transform: translate(-50%, -92%) translateY(calc(var(--hop, 0) * 1px));
+    z-index: var(--z, 68);
+    pointer-events: none;
+    filter: drop-shadow(0 5px 0 rgba(20, 16, 8, 0.28));
+}
+
+.tv-herd-ball svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    transform: rotate(var(--spin, 0deg));
+    transform-origin: 50% 50%;
+}
+
+.tv-dog .tv-herd-ball.is-caught {
+    left: 20%;
+    top: 44%;
+    width: 30%;
+    transform: translate(-50%, -50%) rotate(var(--spin, -18deg));
+    z-index: 6;
+    filter: drop-shadow(0 2px 0 rgba(20, 16, 8, 0.22));
+}
+
+.tv-dog:not(.is-left) .tv-herd-ball.is-caught {
+    left: 80%;
 }
 
 .tv-dog .tv-thought,
