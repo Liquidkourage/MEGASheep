@@ -7820,6 +7820,10 @@ body.player-app .player-ai-disclosure-card .modal-body p {
     line-height: 1.5;
 }
 
+body.player-app .player-ai-disclosure-card .modal-body p + p {
+    margin-top: 0.85em;
+}
+
 body.player-app #lobbyScreen .lobby-header {
     margin-bottom: 8px;
     flex-shrink: 0;
