@@ -968,9 +968,9 @@
         const RESULTS_FAR = { left: 22, right: 78, y: 66 };
         const RESULTS_NEAR = { left: 8, right: 92, y: 92 };
         const SCORE_NAME_AT = 2;
-        const PEN_FAR = { left: 66.8, right: 90.4, y: 68.6 };
+        const PEN_FAR = { left: 63.4, right: 89.0, y: 62.9 };
         const PEN_NEAR = { left: 60.5, right: 93.2, y: 85.6 };
-        const PEN_FIELD = { left: 60.5, right: 93.2, top: 68.6, bottom: 85.6 };
+        const PEN_FIELD = { left: 60.5, right: 93.2, top: 62.9, bottom: 85.6 };
 
         function playPenBand() {
             const art = document.querySelector('.tv-play .tv-pen-art');
@@ -979,8 +979,8 @@
                 const stage = pasture.getBoundingClientRect();
                 const box = art.getBoundingClientRect();
                 if (stage.width && box.width && box.height) {
-                    const farL = penSpriteToStage(340, 188);
-                    const farR = penSpriteToStage(930, 188);
+                    const farL = penSpriteToStage(255, 112);
+                    const farR = penSpriteToStage(888, 112);
                     const nearL = penSpriteToStage(188, 428);
                     const nearR = penSpriteToStage(1000, 428);
                     return {
@@ -1015,7 +1015,7 @@
             for (let r = 0; r < rows; r += 1) {
                 const count = counts[r];
                 const t = rows <= 1 ? 0.5 : r / (rows - 1);
-                const u = 0.05 + t * 0.9;
+                const u = t * 0.97;
                 const y = far.y + u * spanY;
                 const left = far.left + u * (near.left - far.left);
                 const right = far.right + u * (near.right - far.right);
@@ -1404,7 +1404,7 @@
                 }
                 const depth = lobbyDepth(spot.gy);
                 const p = pen[penAt[index]] || pen[index] || { x: 80, y: 70, z: 10, scale: 1 };
-                const py = Math.min(band.near.y - 0.2, Math.max(band.far.y + 0.35, p.y + (((hash >> 3) % 7) - 3) * 0.9));
+                const py = Math.min(band.near.y - 0.2, Math.max(band.far.y + 0.04, p.y + (((hash >> 3) % 7) - 3) * 0.35));
                 const rail = penXAt(py);
                 return {
                     id,
@@ -1412,7 +1412,7 @@
                     label: flockLabel(player.name || 'Sheep', names),
                     gx: spot.gx,
                     gy: spot.gy,
-                    px: Math.min(rail.right, Math.max(rail.left, p.x + ((hash % 7) - 3) * 1.15 + (((hash >> 8) % 5) - 2) * 0.4)),
+                    px: Math.min(rail.right, Math.max(rail.left, p.x + ((hash % 7) - 3) * 0.5 + (((hash >> 8) % 5) - 2) * 0.22)),
                     py,
                     ox: gate.approach.x + ((hash % 5) - 2) * 0.22,
                     oy: gate.approach.y + (((hash >> 4) % 5) - 2) * 0.12,
