@@ -2902,7 +2902,7 @@
         const BANDIT_AT_DEFAULT = 30;
         const BANDIT_HERD_RADIUS = 9;
         const FLOCK_MATE_GAP = 11.5;
-        const BANDIT_ONSTAGE_LEFT = 7;
+        const BANDIT_ONSTAGE_LEFT = 4;
         const BANDIT_OFFSTAGE_X = -18;
         let wranglerGen = 0;
         let wranglerQuestion = '';
@@ -2918,6 +2918,7 @@
         let banditHoldMove = 0;
         let banditFlankDir = 1;
         let banditWorkBeat = 0;
+        let banditYipStuck = 0;
 
         function banditAt() {
             const n = Number(gameState && gameState.settings && gameState.settings.banditAt);
@@ -3569,6 +3570,12 @@
             return strays.slice().sort((a, b) => distanceToBunch(b, bunch) - distanceToBunch(a, bunch))[0];
         }
 
+        function sheepAgainstFence(el) {
+            const p = visualEwePoint(el);
+            const xs = fieldXRange(p.y);
+            return p.x <= xs.left + 1.8 || p.y >= PLAY_FIELD.bottom - 1.6 || p.y <= PLAY_FIELD.top + 1.8;
+        }
+
         function fleePointForSheep(el, dog, pack) {
             const p = visualEwePoint(el);
             const d = visualEwePoint(dog);
@@ -3577,7 +3584,6 @@
             const others = pack.filter((other) => other !== el);
             const core = flockCoreSheep(others.length ? others : pack);
             const bunch = mates.length ? flockCentroid(mates) : (core.length ? flockCentroid(core) : huddle);
-            const isolated = mates.length === 0;
             let fx = p.x - d.x;
             let fy = (p.y - d.y) * 1.15;
             const flen = Math.hypot(fx, fy) || 1;
@@ -3593,29 +3599,40 @@
             const clen = Math.hypot(cx, cy) || 1;
             cx /= clen;
             cy /= clen;
-            const drift = ((nameHash((el.dataset.id || el.dataset.name) || '') % 5) - 2) * 0.14;
-            const away = isolated ? 0.48 : 0.72;
-            const toCore = isolated ? 0.36 : 0.16;
-            const toHuddle = isolated ? 0.18 : 0.08;
-            let dx = fx * away + hx * toHuddle + cx * toCore + (Math.random() - 0.5) * 0.4 + drift;
-            let dy = fy * away + hy * toHuddle + cy * toCore + (Math.random() - 0.5) * 0.4;
+            const pinned = sheepAgainstFence(el);
+            const drift = ((nameHash((el.dataset.id || el.dataset.name) || '') % 5) - 2) * 0.08;
+            const away = pinned ? 0.08 : 0.22;
+            const toCore = pinned ? 0.18 : 0.2;
+            const toHuddle = pinned ? 0.74 : 0.58;
+            let dx = fx * away + hx * toHuddle + cx * toCore + drift;
+            let dy = fy * away + hy * toHuddle + cy * toCore;
+            const before = Math.hypot(huddle.gx - p.x, huddle.gy - p.y);
+            if (Math.hypot(huddle.gx - (p.x + dx), huddle.gy - (p.y + dy)) > before + 0.15) {
+                dx = hx * 0.8 + cx * 0.2;
+                dy = hy * 0.8 + cy * 0.2;
+            }
             const len = Math.hypot(dx, dy) || 1;
-            const step = 2.6 + Math.random() * 2.4;
-            return clampLobbyPoint(p.x + (dx / len) * step, p.y + (dy / len) * step);
+            const step = pinned ? 5.2 : (3.4 + Math.random() * 2);
+            let dest = clampLobbyPoint(p.x + (dx / len) * step, p.y + (dy / len) * step);
+            if (Math.hypot(dest.gx - p.x, dest.gy - p.y) < 1.2) {
+                dest = clampLobbyPoint(p.x + hx * 6.5, p.y + hy * 6.5);
+            }
+            return dest;
         }
 
         function spookSheepFromDog(el, dog, pack, hard) {
-            if (!el || !el.isConnected) return;
-            if (el.classList.contains('is-in') || el.classList.contains('is-gating') || el.classList.contains('is-entering')) return;
-            if (el.classList.contains('is-walking')) return;
+            if (!el || !el.isConnected) return false;
+            if (el.classList.contains('is-in') || el.classList.contains('is-gating') || el.classList.contains('is-entering')) return false;
+            if (el.classList.contains('is-walking')) return false;
             const last = Number(el.dataset.spookAt) || 0;
-            if (last && performance.now() - last < 1400) return;
+            if (last && performance.now() - last < 1400) return false;
             const p = visualEwePoint(el);
             const huddle = stragglerHuddlePoint(el, pack);
             const toHuddle = Math.hypot(huddle.gx - p.x, huddle.gy - p.y);
-            if (toHuddle < 2.6) return;
-            el.dataset.spookAt = String(performance.now());
+            if (toHuddle < 2.6) return false;
             const dest = fleePointForSheep(el, dog, pack);
+            if (Math.hypot(dest.gx - p.x, dest.gy - p.y) < 1.2) return false;
+            el.dataset.spookAt = String(performance.now());
             const depth = lobbyDepth(dest.gy);
             walkEweOnField(el, slotFromEwe(el, {
                 gx: dest.gx,
@@ -3625,19 +3642,24 @@
             }), null, hard
                 ? { cycle: 0.5, minSeconds: 0.7, maxSeconds: 2.2 }
                 : { cycle: 0.58, minSeconds: 0.85, maxSeconds: 2.6 });
+            return true;
         }
 
         function flowFlockFromDog(dog, hard) {
-            if (!dog || !dog.isConnected) return;
+            if (!dog || !dog.isConnected) return 0;
             const pack = remainingFieldSheep();
             const stray = pack.filter((el) => !isInHuddle(el));
-            if (!stray.length) return;
+            if (!stray.length) return 0;
+            const bunch = flockCentroid(pack);
+            if (isBetweenFlockAndPaddock(visualEwePoint(dog), bunch)) return 0;
             const range = hard ? BANDIT_HERD_RADIUS + 5 : BANDIT_HERD_RADIUS + 1;
+            let moved = 0;
             idleHerdSheep().forEach((el) => {
                 if (isInHuddle(el)) return;
                 if (eweGap(dog, el) > range) return;
-                spookSheepFromDog(el, dog, pack, hard || dog.classList.contains('is-yipping'));
+                if (spookSheepFromDog(el, dog, pack, hard || dog.classList.contains('is-yipping'))) moved += 1;
             });
+            return moved;
         }
 
         function corralNearBandit(dog) {
@@ -3898,13 +3920,35 @@
             const local = stray.filter((el) => sheepNearBandit(dog, el)
                 || (banditFocus && banditFocus.isConnected && eweGap(el, banditFocus) <= BANDIT_HERD_RADIUS + 4));
             const idleLocal = local.filter((el) => !el.classList.contains('is-walking'));
-            flowFlockFromDog(dog, true);
+            const moved = flowFlockFromDog(dog, true);
+            if (moved) {
+                banditYipStuck = 0;
+                window.setTimeout(() => {
+                    if (gen !== wranglerGen) return;
+                    runWrangler(dog, gen);
+                }, 280);
+                return;
+            }
+            const pinned = idleLocal.filter(sheepAgainstFence);
+            const stuck = pinned.length ? pinned : idleLocal;
+            const target = stuck.length ? pickHerdTarget(stuck) : null;
+            if (target && !isBanditBehind(dog, target)) {
+                banditYipStuck = 0;
+                goBehindTarget(dog, gen, target, { outrun: true });
+                return;
+            }
+            if (pinned.length && banditYipStuck >= 1) {
+                banditYipStuck = 0;
+                circleTheFlock(dog, gen, { keepWorking: true, sweep: 1.15 });
+                return;
+            }
             if (idleLocal.length) {
+                banditYipStuck += 1;
                 banditYip(dog, gen);
                 window.setTimeout(() => {
                     if (gen !== wranglerGen) return;
                     runWrangler(dog, gen);
-                }, 620);
+                }, 700);
                 return;
             }
             window.setTimeout(() => {
@@ -4043,6 +4087,7 @@
             banditIdleSince = 0;
             banditSitSince = 0;
             banditWorkBeat = 0;
+            banditYipStuck = 0;
             const gen = wranglerGen;
             const restore = !!(opts && opts.restore);
             const spot = restore ? gateWatchSpot() : banditSpawnPoint();
