@@ -2897,6 +2897,7 @@
         
         const BANDIT_AT_DEFAULT = 30;
         const BANDIT_HERD_RADIUS = 9;
+        const FLOCK_MATE_GAP = 11.5;
         const BANDIT_ONSTAGE_LEFT = 7;
         const BANDIT_OFFSTAGE_X = -18;
         let wranglerGen = 0;
@@ -3386,22 +3387,21 @@
             return ok || raw;
         }
 
-        function dogBehindSheep(el) {
+        function dogBehindSheep(el, dest) {
             const dog = document.querySelector('#flockChorus .tv-dog');
             const p = visualEwePoint(el);
-            const gate = paddockPoint();
-            let dx = p.x - gate.x;
-            let dy = p.y - gate.y;
-            if (Math.abs(dx) < 3) dx = -8;
+            const aim = dest ? pointXY(dest) : paddockPoint();
+            let dx = p.x - aim.x;
+            let dy = p.y - aim.y;
+            if (Math.abs(dx) + Math.abs(dy) < 2) dx = -8;
             const len = Math.hypot(dx, dy) || 1;
             const raw = {
                 gx: p.x + (dx / len) * 9,
                 gy: p.y + (dy / len) * 3.4
             };
             const cleared = dog ? banditClearPoint(dog, raw.gx, raw.gy) : raw;
-            if (!isBetweenFlockAndPaddock(cleared, p)) return cleared;
-            const hold = flockHoldSpot(dog);
-            return hold;
+            if (!dest && isBetweenFlockAndPaddock(cleared, p)) return flockHoldSpot(dog);
+            return cleared;
         }
 
         function huddleDistance(el) {
@@ -3474,9 +3474,9 @@
             );
         }
 
-        function isBanditBehind(dog, el) {
+        function isBanditBehind(dog, el, dest) {
             const here = visualEwePoint(dog);
-            const behind = dogBehindSheep(el);
+            const behind = dogBehindSheep(el, dest);
             return Math.hypot(behind.gx - here.x, behind.gy - here.y) < 6.5;
         }
 
@@ -3499,12 +3499,65 @@
             };
         }
 
+        function flockCoreSheep(pack) {
+            const list = pack || remainingFieldSheep();
+            if (list.length <= 1) return list.slice();
+            const seen = new Array(list.length).fill(false);
+            let best = [];
+            for (let i = 0; i < list.length; i += 1) {
+                if (seen[i]) continue;
+                const stack = [i];
+                const group = [];
+                seen[i] = true;
+                while (stack.length) {
+                    const k = stack.pop();
+                    group.push(list[k]);
+                    for (let j = 0; j < list.length; j += 1) {
+                        if (seen[j] || eweGap(list[k], list[j]) > FLOCK_MATE_GAP) continue;
+                        seen[j] = true;
+                        stack.push(j);
+                    }
+                }
+                if (group.length > best.length) best = group;
+            }
+            return best.length ? best : list.slice();
+        }
+
+        function distanceToBunch(el, bunch) {
+            const p = visualEwePoint(el);
+            const b = pointXY(bunch);
+            return Math.hypot(p.x - b.x, (p.y - b.y) * 1.2);
+        }
+
+        function stragglerSheep(pack) {
+            const list = pack || remainingFieldSheep();
+            const field = list.filter((el) => !isInHuddle(el));
+            if (!field.length) return [];
+            const huddled = list.filter((el) => isInHuddle(el));
+            if (huddled.length >= Math.max(2, field.length)) return field;
+            const core = flockCoreSheep(field);
+            const isolates = field.filter((el) => core.indexOf(el) === -1);
+            if (isolates.length) return isolates;
+            const bunch = flockCentroid(core);
+            const rad = flockRadius(core);
+            return field.filter((el) => distanceToBunch(el, bunch) > Math.max(12, rad * 0.8));
+        }
+
+        function pickStraggler(strays, core) {
+            if (!strays || !strays.length) return null;
+            const bunch = core && core.length ? flockCentroid(core) : huddleAnchor();
+            return strays.slice().sort((a, b) => distanceToBunch(b, bunch) - distanceToBunch(a, bunch))[0];
+        }
+
         function fleePointForSheep(el, dog, pack) {
             const p = visualEwePoint(el);
             const d = visualEwePoint(dog);
             const huddle = stragglerHuddlePoint(el, pack);
-            const mates = pack.filter((other) => other !== el && eweGap(el, other) < 8);
-            const bunch = mates.length ? flockCentroid(mates) : p;
+            const mates = pack.filter((other) => other !== el && eweGap(el, other) < FLOCK_MATE_GAP);
+            const others = pack.filter((other) => other !== el);
+            const core = flockCoreSheep(others.length ? others : pack);
+            const bunch = mates.length ? flockCentroid(mates) : (core.length ? flockCentroid(core) : huddle);
+            const isolated = mates.length === 0;
             let fx = p.x - d.x;
             let fy = (p.y - d.y) * 1.15;
             const flen = Math.hypot(fx, fy) || 1;
@@ -3521,8 +3574,11 @@
             cx /= clen;
             cy /= clen;
             const drift = ((nameHash((el.dataset.id || el.dataset.name) || '') % 5) - 2) * 0.14;
-            let dx = fx * 0.72 + hx * 0.08 + cx * 0.16 + (Math.random() - 0.5) * 0.55 + drift;
-            let dy = fy * 0.72 + hy * 0.08 + cy * 0.16 + (Math.random() - 0.5) * 0.55;
+            const away = isolated ? 0.48 : 0.72;
+            const toCore = isolated ? 0.36 : 0.16;
+            const toHuddle = isolated ? 0.18 : 0.08;
+            let dx = fx * away + hx * toHuddle + cx * toCore + (Math.random() - 0.5) * 0.4 + drift;
+            let dy = fy * away + hy * toHuddle + cy * toCore + (Math.random() - 0.5) * 0.4;
             const len = Math.hypot(dx, dy) || 1;
             const step = 2.6 + Math.random() * 2.4;
             return clampLobbyPoint(p.x + (dx / len) * step, p.y + (dy / len) * step);
@@ -3740,7 +3796,8 @@
                 }
                 const stray = field.filter((el) => !isInHuddle(el));
                 if (stray.length) {
-                    if (idleFor > 800) runWrangler(dog, gen);
+                    const wait = stragglerSheep(field).length ? 280 : 800;
+                    if (idleFor > wait) runWrangler(dog, gen);
                     return;
                 }
                 if (!dog.classList.contains('is-sitting') || !sitHeldTooLong(dog)) return;
@@ -3821,17 +3878,27 @@
             }, 280);
         }
 
+        function gatherAim(target) {
+            const pack = remainingFieldSheep().filter((el) => el !== target);
+            const core = flockCoreSheep(pack.filter((el) => !isInHuddle(el)));
+            if (core.length) return flockCentroid(core);
+            const huddled = remainingFieldSheep().filter((el) => isInHuddle(el));
+            if (huddled.length) return flockCentroid(huddled);
+            return huddleAnchor();
+        }
+
         function goBehindTarget(dog, gen, target, opts) {
             banditFocus = target;
             faceWranglerAtSheep(dog);
-            const behind = dogBehindSheep(target);
+            const aim = (opts && opts.gather) ? gatherAim(target) : null;
+            const behind = dogBehindSheep(target, aim);
             const here = currentEwePoint(dog);
             const dist = Math.hypot(behind.gx - here.x, behind.gy - here.y);
             const finish = () => {
                 if (gen !== wranglerGen) return;
                 pressureTheFlock(dog, gen);
             };
-            if (dist < 3.2 || isBanditBehind(dog, target)) {
+            if (dist < 3.2 || isBanditBehind(dog, target, aim)) {
                 const moving = remainingFieldSheep().filter((el) =>
                     !isInHuddle(el) && el.classList.contains('is-walking') && eweGap(dog, el) <= BANDIT_HERD_RADIUS + 6
                 );
@@ -3890,6 +3957,15 @@
                 watchThePen(dog, gen);
                 return;
             }
+            const stragglers = stragglerSheep(all);
+            if (stragglers.length) {
+                const core = flockCoreSheep(all.filter((el) => stragglers.indexOf(el) === -1));
+                const target = pickStraggler(stragglers, core);
+                if (target) {
+                    goBehindTarget(dog, gen, target, { outrun: true, gather: true });
+                    return;
+                }
+            }
             banditWorkBeat = (banditWorkBeat + 1) % 6;
             if (banditWorkBeat === 0 || banditWorkBeat === 2 || banditWorkBeat === 4) {
                 circleTheFlock(dog, gen, { keepWorking: true });
@@ -3946,8 +4022,10 @@
             dog.style.setProperty('--gy', String(entry.gy));
             dog.style.setProperty('--s', String(pastureScale(entry.gy)));
             dog.style.setProperty('--z', '52');
-            requestAnimationFrame(() => {
+            const kickOff = () => {
                 if (gen !== wranglerGen || !dog.isConnected) return;
+                if (dog.dataset.kicked === String(gen)) return;
+                dog.dataset.kicked = String(gen);
                 dog.classList.remove('is-placed');
                 keepBanditBusy(dog, gen);
                 if (restore) {
@@ -3961,7 +4039,9 @@
                     keepCorrallingNearBandit(dog, gen);
                     runWrangler(dog, gen);
                 }, { gait: 'run', fromJump: true, skipFace: true });
-            });
+            };
+            requestAnimationFrame(kickOff);
+            window.setTimeout(kickOff, 40);
         }
 
         function syncWrangler(timeLeft) {
