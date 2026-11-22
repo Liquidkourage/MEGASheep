@@ -1189,9 +1189,9 @@ async function joinGame() {
     
     if (!gameCode || !playerName) {
         if (!gameCode) {
-            showError('Missing or invalid game code in link.');
+            showError('Enter the four-digit code from the TV.');
         } else {
-            showError('Please enter your name');
+            showError('Add the name for your nametag.');
         }
         return;
     }
@@ -2870,15 +2870,35 @@ function updateLobbyDisplay() {
         // Only clear and rebuild if we have no players or if this is the initial load
         if (!gameState.players || gameState.players.length === 0) {
             playersList.innerHTML = '';
-            
-            // Show waiting message when no players
             const waitingMessage = document.createElement('div');
             waitingMessage.className = 'waiting-message';
             waitingMessage.innerHTML = `
-                <div class="waiting-icon">👥</div>
-                <div class="waiting-text">Waiting for players to join...</div>
-            `;
+                <figure class="player-ewe player-idle-ewe" data-coat="2" style="--idle:.2s">
+                    <span class="player-ewe-art" aria-hidden="true"><span class="player-ewe-strip"></span></span>
+                    <img class="player-thought" src="sprites/player-thought.png?v=2026-11-22T01-30-00" alt="">
+                </figure>`;
             playersList.appendChild(waitingMessage);
+        } else if (IS_PLAYER_ROUTE) {
+            const escapePlayer = (value) => String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+            const coatOf = (name) => {
+                let hash = 0;
+                const text = String(name || '');
+                for (let i = 0; i < text.length; i += 1) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+                return (Math.abs(hash) % 3) + 1;
+            };
+            const myName = String(sessionStorage.getItem('playerName') || '').toLowerCase();
+            playersList.innerHTML = gameState.players.map((player, index) => {
+                const mine = String(player.name || '').toLowerCase() === myName || player.id === socket.id;
+                const delay = ((index % 7) * 0.12).toFixed(2);
+                return `<figure class="player-ewe${mine ? ' is-you' : ''}" data-coat="${coatOf(player.name)}" style="--idle:${delay}s">
+                    <span class="player-ewe-art" aria-hidden="true"><span class="player-ewe-strip"></span></span>
+                    <figcaption>${escapePlayer(player.name || 'Sheep')}</figcaption>
+                </figure>`;
+            }).join('');
         } else {
             // Clear existing players and rebuild with new logic
             playersList.innerHTML = '';
@@ -3065,7 +3085,7 @@ function displayQuestionResults() {
     // Update the scoring title to show "Question Results"
     const scoringTitle = document.getElementById('scoringTitle');
     if (scoringTitle) {
-        scoringTitle.textContent = 'Question Results';
+        scoringTitle.textContent = 'The reveal';
         console.log('📊 Updated scoring title');
     } else {
         console.log('📊 Scoring title element not found');
@@ -3223,9 +3243,9 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
     const displayAnswerRaw = playerAnswer && playerAnswer.trim() !== '' ? playerAnswer : 'No Answer Submitted';
     const displayAnswer = sanitize(displayAnswerRaw);
     const isCorrect = playerAnswerGroup && playerAnswerGroup.points > 0;
-    const statusIcon = isCorrect ? '✅' : '❌';
-    const statusClass = isCorrect ? 'correct' : 'incorrect';
-    const statusText = isCorrect ? 'Correct!' : 'Incorrect';
+        const statusIcon = isCorrect ? '✅' : '❌';
+        const statusClass = isCorrect ? 'correct' : 'incorrect';
+        const statusText = isCorrect ? 'Correct' : 'Missed';
     
     let rankText = '';
     if (playerRank > 0 && totalPlayers > 0) {
@@ -3249,7 +3269,7 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
         return `
             <div class="player-outcome ${statusClass}">
                 <div class="player-outcome-banner">
-                    <span class="player-outcome-status">${statusIcon} ${statusText}</span>
+                    <span class="player-outcome-status">${statusText}</span>
                     <span class="player-outcome-points">${pointsNumber} pts</span>
                 </div>
                 <div class="player-outcome-answer">${displayAnswer}</div>
@@ -3432,7 +3452,7 @@ function displayRoundResults() {
     const myRankBefore = myBefore?.rank || 0;
     const rankChange = (myRankBefore && myRankAfter) ? (myRankBefore - myRankAfter) : 0; // positive = improved
 
-    const upDown = rankChange > 0 ? `⬆️ +${rankChange}` : (rankChange < 0 ? `⬇️ ${rankChange}` : '—');
+    const upDown = rankChange > 0 ? `up ${rankChange}` : (rankChange < 0 ? `down ${Math.abs(rankChange)}` : 'even');
     const rankLine = (myRankAfter && totalPlayers) ? `You are now #${myRankAfter} of ${totalPlayers} (${upDown})` : '';
     const totalAfterText = myAfter ? myAfter.total : 0;
     const personalSummaryHtml = IS_PLAYER_ROUTE ? `
@@ -3465,7 +3485,7 @@ function displayRoundResults() {
         `;
     }).join('');
     const leaderboardHtml = IS_PLAYER_ROUTE
-        ? `<div class="player-answers-board"><div class="player-answers-label">Leaderboard</div><div class="player-answers-chips scores-list">${leaderboardRows}</div></div>`
+        ? `<div class="player-answers-board"><div class="player-answers-label">Bleat-erboard</div><div class="player-answers-chips scores-list">${leaderboardRows}</div></div>`
         : `<div class="scores-display"><h3>Leaderboard</h3><div class="scores-list">${leaderboardRows}</div></div>`;
 
     const isMobile = window.innerWidth <= 768;
@@ -3488,7 +3508,7 @@ function displayFinalResults() {
     const overallCount = document.getElementById('overallQuestionsCount');
     
     // Set titles for overall leaderboard
-    if (overallTitle) overallTitle.textContent = 'Overall Leaderboard';
+    if (overallTitle) overallTitle.textContent = 'Bleat-erboard';
     if (overallSubtitle && overallCount) {
         try {
             const perRound = Number(gameState.questionsPerRound || 5);
@@ -3503,16 +3523,40 @@ function displayFinalResults() {
     if (gameState.players) {
         const sortedPlayers = gameState.players
             .sort((a, b) => (gameState.scores[b.id] || 0) - (gameState.scores[a.id] || 0));
-        
-        sortedPlayers.forEach((player, index) => {
-            const scoreItem = document.createElement('div');
-            scoreItem.className = 'score-item';
-            scoreItem.innerHTML = `
-                <span>#${index + 1} ${player.name}</span>
-                <span>${gameState.scores[player.id] || 0} pts</span>
-            `;
-            finalScoresList.appendChild(scoreItem);
-        });
+        const myName = String(sessionStorage.getItem('playerName') || currentPlayerName || '').toLowerCase();
+        const coatOf = (name) => {
+            let hash = 0;
+            const text = String(name || '');
+            for (let i = 0; i < text.length; i += 1) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+            return (Math.abs(hash) % 3) + 1;
+        };
+        const escapePlayer = (value) => String(value || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+
+        if (IS_PLAYER_ROUTE) {
+            finalScoresList.innerHTML = sortedPlayers.map((player, index) => {
+                const mine = String(player.name || '').toLowerCase() === myName || player.id === socket.id;
+                const delay = ((index % 7) * 0.12).toFixed(2);
+                const pts = gameState.scores[player.id] || 0;
+                return `<figure class="player-ewe player-finale-ewe${mine ? ' is-you' : ''}" data-coat="${coatOf(player.name)}" style="--idle:${delay}s">
+                    <span class="player-ewe-art" aria-hidden="true"><span class="player-ewe-strip"></span></span>
+                    <figcaption><span class="player-finale-rank">#${index + 1}</span> ${escapePlayer(player.name || 'Sheep')} · ${pts}</figcaption>
+                </figure>`;
+            }).join('');
+        } else {
+            sortedPlayers.forEach((player, index) => {
+                const scoreItem = document.createElement('div');
+                scoreItem.className = 'score-item';
+                scoreItem.innerHTML = `
+                    <span>#${index + 1} ${player.name}</span>
+                    <span>${gameState.scores[player.id] || 0} pts</span>
+                `;
+                finalScoresList.appendChild(scoreItem);
+            });
+        }
     }
     
 
@@ -3632,20 +3676,21 @@ function stopGameDurationTimer() {
 
 function updateTimerDisplay() {
     const timerElement = document.getElementById('timer');
-    if (timerElement) {
-        timerElement.textContent = timeLeft;
-        
-        // Change color when time is running low
-        if (timeLeft <= 10) {
-            timerElement.style.background = 'rgba(245, 87, 108, 0.8)';
-        } else if (timeLeft <= 20) {
-            timerElement.style.background = 'rgba(255, 193, 7, 0.8)';
-        } else {
-            timerElement.style.background = 'rgba(255, 255, 255, 0.2)';
-        }
+    if (!timerElement) return;
+    timerElement.textContent = timeLeft;
+    if (IS_PLAYER_ROUTE) {
+        timerElement.style.removeProperty('background');
+        timerElement.classList.toggle('is-warn', timeLeft <= 20 && timeLeft > 10);
+        timerElement.classList.toggle('is-urgent', timeLeft <= 10);
+        return;
     }
-    
-
+    if (timeLeft <= 10) {
+        timerElement.style.background = 'rgba(245, 87, 108, 0.8)';
+    } else if (timeLeft <= 20) {
+        timerElement.style.background = 'rgba(255, 193, 7, 0.8)';
+    } else {
+        timerElement.style.background = 'rgba(255, 255, 255, 0.2)';
+    }
 }
 
 // Utility functions
@@ -4506,7 +4551,7 @@ function showWaitingForGrading() {
     // Update title for players
     const scoringTitle = document.getElementById('scoringTitle');
     if (scoringTitle) {
-        scoringTitle.textContent = 'Waiting for grading';
+        scoringTitle.textContent = 'In the paddock';
     }
     
     // Hide answer results until grading is complete
@@ -4530,7 +4575,7 @@ function showWaitingForGrading() {
             <div class="player-waiting-card">
                 <div class="player-waiting-answer">${displayAnswer}</div>
                 <div class="loading-spinner"></div>
-                <p>Host is grading. Results will appear here.</p>
+                <p>The host is grading. Hang tight.</p>
             </div>
         `;
     }

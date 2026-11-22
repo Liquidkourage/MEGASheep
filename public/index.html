@@ -3,8 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
-    <title>MEGASheep Trivia</title>
-    <link rel="stylesheet" href="styles.css?v=2026-11-21T18-20-00">
+    <meta name="theme-color" content="#071018">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>MEGASheep</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=2026-11-22T01-30-00">
+    <link rel="stylesheet" href="player.css?v=2026-11-22T01-35-00">
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     <script>
@@ -29,16 +35,31 @@
         <!-- Join Game Screen (default active) -->
         <div id="joinGameScreen" class="screen active">
             <div class="screen-content">
-                <h2>Join Game</h2>
-                <div class="form-group">
-                    <label for="gameCode">Game Code:</label>
-                    <input type="text" id="gameCode" placeholder="Enter 4-digit game code" maxlength="4" pattern="[0-9]{4}" required autocomplete="off">
+                <div class="player-masthead">
+                    <img class="player-title" src="sprites/megasheep-title.png?v=2026-11-22T01-20-00" alt="MEGASheep">
+                    <p class="player-byline">by Liquid Kourage Entertainment</p>
                 </div>
-                <div class="form-group">
-                    <label for="playerName">Your Name:</label>
-                    <input type="text" id="playerName" placeholder="Enter your name" required>
+                <h2>Join the flock</h2>
+                <div class="player-sign">
+                    <img class="player-sign-art" src="sprites/player-plaque.png?v=2026-11-22T01-20-00" alt="">
+                    <div class="player-sign-face">
+                        <div class="form-group">
+                            <label for="gameCode">Player Code</label>
+                            <input type="text" id="gameCode" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="0000" required autocomplete="one-time-code" enterkeyhint="next" aria-describedby="playerJoinHint">
+                        </div>
+                        <div class="form-group">
+                            <label for="playerName">Your name</label>
+                            <input type="text" id="playerName" placeholder="Name on your nametag" required autocomplete="nickname" autocapitalize="words" maxlength="24" enterkeyhint="go">
+                        </div>
+                        <button id="joinGameSubmitBtn" class="btn btn-primary">Join the flock</button>
+                    </div>
                 </div>
-                <button id="joinGameSubmitBtn" class="btn btn-primary">Join Game</button>
+                <div class="player-grazers" aria-hidden="true">
+                    <figure class="player-ewe" data-coat="1" style="--idle:.1s"><span class="player-ewe-art"><span class="player-ewe-strip"></span></span></figure>
+                    <figure class="player-ewe" data-coat="2" style="--idle:.4s"><span class="player-ewe-art"><span class="player-ewe-strip"></span></span></figure>
+                    <figure class="player-ewe" data-coat="3" style="--idle:.7s"><span class="player-ewe-art"><span class="player-ewe-strip"></span></span></figure>
+                </div>
+                <p id="playerJoinHint" class="visually-hidden">Enter the four-digit code from the TV, then your name.</p>
             </div>
             <button id="aiDisclosureBtn" class="player-ai-disclosure-btn" type="button" aria-haspopup="dialog" aria-controls="aiDisclosureModal">
                 Disclosures &amp; Credits
@@ -49,15 +70,18 @@
         <div id="lobbyScreen" class="screen">
             <div class="screen-content">
                 <div class="lobby-header">
+                    <div class="player-masthead">
+                        <img class="player-title" src="sprites/megasheep-title.png?v=2026-11-22T01-20-00" alt="MEGASheep">
+                    </div>
                     <h2>Game Lobby</h2>
-                    <p class="lobby-subtitle">Waiting for players to join...</p>
+                    <p class="lobby-subtitle">The flock is gathering.</p>
                 </div>
                 
                 <!-- Host Game Management Panel intentionally hidden on player page -->
                 <div id="hostGamePanel" class="host-game-panel" style="display: none;"></div>
                 
                 <div class="players-header">
-                    <h3>👥 Players (<span id="playerCount">0</span>)</h3>
+                    <h3>The flock (<span id="playerCount">0</span>)</h3>
                     <div class="players-actions" id="playersActions" style="display: none;">
                         <button id="kickPlayerBtn" class="btn btn-danger btn-small">
                             <span class="btn-icon">🚫</span>
@@ -94,11 +118,11 @@
                 </div>
 
                 <div class="scoring-explanation">
-                    <p><strong>Scoring:</strong> rarer correct answers score more. Points = total responses ÷ same-answer responses (rounded up).</p>
+                    <p>Rarer correct answers score more. Unique answers pay the most.</p>
                 </div>
 
                 <div class="lobby-actions">
-                    <button id="leaveGameBtn" class="btn btn-secondary">Leave Game</button>
+                    <button id="leaveGameBtn" class="btn btn-secondary">Leave the pasture</button>
                 </div>
             </div>
         </div>
@@ -111,7 +135,7 @@
                     <span id="playerCompactStatus" class="player-compact-status"></span>
                 </div>
                 <div class="game-header-actions">
-                    <button id="toggleHostMsgBtn" class="player-icon-btn" type="button" aria-expanded="false" aria-controls="playerCommPanel" title="Message host">💬</button>
+                    <button id="toggleHostMsgBtn" class="player-icon-btn" type="button" aria-expanded="false" aria-controls="playerCommPanel" title="Message the host">Host</button>
                     <div class="timer" id="timer">30</div>
                 </div>
             </div>
@@ -119,12 +143,15 @@
             <div class="question-container">
                 <div class="player-play-stage">
                     <h2 id="questionText" class="question-text"></h2>
-                    <div id="playerAnswerForm" class="answer-form" style="display: none;">
-                        <div id="editRequestNotice" class="player-edit-banner" hidden></div>
-                        <label for="answerInput" class="player-answer-label">Your answer</label>
-                        <input type="text" id="answerInput" placeholder="Type your answer" maxlength="100" autocomplete="off" enterkeyhint="send" inputmode="text" aria-describedby="playerAnswerHint">
-                        <button id="submitAnswerBtn" class="btn btn-primary">Submit answer</button>
-                        <p id="playerAnswerHint" class="player-answer-hint">Rarer correct answers score more.</p>
+                    <div id="playerAnswerForm" class="answer-form player-sign player-answer-sign" style="display: none;">
+                        <img class="player-sign-art" src="sprites/player-plaque.png?v=2026-11-22T01-30-00" alt="">
+                        <div class="player-sign-face">
+                            <div id="editRequestNotice" class="player-edit-banner" hidden></div>
+                            <label for="answerInput" class="player-answer-label">Your answer</label>
+                            <input type="text" id="answerInput" placeholder="Type your answer" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" inputmode="text" aria-describedby="playerAnswerHint">
+                            <button id="submitAnswerBtn" class="btn btn-primary">Submit answer</button>
+                            <p id="playerAnswerHint" class="player-answer-hint">Rarer correct answers score more.</p>
+                        </div>
                     </div>
                 </div>
                 <div id="playerCommPanel" class="player-comm-panel" hidden>
@@ -158,8 +185,8 @@
         <!-- Scoring Screen -->
         <div id="scoringScreen" class="screen">
             <div class="screen-content">
-                <h2 id="scoringTitle">Question Results</h2>
-                <button id="scoresFab" class="scores-fab" type="button" title="View Current Scores">Scores</button>
+                <h2 id="scoringTitle">The reveal</h2>
+                <button id="scoresFab" class="scores-fab" type="button" title="Bleat-erboard">Flock</button>
 
                 
                 <!-- Host Answer Categorization Interface -->
@@ -243,7 +270,7 @@
         <div id="scoresModal" class="modal" style="display: none;">
             <div class="modal-content scores-modal">
                 <div class="modal-header">
-                    <h4>📊 Current Scores</h4>
+                    <h4>Bleat-erboard</h4>
                     <span class="close" id="closeScoresModal">&times;</span>
                 </div>
                 <div class="modal-body">
@@ -344,9 +371,9 @@
         <!-- Overall Leaderboard Screen -->
         <div id="gameOverScreen" class="screen">
             <div class="screen-content">
-                <h2 id="overallTitle">Overall Leaderboard</h2>
+                <h2 id="overallTitle">Bleat-erboard</h2>
                 <div class="final-scores">
-                    <h3 id="overallSubtitle">After <span id="overallQuestionsCount">0</span> questions:</h3>
+                    <h3 id="overallSubtitle">After <span id="overallQuestionsCount">0</span> questions</h3>
                     <div id="finalScoresList" class="scores-grid"></div>
                 </div>
                 
@@ -354,7 +381,7 @@
                     <h3 id="winnerText"></h3>
                 </div>
 
-                <!-- No actions for players on overall leaderboard -->
+                <button class="btn btn-primary player-again" type="button" onclick="location.href='/'">Back to the pasture</button>
             </div>
         </div>
 
@@ -362,13 +389,14 @@
     </div>
 
     <!-- Keep Awake floating toggle (visible on all screens) -->
-    <button id="keepAwakeFab" class="keep-awake-fab" type="button" aria-pressed="false" title="Prevent screen from sleeping">
-      <span aria-hidden="true">🛌</span>
+    <button id="keepAwakeFab" class="keep-awake-fab" type="button" aria-pressed="false" title="Keep the screen awake" aria-label="Keep the screen awake">
+      <span aria-hidden="true"></span>
       <span class="keep-awake-label">Off</span>
     </button>
 
     <script src="apply-state.js?v=2026-11-18T21-20-00"></script>
-    <script src="script.js?v=2026-11-21T18-15-00"></script>
+    <script src="script.js?v=2026-11-22T01-30-00"></script>
   <!-- Removed sticky player footer -->
 </body>
-</html> 
+</html>
+ 
