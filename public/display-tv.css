@@ -1472,6 +1472,89 @@ html, body {
     animation: eweSleep 1.8s steps(6, jump-none) infinite;
 }
 
+.tv-dog.is-yipping .tv-ewe-strip,
+.tv-play .tv-dog.is-yipping .tv-ewe-strip,
+.tv-play .tv-dog.is-yipping.is-walking .tv-ewe-strip {
+    width: 600%;
+    background-image: url("sprites/dog-01-yip.png?v=2026-11-21T18-35-00");
+    animation: eweSleep 0.48s steps(6, jump-none) 1;
+}
+
+.tv-dog.is-sitting.is-yipping:not(.is-walking) .tv-ewe-strip,
+.tv-play .tv-dog.is-sitting.is-yipping:not(.is-walking):not(.is-joining) .tv-ewe-strip {
+    width: 600%;
+    background-image: url("sprites/dog-01-yip-sit.png?v=2026-11-21T18-35-00");
+    animation: eweSleep 0.48s steps(6, jump-none) 1;
+}
+
+.tv-dog-yips {
+    position: absolute;
+    left: 76%;
+    top: 22%;
+    width: 38%;
+    height: 36%;
+    z-index: 8;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.tv-dog.is-sitting .tv-dog-yips {
+    left: 72%;
+    top: 8%;
+}
+
+.tv-dog.is-left .tv-dog-yips {
+    left: auto;
+    right: 76%;
+    transform: scaleX(-1);
+    transform-origin: 100% 40%;
+}
+
+.tv-dog.is-left.is-sitting .tv-dog-yips {
+    right: 72%;
+}
+
+.tv-dog.is-yipping .tv-dog-yips {
+    opacity: 1;
+}
+
+.tv-dog-yips i {
+    position: absolute;
+    left: 0;
+    top: 18%;
+    width: 62%;
+    aspect-ratio: 1;
+    border: 3px solid #f6ecc4;
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    box-shadow: -1px -1px 0 #16120c;
+    opacity: 0;
+    transform: rotate(18deg) scale(0.45);
+}
+
+.tv-dog.is-yipping .tv-dog-yips i {
+    animation: dogYipLine 0.42s ease-out 1;
+}
+
+.tv-dog-yips i:nth-child(2) {
+    width: 78%;
+    top: 4%;
+    animation-delay: 0.05s;
+}
+
+.tv-dog-yips i:nth-child(3) {
+    width: 94%;
+    top: -10%;
+    animation-delay: 0.1s;
+}
+
+@keyframes dogYipLine {
+    0% { opacity: 0; transform: rotate(18deg) scale(0.4); }
+    28% { opacity: 1; }
+    100% { opacity: 0; transform: rotate(8deg) scale(1.18); }
+}
+
 .tv-thought {
     position: absolute;
     left: 56%;
