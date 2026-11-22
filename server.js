@@ -146,6 +146,26 @@ const DEMO_QUESTIONS = [
     { id: 5, prompt: "Name a type of music genre", correct_answers: ["rock", "jazz", "pop", "classical", "hip hop", "country", "blues", "electronic"], round: 2, question_order: 2 }
 ];
 
+function currentGameQuestion(game) {
+    if (!game) return null;
+    if (Array.isArray(game.questions) && game.questions[game.currentQuestion]) {
+        return game.questions[game.currentQuestion];
+    }
+    return game.currentQuestionData || null;
+}
+
+function isOfficialCorrectAnswer(name, question) {
+    const wanted = String(name || '').toLowerCase().trim();
+    if (!wanted) return false;
+    const list = (question && Array.isArray(question.correct_answers)) ? question.correct_answers : [];
+    return list.some((answer) => String(answer).toLowerCase().trim() === wanted);
+}
+
+function goldTrimForCorrectBucket(bucket, question) {
+    if (!bucket || !bucket.hostCreated) return false;
+    return !isOfficialCorrectAnswer(bucket.name || bucket.correctAnswer, question);
+}
+
 function normalizeQuestions(list) {
     return (Array.isArray(list) ? list : []).map((q, i) => ({
         id: q.id != null ? q.id : i + 1,
@@ -661,10 +681,9 @@ class Game {
             if (answerGroup) {
               answerGroup.category = 'correct';
               answerGroup.correctAnswer = bucket.correctAnswer || bucket.name;
-              const officialNames = (this.currentQuestionData && this.currentQuestionData.correct_answers) || [];
-              const bucketName = String(bucket.correctAnswer || bucket.name || '').toLowerCase().trim();
-              answerGroup.hostCreated = !!bucket.hostCreated || (bucketName && !officialNames.some((answer) => String(answer).toLowerCase().trim() === bucketName));
-              answerGroup.goldTrim = !!answerGroup.hostCreated;
+              const gold = goldTrimForCorrectBucket(bucket, currentGameQuestion(this));
+              answerGroup.hostCreated = !!bucket.hostCreated;
+              answerGroup.goldTrim = gold;
               categorizedAnswers.add(answerData.answer.toLowerCase().trim());
               logger.debug(`✅ Categorized "${answerData.answer}" as correct (bucket: "${bucket.correctAnswer || bucket.name}")`);
             } else {
@@ -756,8 +775,7 @@ class Game {
         if (bucket) {
           // Extract the correct answer name from the bucket ID (remove 'correct_' prefix and replace underscores and hyphens with spaces)
           const correctAnswerName = (bucket.name || bucket.correctAnswer || groupKey.replace('correct_', '').replace(/[_-]/g, ' ')).trim();
-          const officialNames = (this.currentQuestionData && this.currentQuestionData.correct_answers) || [];
-          const hostCreated = !!bucket.hostCreated || !officialNames.some((answer) => String(answer).toLowerCase().trim() === correctAnswerName.toLowerCase());
+          const gold = goldTrimForCorrectBucket(bucket, currentGameQuestion(this));
           
           this.currentAnswerGroups.push({
             bucketId: groupKey,
@@ -766,8 +784,8 @@ class Game {
             points: Z,
             totalResponses: Y,
             category: 'correct',
-            hostCreated,
-            goldTrim: hostCreated,
+            hostCreated: !!bucket.hostCreated,
+            goldTrim: gold,
             players: socketIds.map(id => {
               const player = this.players.get(id);
               return player ? player.name : 'Unknown';
@@ -793,9 +811,7 @@ class Game {
           ? this.categorizationData.correctAnswerBuckets.find(bucket => bucket.id === groupKey)
           : null;
         const displayName = (matchingBucket && (matchingBucket.name || matchingBucket.correctAnswer)) || groupKey.replace(/[_-]/g, ' ');
-        const officialNames = (this.currentQuestionData && this.currentQuestionData.correct_answers) || [];
-        const hostCreated = !!(matchingBucket && matchingBucket.hostCreated)
-          || (category === 'correct' && !officialNames.some((answer) => String(answer).toLowerCase().trim() === String(displayName).toLowerCase().trim()));
+        const gold = category === 'correct' ? goldTrimForCorrectBucket(matchingBucket, currentGameQuestion(this)) : false;
         this.currentAnswerGroups.push({
           bucketId: groupKey,
           answer: displayName,
@@ -803,8 +819,8 @@ class Game {
           points: Z, // Use calculated points (0 for wrong, correct points for valid buckets)
           totalResponses: Y,
           category: category, // Add the category
-          hostCreated,
-          goldTrim: hostCreated,
+          hostCreated: !!(matchingBucket && matchingBucket.hostCreated),
+          goldTrim: gold,
           players: socketIds.map(id => {
             const player = this.players.get(id);
             return player ? player.name : 'Unknown';

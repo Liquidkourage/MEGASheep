@@ -1527,8 +1527,8 @@
                 points: Number(group.points) || 0,
                 players: group.players || [],
                 count: Number(group.count) || (group.players || []).length,
-                goldTrim: !!(group.goldTrim || group.hostCreated),
-                hostCreated: !!(group.hostCreated || group.goldTrim)
+                goldTrim: groupHasGoldTrim(group),
+                hostCreated: !!(group.hostCreated && !isOfficialCorrectAnswer(group.answer))
             }));
             const misses = layoutMissSign(correctNotGiven || []);
             const wrongs = (wrongAnswers || []).slice().sort((a, b) => {
@@ -4723,18 +4723,26 @@
         const PARADE_BANNER_GOLD_SRC = 'sprites/parade-banner-gold.png?v=2026-11-22T09-22-00';
         const PARADE_PENNANT_GOLD_SRC = 'sprites/parade-pennant-gold.png?v=2026-11-22T09-22-00';
 
-        function officialCorrectSet() {
-            const list = (gameState && gameState.currentQuestionData && gameState.currentQuestionData.correct_answers) || [];
-            return new Set(list.map((answer) => String(answer || '').toLowerCase().trim()).filter(Boolean));
+        function currentQuestionRecord() {
+            if (gameState && gameState.currentQuestionData) return gameState.currentQuestionData;
+            const questions = gameState && gameState.questions;
+            const index = gameState && gameState.currentQuestion;
+            if (Array.isArray(questions) && questions[index]) return questions[index];
+            return null;
+        }
+
+        function isOfficialCorrectAnswer(name) {
+            const wanted = String(name || '').toLowerCase().trim();
+            if (!wanted) return false;
+            const list = (currentQuestionRecord() && currentQuestionRecord().correct_answers) || [];
+            return list.some((answer) => String(answer || '').toLowerCase().trim() === wanted);
         }
 
         function groupHasGoldTrim(group) {
             if (!group) return false;
-            if (group.goldTrim || group.hostCreated) return true;
-            if ((Number(group.points) || 0) <= 0) return false;
-            const name = String(group.answer || '').toLowerCase().trim();
-            if (!name) return false;
-            return !officialCorrectSet().has(name);
+            if (!group.goldTrim && !group.hostCreated) return false;
+            if (isOfficialCorrectAnswer(group.answer)) return false;
+            return true;
         }
 
         function paradeClothSrc(gold) {
