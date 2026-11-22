@@ -2543,7 +2543,11 @@
             };
             const tick = (now) => {
                 if (el.dataset.walkGen !== gen || !el.isConnected) return;
-                if (opts && opts.live && !opts.live(el)) return;
+                if (opts && opts.live && !opts.live(el)) {
+                    el.classList.remove('is-placed', 'is-walking', 'is-running', 'is-jumping');
+                    el.style.transitionDuration = '';
+                    return;
+                }
                 const u = Math.min(1, (now - started) / (seconds * 1000));
                 const hop = hopPx;
                 const progress = hop ? (0.5 - 0.5 * Math.cos(Math.PI * u)) : walkEase(u);
@@ -2902,6 +2906,7 @@
         let banditHerdTimer = 0;
         let banditFocus = null;
         let banditSitSince = 0;
+        let banditIdleSince = 0;
         let banditHoldMove = 0;
 
         function banditAt() {
@@ -3207,14 +3212,18 @@
             const list = pack || remainingFieldSheep();
             const i = Math.max(0, list.indexOf(el));
             const n = Math.max(1, list.length);
-            const cols = n <= 2 ? n : (n <= 6 ? 2 : 3);
+            const cols = n <= 2 ? n : (n <= 9 ? 3 : 4);
             const col = i % cols;
             const row = Math.floor(i / cols);
             const hash = nameHash((el && (el.dataset.id || el.dataset.name)) || String(i));
             const anchor = huddleAnchor();
+            const depth = n > 14 ? 1.7 : 2.6;
+            const across = n > 14 ? 2.4 : 3.4;
+            const packedRow = row % 3;
+            const extra = Math.floor(row / 3);
             return clampLobbyPoint(
-                anchor.x - row * 4.1 - (hash % 3) * 0.3,
-                anchor.y + (col - (cols - 1) / 2) * 4.4 + (((hash >> 2) % 3) - 1) * 0.45
+                Math.max(PLAY_FIELD.right - 12, anchor.x - packedRow * depth - (hash % 3) * 0.18),
+                anchor.y + (col - (cols - 1) / 2) * across + extra * 1.15 + (((hash >> 2) % 3) - 1) * 0.28
             );
         }
 
@@ -3595,22 +3604,30 @@
             const loop = () => {
                 if (gen !== wranglerGen || !dog || !dog.isConnected || !pastureHoldsBandit()) return;
                 banditYipLoop = window.setTimeout(loop, 360);
-                if (dog.classList.contains('is-walking') || dog.classList.contains('is-jumping')) return;
-                if (dog.dataset.latching === '1') return;
+                if (dog.classList.contains('is-walking') || dog.classList.contains('is-jumping') || dog.dataset.latching === '1') {
+                    banditIdleSince = 0;
+                    return;
+                }
+                if (!banditIdleSince) banditIdleSince = performance.now();
+                const idleFor = performance.now() - banditIdleSince;
                 if (flockIsCorralled()) {
                     shutTheGateAndLeave(dog, gen);
                     return;
                 }
-                if (flockStillEntering()) return;
-                if (!sitHeldTooLong(dog)) return;
-                const stray = remainingFieldSheep().filter((el) => !isInHuddle(el));
-                if (stray.length) {
-                    runWrangler(dog, gen);
+                const field = remainingFieldSheep();
+                if (!field.length) {
+                    if (flockStillEntering()) return;
+                    if (idleFor > 400) runWrangler(dog, gen);
                     return;
                 }
-                stirTheHold(dog, gen);
+                const stray = field.filter((el) => !isInHuddle(el));
+                if (stray.length) {
+                    if (idleFor > 800) runWrangler(dog, gen);
+                    return;
+                }
+                if (sitHeldTooLong(dog)) stirTheHold(dog, gen);
             };
-            banditYipLoop = window.setTimeout(loop, 2000);
+            banditYipLoop = window.setTimeout(loop, 400);
         }
 
         function setBanditSit(dog, sitting) {
@@ -3725,13 +3742,13 @@
                 shutTheGateAndLeave(dog, gen);
                 return;
             }
-            if (flockStillEntering()) {
-                window.setTimeout(() => runWrangler(dog, gen), 400);
-                return;
-            }
             const all = remainingFieldSheep();
             if (!all.length) {
                 banditFocus = null;
+                if (flockStillEntering()) {
+                    window.setTimeout(() => runWrangler(dog, gen), 400);
+                    return;
+                }
                 watchThePen(dog, gen);
                 return;
             }
@@ -3771,6 +3788,8 @@
             wranglerQuestion = key;
             wranglerWasOut = true;
             wranglerGen += 1;
+            banditIdleSince = 0;
+            banditSitSince = 0;
             const gen = wranglerGen;
             const restore = !!(opts && opts.restore);
             const spot = restore ? gateWatchSpot() : banditSpawnPoint();
