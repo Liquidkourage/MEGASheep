@@ -4088,8 +4088,8 @@
             const body = dog.getBoundingClientRect().width || 96;
             const chorus = document.getElementById('flockChorus');
             const field = chorus ? chorus.getBoundingClientRect() : { width: 1920, height: 1080 };
-            const seconds = 1.68;
-            const catchU = 0.48;
+            const seconds = 2.35;
+            const catchU = 0.46;
             const mix = (a, b, t) => a + (b - a) * t;
             const catchDogX = mix(startX, exitX, catchU);
             const catchDogY = mix(here.y, runY, Math.min(1, catchU / 0.14));
@@ -4128,7 +4128,7 @@
                 const u = Math.min(1, (now - started) / (seconds * 1000));
                 const gx = mix(startX, exitX, u);
                 const gy = mix(here.y, runY, Math.min(1, u / 0.14));
-                const leap = Math.max(0, 1 - ((u - catchU) / 0.15) ** 2);
+                const leap = Math.max(0, 1 - ((u - catchU) / 0.22) ** 2);
                 const lift = leap > 0 ? leap * leap * (3 - 2 * leap) : 0;
                 dog.style.setProperty('--gx', String(gx));
                 dog.style.setProperty('--gy', String(gy));
@@ -4200,7 +4200,7 @@
                     wranglerFinishedKey = wranglerKey();
                     wranglerWasOut = false;
                     syncPenGate();
-                    window.setTimeout(() => chaseTheBallOffstage(dog, gen), 280);
+                    window.setTimeout(() => chaseTheBallOffstage(dog, gen), 480);
                 }, 260);
             }, { gait: 'run', fromJump: true, skipFace: true, latch: true });
         }

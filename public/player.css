@@ -281,9 +281,17 @@ body.player-app .btn:focus-visible {
 }
 
 body.player-app .btn:disabled,
-body.player-app .btn[disabled] {
+body.player-app .btn[disabled],
+body.player-app .btn.disabled,
+body.player-app .btn-primary:disabled,
+body.player-app .btn-primary[disabled],
+body.player-app .btn-primary.disabled {
     filter: grayscale(0.25) brightness(0.9);
     opacity: 0.78;
+    background: url("sprites/player-wood-btn.png?v=2026-11-22T01-35-00") center / 100% 100% no-repeat !important;
+    color: var(--ink) !important;
+    border: 0 !important;
+    pointer-events: none;
 }
 
 body.player-app .btn-secondary,

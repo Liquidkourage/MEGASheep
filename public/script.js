@@ -2340,6 +2340,9 @@ function applyPlayerState(packet, source) {
             updateLobbyDisplay();
         } else if (phase === 'playing') {
             showScreen('game');
+            window._submitInFlight = false;
+            window._playerEditing = false;
+            window._playerEditReason = '';
             displayCurrentQuestion();
             startTimer();
         } else if (phase === 'grading') {
@@ -3048,29 +3051,21 @@ function displayCurrentQuestion() {
         // Player view
         document.getElementById('playerAnswerForm').style.display = 'flex';
         document.getElementById('hostControls').style.display = 'none';
-        
-        // Reset answer form
-        document.getElementById('answerInput').value = '';
-        document.getElementById('answerInput').disabled = false;
-        document.getElementById('submitAnswerBtn').disabled = false;
+
+        window._submitInFlight = false;
+        const input = document.getElementById('answerInput');
+        if (input) input.value = '';
 
         // Prefill/lock if already submitted for this question (refresh-safe)
+        let alreadySubmitted = false;
         try {
             const code = gameState?.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
             const qIndex = currentQuestionIndex;
-            const submitted = localStorage.getItem(`player.submitted.${code}.q${qIndex}`) === '1';
-            const storedAnswer = localStorage.getItem(`player.answer.${code}.q${qIndex}`);
-            const input = document.getElementById('answerInput');
-            const btn = document.getElementById('submitAnswerBtn');
-            if (input && storedAnswer && !input.value) input.value = storedAnswer;
-            if (submitted && input && btn) {
-                input.disabled = true;
-                btn.disabled = true;
-                btn.setAttribute('aria-disabled', 'true');
-                btn.classList.add('disabled');
-            }
-            setPlayerAnswerChrome({ locked: !!submitted, editing: false });
+            alreadySubmitted = !!(code && localStorage.getItem(`player.submitted.${code}.q${qIndex}`) === '1');
+            const storedAnswer = code ? localStorage.getItem(`player.answer.${code}.q${qIndex}`) : '';
+            if (input && storedAnswer) input.value = storedAnswer;
         } catch(_) {}
+        setPlayerSubmitEnabled(!alreadySubmitted);
     }
     
     // Update players list
