@@ -2261,7 +2261,7 @@ html, body {
 .tv-standings .tv-flock,
 .tv-history .tv-flock {
     z-index: 3;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .tv-final .tv-flock {
@@ -2735,7 +2735,7 @@ html, body {
     line-height: 1.08;
 }
 
-.tv-finale-stack {
+.tv-board-stack {
     position: absolute;
     right: 2%;
     bottom: 4%;
@@ -2747,8 +2747,8 @@ html, body {
     pointer-events: none;
 }
 
-.tv-final .tv-score-ranks,
-.tv-final .tv-score-ranks.is-finale {
+.tv-board-stack .tv-score-ranks,
+.tv-board-stack .tv-score-ranks.is-finale {
     position: relative;
     left: auto;
     right: auto;
@@ -2763,8 +2763,8 @@ html, body {
     transform-origin: 50% 100%;
 }
 
-.tv-final .tv-score-ranks .tv-sign-art,
-.tv-final .tv-score-ranks.is-finale .tv-sign-art {
+.tv-board-stack .tv-score-ranks .tv-sign-art,
+.tv-board-stack .tv-score-ranks.is-finale .tv-sign-art {
     width: 100%;
     height: 100%;
     max-height: 56vh;
@@ -2772,9 +2772,9 @@ html, body {
     object-position: bottom center;
 }
 
-.tv-final .tv-score-ranks .tv-rank-n,
-.tv-final .tv-score-ranks .tv-rank-name,
-.tv-final .tv-score-ranks .tv-rank-pts {
+.tv-board-stack .tv-score-ranks .tv-rank-n,
+.tv-board-stack .tv-score-ranks .tv-rank-name,
+.tv-board-stack .tv-score-ranks .tv-rank-pts {
     font-size: clamp(1.55rem, 3.05vh, 2.35rem);
 }
 
@@ -3104,7 +3104,7 @@ html, body {
     pointer-events: none;
 }
 
-.tv-final .tv-podium {
+.tv-board-stack .tv-podium {
     position: relative;
     left: auto;
     right: auto;
@@ -3218,47 +3218,47 @@ html, body {
         0 10px 0 #1a140c;
 }
 
-.tv-final .tv-podium-name {
+.tv-board-stack .tv-podium-name {
     font-size: clamp(1.55rem, 3.1vh, 2.5rem);
 }
 
-.tv-final .tv-podium-spot.is-1 .tv-podium-name {
+.tv-board-stack .tv-podium-spot.is-1 .tv-podium-name {
     font-size: clamp(2rem, 4.1vh, 3.2rem);
 }
 
-.tv-final .tv-podium .tv-ewe {
+.tv-board-stack .tv-podium .tv-ewe {
     width: 118px;
 }
 
-.tv-final .tv-podium-spot.is-1 .tv-ewe {
+.tv-board-stack .tv-podium-spot.is-1 .tv-ewe {
     width: 148px;
 }
 
-.tv-final .tv-podium-spot.is-2 .tv-ewe {
+.tv-board-stack .tv-podium-spot.is-2 .tv-ewe {
     width: 124px;
 }
 
-.tv-final .tv-podium-spot.is-3 .tv-ewe {
+.tv-board-stack .tv-podium-spot.is-3 .tv-ewe {
     width: 112px;
 }
 
-.tv-final .tv-podium-spot.is-1 .tv-crate {
+.tv-board-stack .tv-podium-spot.is-1 .tv-crate {
     min-height: 16vh;
 }
 
-.tv-final .tv-podium-spot.is-2 .tv-crate {
+.tv-board-stack .tv-podium-spot.is-2 .tv-crate {
     min-height: 12vh;
 }
 
-.tv-final .tv-podium-spot.is-3 .tv-crate {
+.tv-board-stack .tv-podium-spot.is-3 .tv-crate {
     min-height: 9.5vh;
 }
 
-.tv-final .tv-crate span {
+.tv-board-stack .tv-crate span {
     font-size: clamp(1.7rem, 3.6vh, 2.6rem);
 }
 
-.tv-final .tv-crate b {
+.tv-board-stack .tv-crate b {
     font-size: clamp(2.2rem, 4.8vh, 3.6rem);
 }
 

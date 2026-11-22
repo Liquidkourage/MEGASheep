@@ -1691,27 +1691,44 @@
         }
 
         function placeStandingsFlock(list, names) {
-            const ranked = rankedPlayers(list);
-            const packed = packTrapezoid(
-                ranked.length,
-                { left: 8, right: 64, y: 66 },
-                { left: 6, right: 76, y: 91 }
-            );
-            const byPlayer = new Map();
-            ranked.forEach((player, index) => {
-                const spot = packed[packed.length - 1 - index] || packed[0] || { x: 40, y: 80, z: 12, scale: 1 };
-                byPlayer.set(player, resultSlot(player, names, {
-                    x: spot.x,
-                    y: spot.y,
-                    z: (spot.z || 12) + (index < 3 ? 8 : 0),
-                    scale: spot.scale || 1
-                }, {
-                    named: ranked.length <= 20 || spot.y >= 78,
+            const rest = rankedPlayers(list).slice(3);
+            if (!rest.length) return [];
+            const n = rest.length;
+            const rows = n <= 6 ? 2 : n <= 14 ? 3 : n <= 24 ? 4 : 5;
+            const counts = [];
+            let remaining = n;
+            for (let r = 0; r < rows; r += 1) {
+                const leftRows = rows - r;
+                const take = r === rows - 1 ? remaining : Math.ceil(remaining / leftRows);
+                counts.push(take);
+                remaining -= take;
+            }
+            const packed = [];
+            const far = { left: 6, right: 54, y: 58 };
+            const near = { left: 4, right: 56, y: 88 };
+            for (let r = 0; r < rows; r += 1) {
+                const t = rows <= 1 ? 0.5 : r / (rows - 1);
+                const y = far.y + t * (near.y - far.y);
+                const left = far.left + t * (near.left - far.left);
+                const right = far.right + t * (near.right - far.right);
+                const count = counts[r];
+                for (let c = 0; c < count; c += 1) {
+                    packed.push({
+                        x: left + ((c + 0.5) / Math.max(count, 1)) * (right - left),
+                        y,
+                        z: 8 + r * 6,
+                        scale: pastureScale(y)
+                    });
+                }
+            }
+            return rest.map((player, index) => {
+                const spot = packed[packed.length - 1 - index] || packed[0];
+                return resultSlot(player, names, spot, {
+                    named: true,
                     fullName: true,
-                    minGy: 64
-                }));
+                    minGy: 56
+                });
             });
-            return list.map((player) => byPlayer.get(player) || resultSlot(player, names, null, { fullName: true }));
         }
 
         function placeFinaleFlock(list, names) {
@@ -4894,7 +4911,7 @@
         }
 
         function mountRankSign() {
-            if (document.querySelector('.tv-finale-stack')) return;
+            if (document.querySelector('.tv-board-stack')) return;
             const chorus = document.getElementById('flockChorus');
             const sign = document.querySelector('.tv-stage > .tv-score-ranks, .tv-standings > .tv-score-ranks');
             if (chorus && sign) chorus.appendChild(sign);
@@ -5543,7 +5560,14 @@
                 <div class="tv-score-top">
                     <p class="tv-play-meta"><span>Round ${escapeDisplayText(roundData.roundNumber)}</span></p>
                     </div>
-                ${tvRankSignHtml(players, { boardId: 'roundRankBoard' })}
+                <div class="tv-board-stack">
+                    ${tvRankSignHtml(players, {
+                        boardId: 'roundRankBoard',
+                        cols: 1,
+                        planted: 'finale'
+                    })}
+                    ${tvPodiumHtml(players)}
+                </div>
             `, players);
             mountRankSign();
             armBoardScroll('roundRankBoard', players.length);
@@ -5561,7 +5585,7 @@
             if (gameStateData) gameState = gameStateData;
             const players = rankedPlayers(gameState && gameState.players);
             paintMeadowScreen('tv-final', `
-                <div class="tv-finale-stack">
+                <div class="tv-board-stack">
                     ${tvRankSignHtml(players, {
                         boardId: 'finalRankBoard',
                         cols: 1,
