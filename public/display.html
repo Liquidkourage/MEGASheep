@@ -2735,6 +2735,7 @@
 
         function endGateTrip(el) {
             el.classList.remove('is-gating', 'is-entering', 'is-walking');
+            maybeStartBanditForFullPen();
         }
 
         function currentEwePoint(el) {
@@ -2891,6 +2892,7 @@
             const outEl = document.getElementById('flockOutCount');
             if (inEl) inEl.textContent = String(inCount);
             if (outEl) outEl.textContent = String(Math.max(0, total - inCount));
+            maybeStartBanditForFullPen();
             return { inCount, total };
         }
 
@@ -4021,6 +4023,17 @@
             );
         }
 
+        function flockReadyForLatch() {
+            return flockIsCorralled() && !flockStillEntering();
+        }
+
+        function maybeStartBanditForFullPen() {
+            if (!pastureHoldsBandit()) return;
+            if (!gameState || gameState.gameState !== 'playing') return;
+            if (!flockReadyForLatch()) return;
+            startWrangler();
+        }
+
         function sitHeldTooLong(dog) {
             return !!(dog && dog.classList.contains('is-sitting') && banditSitSince
                 && (performance.now() - banditSitSince) >= 1000);
@@ -4664,6 +4677,10 @@
                     runWrangler(dog, gen);
                     return;
                 }
+                if (flockReadyForLatch()) {
+                    shutTheGateAndLeave(dog, gen);
+                    return;
+                }
                 walkBanditTo(dog, spot.gx, spot.gy, () => {
                     if (gen !== wranglerGen) return;
                     keepCorrallingNearBandit(dog, gen);
@@ -4679,7 +4696,7 @@
                 if (document.querySelector('#flockChorus .tv-dog')) resetWrangler(true);
                 return;
             }
-            if (gameState.gameState === 'playing' && Number(timeLeft) <= banditAt()) {
+            if (gameState.gameState === 'playing' && (Number(timeLeft) <= banditAt() || flockReadyForLatch())) {
                 startWrangler();
                 return;
             }
