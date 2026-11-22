@@ -1292,6 +1292,10 @@ html, body {
     z-index: 70;
 }
 
+.tv-play .tv-dog.is-latching {
+    z-index: 64;
+}
+
 .tv-play .tv-dog {
     width: clamp(84px, calc(var(--ewe-base, 118px) * 1.12), 148px);
 }
