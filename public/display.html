@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T20-57-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T21-52-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -2543,6 +2543,10 @@
             };
             const tick = (now) => {
                 if (el.dataset.walkGen !== gen || !el.isConnected) return;
+                if (el.classList.contains('tv-dog') && el.classList.contains('is-sitting')) {
+                    el.classList.remove('is-walking', 'is-running', 'is-jumping');
+                    return;
+                }
                 if (opts && opts.live && !opts.live(el)) {
                     el.classList.remove('is-placed', 'is-walking', 'is-running', 'is-jumping');
                     el.style.transitionDuration = '';
@@ -2975,6 +2979,8 @@
                 dog.remove();
                 return;
             }
+            setBanditSit(dog, false);
+            setBanditGait(dog, 'run');
             const gy = parseFloat(dog.style.getPropertyValue('--gy')) || 80;
             const depth = lobbyDepth(gy);
             walkEweOnField(dog, slotFromEwe(dog, {
@@ -3189,6 +3195,7 @@
         }
 
         function parkBandit(dog, point) {
+            if (dog.classList.contains('is-sitting')) return currentEwePoint(dog);
             const x = Number.isFinite(point.x) ? point.x : point.gx;
             const y = Number.isFinite(point.y) ? point.y : point.gy;
             const leaving = x < BANDIT_ONSTAGE_LEFT - 0.4;
@@ -3218,6 +3225,8 @@
             const running = gait === 'run';
             walkSmoothPath(dog, points, () => {
                 dog.classList.remove('is-walking', 'is-running', 'is-jumping');
+                dog.classList.add('is-placed');
+                dog.style.transitionDuration = '0s';
                 parkBandit(dog, currentEwePoint(dog));
                 if (!(opts && opts.skipFace)) faceWranglerAtSheep(dog);
                 if (onDone) onDone();
@@ -3440,7 +3449,7 @@
 
         function faceWranglerAtSheep(dog) {
             if (!dog || !dog.isConnected) return;
-            if (dog.classList.contains('is-walking') || dog.classList.contains('is-jumping')) return;
+            if (dog.classList.contains('is-walking') || dog.classList.contains('is-jumping') || dog.classList.contains('is-sitting')) return;
             const look = wranglerLookPoint(dog);
             if (!look) return;
             const here = visualEwePoint(dog);
@@ -3622,7 +3631,7 @@
 
         function corralNearBandit(dog) {
             flowFlockFromDog(dog, dog.classList.contains('is-yipping'));
-            if (!dog.classList.contains('is-walking') && !dog.classList.contains('is-jumping')) {
+            if (!dog.classList.contains('is-walking') && !dog.classList.contains('is-jumping') && !dog.classList.contains('is-sitting')) {
                 faceWranglerAtSheep(dog);
             }
         }
@@ -3818,11 +3827,19 @@
         function setBanditSit(dog, sitting) {
             if (!dog) return;
             if (sitting) {
+                bumpEweWalk(dog);
+                dog.classList.remove('is-walking', 'is-running', 'is-jumping');
+                dog.style.transitionDuration = '0s';
+                dog.style.setProperty('--walk', '0s');
+                dog.style.setProperty('--hop', '0');
+                dog.classList.add('is-placed');
                 if (!dog.classList.contains('is-sitting')) {
                     banditSitSince = performance.now();
                     banditSitYipAt = performance.now();
+                    faceWranglerAtSheep(dog);
                 }
                 setBanditGait(dog, 'sit');
+                dog.classList.add('is-placed');
                 return;
             }
             banditSitSince = 0;

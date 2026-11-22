@@ -1278,6 +1278,11 @@ html, body {
     pointer-events: none;
 }
 
+.tv-dog.is-sitting,
+.tv-play .tv-dog.is-sitting {
+    transition: none;
+}
+
 .tv-dog.is-walking:not(.is-parade) {
     z-index: 54;
 }
