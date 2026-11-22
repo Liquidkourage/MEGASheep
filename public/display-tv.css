@@ -1348,7 +1348,7 @@ html, body {
 .tv-ewe.is-sad:not(.is-walking) .tv-ewe-strip,
 .tv-ewe[data-mood="sleep"]:not(.is-walking) .tv-ewe-strip {
     width: 600%;
-    background-image: url("sprites/sheep-01-sleep.png?v=2026-11-21T17-45-00");
+    background-image: url("sprites/sheep-01-sleep.png?v=2026-11-21T18-25-00");
     animation: eweSleep 1.8s steps(6, jump-none) infinite;
     animation-delay: var(--idle, 0s);
 }
@@ -1356,13 +1356,13 @@ html, body {
 .tv-ewe[data-coat="2"].is-in:not(.is-walking) .tv-ewe-strip,
 .tv-ewe[data-coat="2"].is-sad:not(.is-walking) .tv-ewe-strip,
 .tv-ewe[data-coat="2"][data-mood="sleep"]:not(.is-walking) .tv-ewe-strip {
-    background-image: url("sprites/sheep-02-sleep.png?v=2026-11-21T17-45-00");
+    background-image: url("sprites/sheep-02-sleep.png?v=2026-11-21T18-25-00");
 }
 
 .tv-ewe[data-coat="3"].is-in:not(.is-walking) .tv-ewe-strip,
 .tv-ewe[data-coat="3"].is-sad:not(.is-walking) .tv-ewe-strip,
 .tv-ewe[data-coat="3"][data-mood="sleep"]:not(.is-walking) .tv-ewe-strip {
-    background-image: url("sprites/sheep-03-sleep.png?v=2026-11-21T17-45-00");
+    background-image: url("sprites/sheep-03-sleep.png?v=2026-11-21T18-25-00");
 }
 
 .tv-ewe.is-outside:not(.is-walking) .tv-ewe-strip {
