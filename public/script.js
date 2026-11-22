@@ -170,7 +170,9 @@ function setPlayerSubmitEnabled(enabled) {
     const btn = document.getElementById('submitAnswerBtn');
     if (form && !isHost) form.style.display = 'flex';
     if (input) input.disabled = !enabled;
-    if (btn) {
+    if (btn && window.MEGASheepSubmit) {
+        window.MEGASheepSubmit.syncPlayerSubmitButton(btn, !enabled);
+    } else if (btn) {
         btn.disabled = !enabled;
         if (enabled) {
             btn.removeAttribute('aria-disabled');
@@ -2317,9 +2319,12 @@ function applyPlayerState(packet, source) {
         if (typeof packet.currentQuestion === 'number') currentQuestionIndex = packet.currentQuestion;
         if (Array.isArray(packet.questions) && packet.questions.length) questions = packet.questions;
 
-        if (result.epochChanged && window.lastSubmittedQuestionIndex !== packet.currentQuestion) {
-            window.lastSubmittedAnswer = '';
-            window.lastSubmittedQuestionIndex = packet.currentQuestion;
+        if (result.epochChanged) {
+            window._submitInFlight = false;
+            if (window.lastSubmittedQuestionIndex !== packet.currentQuestion) {
+                window.lastSubmittedAnswer = '';
+                window.lastSubmittedQuestionIndex = packet.currentQuestion;
+            }
         }
 
         const pending = findMyPendingEdit(packet.pendingEdits);
@@ -3052,20 +3057,31 @@ function displayCurrentQuestion() {
         document.getElementById('playerAnswerForm').style.display = 'flex';
         document.getElementById('hostControls').style.display = 'none';
 
-        window._submitInFlight = false;
+        // Each question starts open. A lock from an earlier question must not stick.
         const input = document.getElementById('answerInput');
-        if (input) input.value = '';
-
-        // Prefill/lock if already submitted for this question (refresh-safe)
-        let alreadySubmitted = false;
+        const btn = document.getElementById('submitAnswerBtn');
+        let submitted = false;
+        let storedAnswer = '';
         try {
             const code = gameState?.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
             const qIndex = currentQuestionIndex;
-            alreadySubmitted = !!(code && localStorage.getItem(`player.submitted.${code}.q${qIndex}`) === '1');
-            const storedAnswer = code ? localStorage.getItem(`player.answer.${code}.q${qIndex}`) : '';
-            if (input && storedAnswer) input.value = storedAnswer;
-        } catch(_) {}
-        setPlayerSubmitEnabled(!alreadySubmitted);
+            submitted = !!(code && localStorage.getItem(`player.submitted.${code}.q${qIndex}`) === '1');
+            storedAnswer = (code && localStorage.getItem(`player.answer.${code}.q${qIndex}`)) || '';
+        } catch (_) {}
+        if (input) {
+            input.disabled = submitted;
+            input.value = storedAnswer;
+        }
+        if (window.MEGASheepSubmit) {
+            window.MEGASheepSubmit.syncPlayerSubmitButton(btn, submitted);
+        } else if (btn) {
+            btn.disabled = submitted;
+            btn.classList.toggle('disabled', submitted);
+            if (submitted) btn.setAttribute('aria-disabled', 'true');
+            else btn.removeAttribute('aria-disabled');
+        }
+        if (!submitted) window._submitInFlight = false;
+        setPlayerAnswerChrome({ locked: submitted, editing: false });
     }
     
     // Update players list

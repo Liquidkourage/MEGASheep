@@ -1048,8 +1048,15 @@ body.player-app #scoresModal .modal-header,
 body.player-app #scoresModal .modal-header h4,
 body.player-app #scoresModal .close {
     background: none;
-    color: var(--wood);
+    color: #f6e6b2;
     border: 0;
+    text-shadow: none;
+    opacity: 1;
+}
+
+body.player-app #scoresModal .modal-header h4 {
+    font-size: 1.35rem;
+    font-weight: 700;
 }
 
 body.player-app #scoresModal .close {
