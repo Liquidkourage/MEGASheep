@@ -755,10 +755,26 @@ html, body {
     line-height: 1.05;
 }
 
-.tv-final .tv-flock .tv-ewe figcaption,
 .tv-history .tv-ewe figcaption,
 .tv-podium .tv-ewe figcaption {
     display: none;
+}
+
+.tv-final .tv-flock .tv-ewe.is-crowd figcaption {
+    display: none;
+}
+
+.tv-final .tv-flock .tv-ewe:not(.is-crowd) figcaption {
+    display: flex;
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    z-index: 6;
+    width: max-content;
+    max-width: none;
+    overflow: visible;
+    transform: translate(-50%, -0.15em);
+    font-size: calc(clamp(var(--ewe-min, 72px), var(--ewe-base, 118px), var(--ewe-max, 132px)) * 0.2);
 }
 
 .tv-lobby-empty[hidden] {

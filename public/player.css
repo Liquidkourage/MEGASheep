@@ -855,8 +855,12 @@ body.player-app #scoringScreen .screen-content {
 }
 
 body.player-app #scoringScreen .screen-content h2 {
+    flex-shrink: 0;
+    margin: 0 0 6px;
+    padding: 0 12px;
     text-align: center;
-    padding: 0 88px 0 56px;
+    font-size: clamp(1.7rem, 7vw, 2.2rem);
+    line-height: 1.05;
 }
 
 body.player-app #scoringScreen .answers-display {
@@ -873,6 +877,13 @@ body.player-app #scoringScreen #answersList {
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column;
+}
+
+body.player-app #scoringScreen .player-board,
+body.player-app #finalScoresList .player-board,
+body.player-app #scoresModal .player-board {
+    flex: 1;
+    min-height: 0;
 }
 
 body.player-app .question-results-mobile {
@@ -1110,49 +1121,62 @@ body.player-app #finalScoresList {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    justify-content: flex-start;
-    gap: 8px;
-    padding: 8px 4px 18px;
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    padding: 0;
+    overflow: hidden;
 }
 
-body.player-app .player-finale-row {
+body.player-app .player-board {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+body.player-app .player-board-you {
+    flex: 0 0 auto;
     display: grid;
-    grid-template-columns: 52px minmax(0, 1fr) auto;
+    grid-template-columns: 84px minmax(0, 1fr) auto;
     align-items: center;
     gap: 10px;
-    min-height: 44px;
-    padding: 4px 8px;
-    border: 2px solid var(--ink);
-    border-radius: 14px;
-    background: var(--cream);
+    min-height: 88px;
+    padding: 10px 14px;
+    border: 3px solid var(--ink);
+    border-radius: 18px;
+    background: #f6e6b2;
     color: var(--ink);
 }
 
-body.player-app .player-finale-row.is-you {
-    background: #f6e6b2;
-    box-shadow: 0 0 0 2px #1a3878;
+body.player-app .player-board-you.is-1,
+body.player-app .player-board-row.is-1 {
+    background: #f3d56a;
 }
 
-body.player-app #finalScoresList .score-item,
-body.player-app .player-finale-row .player-finale-ewe {
-    position: relative;
-    width: 52px;
+body.player-app .player-board-you.is-2,
+body.player-app .player-board-row.is-2 {
+    background: #e4ddd0;
+}
+
+body.player-app .player-board-you.is-3,
+body.player-app .player-board-row.is-3 {
+    background: #e8c4a0;
+}
+
+body.player-app .player-board-you-rank {
     margin: 0;
-    filter: drop-shadow(0 3px 0 rgba(20, 16, 8, 0.28));
+    font-family: var(--title);
+    font-size: clamp(1.8rem, 8vw, 2.4rem);
+    font-weight: 800;
+    line-height: 0.95;
+    color: var(--navy);
 }
 
-body.player-app .player-finale-ewe figcaption {
-    display: none;
-}
-
-body.player-app .player-finale-who {
+body.player-app .player-board-you-name,
+body.player-app .player-board-who {
     min-width: 0;
     margin: 0;
     font-family: var(--title);
-    font-size: 1rem;
+    font-size: 1.05rem;
     font-weight: 700;
     line-height: 1.2;
     white-space: normal;
@@ -1160,15 +1184,106 @@ body.player-app .player-finale-who {
     overflow-wrap: anywhere;
 }
 
+body.player-app .player-board-you-meta {
+    margin: 4px 0 0;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--wood);
+}
+
+body.player-app .player-board-title {
+    flex: 0 0 auto;
+    margin: 2px 2px 0;
+    color: var(--cream);
+    text-shadow: 0 2px 0 #0b1018;
+    font-family: var(--title);
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+body.player-app .player-board-list {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+}
+
+body.player-app .player-board-row,
+body.player-app .player-finale-row {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 4px 10px;
+    border: 2px solid var(--ink);
+    border-radius: 14px;
+    background: var(--cream);
+    color: var(--ink);
+}
+
+body.player-app .player-board-row.is-you,
+body.player-app .player-finale-row.is-you {
+    box-shadow: 0 0 0 2px #1a3878;
+}
+
+body.player-app .player-board-row.is-1,
+body.player-app .player-board-row.is-2,
+body.player-app .player-board-row.is-3 {
+    grid-template-columns: 58px minmax(0, 1fr) auto;
+}
+
+body.player-app .player-board-ewe,
+body.player-app .player-finale-ewe {
+    position: relative;
+    width: 48px;
+    margin: 0;
+    filter: drop-shadow(0 3px 0 rgba(20, 16, 8, 0.28));
+}
+
+body.player-app .player-board-you .player-board-ewe,
+body.player-app .player-board-row.is-1 .player-board-ewe,
+body.player-app .player-board-row.is-2 .player-board-ewe,
+body.player-app .player-board-row.is-3 .player-board-ewe {
+    width: 58px;
+}
+
+body.player-app .player-board-you .player-board-ewe.is-hero {
+    width: 84px;
+}
+
+body.player-app .player-board-ewe figcaption,
+body.player-app .player-finale-ewe figcaption {
+    display: none;
+}
+
+body.player-app .player-board-rank,
 body.player-app .player-finale-rank {
     color: var(--navy);
 }
 
+body.player-app .player-board-pts,
 body.player-app .player-finale-pts {
     font-family: var(--title);
     font-size: 1.15rem;
     font-weight: 800;
     white-space: nowrap;
+}
+
+body.player-app .player-board-you .player-board-pts {
+    font-size: 1.55rem;
+}
+
+body.player-app #scoresModal .scores-grid {
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 body.player-app .player-again {

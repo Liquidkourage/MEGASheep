@@ -3411,6 +3411,91 @@ function showAnswerDetails(answer, count, points, totalResponses) {
     showToast(`${answer}: ${uniquenessText}. ${pointsText}`, 'info');
 }
 
+function playerCoatOf(name) {
+    let hash = 0;
+    const text = String(name || '');
+    for (let i = 0; i < text.length; i += 1) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+    return (Math.abs(hash) % 3) + 1;
+}
+
+function escapePlayer(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+function playerScoreOf(player) {
+    if (!player) return 0;
+    const fromPlayer = Number(player.score);
+    if (Number.isFinite(fromPlayer) && fromPlayer) return fromPlayer;
+    const scores = gameState && gameState.scores;
+    return Number(scores && (scores[player.id] || scores[player.stableId])) || 0;
+}
+
+function playerBoardPlace(rank) {
+    if (rank === 1) return 'is-1';
+    if (rank === 2) return 'is-2';
+    if (rank === 3) return 'is-3';
+    return '';
+}
+
+function playerBoardRowHtml(player, rank, mine, pts) {
+    const delay = ((rank % 7) * 0.12).toFixed(2);
+    return `<div class="player-board-row ${playerBoardPlace(rank)}${mine ? ' is-you' : ''}">
+        <figure class="player-ewe player-board-ewe" data-coat="${playerCoatOf(player.name)}" style="--idle:${delay}s" aria-hidden="true">
+            <span class="player-ewe-art"><span class="player-ewe-strip"></span></span>
+        </figure>
+        <p class="player-board-who"><span class="player-board-rank">#${rank}</span> ${escapePlayer(player.name || 'Sheep')}</p>
+        <b class="player-board-pts">${pts}</b>
+    </div>`;
+}
+
+function playerBoardHtml(ranked, extras) {
+    const extra = extras || {};
+    const myName = String(extra.myName || sessionStorage.getItem('playerName') || currentPlayerName || '').toLowerCase();
+    const you = ranked.find((player, index) => {
+        const name = String(player.name || '').toLowerCase();
+        return name === myName || player.id === (typeof socket !== 'undefined' && socket && socket.id);
+    });
+    const youRank = you ? ranked.indexOf(you) + 1 : 0;
+    const youPts = you ? (you.total != null ? you.total : playerScoreOf(you)) : 0;
+    const youCard = you ? `
+        <section class="player-board-you ${playerBoardPlace(youRank)}">
+            <figure class="player-ewe player-board-ewe is-hero" data-coat="${playerCoatOf(you.name)}" aria-hidden="true">
+                <span class="player-ewe-art"><span class="player-ewe-strip"></span></span>
+            </figure>
+            <div class="player-board-you-copy">
+                <p class="player-board-you-rank">#${youRank}</p>
+                <p class="player-board-you-name">${escapePlayer(you.name || 'Sheep')}</p>
+                <p class="player-board-you-meta">${extra.youMeta || `${youPts} total`}</p>
+            </div>
+            <b class="player-board-pts">${youPts}</b>
+        </section>` : '';
+    const rows = ranked.map((player, index) => {
+        const rank = index + 1;
+        const mine = String(player.name || '').toLowerCase() === myName || player.id === (typeof socket !== 'undefined' && socket && socket.id);
+        const pts = player.total != null ? player.total : playerScoreOf(player);
+        return playerBoardRowHtml(player, rank, mine, pts);
+    }).join('');
+    return `<div class="player-board">
+        ${youCard}
+        <h3 class="player-board-title">${escapePlayer(extra.title || 'Bleat-erboard')}</h3>
+        <div class="player-board-list">${rows}</div>
+    </div>`;
+}
+
+function revealPlayerBoardYou(root) {
+    const list = root && root.querySelector('.player-board-list');
+    const mine = list && list.querySelector('.player-board-row.is-you');
+    if (!list || !mine) return;
+    window.requestAnimationFrame(() => {
+        const top = mine.offsetTop - Math.max(0, (list.clientHeight - mine.offsetHeight) / 2);
+        list.scrollTop = Math.max(0, top);
+    });
+}
+
 function displayRoundResults() {
     // Round summary (no per-question breakdown)
     const scoringTitle = document.getElementById('scoringTitle');
@@ -3425,14 +3510,7 @@ function displayRoundResults() {
     // ensure FAB works for players
     try {
         const fab = document.getElementById('scoresFab');
-        if (fab && !isHost) {
-            fab.style.display = 'inline-flex';
-            try { fab.removeEventListener('click', showScoresModal); } catch(_) {}
-            fab.addEventListener('click', showScoresModal);
-            fab.dataset.bound = '1';
-        } else if (fab && isHost) {
-            fab.style.display = 'none';
-        }
+        if (fab) fab.style.display = 'none';
     } catch(_) {}
 
     answersList.innerHTML = '';
@@ -3493,7 +3571,24 @@ function displayRoundResults() {
             </div>
         </div>`;
 
-    // Leaderboard top 5
+    if (IS_PLAYER_ROUTE) {
+        if (scoringTitle) scoringTitle.textContent = 'Bleat-erboard';
+        const youMeta = [
+            myRoundDelta ? `+${myRoundDelta} this round` : 'even this round',
+            upDown !== 'even' ? upDown : ''
+        ].filter(Boolean).join(' · ');
+        answersList.style.setProperty('overflow', 'hidden', 'important');
+        answersList.style.setProperty('display', 'flex', 'important');
+        answersList.style.setProperty('flex-direction', 'column', 'important');
+        answersList.innerHTML = playerBoardHtml(rankAfterList, {
+            myName,
+            title: `Round ${lastRound?.roundNumber || 1}`,
+            youMeta
+        });
+        revealPlayerBoardYou(answersList);
+        return;
+    }
+
     const leaderboardRows = rankAfterList.map((p, index) => {
         const rank = index + 1;
         const mineClass = p.name.toLowerCase() === myName.toLowerCase() ? ' mine' : '';
@@ -3505,20 +3600,10 @@ function displayRoundResults() {
             </div>
         `;
     }).join('');
-    const leaderboardHtml = IS_PLAYER_ROUTE
-        ? `<div class="player-answers-board"><div class="player-answers-label">Bleat-erboard</div><div class="player-answers-chips scores-list">${leaderboardRows}</div></div>`
-        : `<div class="scores-display"><h3>Leaderboard</h3><div class="scores-list">${leaderboardRows}</div></div>`;
-
-    const isMobile = window.innerWidth <= 768;
-    if (isMobile) {
-        answersList.style.display = 'block';
-        answersList.innerHTML = `<div class="question-results-mobile">${personalSummaryHtml}${leaderboardHtml}</div>`;
-        } else {
-        answersList.style.display = 'grid';
-        answersList.style.gridTemplateColumns = '1fr 1fr';
-        answersList.style.gap = '20px';
-        answersList.innerHTML = `<div class="personal-result-section">${personalSummaryHtml}</div><div class="all-answers-section">${leaderboardHtml}</div>`;
-    }
+    answersList.style.display = 'grid';
+    answersList.style.gridTemplateColumns = '1fr 1fr';
+    answersList.style.gap = '20px';
+    answersList.innerHTML = `<div class="personal-result-section">${personalSummaryHtml}</div><div class="all-answers-section"><div class="scores-display"><h3>Leaderboard</h3><div class="scores-list">${leaderboardRows}</div></div></div>`;
 }
 
 function displayFinalResults() {
@@ -3548,32 +3633,16 @@ function displayFinalResults() {
             return bScore - aScore;
         });
         const myName = String(sessionStorage.getItem('playerName') || currentPlayerName || '').toLowerCase();
-        const coatOf = (name) => {
-            let hash = 0;
-            const text = String(name || '');
-            for (let i = 0; i < text.length; i += 1) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
-            return (Math.abs(hash) % 3) + 1;
-        };
-        const escapePlayer = (value) => String(value || '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
 
         if (IS_PLAYER_ROUTE) {
-            const ranked = sortedPlayers.slice();
-            finalScoresList.innerHTML = ranked.map((player, index) => {
-                const mine = String(player.name || '').toLowerCase() === myName || player.id === socket.id;
-                const delay = ((index % 7) * 0.12).toFixed(2);
-                const pts = Number(player.score) || Number(gameState.scores && gameState.scores[player.id]) || 0;
-                return `<div class="player-finale-row${mine ? ' is-you' : ''}">
-                    <figure class="player-ewe player-finale-ewe" data-coat="${coatOf(player.name)}" style="--idle:${delay}s" aria-hidden="true">
-                        <span class="player-ewe-art"><span class="player-ewe-strip"></span></span>
-                    </figure>
-                    <p class="player-finale-who"><span class="player-finale-rank">#${index + 1}</span> ${escapePlayer(player.name || 'Sheep')}</p>
-                    <b class="player-finale-pts">${pts}</b>
-                </div>`;
-            }).join('');
+            finalScoresList.innerHTML = playerBoardHtml(sortedPlayers.map((player) => ({
+                ...player,
+                total: playerScoreOf(player)
+            })), {
+                myName,
+                title: 'Final standings'
+            });
+            revealPlayerBoardYou(finalScoresList);
         } else {
             sortedPlayers.forEach((player, index) => {
                 const scoreItem = document.createElement('div');
@@ -3837,26 +3906,23 @@ function showScoresModal() {
     // Populate scores list
     scoresList.innerHTML = '';
     if (gameState.players) {
-        const myNameLower = (sessionStorage.getItem('playerName') || '').toLowerCase();
-        gameState.players
-            .sort((a, b) => (gameState.scores[b.id] || 0) - (gameState.scores[a.id] || 0))
-            .forEach((player, index) => {
+        const ranked = gameState.players.slice().sort((a, b) => playerScoreOf(b) - playerScoreOf(a))
+            .map((player) => ({ ...player, total: playerScoreOf(player) }));
+        if (IS_PLAYER_ROUTE) {
+            scoresList.innerHTML = playerBoardHtml(ranked, { title: 'Bleat-erboard' });
+            revealPlayerBoardYou(scoresList);
+        } else {
+            ranked.forEach((player, index) => {
                 const scoreItem = document.createElement('div');
-                const isMe = String(player.name || '').toLowerCase() === myNameLower;
+                const isMe = String(player.name || '').toLowerCase() === String(sessionStorage.getItem('playerName') || '').toLowerCase();
                 scoreItem.className = 'score-item single-line' + (isMe ? ' mine' : '');
-                
-                // Add rank indicator for top 3
-                let rankIcon = '';
-                if (index === 0) rankIcon = '🥇 ';
-                else if (index === 1) rankIcon = '🥈 ';
-                else if (index === 2) rankIcon = '🥉 ';
-                
                 scoreItem.innerHTML = `
-                    <span class="player-name">${rankIcon}${player.name}</span>
-                    <span class="player-score">${gameState.scores[player.id] || 0} points</span>
+                    <span class="player-name">${index + 1}. ${player.name}</span>
+                    <span class="player-score">${player.total} points</span>
                 `;
                 scoresList.appendChild(scoreItem);
             });
+        }
     }
     
     // Show modal with animation
