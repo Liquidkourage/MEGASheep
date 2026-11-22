@@ -1448,38 +1448,35 @@
             return moved;
         }
 
-        function bindOwnBucketControls() {
-            let btn = document.getElementById('newCorrectBucketBtn');
-            const correctRoot = document.getElementById('correctAnswers');
-            if (!btn && correctRoot && correctRoot.parentElement) {
-                const wrap = document.createElement('div');
-                wrap.className = 'grade-targets-toolbar';
-                const heading = correctRoot.previousElementSibling;
-                btn = document.createElement('button');
-                btn.type = 'button';
-                btn.id = 'newCorrectBucketBtn';
-                btn.className = 'control-btn success grade-own-bucket-btn';
-                btn.title = 'Mark the selected answer correct as its own bucket (4)';
-                btn.textContent = 'Own bucket';
-                if (heading && (heading.classList.contains('grade-targets-heading') || heading.tagName === 'H4')) {
-                    wrap.appendChild(heading);
-                    wrap.appendChild(btn);
-                    correctRoot.parentElement.insertBefore(wrap, correctRoot);
-                } else {
-                    correctRoot.parentElement.insertBefore(btn, correctRoot);
-                }
+        function eventElement(e) {
+            const target = e && e.target;
+            if (!target) return null;
+            if (target.nodeType === 1) return target;
+            return target.parentElement || null;
+        }
+
+        function isCorrectTargetsEmptyArea(el) {
+            if (!el) return false;
+            if (el.closest('.answer-bucket') || el.closest('.answer-item') || el.closest('button')) return false;
+            return !!(el.closest('#correctAnswers') || el.closest('.grade-targets-correct'));
+        }
+
+        function markNewBucketDropReady(on) {
+            const root = document.getElementById('correctAnswers');
+            const wrap = document.querySelector('.grade-targets-correct');
+            if (root) root.classList.toggle('is-drop-new', !!on);
+            if (wrap) wrap.classList.toggle('is-drop-new', !!on);
+        }
+
+        function bindNewBucketDrop() {
+            const leftover = document.getElementById('newCorrectBucketBtn');
+            if (leftover) leftover.remove();
+            const wrap = document.querySelector('.grade-targets-toolbar');
+            if (wrap && wrap.parentElement) {
+                const heading = wrap.querySelector('.grade-targets-heading');
+                if (heading) wrap.parentElement.insertBefore(heading, wrap);
+                wrap.remove();
             }
-            if (!btn || btn.dataset.bound === '1') return;
-            btn.dataset.bound = '1';
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (!selectedGradeChip) {
-                    showToast('Select an answer first', 'info');
-                    return;
-                }
-                markChipAsOwnCorrect(selectedGradeChip);
-            });
         }
 
         function acceptUncategorizedGuess(chip) {
@@ -1535,29 +1532,49 @@
 
         // Global drag handler using event delegation (prevents memory leaks)
         function globalDragHandler(e) {
-            const answerItem = e.target.closest('.answer-item');
-            const dropZone = e.target.closest('.answer-items');
-            const bucket = e.target.closest('.answer-bucket');
+            const el = eventElement(e);
+            const answerItem = el && el.closest('.answer-item');
+            const dropZone = el && el.closest('.answer-items');
+            const bucket = el && el.closest('.answer-bucket');
+            const emptyNew = isCorrectTargetsEmptyArea(el);
             
             switch(e.type) {
                 case 'dragstart':
                     if (answerItem) handleDragStart(e);
                     break;
                 case 'dragend':
+                    markNewBucketDropReady(false);
                     if (answerItem) handleDragEnd(e);
                     break;
                 case 'dragover':
-                    if (dropZone || bucket) handleDragOver(e);
+                    if (dropZone || bucket) {
+                        markNewBucketDropReady(false);
+                        handleDragOver(e);
+                    } else if (emptyNew) {
+                        e.preventDefault();
+                        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+                        markNewBucketDropReady(true);
+                    }
                     break;
                 case 'dragenter':
                     if (dropZone || bucket) handleDragEnter(e);
+                    else if (emptyNew) {
+                        e.preventDefault();
+                        markNewBucketDropReady(true);
+                    }
                     break;
                 case 'dragleave':
                     if (dropZone || bucket) handleDragLeave(e);
                     break;
                 case 'drop':
+                    markNewBucketDropReady(false);
                     if (bucket) handleDropOnBucket(e);
                     else if (dropZone) handleDrop(e);
+                    else if (emptyNew) {
+                        e.preventDefault();
+                        const chip = draggedElement || selectedGradeChip;
+                        if (chip) markChipAsOwnCorrect(chip);
+                    }
                     break;
             }
         }
@@ -1783,7 +1800,7 @@
         }
 
         function bindInboxClicks() {
-            bindOwnBucketControls();
+            bindNewBucketDrop();
             const root = document.getElementById('gradingInterface');
             if (!root || root.dataset.inboxClicks === '1') return;
             root.dataset.inboxClicks = '1';
@@ -1804,16 +1821,17 @@
                 const bucket = e.target.closest('.answer-bucket');
                 if (chip) {
                     e.preventDefault();
-                    if (e.altKey) {
-                        markChipAsOwnCorrect(chip);
-                        return;
-                    }
                     selectGradeChip(chip);
                     return;
                 }
                 if (bucket && selectedGradeChip) {
                     e.preventDefault();
                     moveChipToBucket(selectedGradeChip, bucket);
+                    return;
+                }
+                if (selectedGradeChip && isCorrectTargetsEmptyArea(eventElement(e))) {
+                    e.preventDefault();
+                    markChipAsOwnCorrect(selectedGradeChip);
                 }
             });
             root.addEventListener('dragover', (e) => {
@@ -1860,8 +1878,6 @@
                 } else if (e.key === '3') {
                     const sendBack = document.querySelector('.sendback-bucket');
                     if (sendBack) moveChipToBucket(selectedGradeChip, sendBack);
-                } else if (e.key === '4') {
-                    markChipAsOwnCorrect(selectedGradeChip);
                 }
             });
         }

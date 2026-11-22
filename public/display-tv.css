@@ -2375,6 +2375,10 @@ html, body {
     box-shadow: 1px 0 0 #4a3208, -1px 0 0 #4a3208;
 }
 
+.tv-banner.is-gold .tv-flag-art {
+    filter: drop-shadow(0 10px 12px rgba(4, 10, 18, 0.38)) drop-shadow(0 0 12px rgba(255, 196, 48, 0.55));
+}
+
 .tv-banner.is-pennant {
     width: var(--w, calc(30vh * 0.432));
     min-width: calc(30vh * 0.432);

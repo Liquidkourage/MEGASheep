@@ -661,8 +661,10 @@ class Game {
             if (answerGroup) {
               answerGroup.category = 'correct';
               answerGroup.correctAnswer = bucket.correctAnswer || bucket.name;
-              answerGroup.hostCreated = !!bucket.hostCreated;
-              answerGroup.goldTrim = !!bucket.hostCreated;
+              const officialNames = (this.currentQuestionData && this.currentQuestionData.correct_answers) || [];
+              const bucketName = String(bucket.correctAnswer || bucket.name || '').toLowerCase().trim();
+              answerGroup.hostCreated = !!bucket.hostCreated || (bucketName && !officialNames.some((answer) => String(answer).toLowerCase().trim() === bucketName));
+              answerGroup.goldTrim = !!answerGroup.hostCreated;
               categorizedAnswers.add(answerData.answer.toLowerCase().trim());
               logger.debug(`✅ Categorized "${answerData.answer}" as correct (bucket: "${bucket.correctAnswer || bucket.name}")`);
             } else {
@@ -754,7 +756,8 @@ class Game {
         if (bucket) {
           // Extract the correct answer name from the bucket ID (remove 'correct_' prefix and replace underscores and hyphens with spaces)
           const correctAnswerName = (bucket.name || bucket.correctAnswer || groupKey.replace('correct_', '').replace(/[_-]/g, ' ')).trim();
-          const hostCreated = !!bucket.hostCreated;
+          const officialNames = (this.currentQuestionData && this.currentQuestionData.correct_answers) || [];
+          const hostCreated = !!bucket.hostCreated || !officialNames.some((answer) => String(answer).toLowerCase().trim() === correctAnswerName.toLowerCase());
           
           this.currentAnswerGroups.push({
             bucketId: groupKey,
@@ -789,10 +792,13 @@ class Game {
         const matchingBucket = this.categorizationData && this.categorizationData.correctAnswerBuckets
           ? this.categorizationData.correctAnswerBuckets.find(bucket => bucket.id === groupKey)
           : null;
-        const hostCreated = !!(matchingBucket && matchingBucket.hostCreated);
+        const displayName = (matchingBucket && (matchingBucket.name || matchingBucket.correctAnswer)) || groupKey.replace(/[_-]/g, ' ');
+        const officialNames = (this.currentQuestionData && this.currentQuestionData.correct_answers) || [];
+        const hostCreated = !!(matchingBucket && matchingBucket.hostCreated)
+          || (category === 'correct' && !officialNames.some((answer) => String(answer).toLowerCase().trim() === String(displayName).toLowerCase().trim()));
         this.currentAnswerGroups.push({
           bucketId: groupKey,
-          answer: (matchingBucket && (matchingBucket.name || matchingBucket.correctAnswer)) || groupKey.replace(/[_-]/g, ' '),
+          answer: displayName,
           count: X,
           points: Z, // Use calculated points (0 for wrong, correct points for valid buckets)
           totalResponses: Y,

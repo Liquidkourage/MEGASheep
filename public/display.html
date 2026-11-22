@@ -8,13 +8,13 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T08-50-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T09-22-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
     <link rel="preload" as="image" href="sprites/parade-pennant.png?v=2026-11-19T23-20-00">
-    <link rel="preload" as="image" href="sprites/parade-banner-gold.png?v=2026-11-22T08-50-00">
-    <link rel="preload" as="image" href="sprites/parade-pennant-gold.png?v=2026-11-22T08-50-00">
+    <link rel="preload" as="image" href="sprites/parade-banner-gold.png?v=2026-11-22T09-22-00">
+    <link rel="preload" as="image" href="sprites/parade-pennant-gold.png?v=2026-11-22T09-22-00">
     <link rel="preload" as="image" href="sprites/pen-back.png?v=2026-11-21T15-20-00">
     <link rel="preload" as="image" href="sprites/pen-back-open.png?v=2026-11-21T15-20-00">
     <link rel="preload" as="image" href="sprites/pen-front.png?v=2026-11-21T15-20-00">
@@ -4720,11 +4720,21 @@
 
         const PARADE_BANNER_SRC = 'sprites/parade-banner.png?v=2026-11-19T23-20-00';
         const PARADE_PENNANT_SRC = 'sprites/parade-pennant.png?v=2026-11-19T23-20-00';
-        const PARADE_BANNER_GOLD_SRC = 'sprites/parade-banner-gold.png?v=2026-11-22T08-50-00';
-        const PARADE_PENNANT_GOLD_SRC = 'sprites/parade-pennant-gold.png?v=2026-11-22T08-50-00';
+        const PARADE_BANNER_GOLD_SRC = 'sprites/parade-banner-gold.png?v=2026-11-22T09-22-00';
+        const PARADE_PENNANT_GOLD_SRC = 'sprites/parade-pennant-gold.png?v=2026-11-22T09-22-00';
+
+        function officialCorrectSet() {
+            const list = (gameState && gameState.currentQuestionData && gameState.currentQuestionData.correct_answers) || [];
+            return new Set(list.map((answer) => String(answer || '').toLowerCase().trim()).filter(Boolean));
+        }
 
         function groupHasGoldTrim(group) {
-            return !!(group && (group.goldTrim || group.hostCreated));
+            if (!group) return false;
+            if (group.goldTrim || group.hostCreated) return true;
+            if ((Number(group.points) || 0) <= 0) return false;
+            const name = String(group.answer || '').toLowerCase().trim();
+            if (!name) return false;
+            return !officialCorrectSet().has(name);
         }
 
         function paradeClothSrc(gold) {
