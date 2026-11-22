@@ -5619,13 +5619,22 @@
             return html;
         }
 
+        function currentRoundStandings() {
+            const history = (gameState && gameState.roundHistory) || [];
+            const last = history[history.length - 1];
+            if (last && Array.isArray(last.players) && last.players.length) return last;
+            const perRound = Math.max(1, Number((gameState && gameState.questionsPerRound)
+                || (gameState && gameState.settings && gameState.settings.questionsPerRound)
+                || 5));
+            const questionNumber = (Number(gameState && gameState.currentQuestion) || 0) + 1;
+            return {
+                roundNumber: Math.max(1, Math.ceil(questionNumber / perRound)),
+                players: (gameState && gameState.players) || []
+            };
+        }
+
         function showRoundCompleteScreen() {
-            const roundHistory = gameState.roundHistory || [];
-            const roundData = roundHistory[roundHistory.length - 1];
-            if (!roundData) {
-                showOverallLeaderboardScreen(gameState);
-                return;
-            }
+            const roundData = currentRoundStandings();
             const players = rankedPlayers(roundData.players || gameState.players);
             paintMeadowScreen('tv-standings', `
                 <div class="tv-score-top">

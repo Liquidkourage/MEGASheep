@@ -301,14 +301,26 @@ function snapshotWithSeq(game) {
     return game.getGameState();
 }
 
-function broadcastState(game, aliasEvent) {
+function broadcastState(game, aliasEvent, patch) {
     if (!game || !game.gameCode) return null;
     const full = snapshotWithSeq(game);
+    const payload = patch && typeof patch === 'object' ? { ...full, ...patch } : full;
     const room = io.sockets.adapter.rooms.get(game.gameCode);
     if (room) {
-        for (const sid of room) emitLockstepToSocket(sid, full, aliasEvent);
+        for (const sid of room) emitLockstepToSocket(sid, payload, aliasEvent);
     }
-    return full;
+    return payload;
+}
+
+function leaderboardToolBlock(game) {
+    const phase = game && game.gameState;
+    if (!phase || phase === 'waiting') {
+        return 'Start the game before showing a leaderboard';
+    }
+    if (phase === 'playing') {
+        return 'Finish this question first, then show a leaderboard';
+    }
+    return '';
 }
 
 function sendStateToSocket(socket, game, aliasEvent, extra) {
@@ -1216,68 +1228,60 @@ class Game {
         }
     }
 
-    completeRound() {
-        console.log(`🎯 completeRound() called for game ${this.gameCode}`);
-        // Ensure latest question points are applied to cumulative totals
-        if (!this.currentQuestionScored) {
-            try { this.applyCurrentQuestionPoints(); } catch (_) {}
-        }
-        
-        // Derive round from the just-finished question index (0-based -> +1)
-        const currentRound = Math.ceil((this.currentQuestion + 1) / this.settings.questionsPerRound);
-        const roundStartQuestion = (currentRound - 1) * this.settings.questionsPerRound + 1;
-        const roundEndQuestion = Math.min(currentRound * this.settings.questionsPerRound, this.questions.length);
-        
-        // Calculate round-specific scores by summing points from this round's answer groups
+    liveRoundData() {
+        const perRound = Math.max(1, Number(this.settings.questionsPerRound) || 5);
+        const currentRound = Math.max(1, Math.ceil((this.currentQuestion + 1) / perRound));
+        const roundStartQuestion = (currentRound - 1) * perRound + 1;
+        const roundEndQuestion = Math.min(currentRound * perRound, this.questions.length);
         const roundSpecificScores = new Map();
-        
-        // Initialize all players with 0 points for this round
-        Array.from(this.players.values()).forEach(player => {
+        Array.from(this.players.values()).forEach((player) => {
             roundSpecificScores.set(player.name, 0);
         });
-        
-        // Sum up points from this round's answer groups
-        if (this.roundAnswerGroups && this.roundAnswerGroups.length > 0) {
-            this.roundAnswerGroups.forEach(group => {
-                if (group.players && group.players.length > 0) {
-                    // Points are already calculated per player during question scoring
-                    const pointsPerPlayer = group.points;
-                    group.players.forEach(playerName => {
-                        const currentScore = roundSpecificScores.get(playerName) || 0;
-                        roundSpecificScores.set(playerName, currentScore + pointsPerPlayer);
-                    });
-                }
+        (this.roundAnswerGroups || []).forEach((group) => {
+            if (!group.players || !group.players.length) return;
+            const pointsPerPlayer = group.points;
+            group.players.forEach((playerName) => {
+                const currentScore = roundSpecificScores.get(playerName) || 0;
+                roundSpecificScores.set(playerName, currentScore + pointsPerPlayer);
             });
-        }
-        
-        // Create round summary data using accumulated answer groups
+        });
         const roundData = {
             roundNumber: currentRound,
             questionStart: roundStartQuestion,
             questionEnd: roundEndQuestion,
-            players: Array.from(this.players.values()).map(player => ({
+            players: Array.from(this.players.values()).map((player) => ({
                 name: player.name,
                 score: roundSpecificScores.get(player.name) || 0
             })),
             answerGroups: this.roundAnswerGroups || []
         };
-
-        // Build per-player answers for the round using the accumulated roundAnswerGroups
         try {
             const playerAnswersByName = {};
-            (this.roundAnswerGroups || []).forEach(group => {
+            (this.roundAnswerGroups || []).forEach((group) => {
                 const entry = {
                     answer: group.answer,
                     points: group.points || 0,
                     bucketId: group.bucketId || null
                 };
-                (group.players || []).forEach(playerName => {
+                (group.players || []).forEach((playerName) => {
                     if (!playerAnswersByName[playerName]) playerAnswersByName[playerName] = [];
                     playerAnswersByName[playerName].push(entry);
                 });
             });
             roundData.playerAnswersByName = playerAnswersByName;
         } catch (_) {}
+        return roundData;
+    }
+
+    completeRound() {
+        console.log(`🎯 completeRound() called for game ${this.gameCode}`);
+        // Ensure latest question points are applied to cumulative totals
+        if (!this.currentQuestionScored) {
+            try { this.applyCurrentQuestionPoints(); } catch (_) {}
+        }
+
+        const roundData = this.liveRoundData();
+        const currentRound = roundData.roundNumber;
         
         console.log(`🎯 Round ${currentRound} completed for game ${this.gameCode}. Answer groups in round: ${this.roundAnswerGroups.length}`);
         console.log(`📊 Round data:`, JSON.stringify(roundData, null, 2));
@@ -3038,16 +3042,20 @@ io.on('connection', (socket) => {
     if (!playerInfo || !playerInfo.isHost) return;
     const game = activeGames.get(gameCode);
     if (!game) return;
-    // Ensure state is at least roundComplete for display context
-    if (game.gameState !== 'roundComplete') {
-      game.gameState = 'roundComplete';
+    const blocked = leaderboardToolBlock(game);
+    if (blocked) {
+      socket.emit('gameError', { message: blocked });
+      return;
     }
-    const state = broadcastState(game, 'roundComplete');
+    game.gameState = 'roundComplete';
+    const history = Array.isArray(game.roundHistory) ? game.roundHistory : [];
+    const patch = history.length ? null : { roundHistory: [game.liveRoundData()] };
+    const state = broadcastState(game, 'roundComplete', patch);
     io.to(gameCode).emit('playerShowRoundResults', state);
             sbLogEvent(gameCode, 'show_round_leaderboard', {});
   });
 
-    // Show overall leaderboard (from round complete screen after round 2+)
+    // Show overall / championship leaderboard on the public display
     socket.on('showOverallLeaderboard', (data) => {
         if (!data) {
             console.log('⚠️ showOverallLeaderboard event received with no data');
@@ -3066,16 +3074,16 @@ io.on('connection', (socket) => {
         
         const game = activeGames.get(gameCode);
         if (!game) return;
-        
-        if (game.gameState !== 'roundComplete') {
-            socket.emit('gameError', { message: 'Game is not in round complete state' });
+
+        const blocked = leaderboardToolBlock(game);
+        if (blocked) {
+            socket.emit('gameError', { message: blocked });
             return;
         }
         
         console.log(`📊 Host showing overall leaderboard for game ${gameCode}`);
-        game.gameState = 'overallLeaderboard'; // Set new state instead of 'finished'
+        game.gameState = 'overallLeaderboard';
         
-        // Emit to display and players
         const state = broadcastState(game, 'showOverallLeaderboard');
         io.to(gameCode).emit('playerShowOverallLeaderboard', state);
     });

@@ -3590,7 +3590,10 @@ function displayRoundResults() {
         (gameState.players || []).forEach((player) => {
             eventByName.set(String(player.name || '').toLowerCase(), playerScoreOf(player));
         });
-        const roundRanked = [...(lastRound && lastRound.players ? lastRound.players : [])]
+        const roundSource = (lastRound && lastRound.players && lastRound.players.length)
+            ? lastRound.players
+            : (gameState.players || []);
+        const roundRanked = [...roundSource]
             .map((player) => ({
                 name: player.name,
                 total: Number(player.score || 0)

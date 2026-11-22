@@ -2443,7 +2443,7 @@
                 const isEndOfRound = (questionNumber % qpr === 0) || (currentIdx + 1 >= totalQs);
                 return { text: isEndOfRound ? 'END ROUND' : 'NEXT QUESTION', disabled: false, show: true };
             }
-            if (phase === 'roundComplete') {
+            if (phase === 'roundComplete' || phase === 'overallLeaderboard') {
                 if (currentRound >= totalRounds) {
                     return { text: 'END OF GAME', disabled: true, show: true };
                 }
@@ -2457,7 +2457,7 @@
             const phase = hostPhase();
             if (phase === 'scoring') {
                 socket.emit('nextQuestion', { gameCode: currentGame.gameCode });
-            } else if (phase === 'roundComplete') {
+            } else if (phase === 'roundComplete' || phase === 'overallLeaderboard') {
                 const qpr = Number(currentGame?.settings?.questionsPerRound || currentGame?.questionsPerRound || 5);
                 const totalRounds = Math.ceil((currentGame?.questions?.length || 0) / qpr);
                 const currentRound = Math.ceil(((currentGame?.currentQuestion || 0) + 1) / qpr);
@@ -2486,7 +2486,7 @@
                 startBtn.className = 'control-btn secondary';
                 startBtn.disabled = true;
                 if (endBtnMain) endBtnMain.disabled = false;
-            } else if (phase === 'scoring' || phase === 'roundComplete') {
+            } else if (phase === 'scoring' || phase === 'roundComplete' || phase === 'overallLeaderboard') {
                 startBtn.textContent = advance.text;
                 startBtn.className = advance.disabled ? 'control-btn secondary' : 'control-btn success';
                 startBtn.disabled = advance.disabled;
@@ -2787,7 +2787,7 @@
             const phase = hostPhase();
             if (phase === 'waiting') {
                 socket.emit('startGame', { gameCode: currentGame.gameCode });
-            } else if (phase === 'scoring' || phase === 'roundComplete' || phase === 'grading') {
+            } else if (phase === 'scoring' || phase === 'roundComplete' || phase === 'overallLeaderboard' || phase === 'grading') {
                 advanceFromResults();
             } else if (phase === 'playing') {
                 console.log('Start button clicked during playing; ignoring to prevent premature nextQuestion');
