@@ -234,6 +234,8 @@
         let displayGameCode = null;
         let scoreParadeGen = 0;
         const lockstepCtx = { lastSeq: -1, lastEpoch: '' };
+        let playGateCache = null;
+        let playGateCacheAt = 0;
 
         function applyDisplayState(packet, source) {
             try {
@@ -686,6 +688,7 @@
         }
 
         function syncPenGate() {
+            playGateCache = null;
             const play = document.querySelector('.tv-play');
             if (!play) return;
             syncPenLayer(play.querySelector('.tv-pen-back .tv-pen-art'), 'pen-back-open', penBackSrc());
@@ -2426,13 +2429,17 @@
         }
 
         function playGatePoints() {
-            return {
+            const now = performance.now();
+            if (playGateCache && now - playGateCacheAt < 400) return playGateCache;
+            playGateCache = {
                 mouth: penSpriteToStage(GATE_MOUTH_SPRITE.x, GATE_MOUTH_SPRITE.y),
                 latch: penSpriteToStage(GATE_LATCH_SPRITE.x, GATE_LATCH_SPRITE.y),
                 approach: penSpriteToStage(GATE_APPROACH_SPRITE.x, GATE_APPROACH_SPRITE.y),
                 drop: penSpriteToStage(GATE_DROP_SPRITE.x, GATE_DROP_SPRITE.y),
                 clear: penSpriteToStage(GATE_CLEAR_SPRITE.x, GATE_CLEAR_SPRITE.y)
             };
+            playGateCacheAt = now;
+            return playGateCache;
         }
 
         function jitterGatePoint(point, el, spreadX, spreadY) {
@@ -2615,15 +2622,7 @@
         }
 
         function visualEwePoint(el) {
-            const chorus = document.getElementById('flockChorus');
-            const field = chorus ? chorus.getBoundingClientRect() : null;
-            if (!field || !field.width || !field.height) return currentEwePoint(el);
-            const art = el.querySelector('.tv-ewe-art') || el;
-            const r = art.getBoundingClientRect();
-            return {
-                x: ((r.left + r.width / 2) - field.left) / field.width * 100,
-                y: ((r.top + r.height * 0.72) - field.top) / field.height * 100
-            };
+            return currentEwePoint(el);
         }
 
         function enterPenAlongGate(el, fromApproach) {
@@ -2999,13 +2998,12 @@
                 !el.classList.contains('is-in') &&
                 !el.classList.contains('is-outside')
             ).map((el) => {
-                const p = visualEwePoint(el);
+                const p = currentEwePoint(el);
                 return {
                     el,
                     id: el.dataset.id,
                     gx: p.x,
-                    gy: p.y,
-                    w: el.getBoundingClientRect().width || 90
+                    gy: p.y
                 };
             });
         }
@@ -3023,9 +3021,10 @@
             return Math.hypot((other.gx || 0) - gx, ((other.gy || 0) - gy) * 1.45);
         }
 
-        function banditBlocked(gx, gy, dog, minSep) {
+        function banditBlocked(gx, gy, dog, minSep, others) {
             const need = minSep == null ? 8.2 : minSep;
-            return occupiedFieldSheep(dog).some((other) => banditSheepGap(gx, gy, other) < need);
+            const pack = others || occupiedFieldSheep(dog);
+            return pack.some((other) => banditSheepGap(gx, gy, other) < need);
         }
 
         function banditInTheFlock(dog) {
@@ -3063,6 +3062,7 @@
 
         function banditClearPoint(dog, gx, gy, minSep) {
             const need = minSep == null ? 8.2 : minSep;
+            const others = occupiedFieldSheep(dog);
             const tries = [clampBanditPoint(gx, gy)];
             for (let r = 2.2; r <= 20; r += 2) {
                 for (let a = 0; a < 14; a += 1) {
@@ -3072,16 +3072,17 @@
             }
             for (let i = 0; i < tries.length; i += 1) {
                 const p = tries[i];
-                if (!banditBlocked(p.gx, p.gy, dog, need)) return p;
+                if (!banditBlocked(p.gx, p.gy, dog, need, others)) return p;
             }
             return clampBanditPoint(gx, PLAY_FIELD.bottom - 0.8);
         }
 
         function banditLineHits(dog, a, b, minSep) {
+            const others = occupiedFieldSheep(dog);
             const steps = 16;
             for (let s = 1; s < steps; s += 1) {
                 const t = s / steps;
-                if (banditBlocked(a.gx + (b.gx - a.gx) * t, a.gy + (b.gy - a.gy) * t, dog, minSep)) return true;
+                if (banditBlocked(a.gx + (b.gx - a.gx) * t, a.gy + (b.gy - a.gy) * t, dog, minSep, others)) return true;
             }
             return false;
         }
@@ -3244,7 +3245,8 @@
 
         function banditAvoidPoint(dog, point) {
             const need = 8.2;
-            if (!banditBlocked(point.x, point.y, dog, need)) return point;
+            const others = occupiedFieldSheep(dog);
+            if (!banditBlocked(point.x, point.y, dog, need, others)) return point;
             const tries = [];
             for (let r = 2; r <= 18; r += 2) {
                 for (let a = 0; a < 14; a += 1) {
@@ -3254,7 +3256,7 @@
             }
             for (let i = 0; i < tries.length; i += 1) {
                 const p = tries[i];
-                if (!banditBlocked(p.gx, p.gy, dog, need)) return { x: p.gx, y: p.gy };
+                if (!banditBlocked(p.gx, p.gy, dog, need, others)) return { x: p.gx, y: p.gy };
             }
             const hem = clampBanditPoint(point.x, PLAY_FIELD.bottom - 0.6);
             return { x: hem.gx, y: hem.gy };
@@ -3448,10 +3450,10 @@
             };
         }
 
-        function isBetweenFlockAndPaddock(point, bunch) {
+        function isBetweenFlockAndPaddock(point, bunch, gatePoint) {
             const p = pointXY(point);
             const b = pointXY(bunch);
-            const gate = paddockPoint();
+            const gate = gatePoint || paddockPoint();
             const vx = gate.x - b.x;
             const vy = gate.y - b.y;
             const span = vx * vx + vy * vy;
@@ -3475,6 +3477,7 @@
                 bunch.x + (dx / len) * dist + shift * 3.2,
                 bunch.y + (dy / len) * dist * 0.7 + shift * 1.6
             );
+            const others = occupiedFieldSheep(dog);
             const tries = [raw];
             for (let r = 2; r <= 16; r += 2.2) {
                 for (let a = 0; a < 12; a += 1) {
@@ -3483,7 +3486,7 @@
                 }
             }
             const ok = tries.find((p) =>
-                !banditBlocked(p.gx, p.gy, dog, 8) && !isBetweenFlockAndPaddock(p, bunch)
+                !banditBlocked(p.gx, p.gy, dog, 8, others) && !isBetweenFlockAndPaddock(p, bunch, gate)
             );
             return ok || raw;
         }
