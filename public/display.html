@@ -2897,6 +2897,8 @@
         
         const BANDIT_AT_DEFAULT = 30;
         const BANDIT_HERD_RADIUS = 9;
+        const BANDIT_ONSTAGE_LEFT = 7;
+        const BANDIT_OFFSTAGE_X = -18;
         let wranglerGen = 0;
         let wranglerQuestion = '';
         let wranglerWasOut = false;
@@ -2909,6 +2911,8 @@
         let banditSitYipAt = 0;
         let banditIdleSince = 0;
         let banditHoldMove = 0;
+        let banditFlankDir = 1;
+        let banditWorkBeat = 0;
 
         function banditAt() {
             const n = Number(gameState && gameState.settings && gameState.settings.banditAt);
@@ -2973,7 +2977,7 @@
             const gy = parseFloat(dog.style.getPropertyValue('--gy')) || 80;
             const depth = lobbyDepth(gy);
             walkEweOnField(dog, slotFromEwe(dog, {
-                gx: -14,
+                gx: BANDIT_OFFSTAGE_X,
                 gy,
                 scale: depth.scale,
                 z: depth.z
@@ -2999,9 +3003,10 @@
             });
         }
 
-        function clampBanditPoint(x, y) {
+        function clampBanditPoint(x, y, opts) {
+            const minX = (opts && opts.offstage) ? BANDIT_OFFSTAGE_X : BANDIT_ONSTAGE_LEFT;
             return {
-                gx: Math.min(PLAY_FIELD.right - 1.2, Math.max(-14, x)),
+                gx: Math.min(PLAY_FIELD.right - 1.2, Math.max(minX, x)),
                 gy: Math.min(PLAY_FIELD.bottom - 0.5, Math.max(PLAY_FIELD.top + 1.2, y))
             };
         }
@@ -3040,43 +3045,117 @@
             return false;
         }
 
+        function flockRadius(pack) {
+            const list = pack || remainingFieldSheep();
+            if (!list.length) return 8;
+            const bunch = flockCentroid(list);
+            return list.reduce((max, el) => {
+                const p = visualEwePoint(el);
+                return Math.max(max, Math.hypot(p.x - bunch.x, (p.y - bunch.y) * 1.2));
+            }, 6);
+        }
+
+        function banditCastFit(bunch, wantRadius) {
+            const want = wantRadius || Math.max(10, flockRadius() + 6);
+            const minR = 7.2;
+            const room = Math.min(
+                want,
+                bunch.x - BANDIT_ONSTAGE_LEFT - 0.8,
+                PLAY_FIELD.right - 1.6 - bunch.x,
+                (bunch.y - PLAY_FIELD.top - 1.6) / 0.7,
+                (PLAY_FIELD.bottom - 0.8 - bunch.y) / 0.7
+            );
+            const radius = Math.max(minR, room);
+            let cx = bunch.x;
+            let cy = bunch.y;
+            if (cx - radius < BANDIT_ONSTAGE_LEFT) cx = BANDIT_ONSTAGE_LEFT + radius;
+            if (cx + radius > PLAY_FIELD.right - 1.2) cx = PLAY_FIELD.right - 1.2 - radius;
+            if (cy - radius * 0.7 < PLAY_FIELD.top + 1.2) cy = PLAY_FIELD.top + 1.2 + radius * 0.7;
+            if (cy + radius * 0.7 > PLAY_FIELD.bottom - 0.5) cy = PLAY_FIELD.bottom - 0.5 - radius * 0.7;
+            return { x: cx, y: cy, radius };
+        }
+
+        function shortestAngleDelta(from, to) {
+            let delta = to - from;
+            while (delta > Math.PI) delta -= Math.PI * 2;
+            while (delta < -Math.PI) delta += Math.PI * 2;
+            return delta;
+        }
+
+        function banditFlankPoints(from, dest, bunch, opts) {
+            const start = { x: from.x, y: from.y };
+            const end = { gx: dest.gx, gy: dest.gy };
+            const cast = banditCastFit(bunch, (opts && opts.radius) || Math.max(10, flockRadius() + 6));
+            const fromAng = Math.atan2((start.y - cast.y) * 1.15, start.x - cast.x);
+            const toAng = Math.atan2((end.gy - cast.y) * 1.15, end.gx - cast.x);
+            let delta = shortestAngleDelta(fromAng, toAng);
+            const forced = opts && opts.dir;
+            if (forced) {
+                if (forced > 0 && delta < 0) delta += Math.PI * 2;
+                if (forced < 0 && delta > 0) delta -= Math.PI * 2;
+            } else {
+                const mid = fromAng + delta * 0.5;
+                const probe = {
+                    x: cast.x + Math.cos(mid) * cast.radius,
+                    y: cast.y + Math.sin(mid) * cast.radius * 0.7
+                };
+                if (isBetweenFlockAndPaddock(probe, bunch)) {
+                    delta = delta > 0 ? delta - Math.PI * 2 : delta + Math.PI * 2;
+                }
+            }
+            const pear = !!(opts && opts.pear);
+            const steps = Math.max(4, Math.min(10, Math.round(Math.abs(delta) / 0.32) || 4));
+            const points = [{ x: start.x, y: start.y }];
+            for (let i = 1; i <= steps; i += 1) {
+                const t = i / steps;
+                const a = fromAng + delta * t;
+                const rad = pear ? cast.radius * (0.86 + 0.16 * Math.sin(Math.PI * t)) : cast.radius;
+                let p = clampBanditPoint(
+                    cast.x + Math.cos(a) * rad,
+                    cast.y + Math.sin(a) * rad * 0.7
+                );
+                const prev = points[points.length - 1];
+                if (Math.abs(p.gx - prev.x) < 0.45 && Math.abs(p.gy - prev.y) > 1.2) {
+                    p = clampBanditPoint(p.gx + 4.2, p.gy);
+                }
+                if (i < steps && isBetweenFlockAndPaddock(p, bunch)) continue;
+                points.push({ x: p.gx, y: p.gy, cut: 0.18 });
+            }
+            points.push({ x: end.gx, y: end.gy });
+            return points;
+        }
+
+        function banditArcPoints(from, to) {
+            const dx = to.gx - from.gx;
+            const dy = to.gy - from.gy;
+            const len = Math.hypot(dx, dy) || 1;
+            const bulge = Math.min(7.5, Math.max(2.4, len * 0.22));
+            const side = (dx >= 0 ? 1 : -1) * (dy >= 0 ? 1 : -1);
+            return [
+                { x: from.gx, y: from.gy },
+                { x: from.gx + dx * 0.5 + (-dy / len) * bulge * side, y: from.gy + dy * 0.5 + (dx / len) * bulge * side * 0.7, cut: 0.2 },
+                { x: to.gx, y: to.gy }
+            ];
+        }
+
         function banditRoute(dog, dest) {
             const start = currentEwePoint(dog);
             const from = { gx: start.x, gy: start.y };
             const to = banditClearPoint(dog, dest.gx, dest.gy);
-            const points = [{ x: from.gx, y: from.gy }];
-            if (banditLineHits(dog, from, to)) {
-                const hemY = Math.min(PLAY_FIELD.bottom - 0.9, Math.max(from.gy, to.gy) + 6);
-                points.push({ x: from.gx, y: hemY, cut: 0.12 });
-                points.push({ x: to.gx, y: hemY, cut: 0.12 });
-            }
-            points.push({ x: to.gx, y: to.gy });
-            return points;
+            if (banditLineHits(dog, from, to)) return banditOutrunRoute(dog, to);
+            return banditArcPoints(from, to);
         }
 
         function banditOutrunRoute(dog, dest) {
             const start = currentEwePoint(dog);
-            const from = { gx: start.x, gy: start.y };
             const to = banditClearPoint(dog, dest.gx, dest.gy);
-            const points = [{ x: from.gx, y: from.gy }];
-            const blocked = banditLineHits(dog, from, to);
-            if (Math.hypot(to.gx - from.gx, to.gy - from.gy) < 11 && !blocked) {
-                points.push({ x: to.gx, y: to.gy });
-                return points;
-            }
-            const flockBottom = occupiedFieldSheep(dog).reduce((max, sheep) => Math.max(max, sheep.gy || 0), from.gy);
-            const lowRoom = PLAY_FIELD.bottom - Math.max(from.gy, to.gy);
-            const highRoom = Math.min(from.gy, to.gy) - PLAY_FIELD.top;
-            const goLow = blocked || lowRoom >= highRoom * 0.55;
-            const wingY = goLow
-                ? Math.min(PLAY_FIELD.bottom - 0.8, Math.max(from.gy, to.gy, flockBottom) + 7)
-                : Math.max(PLAY_FIELD.top + 3.2, Math.min(from.gy, to.gy) - 8);
-            const wingX = from.gx + (to.gx - from.gx) * 0.58;
-            points.push({ x: from.gx + (wingX - from.gx) * 0.28, y: from.gy + (wingY - from.gy) * 0.72, cut: 0.2 });
-            points.push({ x: wingX, y: wingY, cut: 0.16 });
-            points.push({ x: to.gx, y: wingY, cut: 0.16 });
-            points.push({ x: to.gx, y: to.gy });
-            return points;
+            const pack = remainingFieldSheep();
+            const bunch = pack.length ? flockCentroid(pack) : { x: (start.x + to.gx) / 2, y: (start.y + to.gy) / 2 };
+            if (Math.hypot(to.gx - start.x, to.gy - start.y) < 8) return banditArcPoints({ gx: start.x, gy: start.y }, to);
+            return banditFlankPoints(start, to, bunch, {
+                pear: true,
+                radius: Math.max(11, flockRadius(pack) + 7)
+            });
         }
 
         function setBanditGait(dog, gait) {
@@ -3109,9 +3188,16 @@
         }
 
         function parkBandit(dog, point) {
-            const parked = banditBlocked(point.x, point.y, dog, 7.2)
-                ? banditAvoidPoint(dog, point)
-                : point;
+            const x = Number.isFinite(point.x) ? point.x : point.gx;
+            const y = Number.isFinite(point.y) ? point.y : point.gy;
+            const leaving = x < BANDIT_ONSTAGE_LEFT - 0.4;
+            let parked = leaving ? { x, y } : (banditBlocked(x, y, dog, 7.2)
+                ? banditAvoidPoint(dog, { x, y })
+                : { x, y });
+            if (!leaving) {
+                const clamped = clampBanditPoint(parked.x, parked.y);
+                parked = { x: clamped.gx, y: clamped.gy };
+            }
             const depth = lobbyDepth(parked.y);
             dog.style.setProperty('--gx', String(parked.x));
             dog.style.setProperty('--gy', String(parked.y));
@@ -3120,15 +3206,39 @@
             return parked;
         }
 
+        function walkBanditPath(dog, points, onDone, opts) {
+            if (!dog || !dog.isConnected) {
+                if (onDone) onDone();
+                return;
+            }
+            const gait = (opts && opts.gait) || 'run';
+            setBanditGait(dog, gait);
+            const body = dog.getBoundingClientRect().width || 96;
+            const running = gait === 'run';
+            walkSmoothPath(dog, points, () => {
+                dog.classList.remove('is-walking', 'is-running', 'is-jumping');
+                parkBandit(dog, currentEwePoint(dog));
+                if (!(opts && opts.skipFace)) faceWranglerAtSheep(dog);
+                if (onDone) onDone();
+            }, {
+                live: () => dog.isConnected && pastureHoldsBandit(),
+                minSeconds: running ? 0.55 : 0.8,
+                maxSeconds: running ? 3.6 : 4.8,
+                pace: body * (running ? 2.45 : 1.08)
+            });
+        }
+
         function walkBanditTo(dog, gx, gy, onDone, opts) {
             if (!dog || !dog.isConnected) {
                 if (onDone) onDone();
                 return;
             }
-            const dest = banditClearPoint(dog, gx, gy);
+            const leaving = gx < BANDIT_ONSTAGE_LEFT - 1;
+            const dest = leaving
+                ? { gx, gy: Math.min(PLAY_FIELD.bottom - 0.5, Math.max(PLAY_FIELD.top + 1.2, gy)) }
+                : banditClearPoint(dog, gx, gy);
             const here = currentEwePoint(dog);
-            const gait = (opts && opts.gait) || 'run';
-            if (!(opts && opts.fromJump) && banditBlocked(here.x, here.y, dog, 6.6)) {
+            if (!leaving && !(opts && opts.fromJump) && banditBlocked(here.x, here.y, dog, 6.6)) {
                 banditJumpToward(dog, dest, () => walkBanditTo(dog, gx, gy, onDone, Object.assign({}, opts, { fromJump: true })));
                 return;
             }
@@ -3138,21 +3248,10 @@
                 if (onDone) onDone();
                 return;
             }
-            setBanditGait(dog, gait);
-            const body = dog.getBoundingClientRect().width || 96;
-            const running = gait === 'run';
-            const points = (opts && opts.outrun) ? banditOutrunRoute(dog, dest) : banditRoute(dog, dest);
-            walkSmoothPath(dog, points, () => {
-                dog.classList.remove('is-walking', 'is-running', 'is-jumping');
-                parkBandit(dog, currentEwePoint(dog));
-                if (!(opts && opts.skipFace)) faceWranglerAtSheep(dog);
-                if (onDone) onDone();
-            }, {
-                live: () => dog.isConnected && pastureHoldsBandit(),
-                minSeconds: running ? 0.4 : 0.7,
-                maxSeconds: running ? 2.7 : 4.2,
-                pace: body * (running ? 2.7 : 1.08)
-            });
+            const points = leaving
+                ? [{ x: here.x, y: here.y }, { x: dest.gx, y: dest.gy }]
+                : ((opts && opts.outrun) ? banditOutrunRoute(dog, dest) : banditRoute(dog, dest));
+            walkBanditPath(dog, points, onDone, opts);
         }
 
         function banditJumpToward(dog, dest, onDone) {
@@ -3264,11 +3363,15 @@
             const pack = remainingFieldSheep();
             const bunch = pack.length ? flockCentroid(pack) : huddleAnchor();
             const gate = paddockPoint();
-            const away = bunch.x <= gate.x ? -1 : 1;
+            let dx = bunch.x - gate.x;
+            let dy = bunch.y - gate.y;
+            if (Math.abs(dx) + Math.abs(dy) < 2) dx = -8;
+            const len = Math.hypot(dx, dy) || 1;
             const shift = Number(opts && opts.shift) || 0;
+            const dist = Math.max(10, flockRadius(pack) + 6);
             const raw = clampBanditPoint(
-                bunch.x + away * 11 + shift * 3.4,
-                Math.min(PLAY_FIELD.bottom - 1.1, Math.max(bunch.y + 3.6 + shift * 2.2, PLAY_FIELD.top + 8))
+                bunch.x + (dx / len) * dist + shift * 3.2,
+                bunch.y + (dy / len) * dist * 0.7 + shift * 1.6
             );
             const tries = [raw];
             for (let r = 2; r <= 16; r += 2.2) {
@@ -3350,7 +3453,7 @@
 
         function banditOffstagePoint(gy) {
             return {
-                gx: -18,
+                gx: BANDIT_OFFSTAGE_X,
                 gy: Math.min(PLAY_FIELD.bottom - 0.8, Math.max(PLAY_FIELD.top + 8, Number.isFinite(gy) ? gy : PLAY_FIELD.bottom - 1.2))
             };
         }
@@ -3518,7 +3621,7 @@
                 && (performance.now() - banditSitSince) >= 2000);
         }
 
-        function circleTheFlock(dog, gen) {
+        function circleTheFlock(dog, gen, opts) {
             const pack = remainingFieldSheep();
             if (!pack.length) {
                 runWrangler(dog, gen);
@@ -3526,23 +3629,34 @@
             }
             const bunch = flockCentroid(pack);
             const here = visualEwePoint(dog);
-            const startAng = Math.atan2((here.y - bunch.y) * 1.2, here.x - bunch.x);
-            const dir = Math.random() < 0.5 ? 1 : -1;
-            const radius = 10.6;
-            let dest = null;
-            for (let i = 1; i <= 3; i += 1) {
-                const a = startAng + dir * 0.72 * i;
-                const p = clampBanditPoint(
-                    bunch.x + Math.cos(a) * radius,
-                    bunch.y + Math.sin(a) * radius * 0.7
-                );
-                if (!isBetweenFlockAndPaddock(p, bunch)) dest = p;
+            const cast = banditCastFit(bunch, Math.max(10, flockRadius(pack) + 6));
+            const startAng = Math.atan2((here.y - cast.y) * 1.15, here.x - cast.x);
+            const sweep = (opts && opts.sweep) || 2.55;
+            const destAng = startAng + banditFlankDir * sweep;
+            const dest = clampBanditPoint(
+                cast.x + Math.cos(destAng) * cast.radius,
+                cast.y + Math.sin(destAng) * cast.radius * 0.7
+            );
+            const points = banditFlankPoints(here, dest, bunch, {
+                dir: banditFlankDir,
+                radius: cast.radius
+            });
+            if (points.length < 3) {
+                banditFlankDir *= -1;
+                runWrangler(dog, gen);
+                return;
             }
-            dest = dest || flockHoldSpot(dog, { shift: dir });
-            walkBanditTo(dog, dest.gx, dest.gy, () => {
+            setBanditSit(dog, false);
+            walkBanditPath(dog, points, () => {
                 if (gen !== wranglerGen) return;
-                setBanditSit(dog, true);
-            }, { gait: 'walk' });
+                if (sweep > 1.4) banditFlankDir *= -1;
+                if (opts && opts.keepWorking) runWrangler(dog, gen);
+                else setBanditSit(dog, true);
+            }, { gait: 'run' });
+        }
+
+        function wearTheFlock(dog, gen) {
+            circleTheFlock(dog, gen, { keepWorking: true, sweep: 1.05 });
         }
 
         function yipFromTheSit(dog, gen) {
@@ -3563,17 +3677,9 @@
                 runWrangler(dog, gen);
                 return;
             }
-            banditHoldMove = (banditHoldMove + 1) % 2;
             setBanditSit(dog, false);
-            if (banditHoldMove === 0) {
-                circleTheFlock(dog, gen);
-                return;
-            }
-            const spot = flockHoldSpot(dog, { shift: 1 });
-            walkBanditTo(dog, spot.gx, spot.gy, () => {
-                if (gen !== wranglerGen) return;
-                setBanditSit(dog, true);
-            }, { gait: 'walk' });
+            banditFlankDir *= -1;
+            circleTheFlock(dog, gen);
         }
 
         function gateLatchSpot() {
@@ -3592,7 +3698,7 @@
             const leave = () => {
                 if (gen !== wranglerGen || !dog.isConnected) return;
                 const gy = parseFloat(dog.style.getPropertyValue('--gy')) || 80;
-                walkBanditTo(dog, -16, gy, () => {
+                walkBanditTo(dog, BANDIT_OFFSTAGE_X, gy, () => {
                     if (dog.isConnected) dog.remove();
                 }, { gait: 'run', fromJump: true, skipFace: true });
             };
@@ -3643,7 +3749,7 @@
                 if (sinceYip < 2000) return;
                 banditSitYipAt = performance.now();
                 banditHoldMove = (banditHoldMove + 1) % 4;
-                if (banditHoldMove === 3) {
+                if (banditHoldMove % 2 === 1) {
                     stirTheHold(dog, gen);
                     return;
                 }
@@ -3784,6 +3890,15 @@
                 watchThePen(dog, gen);
                 return;
             }
+            banditWorkBeat = (banditWorkBeat + 1) % 6;
+            if (banditWorkBeat === 0 || banditWorkBeat === 2 || banditWorkBeat === 4) {
+                circleTheFlock(dog, gen, { keepWorking: true });
+                return;
+            }
+            if (banditWorkBeat === 3) {
+                wearTheFlock(dog, gen);
+                return;
+            }
             const local = stray.filter((el) => sheepNearBandit(dog, el));
             const idle = idleHerdSheep().filter((el) => !isInHuddle(el));
             const idleLocal = idle.filter((el) => local.indexOf(el) !== -1);
@@ -3816,6 +3931,7 @@
             wranglerGen += 1;
             banditIdleSince = 0;
             banditSitSince = 0;
+            banditWorkBeat = 0;
             const gen = wranglerGen;
             const restore = !!(opts && opts.restore);
             const spot = restore ? gateWatchSpot() : banditSpawnPoint();
