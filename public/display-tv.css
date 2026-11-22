@@ -1480,8 +1480,8 @@ html, body {
     animation-duration: 0.52s;
 }
 
-.tv-dog.is-sitting:not(.is-walking):not(.is-jumping) .tv-ewe-strip,
-.tv-play .tv-dog.is-sitting:not(.is-walking):not(.is-joining):not(.is-jumping) .tv-ewe-strip {
+.tv-dog.is-sitting:not(.is-walking):not(.is-jumping):not(.is-yipping) .tv-ewe-strip,
+.tv-play .tv-dog.is-sitting:not(.is-walking):not(.is-joining):not(.is-jumping):not(.is-yipping) .tv-ewe-strip {
     width: 600%;
     background-image: url("sprites/dog-01-sit.png?v=2026-11-21T17-10-00");
     animation: eweSleep 1.8s steps(6, jump-none) infinite;

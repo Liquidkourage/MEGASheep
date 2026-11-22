@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T20-05-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T20-34-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -2906,6 +2906,7 @@
         let banditHerdTimer = 0;
         let banditFocus = null;
         let banditSitSince = 0;
+        let banditSitYipAt = 0;
         let banditIdleSince = 0;
         let banditHoldMove = 0;
 
@@ -3084,7 +3085,7 @@
             dog.classList.toggle('is-walking', gait === 'walk' || gait === 'run');
             dog.classList.toggle('is-running', gait === 'run');
             dog.classList.toggle('is-jumping', gait === 'jump');
-            if (gait !== 'yip') dog.classList.remove('is-yipping');
+            if (gait !== 'yip' && gait !== 'sit') dog.classList.remove('is-yipping');
             if (gait !== 'jump') dog.style.setProperty('--hop', '0');
             if (gait === 'sit' || gait === 'idle') faceWranglerAtSheep(dog);
         }
@@ -3534,6 +3535,12 @@
             }, { gait: 'walk' });
         }
 
+        function yipFromTheSit(dog, gen) {
+            if (!dog || !dog.classList.contains('is-sitting')) return;
+            banditYip(dog, gen);
+            flowFlockFromDog(dog, true);
+        }
+
         function stirTheHold(dog, gen) {
             const pack = remainingFieldSheep();
             if (!pack.length) {
@@ -3541,23 +3548,18 @@
                 return;
             }
             const stray = pack.filter((el) => !isInHuddle(el));
-            banditHoldMove = (banditHoldMove + 1) % 3;
-            setBanditSit(dog, false);
-            if (stray.length || banditHoldMove === 0) {
-                faceWranglerAtSheep(dog);
-                banditYip(dog, gen);
-                flowFlockFromDog(dog, true);
-                window.setTimeout(() => {
-                    if (gen !== wranglerGen) return;
-                    runWrangler(dog, gen);
-                }, 720);
+            if (stray.length) {
+                setBanditSit(dog, false);
+                runWrangler(dog, gen);
                 return;
             }
-            if (banditHoldMove === 1) {
+            banditHoldMove = (banditHoldMove + 1) % 2;
+            setBanditSit(dog, false);
+            if (banditHoldMove === 0) {
                 circleTheFlock(dog, gen);
                 return;
             }
-            const spot = flockHoldSpot(dog, { shift: banditHoldMove === 2 ? 1 : -1 });
+            const spot = flockHoldSpot(dog, { shift: 1 });
             walkBanditTo(dog, spot.gx, spot.gy, () => {
                 if (gen !== wranglerGen) return;
                 setBanditSit(dog, true);
@@ -3625,7 +3627,17 @@
                     if (idleFor > 800) runWrangler(dog, gen);
                     return;
                 }
-                if (sitHeldTooLong(dog)) stirTheHold(dog, gen);
+                if (!dog.classList.contains('is-sitting') || !sitHeldTooLong(dog)) return;
+                if (dog.classList.contains('is-yipping')) return;
+                const sinceYip = banditSitYipAt ? performance.now() - banditSitYipAt : 99999;
+                if (sinceYip < 2000) return;
+                banditSitYipAt = performance.now();
+                banditHoldMove = (banditHoldMove + 1) % 4;
+                if (banditHoldMove === 3) {
+                    stirTheHold(dog, gen);
+                    return;
+                }
+                yipFromTheSit(dog, gen);
             };
             banditYipLoop = window.setTimeout(loop, 400);
         }
@@ -3633,11 +3645,15 @@
         function setBanditSit(dog, sitting) {
             if (!dog) return;
             if (sitting) {
-                if (!dog.classList.contains('is-sitting')) banditSitSince = performance.now();
+                if (!dog.classList.contains('is-sitting')) {
+                    banditSitSince = performance.now();
+                    banditSitYipAt = performance.now();
+                }
                 setBanditGait(dog, 'sit');
                 return;
             }
             banditSitSince = 0;
+            banditSitYipAt = 0;
             if (dog.classList.contains('is-sitting')) setBanditGait(dog, 'idle');
         }
 
