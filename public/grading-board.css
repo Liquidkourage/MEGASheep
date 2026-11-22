@@ -306,6 +306,15 @@
             background: linear-gradient(135deg, #28a745, #20c997);
         }
 
+        .grade-own-bucket-btn {
+            background: linear-gradient(135deg, #d4a017, #b8860b);
+            color: #1a1408;
+        }
+
+        .correct-bucket.is-host-created h4 {
+            box-shadow: inset 0 0 0 2px #d4a017;
+        }
+
         .control-btn.primary {
             background: linear-gradient(135deg, #007bff, #0056b3);
         }
@@ -814,13 +823,37 @@
     font-weight: 500 !important;
 }
 
-.grading-board.is-inbox .grade-targets-heading {
+.grading-board.is-inbox .grade-targets-toolbar {
     flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     margin: 0 0 6px;
+}
+
+.grading-board.is-inbox .grade-targets-heading {
+    flex: 1 1 auto;
+    margin: 0;
     color: #9ec5ff;
     font-size: 11px;
     letter-spacing: 0.05em;
     text-transform: uppercase;
+}
+
+.grading-board.is-inbox .grade-own-bucket-btn {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 6px 10px;
+    min-height: 32px;
+    font-size: 12px;
+    line-height: 1.2;
+    background: linear-gradient(135deg, #d4a017, #b8860b);
+    color: #1a1408;
+}
+
+.grading-board.is-inbox .grade-own-bucket-btn:hover {
+    box-shadow: 0 6px 14px rgba(212, 160, 23, 0.35);
 }
 
 .grading-board.is-inbox .grade-targets-correct {
@@ -906,6 +939,14 @@
     margin: 0 8px 8px !important;
     padding: 6px !important;
     border: 2px dashed rgba(39, 174, 96, 0.5) !important;
+}
+
+.grading-board.is-inbox .correct-bucket.is-host-created h4 {
+    box-shadow: inset 0 0 0 2px #d4a017;
+}
+
+.grading-board.is-inbox .correct-bucket.is-host-created.is-open .answer-items {
+    border-color: rgba(212, 160, 23, 0.75) !important;
 }
 
 .grading-board .answer-item.is-selected {

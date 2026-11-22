@@ -56,6 +56,18 @@ function testRedactPlayerHidesLiveAnswers() {
   assert.ok(!view.answersBySocket);
 }
 
+function testRedactDisplayKeepsGoldTrimAfterScoring() {
+  const view = redactStateForViewer(sampleState({
+    gameState: 'scoring',
+    currentAnswerGroups: [
+      { answer: 'Pluto', count: 1, players: ['Ada'], goldTrim: true, hostCreated: true }
+    ]
+  }), { role: 'display' });
+  assert.strictEqual(view.currentAnswerGroups[0].answer, 'Pluto');
+  assert.strictEqual(view.currentAnswerGroups[0].goldTrim, true);
+  assert.strictEqual(view.currentAnswerGroups[0].hostCreated, true);
+}
+
 function testRedactPlayerSeesResultsAfterScoring() {
   const view = redactStateForViewer(sampleState({ gameState: 'scoring' }), {
     role: 'player',
@@ -163,6 +175,7 @@ function testCompleteGradingRejectedLeavesPlayingSnapshot() {
 testEpoch();
 testRedactHostKeepsAnswers();
 testRedactPlayerHidesLiveAnswers();
+testRedactDisplayKeepsGoldTrimAfterScoring();
 testRedactPlayerSeesResultsAfterScoring();
 testRedactDisplayNeverGetsLiveAnswers();
 testApplyIgnoresStaleSeq();

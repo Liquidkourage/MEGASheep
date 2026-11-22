@@ -661,6 +661,8 @@ class Game {
             if (answerGroup) {
               answerGroup.category = 'correct';
               answerGroup.correctAnswer = bucket.correctAnswer || bucket.name;
+              answerGroup.hostCreated = !!bucket.hostCreated;
+              answerGroup.goldTrim = !!bucket.hostCreated;
               categorizedAnswers.add(answerData.answer.toLowerCase().trim());
               logger.debug(`✅ Categorized "${answerData.answer}" as correct (bucket: "${bucket.correctAnswer || bucket.name}")`);
             } else {
@@ -751,7 +753,8 @@ class Game {
         const bucket = this.categorizationData.correctAnswerBuckets.find(b => b.id === groupKey);
         if (bucket) {
           // Extract the correct answer name from the bucket ID (remove 'correct_' prefix and replace underscores and hyphens with spaces)
-          const correctAnswerName = groupKey.replace('correct_', '').replace(/[_-]/g, ' ');
+          const correctAnswerName = (bucket.name || bucket.correctAnswer || groupKey.replace('correct_', '').replace(/[_-]/g, ' ')).trim();
+          const hostCreated = !!bucket.hostCreated;
           
           this.currentAnswerGroups.push({
             bucketId: groupKey,
@@ -760,6 +763,8 @@ class Game {
             points: Z,
             totalResponses: Y,
             category: 'correct',
+            hostCreated,
+            goldTrim: hostCreated,
             players: socketIds.map(id => {
               const player = this.players.get(id);
               return player ? player.name : 'Unknown';
@@ -781,13 +786,19 @@ class Game {
           }
         }
         
+        const matchingBucket = this.categorizationData && this.categorizationData.correctAnswerBuckets
+          ? this.categorizationData.correctAnswerBuckets.find(bucket => bucket.id === groupKey)
+          : null;
+        const hostCreated = !!(matchingBucket && matchingBucket.hostCreated);
         this.currentAnswerGroups.push({
           bucketId: groupKey,
-          answer: groupKey.replace(/[_-]/g, ' '), // Convert hyphens and underscores to spaces for display
+          answer: (matchingBucket && (matchingBucket.name || matchingBucket.correctAnswer)) || groupKey.replace(/[_-]/g, ' '),
           count: X,
           points: Z, // Use calculated points (0 for wrong, correct points for valid buckets)
           totalResponses: Y,
           category: category, // Add the category
+          hostCreated,
+          goldTrim: hostCreated,
           players: socketIds.map(id => {
             const player = this.players.get(id);
             return player ? player.name : 'Unknown';

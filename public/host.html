@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MEGASheep - Host Console</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T20-00-00">
-    <link rel="stylesheet" href="grading-board.css?v=2026-11-18T23-15-00">
+    <link rel="stylesheet" href="grading-board.css?v=2026-11-22T08-50-00">
     <script src="/socket.io/socket.io.js"></script>
     <script src="apply-state.js?v=2026-11-18T20-00-00"></script>
     <style>
@@ -1438,7 +1438,7 @@
                             <div class="grade-strip-kicker" id="gradeStripKicker">Live grading</div>
                             <p class="grade-strip-question" id="gradeStripQuestion">Waiting for a question</p>
                             <p class="grade-strip-progress" id="gradeStripProgress"></p>
-                            <p class="grade-strip-hint">Click an answer, then click a target. Double-click files a strong guess. Right-click marks it wrong.</p>
+                            <p class="grade-strip-hint">Click an answer, then click a target. Double-click files a strong guess. Right-click marks it wrong. Own bucket or 4 makes it a new correct answer.</p>
                         </div>
                         <div class="grade-strip-timer" id="gradeStripTimer" hidden aria-live="polite">0:00</div>
                         <div class="grade-strip-actions">
@@ -1489,7 +1489,10 @@
                         </div>
                         <div class="grade-targets">
                             <div class="grade-targets-correct">
-                                <h4 class="grade-targets-heading">Correct targets</h4>
+                                <div class="grade-targets-toolbar">
+                                    <h4 class="grade-targets-heading">Correct targets</h4>
+                                    <button type="button" id="newCorrectBucketBtn" class="control-btn success grade-own-bucket-btn" title="Mark the selected answer correct as its own bucket (4)">Own bucket</button>
+                                </div>
                                 <div id="correctAnswers"></div>
                             </div>
                         </div>
@@ -1681,7 +1684,7 @@
     </div>
 
     <script>window.MEGASHEEP_GRADING_EMBEDDED = true;</script>
-    <script src="grading-board.js?v=2026-11-18T23-15-00"></script>
+    <script src="grading-board.js?v=2026-11-22T08-50-00"></script>
     <script>
         // Socket.IO connection
         let socket = null;

@@ -10,6 +10,7 @@
         let currentGame = null;
         let activeGames = [];
         let draggedElement = null;
+        let selectedGradeChip = null;
         let lastRenderedQuestionIndex = null;
         let gradingDraftEpoch = '';
         const lockstepCtx = { lastSeq: -1, lastEpoch: '' };
@@ -659,7 +660,8 @@
                 console.log('🔄 First real-time update - initial clear?', !hasExistingItems);
                 // Only clear if there aren't already answer items (avoid wiping just-added cards)
                 if (!hasExistingItems) {
-                    correctAnswersContainer.innerHTML = '';
+                    Array.from(correctAnswersContainer.querySelectorAll('.answer-bucket:not([data-host-created="1"])'))
+                        .forEach((bucket) => bucket.remove());
                 }
                 window.smoothUpdateInitialized = true;
             }
@@ -852,6 +854,7 @@
             
             bucket.className = `answer-bucket correct-bucket${isEmpty ? ' empty' : ''}`;
             bucket.setAttribute('data-bucket-id', `correct_${correctAnswer.toLowerCase().replace(/\s+/g, '_')}`);
+            bucket.dataset.correctName = correctAnswer;
             bucket.innerHTML = `
                 <h4 onclick="toggleBucket(this)">
                     <span class="bucket-toggle collapsed">▶</span>
@@ -1051,6 +1054,7 @@
                 bucketDiv.className = `answer-bucket correct-bucket${isEmpty ? ' empty' : ''}`;
                 bucketDiv.id = bucketId; // align with updateAnswerBucketsSmoothly to avoid duplicates
                 bucketDiv.dataset.bucketId = bucket.id;
+                bucketDiv.dataset.correctName = bucket.name;
                 bucketDiv.innerHTML = `
                     <h4 onclick="toggleBucket(this)">
                         <span class="bucket-toggle collapsed">▶</span>
@@ -1117,6 +1121,7 @@
             // Create any missing buckets
             const wantedIds = new Set(correctAnswerList.map(a => `bucket-${a.toLowerCase().replace(/\s+/g, '-')}`));
             Array.from(correctAnswersRoot.querySelectorAll('.answer-bucket')).forEach(bucket => {
+                if (bucket.dataset.hostCreated === '1') return;
                 if (!bucket.id || !wantedIds.has(bucket.id)) bucket.remove();
             });
             // Look for existing OUTER buckets by id
@@ -1129,15 +1134,18 @@
                 sorted.forEach(name => {
                     const bucketId = `bucket-${name.toLowerCase().replace(/\s+/g, '-')}`;
                     if (existingIds.has(bucketId)) return;
+                    const dataBucket = `correct_${name.toLowerCase().replace(/\s+/g, '_')}`;
                     const bucketDiv = document.createElement('div');
                     bucketDiv.className = 'answer-bucket correct-bucket empty';
                     bucketDiv.id = bucketId;
+                    bucketDiv.dataset.bucketId = dataBucket;
+                    bucketDiv.dataset.correctName = name;
                     bucketDiv.innerHTML = `
                         <h4 onclick="toggleBucket(this)">
                             <span class="bucket-toggle collapsed">▶</span>
                             ${name} <span class="answer-count-badge">0</span>
                         </h4>
-                        <div class="answer-items collapsed" data-bucket="correct_${name.toLowerCase().replace(/\s+/g, '_')}"></div>
+                        <div class="answer-items collapsed" data-bucket="${dataBucket}"></div>
                     `;
                     correctAnswersRoot.appendChild(bucketDiv);
                 });
@@ -1336,6 +1344,144 @@
             return null;
         }
 
+        function escapeGradeText(text) {
+            return String(text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function bucketDisplayName(bucket) {
+            if (!bucket) return '';
+            if (bucket.dataset.correctName) return bucket.dataset.correctName;
+            const heading = bucket.querySelector('h4');
+            if (!heading) return '';
+            const clone = heading.cloneNode(true);
+            clone.querySelectorAll('.bucket-toggle, .answer-count-badge').forEach((el) => el.remove());
+            return clone.textContent.replace(/\s+/g, ' ').trim();
+        }
+
+        function officialCorrectNames() {
+            return (currentGame?.currentQuestionData?.correct_answers || []).map((name) => String(name || '').trim()).filter(Boolean);
+        }
+
+        function findCorrectBucketForName(name) {
+            const wanted = normalizeAnswerText(name);
+            if (!wanted) return null;
+            const zone = correctBucketDropZoneFor(name);
+            if (zone) return zone.closest('.answer-bucket');
+            for (const bucket of document.querySelectorAll('#correctAnswers .answer-bucket')) {
+                if (normalizeAnswerText(bucketDisplayName(bucket)) === wanted) return bucket;
+            }
+            return null;
+        }
+
+        function hostBucketIdsFor(name) {
+            const slug = String(name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'answer';
+            let domId = `bucket-host-${slug}`;
+            let n = 2;
+            while (document.getElementById(domId)) {
+                domId = `bucket-host-${slug}-${n++}`;
+            }
+            const dataBase = `correct_${slug.replace(/-/g, '_')}`;
+            const taken = new Set(Array.from(document.querySelectorAll('#correctAnswers .answer-items[data-bucket]')).map((el) => el.dataset.bucket));
+            let dataBucket = dataBase;
+            n = 2;
+            while (taken.has(dataBucket)) {
+                dataBucket = `${dataBase}_${n++}`;
+            }
+            return { domId, dataBucket };
+        }
+
+        function createHostCorrectBucket(answerText) {
+            const name = String(answerText || '').trim();
+            if (!name) return null;
+            const existing = findCorrectBucketForName(name);
+            if (existing) return existing;
+            const official = officialCorrectNames().find((answer) => normalizeAnswerText(answer) === normalizeAnswerText(name));
+            if (official) {
+                ensureCorrectBucketsExist();
+                return findCorrectBucketForName(official);
+            }
+            const root = document.getElementById('correctAnswers');
+            if (!root) return null;
+            const ids = hostBucketIdsFor(name);
+            const bucket = document.createElement('div');
+            bucket.className = 'answer-bucket correct-bucket empty is-host-created';
+            bucket.id = ids.domId;
+            bucket.dataset.bucketId = ids.dataBucket;
+            bucket.dataset.hostCreated = '1';
+            bucket.dataset.correctName = name;
+            bucket.innerHTML = `
+                <h4 onclick="toggleBucket(this)">
+                    <span class="bucket-toggle collapsed">▶</span>
+                    ${escapeGradeText(name)} <span class="answer-count-badge">0</span>
+                </h4>
+                <div class="answer-items collapsed" data-bucket="${escapeGradeText(ids.dataBucket)}"></div>
+            `;
+            root.appendChild(bucket);
+            try { setupDragAndDrop(); } catch (_) {}
+            return bucket;
+        }
+
+        function markChipAsOwnCorrect(chip) {
+            if (!chip) return false;
+            const text = chipAnswerText(chip);
+            if (!text) return false;
+            const official = officialCorrectNames().find((answer) => normalizeAnswerText(answer) === normalizeAnswerText(text));
+            if (official) {
+                const bucket = findCorrectBucketForName(official);
+                if (bucket) {
+                    const moved = moveChipToBucket(chip, bucket);
+                    if (moved) showToast(`Filed into official "${official}"`, 'info');
+                    return moved;
+                }
+            }
+            const bucket = createHostCorrectBucket(text);
+            if (!bucket) return false;
+            const moved = moveChipToBucket(chip, bucket);
+            if (moved) {
+                chip.style.background = 'rgba(212, 160, 40, 0.45)';
+                setTimeout(() => { chip.style.background = ''; }, 700);
+            }
+            return moved;
+        }
+
+        function bindOwnBucketControls() {
+            let btn = document.getElementById('newCorrectBucketBtn');
+            const correctRoot = document.getElementById('correctAnswers');
+            if (!btn && correctRoot && correctRoot.parentElement) {
+                const wrap = document.createElement('div');
+                wrap.className = 'grade-targets-toolbar';
+                const heading = correctRoot.previousElementSibling;
+                btn = document.createElement('button');
+                btn.type = 'button';
+                btn.id = 'newCorrectBucketBtn';
+                btn.className = 'control-btn success grade-own-bucket-btn';
+                btn.title = 'Mark the selected answer correct as its own bucket (4)';
+                btn.textContent = 'Own bucket';
+                if (heading && (heading.classList.contains('grade-targets-heading') || heading.tagName === 'H4')) {
+                    wrap.appendChild(heading);
+                    wrap.appendChild(btn);
+                    correctRoot.parentElement.insertBefore(wrap, correctRoot);
+                } else {
+                    correctRoot.parentElement.insertBefore(btn, correctRoot);
+                }
+            }
+            if (!btn || btn.dataset.bound === '1') return;
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!selectedGradeChip) {
+                    showToast('Select an answer first', 'info');
+                    return;
+                }
+                markChipAsOwnCorrect(selectedGradeChip);
+            });
+        }
+
         function acceptUncategorizedGuess(chip) {
             if (!chip || !chip.closest('#uncategorizedAnswers')) return false;
             const guess = applyGuessToChip(chip, chipAnswerText(chip));
@@ -1481,8 +1627,6 @@
             document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
             if (draggedElement && bucket) moveChipToBucket(draggedElement, bucket);
         }
-
-        let selectedGradeChip = null;
 
         function selectGradeChip(chip) {
             document.querySelectorAll('.answer-item.is-selected').forEach((el) => el.classList.remove('is-selected'));
@@ -1639,6 +1783,7 @@
         }
 
         function bindInboxClicks() {
+            bindOwnBucketControls();
             const root = document.getElementById('gradingInterface');
             if (!root || root.dataset.inboxClicks === '1') return;
             root.dataset.inboxClicks = '1';
@@ -1659,6 +1804,10 @@
                 const bucket = e.target.closest('.answer-bucket');
                 if (chip) {
                     e.preventDefault();
+                    if (e.altKey) {
+                        markChipAsOwnCorrect(chip);
+                        return;
+                    }
                     selectGradeChip(chip);
                     return;
                 }
@@ -1711,6 +1860,8 @@
                 } else if (e.key === '3') {
                     const sendBack = document.querySelector('.sendback-bucket');
                     if (sendBack) moveChipToBucket(selectedGradeChip, sendBack);
+                } else if (e.key === '4') {
+                    markChipAsOwnCorrect(selectedGradeChip);
                 }
             });
         }
@@ -1858,6 +2009,8 @@
             // Get correct answer buckets
             document.querySelectorAll('#correctAnswers .answer-bucket').forEach(bucket => {
                 const bucketId = bucket.querySelector('.answer-items').dataset.bucket;
+                const name = bucketDisplayName(bucket);
+                const hostCreated = bucket.dataset.hostCreated === '1';
                 const answers = Array.from(bucket.querySelectorAll('.answer-item')).map(item => ({
                     answer: item.dataset.answerText,
                     index: parseInt(item.dataset.answerIndex),
@@ -1867,6 +2020,9 @@
                 
                 categorization.correctAnswerBuckets.push({
                     id: bucketId,
+                    name,
+                    correctAnswer: name,
+                    hostCreated,
                     answers: answers
                 });
             });
@@ -2184,7 +2340,8 @@
                 gameCode: currentGame.gameCode,
                 questionIndex: getCurrentQuestionIndex(),
                 timestamp: Date.now(),
-                buckets: {}
+                buckets: {},
+                hostCreatedBuckets: []
             };
             
             // Save state for each bucket
@@ -2212,6 +2369,12 @@
                 });
                 
                 state.buckets[bucketId] = items;
+                if (bucket.dataset.hostCreated === '1') {
+                    state.hostCreatedBuckets.push({
+                        id: bucketId,
+                        name: bucketDisplayName(bucket)
+                    });
+                }
             });
             
             // Save state for uncategorized and wrong answer containers
@@ -2331,6 +2494,10 @@
                 document.querySelectorAll('.answer-items').forEach(container => {
                     container.innerHTML = '';
                 });
+
+                (state.hostCreatedBuckets || []).forEach((meta) => {
+                    if (meta && meta.name) createHostCorrectBucket(meta.name);
+                });
                 
                 // Apply saved state
                 let restoredAny = false;
@@ -2343,7 +2510,14 @@
                     } else if (bucketId === 'wrong') {
                         dropZone = document.getElementById('wrongAnswers');
                     } else {
-                        bucket = document.querySelector(`[data-bucket-id="${bucketId}"]`);
+                        bucket = Array.from(document.querySelectorAll('#correctAnswers .answer-bucket')).find((el) => {
+                            return el.dataset.bucketId === bucketId
+                                || el.querySelector('.answer-items')?.dataset.bucket === bucketId;
+                        }) || null;
+                        if (!bucket) {
+                            const meta = (state.hostCreatedBuckets || []).find((item) => item.id === bucketId);
+                            if (meta && meta.name) bucket = createHostCorrectBucket(meta.name);
+                        }
                         dropZone = bucket?.querySelector('.answer-items');
                     }
                     
@@ -3123,6 +3297,9 @@
         },
         handleAnswer: function (playerName, answer, isClarification) {
             try { ingestSubmittedAnswer({ playerName, answer, isClarification: !!isClarification, gameCode: currentGame && currentGame.gameCode }); } catch (_) {}
+        },
+        markOwnCorrect: function (chip) {
+            return markChipAsOwnCorrect(chip);
         }
     };
 })(window);

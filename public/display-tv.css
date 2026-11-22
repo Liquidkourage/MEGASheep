@@ -2369,6 +2369,12 @@ html, body {
     right: 5.5%;
 }
 
+.tv-banner.is-gold.is-cloth::before,
+.tv-banner.is-gold.is-cloth::after {
+    background: linear-gradient(90deg, #7a5208, #e0b43a 45%, #8a5a0c);
+    box-shadow: 1px 0 0 #4a3208, -1px 0 0 #4a3208;
+}
+
 .tv-banner.is-pennant {
     width: var(--w, calc(30vh * 0.432));
     min-width: calc(30vh * 0.432);

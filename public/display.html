@@ -8,11 +8,13 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T01-12-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T08-50-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
     <link rel="preload" as="image" href="sprites/parade-pennant.png?v=2026-11-19T23-20-00">
+    <link rel="preload" as="image" href="sprites/parade-banner-gold.png?v=2026-11-22T08-50-00">
+    <link rel="preload" as="image" href="sprites/parade-pennant-gold.png?v=2026-11-22T08-50-00">
     <link rel="preload" as="image" href="sprites/pen-back.png?v=2026-11-21T15-20-00">
     <link rel="preload" as="image" href="sprites/pen-back-open.png?v=2026-11-21T15-20-00">
     <link rel="preload" as="image" href="sprites/pen-front.png?v=2026-11-21T15-20-00">
@@ -1524,7 +1526,9 @@
                 answer: group.answer,
                 points: Number(group.points) || 0,
                 players: group.players || [],
-                count: Number(group.count) || (group.players || []).length
+                count: Number(group.count) || (group.players || []).length,
+                goldTrim: !!(group.goldTrim || group.hostCreated),
+                hostCreated: !!(group.hostCreated || group.goldTrim)
             }));
             const misses = layoutMissSign(correctNotGiven || []);
             const wrongs = (wrongAnswers || []).slice().sort((a, b) => {
@@ -1543,7 +1547,7 @@
             const { hits, misses, wrongs } = scoreAnswerModels();
             return JSON.stringify({
                 q: gameState && gameState.currentQuestion,
-                hits: hits.map((group) => [group.answer, group.points, group.count]),
+                hits: hits.map((group) => [group.answer, group.points, group.count, !!group.goldTrim]),
                 misses: misses ? misses.answers : [],
                 wrongs: wrongs.map((group) => [group.answer, group.count]),
                 n: ((gameState && gameState.players) || []).length
@@ -4714,6 +4718,23 @@
             }, 80);
         }
 
+        const PARADE_BANNER_SRC = 'sprites/parade-banner.png?v=2026-11-19T23-20-00';
+        const PARADE_PENNANT_SRC = 'sprites/parade-pennant.png?v=2026-11-19T23-20-00';
+        const PARADE_BANNER_GOLD_SRC = 'sprites/parade-banner-gold.png?v=2026-11-22T08-50-00';
+        const PARADE_PENNANT_GOLD_SRC = 'sprites/parade-pennant-gold.png?v=2026-11-22T08-50-00';
+
+        function groupHasGoldTrim(group) {
+            return !!(group && (group.goldTrim || group.hostCreated));
+        }
+
+        function paradeClothSrc(gold) {
+            return gold ? PARADE_BANNER_GOLD_SRC : PARADE_BANNER_SRC;
+        }
+
+        function paradePennantSrc(gold) {
+            return gold ? PARADE_PENNANT_GOLD_SRC : PARADE_PENNANT_SRC;
+        }
+
         function tvBannerMarkup(group, extras) {
             const extra = extras || {};
             const x = extra.x != null ? extra.x : group.x;
@@ -4724,13 +4745,15 @@
             const id = extra.id ? ` id="${extra.id}"` : '';
             const n = Number(group.count) || (group.players || []).length || 0;
             const kind = n === 1 ? ' is-pennant' : ' is-cloth';
+            const gold = extra.gold != null ? extra.gold : groupHasGoldTrim(group);
+            const goldClass = gold ? ' is-gold' : '';
             return `
-                <div${id} class="tv-banner is-parade${kind}${wait}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${n}" data-lanes="${Number(extra.lanes || PARADE_LANES)}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --mx:${Number(x).toFixed(2)}; --my:${Number(y).toFixed(2)}; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
+                <div${id} class="tv-banner is-parade${kind}${goldClass}${wait}" data-answer="${escapeDisplayText(group.answer)}" data-holders="${n}" data-lanes="${Number(extra.lanes || PARADE_LANES)}" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --mx:${Number(x).toFixed(2)}; --my:${Number(y).toFixed(2)}; --w:${Number(width).toFixed(2)}vw; --tilt:${Number(tilt).toFixed(2)}deg; --z:${Number(group.z || extra.z || 8)}; --walk:0s">
                     <div class="tv-flag tv-flag-cloth">
-                        <img class="tv-flag-art" src="sprites/parade-banner.png?v=2026-11-19T23-20-00" alt="" aria-hidden="true">
+                        <img class="tv-flag-art" src="${paradeClothSrc(gold)}" alt="" aria-hidden="true">
                     </div>
                     <div class="tv-flag tv-flag-pennant">
-                        <img class="tv-flag-art" src="sprites/parade-pennant.png?v=2026-11-19T23-20-00" alt="" aria-hidden="true">
+                        <img class="tv-flag-art" src="${paradePennantSrc(gold)}" alt="" aria-hidden="true">
                     </div>
                     <div class="tv-flag-face">
                         <p class="tv-post-answer">${escapeDisplayText(group.answer)}</p>
@@ -4882,8 +4905,14 @@
             el.dataset.holders = String(n);
             el.classList.toggle('is-pennant', n === 1);
             el.classList.toggle('is-cloth', n !== 1);
+            el.classList.toggle('is-gold', groupHasGoldTrim(group));
             el.classList.toggle('has-roster', extras.length > 0);
             el.classList.add('is-parade', 'is-hit');
+            const gold = groupHasGoldTrim(group);
+            const clothArt = el.querySelector('.tv-flag-cloth .tv-flag-art');
+            const pennantArt = el.querySelector('.tv-flag-pennant .tv-flag-art');
+            if (clothArt) clothArt.src = paradeClothSrc(gold);
+            if (pennantArt) pennantArt.src = paradePennantSrc(gold);
             el.style.setProperty('--x', `${Number(x).toFixed(2)}%`);
             el.style.setProperty('--y', `${Number(y).toFixed(2)}%`);
             el.style.setProperty('--mx', Number(x).toFixed(2));
