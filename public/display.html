@@ -1500,16 +1500,34 @@
         const MISS_SIGN_AT = { x: 18, y: 64 };
         const RANK_SIGN_AT = { x: 83, y: 61.5 };
 
+        function uniqueLeftoverAnswers(answers) {
+            const seen = new Set();
+            const list = [];
+            (answers || []).forEach((answer) => {
+                const text = String(answer || '').trim();
+                if (!text) return;
+                const key = text.toLowerCase();
+                if (seen.has(key)) return;
+                seen.add(key);
+                list.push(text);
+            });
+            return list;
+        }
+
         function layoutMissSign(answers) {
-            const list = (answers || []).filter(Boolean);
-            if (!list.length) return null;
+            const list = uniqueLeftoverAnswers(answers);
             const n = list.length;
+            const longest = list.reduce((max, answer) => Math.max(max, answer.length), 0);
+            const width = n === 0
+                ? 14
+                : Math.min(28, Math.max(16, 13 + Math.min(9, longest * 0.38) + (n > 8 ? 3 : 0)));
             return {
                 kind: 'miss',
                 answers: list,
+                empty: n === 0,
                 x: MISS_SIGN_AT.x,
-                y: MISS_SIGN_AT.y,
-                width: n > 8 ? 19 : n > 4 ? 17 : 15,
+                y: n > 8 ? 78 : n > 4 ? 74 : n > 0 ? 70 : 66,
+                width,
                 tilt: -0.7,
                 z: 5
             };
@@ -4871,15 +4889,18 @@
         }
 
         function tvMissSignHtml(sign) {
-            if (!sign || !sign.answers || !sign.answers.length) return '';
+            if (!sign) return '';
+            const answers = Array.isArray(sign.answers) ? sign.answers : [];
+            const empty = answers.length === 0;
+            const chips = empty
+                ? ''
+                : `<ul class="tv-miss-list">${answers.map((answer, index) => `<li class="tv-miss-chip" style="--tilt:${missChipTilt(answer, index).toFixed(2)}deg">${escapeDisplayText(answer)}</li>`).join('')}</ul>`;
             return `
-                <aside class="tv-sign tv-miss-sign" style="--x:${Number(sign.x).toFixed(2)}%; --y:${Number(sign.y).toFixed(2)}%; --w:${Number(sign.width).toFixed(2)}vw; --tilt:${Number(sign.tilt || 0).toFixed(2)}deg; --z:${Number(sign.z || 6)}">
+                <aside class="tv-sign tv-miss-sign${empty ? ' is-empty' : ''}${answers.length > 8 ? ' is-split' : ''}" data-n="${answers.length}" style="--x:${Number(sign.x).toFixed(2)}%; --y:${Number(sign.y).toFixed(2)}%; --w:${Number(sign.width).toFixed(2)}vw; --n:${answers.length}; --tilt:${Number(sign.tilt || 0).toFixed(2)}deg; --z:${Number(sign.z || 6)}">
                     <img class="tv-sign-art" src="sprites/meadow-sign.png?v=2026-11-21T12-00-00" alt="" aria-hidden="true">
                     <div class="tv-sign-face">
                         <p class="tv-miss-kicker">Pasture-ized Answers</p>
-                        <ul class="tv-miss-list">
-                            ${sign.answers.map((answer, index) => `<li class="tv-miss-chip" style="--tilt:${missChipTilt(answer, index).toFixed(2)}deg">${escapeDisplayText(answer)}</li>`).join('')}
-                        </ul>
+                        ${chips}
                     </div>
                 </aside>
             `;
@@ -6136,9 +6157,9 @@
             correctAnswers.forEach(correctAnswer => {
                 const normalized = correctAnswer.toLowerCase().trim();
                 const bucketKey = normalized.startsWith('correct_') ? normalized : `correct_${normalized.replace(/\s+/g,'_')}`;
-                if (!submittedTexts.has(bucketKey) && !submittedTexts.has(normalized)) {
-                    correctNotGiven.push(correctAnswer);
-                }
+                if (submittedTexts.has(bucketKey) || submittedTexts.has(normalized)) return;
+                if (correctNotGiven.some((answer) => String(answer).toLowerCase().trim() === normalized)) return;
+                correctNotGiven.push(correctAnswer);
             });
             
             // Separate wrong answers (those with 0 points) - only for current question
