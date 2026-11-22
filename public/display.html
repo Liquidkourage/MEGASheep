@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T00-50-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -30,6 +30,7 @@
     <link rel="preload" as="image" href="sprites/dog-01-sit.png?v=2026-11-21T17-10-00">
     <link rel="preload" as="image" href="sprites/dog-01-yip.png?v=2026-11-21T22-00-00">
     <link rel="preload" as="image" href="sprites/dog-01-yip-sit.png?v=2026-11-21T22-00-00">
+    <link rel="preload" as="image" href="sprites/tennis-ball.png?v=2026-11-22T01-05-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -4048,7 +4049,7 @@
             const ball = document.createElement('span');
             ball.className = 'tv-herd-ball is-loose is-placed';
             ball.setAttribute('aria-hidden', 'true');
-            ball.innerHTML = '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="14" fill="#d8e44c" stroke="#241c12" stroke-width="2.35"/><path d="M6.6 7.2c7.1 4.1 7.1 13.5 0 17.6" fill="none" stroke="#241c12" stroke-width="2.15" stroke-linecap="round"/><path d="M25.4 7.2c-7.1 4.1-7.1 13.5 0 17.6" fill="none" stroke="#241c12" stroke-width="2.15" stroke-linecap="round"/><path d="M7.3 8c6.3 3.6 6.3 12.2 0 15.8" fill="none" stroke="#f7f8ee" stroke-width="1.45" stroke-linecap="round"/><path d="M24.7 8c-6.3 3.6-6.3 12.2 0 15.8" fill="none" stroke="#f7f8ee" stroke-width="1.45" stroke-linecap="round"/><ellipse cx="12.2" cy="11.2" rx="5.1" ry="3.2" fill="#fff" fill-opacity=".4"/></svg>';
+            ball.innerHTML = '<i class="tv-herd-ball-art"></i>';
             ball.style.setProperty('--gx', String(spot.gx));
             ball.style.setProperty('--gy', String(spot.gy));
             ball.style.setProperty('--hop', '0');
@@ -4083,33 +4084,32 @@
             const here = currentEwePoint(dog);
             const runY = Math.min(PLAY_FIELD.bottom - 4, Math.max(PLAY_FIELD.top + 14, here.y));
             const startX = here.x;
-            const catchX = Math.max(18, Math.min(30, startX - 24));
             const exitX = BANDIT_OFFSTAGE_X;
             const body = dog.getBoundingClientRect().width || 96;
+            const chorus = document.getElementById('flockChorus');
+            const field = chorus ? chorus.getBoundingClientRect() : { width: 1920, height: 1080 };
+            const seconds = 1.68;
+            const catchU = 0.48;
+            const mix = (a, b, t) => a + (b - a) * t;
+            const catchDogX = mix(startX, exitX, catchU);
+            const catchDogY = mix(here.y, runY, Math.min(1, catchU / 0.14));
+            const hopGy = field.height ? (-body * 0.82) / field.height * 100 : -7;
+            const throwTo = {
+                x: catchDogX - 2.8,
+                y: catchDogY - 4.1 + hopGy
+            };
             const throwFrom = {
-                x: Math.min(70, startX + 4.2),
-                y: runY - 5.2
+                x: Math.min(68, startX + 6.5),
+                y: runY - 2.8
             };
-            const throwApex = {
-                x: throwFrom.x + (catchX - throwFrom.x) * 0.46,
-                y: Math.max(PLAY_FIELD.top - 0.8, 51.2)
-            };
-            const throwCatch = {
-                x: catchX + 2.4,
-                y: runY - 4.6
-            };
+            const lineMidY = (throwFrom.y + throwTo.y) * 0.5;
+            const apexH = Math.max(9, lineMidY - Math.max(PLAY_FIELD.top + 0.8, 53));
             const ball = spawnHerdBall({ gx: throwFrom.x, gy: throwFrom.y });
-            const seconds = 1.62;
-            const catchU = 0.46;
             const chaseGen = bumpEweWalk(dog);
             let caught = false;
             let jumpStarted = false;
+            let heldSpin = 0;
             const started = performance.now();
-            const mix = (a, b, t) => a + (b - a) * t;
-            const bez = (a, b, c, t) => {
-                const u = 1 - t;
-                return u * u * a + 2 * u * t * b + t * t * c;
-            };
             const placeBall = (gx, gy, spin) => {
                 if (!ball || !ball.isConnected) return;
                 ball.style.setProperty('--gx', String(gx));
@@ -4155,23 +4155,18 @@
                 const mouth = dogMouthStage(dog);
                 if (!caught && ball && ball.isConnected) {
                     const tBall = Math.min(1, u / catchU);
-                    let bx = bez(throwFrom.x, throwApex.x, throwCatch.x, tBall);
-                    let by = bez(throwFrom.y, throwApex.y, throwCatch.y, tBall);
-                    const grab = Math.max(0, Math.min(1, (tBall - 0.78) / 0.22));
-                    if (grab > 0) {
-                        const s = grab * grab * (3 - 2 * grab);
-                        bx = mix(bx, mouth.gx, s);
-                        by = mix(by, mouth.gy, s);
-                    }
-                    placeBall(bx, by, tBall * 420);
-                    if (grab >= 1 || (tBall >= 0.9 && Math.hypot(bx - mouth.gx, by - mouth.gy) < 2.2)) {
+                    const bx = mix(throwFrom.x, throwTo.x, tBall);
+                    const by = mix(throwFrom.y, throwTo.y, tBall) - 4 * apexH * tBall * (1 - tBall);
+                    heldSpin = tBall * 360;
+                    placeBall(bx, by, heldSpin);
+                    if (tBall >= 0.97 || (tBall > 0.86 && Math.hypot(bx - mouth.gx, by - mouth.gy) < 1.6)) {
                         caught = true;
                         ball.classList.remove('is-loose');
                         ball.classList.add('is-caught');
                     }
                 }
                 if (caught && ball && ball.isConnected) {
-                    placeBall(mouth.gx, mouth.gy, -28);
+                    placeBall(mouth.gx, mouth.gy, heldSpin);
                 }
                 if (u < 1) {
                     window.requestAnimationFrame(tick);
