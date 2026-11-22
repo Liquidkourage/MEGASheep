@@ -1464,14 +1464,14 @@ html, body {
 
 .tv-dog.is-walking .tv-ewe-strip,
 .tv-play .tv-dog.is-walking .tv-ewe-strip {
-    width: 1800%;
-    background-image: url("sprites/dog-01-walk.png?v=2026-11-21T16-30-00");
-    animation: eweWalk 1.28s steps(18, jump-none) infinite;
+    width: 400%;
+    background-image: url("sprites/dog-01-gait.png?v=2026-11-21T19-35-00");
+    animation: dogGait 0.84s steps(4, jump-none) infinite;
 }
 
 .tv-dog.is-running.is-walking .tv-ewe-strip,
 .tv-play .tv-dog.is-running.is-walking .tv-ewe-strip {
-    animation-duration: 0.62s;
+    animation-duration: 0.52s;
 }
 
 .tv-dog.is-sitting:not(.is-walking):not(.is-jumping) .tv-ewe-strip,
@@ -1583,6 +1583,11 @@ html, body {
 @keyframes eweSleep {
     from { transform: translate3d(0, 0, 0); }
     to { transform: translate3d(-83.3333%, 0, 0); }
+}
+
+@keyframes dogGait {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-75%, 0, 0); }
 }
 
 @keyframes eweJump {
