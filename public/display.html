@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T09-22-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T10-45-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1714,9 +1714,28 @@
             return list.map((player) => byPlayer.get(player) || resultSlot(player, names, null, { fullName: true }));
         }
 
+        function placeFinaleFlock(list, names) {
+            const rest = rankedPlayers(list).slice(3);
+            if (!rest.length) return [];
+            const packed = packTrapezoid(
+                rest.length,
+                { left: 52, right: 74, y: 70 },
+                { left: 46, right: 80, y: 92 }
+            );
+            const byPlayer = new Map();
+            rest.forEach((player, index) => {
+                byPlayer.set(player, resultSlot(player, names, packed[index] || packed[0], {
+                    named: false,
+                    minGy: 68
+                }));
+            });
+            return rest.map((player) => byPlayer.get(player)).filter(Boolean);
+        }
+
         function placeResultsFlock(list, names) {
             if (document.querySelector('.tv-score')) return placeScoreFlock(list, names);
             if (document.querySelector('.tv-standings')) return placeStandingsFlock(list, names);
+            if (document.querySelector('.tv-final')) return placeFinaleFlock(list, names);
             const graze = packTrapezoid(list.length, RESULTS_FAR, RESULTS_NEAR);
             return list.map((player, index) => {
                 const hash = nameHash(player.name || player.id || String(index));
@@ -4677,7 +4696,11 @@
         }
 
         function rankedPlayers(list) {
-            return (list || []).slice().sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+            return (list || []).slice().sort((a, b) => {
+                const diff = (Number(b.score) || 0) - (Number(a.score) || 0);
+                if (diff) return diff;
+                return String(a.name || '').localeCompare(String(b.name || ''));
+            });
         }
 
         function paintMeadowScreen(kind, overlayHtml, players) {
@@ -4710,16 +4733,16 @@
             }).join('');
         }
 
-        function rankCols(count) {
+        function rankCols(count, options) {
+            if (options && Number.isFinite(Number(options.cols))) return Math.max(1, Number(options.cols));
             const n = Number(count) || 0;
-            if (n > 24) return 3;
-            if (n > 8) return 2;
+            if (n > 16) return 2;
             return 1;
         }
 
         function tvRankListHtml(players, startAt, options) {
             const rows = players || [];
-            const cols = rankCols(rows.length);
+            const cols = rankCols(rows.length, options);
             return `
                 <ol class="tv-rank-list auto-scroll-content" style="--rank-cols:${cols}">
                     ${tvRankRowsHtml(rows, startAt, options)}
@@ -4827,13 +4850,16 @@
             if (!rows.length) return '';
             const extra = extras || {};
             const boardId = extra.boardId || 'scoreRankBoard';
+            const x = extra.x != null ? extra.x : RANK_SIGN_AT.x;
+            const y = extra.y != null ? extra.y : RANK_SIGN_AT.y;
+            const width = extra.width != null ? extra.width : 26;
             return `
-                <aside class="tv-sign tv-score-ranks" style="--x:${RANK_SIGN_AT.x}%; --y:${RANK_SIGN_AT.y}%; --w:19vw; --tilt:0.45deg; --z:4">
+                <aside class="tv-sign tv-score-ranks" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:0.45deg; --z:4">
                     <img class="tv-sign-art" src="sprites/meadow-sign-tall.png?v=2026-11-21T12-00-00" alt="" aria-hidden="true">
                     <div class="tv-sign-face">
                         <p class="tv-rank-kicker">Bleat-erboard</p>
                         <div class="tv-rank-board" id="${boardId}">
-                            ${tvRankListHtml(rows, 0, { short: true })}
+                            ${tvRankListHtml(rows, extra.startAt || 0, extra)}
                         </div>
                     </div>
                 </aside>
@@ -4853,7 +4879,7 @@
             return `
                 <div class="tv-score-banners">
                     ${tvMissSignHtml(misses)}
-                    ${tvRankSignHtml(players)}
+                    ${tvRankSignHtml(players, { width: 22 })}
                     ${Array.from({ length: lanes }, (_, lane) => tvBannerMarkup({
                         kind: 'hit',
                         answer: '',
@@ -5253,7 +5279,7 @@
             if (stage && stage.dataset.answerKey === key) {
                 const board = document.getElementById('scoreRankBoard');
                 if (board) {
-                    board.innerHTML = tvRankListHtml(players, 0, { short: true });
+                    board.innerHTML = tvRankListHtml(players, 0);
                     armBoardScroll('scoreRankBoard', players.length);
                 }
                 return;
@@ -5506,16 +5532,18 @@
         function showOverallLeaderboardScreen(gameStateData) {
             if (gameStateData) gameState = gameStateData;
             const players = rankedPlayers(gameState && gameState.players);
-            const rest = players.slice(3);
             paintMeadowScreen('tv-final', `
                 ${tvPodiumHtml(players)}
-                ${rest.length ? `
-                    <section class="tv-board tv-board-rest" id="finalRankBoard">
-                        ${tvRankListHtml(rest, 3)}
-                    </section>
-                ` : ''}
-            `);
-            if (rest.length) armBoardScroll('finalRankBoard', rest.length);
+                ${tvRankSignHtml(players, {
+                    boardId: 'finalRankBoard',
+                    width: 30,
+                    x: 82,
+                    y: 58,
+                    cols: 1
+                })}
+            `, players);
+            mountRankSign();
+            armBoardScroll('finalRankBoard', players.length);
         }
         
         function generatePodium(sortedPlayers) {

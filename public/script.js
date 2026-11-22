@@ -1533,21 +1533,14 @@ function findBestMatchingBucket(answer, buckets) {
             .replace(/\s+/g, '') // Remove ALL spaces
             .trim();
         
-        // Exact match after normalization (highest priority)
         if (normalizedAnswer === normalizedCorrect) {
             return bucket;
         }
-        
-        // Calculate similarity score
-        const score = calculateSimilarity(normalizedAnswer, normalizedCorrect);
-        
-        // Debug logging for specific cases
-        if (normalizedAnswer === 'rats' || normalizedCorrect === 'ratt') {
-            console.log(`🔍 Debug: "${normalizedAnswer}" vs "${normalizedCorrect}" = ${score}`);
-        }
-        
-        if (score > bestScore && score >= 0.6) { // 60% similarity threshold (lowered for better matching)
-            bestScore = score;
+        const confidence = (window.MEGASheepAnswerMatch && window.MEGASheepAnswerMatch.answerConfidence)
+            ? window.MEGASheepAnswerMatch.answerConfidence(answer, bucket.correctAnswer)
+            : 0;
+        if (confidence >= 90 && confidence > bestScore) {
+            bestScore = confidence;
             bestMatch = bucket;
         }
     }
@@ -3549,8 +3542,11 @@ function displayFinalResults() {
     // Display scores
     finalScoresList.innerHTML = '';
     if (gameState.players) {
-        const sortedPlayers = gameState.players
-            .sort((a, b) => (gameState.scores[b.id] || 0) - (gameState.scores[a.id] || 0));
+        const sortedPlayers = gameState.players.slice().sort((a, b) => {
+            const bScore = Number(b.score) || Number(gameState.scores && gameState.scores[b.id]) || 0;
+            const aScore = Number(a.score) || Number(gameState.scores && gameState.scores[a.id]) || 0;
+            return bScore - aScore;
+        });
         const myName = String(sessionStorage.getItem('playerName') || currentPlayerName || '').toLowerCase();
         const coatOf = (name) => {
             let hash = 0;
@@ -3565,14 +3561,18 @@ function displayFinalResults() {
             .replace(/"/g, '&quot;');
 
         if (IS_PLAYER_ROUTE) {
-            finalScoresList.innerHTML = sortedPlayers.map((player, index) => {
+            const ranked = sortedPlayers.slice();
+            finalScoresList.innerHTML = ranked.map((player, index) => {
                 const mine = String(player.name || '').toLowerCase() === myName || player.id === socket.id;
                 const delay = ((index % 7) * 0.12).toFixed(2);
-                const pts = gameState.scores[player.id] || 0;
-                return `<figure class="player-ewe player-finale-ewe${mine ? ' is-you' : ''}" data-coat="${coatOf(player.name)}" style="--idle:${delay}s">
-                    <span class="player-ewe-art" aria-hidden="true"><span class="player-ewe-strip"></span></span>
-                    <figcaption><span class="player-finale-rank">#${index + 1}</span> ${escapePlayer(player.name || 'Sheep')} · ${pts}</figcaption>
-                </figure>`;
+                const pts = Number(player.score) || Number(gameState.scores && gameState.scores[player.id]) || 0;
+                return `<div class="player-finale-row${mine ? ' is-you' : ''}">
+                    <figure class="player-ewe player-finale-ewe" data-coat="${coatOf(player.name)}" style="--idle:${delay}s" aria-hidden="true">
+                        <span class="player-ewe-art"><span class="player-ewe-strip"></span></span>
+                    </figure>
+                    <p class="player-finale-who"><span class="player-finale-rank">#${index + 1}</span> ${escapePlayer(player.name || 'Sheep')}</p>
+                    <b class="player-finale-pts">${pts}</b>
+                </div>`;
             }).join('');
         } else {
             sortedPlayers.forEach((player, index) => {
@@ -4633,10 +4633,11 @@ function autoCategorizeAnswers() {
     
     // Auto-categorize based on correct answers
     answerCategorization.buckets.uncategorized.forEach(answerGroup => {
-        const isCorrect = correctAnswers.some(correct => 
-            answerGroup.answer.toLowerCase().includes(correct.toLowerCase()) ||
-            correct.toLowerCase().includes(answerGroup.answer.toLowerCase())
-        );
+        const isCorrect = correctAnswers.some((correct) => (
+            window.MEGASheepAnswerMatch && window.MEGASheepAnswerMatch.isStrongMatch
+                ? window.MEGASheepAnswerMatch.isStrongMatch(answerGroup.answer, correct)
+                : String(answerGroup.answer || '').toLowerCase().trim() === String(correct || '').toLowerCase().trim()
+        ));
         
         if (isCorrect) {
             answerCategorization.buckets.correct.push(answerGroup);

@@ -1278,7 +1278,7 @@
             return item;
         }
 
-        const GUESS_ACCEPT_MIN = 50;
+        const GUESS_ACCEPT_MIN = (window.MEGASheepAnswerMatch && window.MEGASheepAnswerMatch.STRONG_MIN) || 90;
 
         function guessForAnswer(answerText) {
             const correctAnswerList = currentGame?.currentQuestionData?.correct_answers || [];
@@ -2160,55 +2160,24 @@
         }
 
         function normalizeAnswer(answer) {
-            return answer
-                .toLowerCase()                    // Convert to lowercase
-                .trim()                          // Remove leading/trailing spaces
-                .replace(/\s+/g, ' ')            // Replace multiple spaces with single space
-                .replace(/[^\w\s]/g, '')         // Remove all punctuation except spaces
-                .trim();                         // Trim again after punctuation removal
+            const api = window.MEGASheepAnswerMatch;
+            if (api && typeof api.normalizeAnswer === 'function') return api.normalizeAnswer(answer);
+            return String(answer || '')
+                .toLowerCase()
+                .replace(/[^\w\s]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
         }
         
-        // Calculate semantic confidence between two answers
         function calculateSemanticConfidence(answerText, correctAnswer) {
+            const api = window.MEGASheepAnswerMatch;
+            if (api && typeof api.answerConfidence === 'function') {
+                return api.answerConfidence(answerText, correctAnswer);
+            }
             const normalizedAnswer = normalizeAnswer(answerText);
             const normalizedCorrect = normalizeAnswer(correctAnswer);
-            
-            // Exact match gets 100% confidence
-            if (normalizedAnswer === normalizedCorrect) {
-                return 100;
-            }
-            
-            // Check for high-confidence substring matches (e.g., "billy goat" contains "goat")
-            if (normalizedAnswer.includes(normalizedCorrect)) {
-                // If the correct answer is contained in the response, high confidence
-                return 95; // Very high confidence for containing the exact animal name
-            }
-            
-            if (normalizedCorrect.includes(normalizedAnswer)) {
-                // If the response is contained in the correct answer
-                return 90;
-            }
-            
-            // Calculate similarity using simple string comparison
-            let similarity = 0;
-            const maxLength = Math.max(normalizedAnswer.length, normalizedCorrect.length);
-            
-            if (maxLength === 0) return 0;
-            
-            // Calculate character-by-character similarity for fuzzy matches
-            let matches = 0;
-            const minLength = Math.min(normalizedAnswer.length, normalizedCorrect.length);
-            
-            for (let i = 0; i < minLength; i++) {
-                if (normalizedAnswer[i] === normalizedCorrect[i]) {
-                    matches++;
-                }
-            }
-            
-            similarity = matches / maxLength;
-            
-            // Convert to percentage and round
-            return Math.round(similarity * 100);
+            if (!normalizedAnswer || !normalizedCorrect) return 0;
+            return normalizedAnswer === normalizedCorrect ? 100 : 0;
         }
 
         async function getSemanticMatches(question, correctAnswers, responses) {

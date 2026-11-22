@@ -2246,6 +2246,7 @@ html, body {
 .tv-final .tv-flock,
 .tv-history .tv-flock {
     z-index: 3;
+    overflow: hidden;
 }
 
 .tv-score-top {
@@ -2710,8 +2711,18 @@ html, body {
 .tv-score-ranks .tv-rank-n,
 .tv-score-ranks .tv-rank-name,
 .tv-score-ranks .tv-rank-pts {
-    font-size: clamp(1.08rem, 2.12vh, 1.6rem);
-    line-height: 1.02;
+    font-size: clamp(1.22rem, 2.35vh, 1.85rem);
+    line-height: 1.08;
+}
+
+.tv-final .tv-score-ranks {
+    --w: 30vw;
+}
+
+.tv-final .tv-score-ranks .tv-rank-n,
+.tv-final .tv-score-ranks .tv-rank-name,
+.tv-final .tv-score-ranks .tv-rank-pts {
+    font-size: clamp(1.55rem, 3.05vh, 2.35rem);
 }
 
 .tv-score .tv-ewe figcaption {
@@ -2991,13 +3002,14 @@ html, body {
 
 .tv-rank-name {
     min-width: 0;
-    font-size: clamp(1.9rem, 3.8vh, 3rem);
+    font-size: clamp(1.55rem, 3.1vh, 2.35rem);
     font-weight: 800;
     letter-spacing: -0.03em;
-    line-height: 1.05;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.08;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .tv-rank-pts {
@@ -3051,16 +3063,17 @@ html, body {
     margin: 0 0 0.15em;
     max-width: 100%;
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(2.2rem, 4.6vh, 3.8rem);
+    font-size: clamp(2rem, 4.2vh, 3.4rem);
     font-weight: 800;
     letter-spacing: -0.04em;
-    line-height: 1;
+    line-height: 1.05;
     color: #f6ecc4;
     text-align: center;
     text-shadow: 0 4px 18px rgba(4, 10, 18, 0.7);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .tv-podium-spot.is-1 .tv-podium-name {
