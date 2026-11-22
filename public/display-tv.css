@@ -1329,15 +1329,25 @@ html, body {
 
 .tv-dog .tv-herd-ball.is-caught {
     left: 20%;
-    top: 44%;
-    width: 30%;
-    transform: translate(-50%, -50%) rotate(var(--spin, -18deg));
+    top: 42%;
+    width: 28%;
+    transform: translate(-50%, -50%) rotate(var(--spin, -22deg));
     z-index: 6;
     filter: drop-shadow(0 2px 0 rgba(20, 16, 8, 0.22));
 }
 
+.tv-dog.is-jumping .tv-herd-ball.is-caught {
+    left: 15%;
+    top: 32%;
+    width: 26%;
+}
+
 .tv-dog:not(.is-left) .tv-herd-ball.is-caught {
     left: 80%;
+}
+
+.tv-dog:not(.is-left).is-jumping .tv-herd-ball.is-caught {
+    left: 85%;
 }
 
 .tv-dog .tv-thought,
