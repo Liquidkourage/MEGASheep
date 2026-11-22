@@ -707,6 +707,37 @@ function setupEventListeners() {
     // Join game screen (default)
     const joinGameSubmitBtn = document.getElementById('joinGameSubmitBtn');
     if (joinGameSubmitBtn) joinGameSubmitBtn.addEventListener('click', joinGame);
+
+    const aiDisclosureBtn = document.getElementById('aiDisclosureBtn');
+    const aiDisclosureModal = document.getElementById('aiDisclosureModal');
+    const closeAiDisclosureBtn = document.getElementById('closeAiDisclosureBtn');
+    const setAiDisclosureOpen = (open) => {
+        if (!aiDisclosureModal) return;
+        aiDisclosureModal.classList.toggle('is-open', open);
+        aiDisclosureModal.hidden = !open;
+        aiDisclosureModal.style.display = open ? 'flex' : 'none';
+        if (open) {
+            (closeAiDisclosureBtn || aiDisclosureModal).focus();
+        } else if (aiDisclosureBtn) {
+            aiDisclosureBtn.focus();
+        }
+    };
+    if (aiDisclosureBtn) {
+        aiDisclosureBtn.addEventListener('click', () => setAiDisclosureOpen(true));
+    }
+    if (closeAiDisclosureBtn) {
+        closeAiDisclosureBtn.addEventListener('click', () => setAiDisclosureOpen(false));
+    }
+    if (aiDisclosureModal) {
+        aiDisclosureModal.addEventListener('click', (event) => {
+            if (event.target === aiDisclosureModal) setAiDisclosureOpen(false);
+        });
+    }
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && aiDisclosureModal && !aiDisclosureModal.hidden) {
+            setAiDisclosureOpen(false);
+        }
+    });
     
     // Create game screen
     const createGameSubmitBtn = document.getElementById('createGameSubmitBtn');
