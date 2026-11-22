@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T19-20-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T19-25-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -27,8 +27,8 @@
     <link rel="preload" as="image" href="sprites/dog-01-walk.png?v=2026-11-21T16-30-00">
     <link rel="preload" as="image" href="sprites/dog-01-jump.png?v=2026-11-21T16-30-00">
     <link rel="preload" as="image" href="sprites/dog-01-sit.png?v=2026-11-21T17-10-00">
-    <link rel="preload" as="image" href="sprites/dog-01-yip.png?v=2026-11-21T18-35-00">
-    <link rel="preload" as="image" href="sprites/dog-01-yip-sit.png?v=2026-11-21T18-35-00">
+    <link rel="preload" as="image" href="sprites/dog-01-yip.png?v=2026-11-21T19-25-00">
+    <link rel="preload" as="image" href="sprites/dog-01-yip-sit.png?v=2026-11-21T19-25-00">
     <style>
         :root {
             --scale-factor: 1;
@@ -3203,7 +3203,7 @@
             window.clearTimeout(banditYipEnd);
             banditYipEnd = window.setTimeout(() => {
                 if (dog.isConnected) dog.classList.remove('is-yipping');
-            }, 860);
+            }, 600);
         }
 
         function keepBanditYipping(dog, gen) {

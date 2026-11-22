@@ -1492,15 +1492,15 @@ html, body {
 .tv-dog.is-yipping:not(.is-walking):not(.is-jumping) .tv-ewe-strip,
 .tv-play .tv-dog.is-yipping:not(.is-walking):not(.is-joining):not(.is-jumping) .tv-ewe-strip {
     width: 600%;
-    background-image: url("sprites/dog-01-yip.png?v=2026-11-21T18-35-00");
-    animation: dogYip 0.82s 1;
+    background-image: url("sprites/dog-01-yip.png?v=2026-11-21T19-25-00");
+    animation: eweSleep 0.56s steps(6, jump-none) 1;
 }
 
 .tv-dog.is-sitting.is-yipping:not(.is-walking):not(.is-jumping) .tv-ewe-strip,
 .tv-play .tv-dog.is-sitting.is-yipping:not(.is-walking):not(.is-joining):not(.is-jumping) .tv-ewe-strip {
     width: 600%;
-    background-image: url("sprites/dog-01-yip-sit.png?v=2026-11-21T18-35-00");
-    animation: dogYip 0.82s 1;
+    background-image: url("sprites/dog-01-yip-sit.png?v=2026-11-21T19-25-00");
+    animation: eweSleep 0.56s steps(6, jump-none) 1;
 }
 
 .tv-thought {
@@ -1583,15 +1583,6 @@ html, body {
 @keyframes eweSleep {
     from { transform: translate3d(0, 0, 0); }
     to { transform: translate3d(-83.3333%, 0, 0); }
-}
-
-@keyframes dogYip {
-    0%, 10% { transform: translate3d(0, 0, 0); }
-    10.01%, 18% { transform: translate3d(-16.6667%, 0, 0); }
-    18.01%, 48% { transform: translate3d(-33.3333%, 0, 0); }
-    48.01%, 78% { transform: translate3d(-50%, 0, 0); }
-    78.01%, 90% { transform: translate3d(-66.6667%, 0, 0); }
-    90.01%, 100% { transform: translate3d(-83.3333%, 0, 0); }
 }
 
 @keyframes eweJump {
