@@ -3348,10 +3348,25 @@
             dog.classList.toggle('is-left', wantLeft);
         }
 
+        function banditOffstagePoint(gy) {
+            return {
+                gx: -18,
+                gy: Math.min(PLAY_FIELD.bottom - 0.8, Math.max(PLAY_FIELD.top + 8, Number.isFinite(gy) ? gy : PLAY_FIELD.bottom - 1.2))
+            };
+        }
+
         function banditSpawnPoint() {
+            const pack = remainingFieldSheep();
+            if (pack.length) {
+                const bunch = flockCentroid(pack);
+                return clampBanditPoint(
+                    Math.max(PLAY_FIELD.left + 1.5, bunch.x - 12),
+                    Math.min(PLAY_FIELD.bottom - 1.1, Math.max(bunch.y + 3.6, PLAY_FIELD.top + 8))
+                );
+            }
             const gate = playGatePoints().approach;
             return clampBanditPoint(
-                Math.min(PLAY_FIELD.right - 2.2, gate.x - 7),
+                PLAY_FIELD.left + 8,
                 PLAY_FIELD.bottom - 1.2
             );
         }
@@ -3809,22 +3824,31 @@
             const gen = wranglerGen;
             const restore = !!(opts && opts.restore);
             const spot = restore ? gateWatchSpot() : banditSpawnPoint();
-            dog = ensureWrangler(spot);
+            const entry = restore ? spot : banditOffstagePoint(spot.gy);
+            dog = ensureWrangler(entry);
             if (!dog) return;
             dog.classList.add('is-placed');
             dog.classList.remove('is-left', 'is-running', 'is-jumping', 'is-yipping');
+            dog.dataset.latching = '';
             setBanditSit(dog, restore);
-            dog.style.setProperty('--gx', String(spot.gx));
-            dog.style.setProperty('--gy', String(spot.gy));
-            dog.style.setProperty('--s', String(pastureScale(spot.gy)));
+            dog.style.setProperty('--gx', String(entry.gx));
+            dog.style.setProperty('--gy', String(entry.gy));
+            dog.style.setProperty('--s', String(pastureScale(entry.gy)));
             dog.style.setProperty('--z', '52');
             requestAnimationFrame(() => {
                 if (gen !== wranglerGen || !dog.isConnected) return;
                 dog.classList.remove('is-placed');
-                faceWranglerAtSheep(dog);
                 keepBanditBusy(dog, gen);
                 keepCorrallingNearBandit(dog, gen);
-                runWrangler(dog, gen);
+                if (restore) {
+                    faceWranglerAtSheep(dog);
+                    runWrangler(dog, gen);
+                    return;
+                }
+                walkBanditTo(dog, spot.gx, spot.gy, () => {
+                    if (gen !== wranglerGen) return;
+                    runWrangler(dog, gen);
+                }, { gait: 'run', fromJump: true, skipFace: true });
             });
         }
 
