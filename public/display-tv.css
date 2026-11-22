@@ -1276,6 +1276,7 @@ html, body {
 .tv-dog {
     z-index: 52;
     pointer-events: none;
+    aspect-ratio: 1 / 1;
 }
 
 .tv-dog:not(.is-walking):not(.is-jumping),
@@ -1316,9 +1317,16 @@ html, body {
 }
 
 .tv-dog.is-yipping .tv-ewe-art {
-    overflow: visible;
-    contain: none;
-    clip-path: none;
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 150%;
+    height: 150%;
+    overflow: hidden;
+    overflow: clip;
+    contain: paint;
+    clip-path: inset(0);
+    transform-origin: 33.33% 81.25%;
 }
 
 .tv-ewe-strip {
@@ -1508,20 +1516,22 @@ html, body {
 
 .tv-dog.is-yipping:not(.is-walking):not(.is-jumping) .tv-ewe-strip,
 .tv-play .tv-dog.is-yipping:not(.is-walking):not(.is-joining):not(.is-jumping) .tv-ewe-strip {
-    width: 900%;
-    height: 150%;
-    top: auto;
-    bottom: 0;
+    width: 600%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    bottom: auto;
     background-image: url("sprites/dog-01-yip.png?v=2026-11-21T22-00-00");
     animation: eweSleep 0.56s steps(6, jump-none) 1;
 }
 
 .tv-dog.is-sitting.is-yipping:not(.is-walking):not(.is-jumping) .tv-ewe-strip,
 .tv-play .tv-dog.is-sitting.is-yipping:not(.is-walking):not(.is-joining):not(.is-jumping) .tv-ewe-strip {
-    width: 900%;
-    height: 150%;
-    top: auto;
-    bottom: 0;
+    width: 600%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    bottom: auto;
     background-image: url("sprites/dog-01-yip-sit.png?v=2026-11-21T22-00-00");
     animation: eweSleep 0.56s steps(6, jump-none) 1;
 }
