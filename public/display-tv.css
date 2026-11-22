@@ -18,6 +18,12 @@
     initial-value: 64;
 }
 
+@property --hop {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0;
+}
+
 @property --mx {
     syntax: "<number>";
     inherits: false;
@@ -1118,7 +1124,7 @@ html, body {
     min-width: 0;
     margin: 0;
     transform-origin: 50% 72%;
-    transform: translate(-50%, -72%) scale(var(--s, 1));
+    transform: translate(-50%, -72%) translateY(calc(var(--hop, 0) * 1px)) scale(var(--s, 1));
     z-index: var(--z, 1);
     display: flex;
     flex-direction: column;
@@ -1140,7 +1146,7 @@ html, body {
     .tv-ewe {
         left: 0;
         top: 0;
-        transform: translate3d(calc(var(--gx) * 1cqi), calc(var(--gy) * 1cqb), 0) translate(-50%, -72%) scale(var(--s, 1));
+        transform: translate3d(calc(var(--gx) * 1cqi), calc(var(--gy) * 1cqb), 0) translate(-50%, -72%) translateY(calc(var(--hop, 0) * 1px)) scale(var(--s, 1));
         transition:
             --gx var(--walk, 4s) linear,
             --gy var(--walk, 4s) linear,
@@ -1156,7 +1162,7 @@ html, body {
     top: 72%;
     width: 58%;
     height: 18px;
-    transform: translate(-50%, -35%);
+    transform: translate(-50%, -35%) translateY(calc(var(--hop, 0) * -1px));
     background: radial-gradient(ellipse at center, rgba(8, 16, 10, 0.4) 0%, transparent 70%);
     z-index: 0;
     pointer-events: none;
@@ -1277,7 +1283,7 @@ html, body {
 }
 
 .tv-dog.is-jumping {
-    z-index: 56;
+    z-index: 70;
 }
 
 .tv-play .tv-dog {

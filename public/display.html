@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T19-35-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T20-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -2519,10 +2519,12 @@
             const maxS = (opts && opts.maxSeconds) || 7.2;
             const seconds = Math.min(maxS, Math.max(minS, distPx / Math.max(8, pace)));
             const gen = bumpEweWalk(el);
+            const hopPx = Number(opts && opts.hop) || 0;
             const insideX = opts && Number(opts.insideX);
             let markedIn = false;
             let lastX = parseFloat(el.style.getPropertyValue('--gx')) || samples[0].x;
-            el.classList.add('is-walking', 'is-placed');
+            if (hopPx) el.classList.add('is-placed');
+            else el.classList.add('is-walking', 'is-placed');
             el.style.transitionDuration = '0s';
             const started = performance.now();
             const at = (distance) => {
@@ -2541,11 +2543,20 @@
                 if (el.dataset.walkGen !== gen || !el.isConnected) return;
                 if (opts && opts.live && !opts.live(el)) return;
                 const u = Math.min(1, (now - started) / (seconds * 1000));
-                const raw = at(walkEase(u) * total);
+                const hop = hopPx;
+                const progress = hop ? (0.5 - 0.5 * Math.cos(Math.PI * u)) : walkEase(u);
+                const raw = at(progress * total);
                 const point = (opts && typeof opts.avoid === 'function') ? opts.avoid(raw) : raw;
                 el.style.setProperty('--gx', String(point.x));
                 el.style.setProperty('--gy', String(point.y));
-                el.style.setProperty('--s', String(pastureScale(point.y)));
+                if (hop) {
+                    const lift = Math.sin(Math.PI * u);
+                    el.style.setProperty('--hop', (-hop * lift).toFixed(1));
+                    el.style.setProperty('--s', String(pastureScale(point.y) * (1 + 0.18 * lift)));
+                } else {
+                    el.style.setProperty('--hop', '0');
+                    el.style.setProperty('--s', String(pastureScale(point.y)));
+                }
                 if (opts && typeof opts.face === 'function') {
                     opts.face(el);
                 } else if (Math.abs(point.x - lastX) > 0.05) {
@@ -2564,6 +2575,7 @@
                 }
                 el.classList.remove('is-placed');
                 el.style.transitionDuration = '';
+                if (hop) el.style.setProperty('--hop', '0');
                 if (onDone) onDone();
             };
             window.requestAnimationFrame(tick);
@@ -2955,7 +2967,16 @@
                 el !== exceptEl &&
                 !el.classList.contains('is-in') &&
                 !el.classList.contains('is-outside')
-            ).map(readLobbyEwe);
+            ).map((el) => {
+                const p = visualEwePoint(el);
+                return {
+                    el,
+                    id: el.dataset.id,
+                    gx: p.x,
+                    gy: p.y,
+                    w: el.getBoundingClientRect().width || 90
+                };
+            });
         }
 
         function clampBanditPoint(x, y) {
@@ -3018,15 +3039,17 @@
             const from = { gx: start.x, gy: start.y };
             const to = banditClearPoint(dog, dest.gx, dest.gy);
             const points = [{ x: from.gx, y: from.gy }];
-            if (Math.hypot(to.gx - from.gx, to.gy - from.gy) < 11) {
+            const blocked = banditLineHits(dog, from, to);
+            if (Math.hypot(to.gx - from.gx, to.gy - from.gy) < 11 && !blocked) {
                 points.push({ x: to.gx, y: to.gy });
                 return points;
             }
+            const flockBottom = occupiedFieldSheep(dog).reduce((max, sheep) => Math.max(max, sheep.gy || 0), from.gy);
             const lowRoom = PLAY_FIELD.bottom - Math.max(from.gy, to.gy);
             const highRoom = Math.min(from.gy, to.gy) - PLAY_FIELD.top;
-            const goLow = lowRoom >= highRoom;
+            const goLow = blocked || lowRoom >= highRoom * 0.55;
             const wingY = goLow
-                ? Math.min(PLAY_FIELD.bottom - 0.8, Math.max(from.gy, to.gy) + 9)
+                ? Math.min(PLAY_FIELD.bottom - 0.8, Math.max(from.gy, to.gy, flockBottom) + 7)
                 : Math.max(PLAY_FIELD.top + 3.2, Math.min(from.gy, to.gy) - 8);
             const wingX = from.gx + (to.gx - from.gx) * 0.58;
             points.push({ x: from.gx + (wingX - from.gx) * 0.28, y: from.gy + (wingY - from.gy) * 0.72, cut: 0.2 });
@@ -3043,6 +3066,7 @@
             dog.classList.toggle('is-running', gait === 'run');
             dog.classList.toggle('is-jumping', gait === 'jump');
             if (gait !== 'yip') dog.classList.remove('is-yipping');
+            if (gait !== 'jump') dog.style.setProperty('--hop', '0');
             if (gait === 'sit' || gait === 'idle') faceWranglerAtSheep(dog);
         }
 
@@ -3084,6 +3108,10 @@
             const dest = banditClearPoint(dog, gx, gy);
             const here = currentEwePoint(dog);
             const gait = (opts && opts.gait) || 'run';
+            if (!(opts && opts.fromJump) && banditBlocked(here.x, here.y, dog, 6.6)) {
+                banditJumpToward(dog, dest, () => walkBanditTo(dog, gx, gy, onDone, Object.assign({}, opts, { fromJump: true })));
+                return;
+            }
             if (Math.hypot(dest.gx - here.x, dest.gy - here.y) < 2.2) {
                 parkBandit(dog, { x: dest.gx, y: dest.gy });
                 faceWranglerAtSheep(dog);
@@ -3113,25 +3141,33 @@
                 return;
             }
             const here = currentEwePoint(dog);
-            const hop = banditClearPoint(
-                dog,
-                here.x + (dest.gx - here.x) * 0.3,
-                here.y + (dest.gy - here.y) * 0.3
-            );
+            const tx = Number.isFinite(dest.gx) ? dest.gx : dest.x;
+            const ty = Number.isFinite(dest.gy) ? dest.gy : dest.y;
+            let dx = tx - here.x;
+            let dy = ty - here.y;
+            const len = Math.hypot(dx, dy) || 1;
+            const span = Math.min(15, Math.max(8.5, len * 0.42));
+            const land = banditClearPoint(dog, here.x + (dx / len) * span, here.y + (dy / len) * span, 8.8);
+            dog.classList.toggle('is-left', land.gx < here.x);
+            dog.classList.remove('is-jumping');
+            void dog.offsetWidth;
             setBanditGait(dog, 'jump');
+            const hopLift = Math.round((dog.getBoundingClientRect().height || 120) * 0.62);
             walkSmoothPath(dog, [
                 { x: here.x, y: here.y },
-                { x: hop.gx, y: hop.gy }
+                { x: land.gx, y: land.gy }
             ], () => {
+                dog.style.setProperty('--hop', '0');
                 dog.classList.remove('is-jumping', 'is-walking', 'is-running');
                 parkBandit(dog, currentEwePoint(dog));
                 faceWranglerAtSheep(dog);
                 if (onDone) onDone();
             }, {
                 live: () => dog.isConnected && pastureHoldsBandit(),
+                hop: hopLift,
                 minSeconds: 0.5,
-                maxSeconds: 0.54,
-                pace: 2400
+                maxSeconds: 0.64,
+                pace: 3200
             });
         }
 
@@ -3518,12 +3554,13 @@
                 return;
             }
             const outrun = !!(opts && opts.outrun);
-            const reverse = (dog.classList.contains('is-left') ? 1 : -1) * (behind.gx - here.x) > 5;
             const start = () => walkBanditTo(dog, behind.gx, behind.gy, finish, {
                 gait: outrun || dist > 13 ? 'run' : 'walk',
                 outrun
             });
-            if ((outrun && dist > 15) || (reverse && dist > 12)) {
+            const overlapping = banditBlocked(here.x, here.y, dog, 6.8);
+            const blocked = banditLineHits(dog, { gx: here.x, gy: here.y }, { gx: behind.gx, gy: behind.gy }, 7.4);
+            if (overlapping || (blocked && dist > 4 && dist < 20)) {
                 banditJumpToward(dog, behind, () => {
                     if (gen !== wranglerGen) return;
                     start();
