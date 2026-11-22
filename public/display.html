@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T20-34-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-21T20-52-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -2896,7 +2896,7 @@
         }
         
         const BANDIT_AT_DEFAULT = 30;
-        const BANDIT_HERD_RADIUS = 12;
+        const BANDIT_HERD_RADIUS = 9;
         let wranglerGen = 0;
         let wranglerQuestion = '';
         let wranglerWasOut = false;
@@ -2940,7 +2940,7 @@
         function wranglerHtml(spot) {
             const gx = spot && Number.isFinite(spot.gx) ? spot.gx : PLAY_FIELD.left + 6;
             const gy = spot && Number.isFinite(spot.gy) ? spot.gy : PLAY_FIELD.bottom - 1.2;
-            return `<figure class="tv-ewe tv-dog" data-id="__wrangler__" data-coat="dog" data-mood="idle" style="--gx:${gx};--gy:${gy};--px:${gx};--py:${gy};--ox:${gx};--oy:${gy};--s:1;--z:52;--idle:0s"><span class="tv-ewe-art" aria-hidden="true"><span class="tv-ewe-strip"></span></span></figure>`;
+            return `<figure class="tv-ewe tv-dog" data-id="__wrangler__" data-coat="dog" data-mood="idle" style="--gx:${gx};--gy:${gy};--px:${gx};--py:${gy};--ox:${gx};--oy:${gy};--s:1;--z:52;--idle:0s"><span class="tv-dog-yips" aria-hidden="true"><i></i><i></i><i></i></span><span class="tv-ewe-art" aria-hidden="true"><span class="tv-ewe-strip"></span></span></figure>`;
         }
 
         function ensureWrangler(spot) {
@@ -2951,8 +2951,8 @@
                 chorus.insertAdjacentHTML('beforeend', wranglerHtml(spot));
                 dog = chorus.querySelector('.tv-dog');
             }
-            if (dog) {
-                dog.querySelectorAll('.tv-dog-yips').forEach((el) => el.remove());
+            if (dog && !dog.querySelector('.tv-dog-yips')) {
+                dog.insertAdjacentHTML('afterbegin', '<span class="tv-dog-yips" aria-hidden="true"><i></i><i></i><i></i></span>');
             }
             return dog;
         }
@@ -3400,10 +3400,10 @@
             const p = visualEwePoint(el);
             const d = visualEwePoint(dog);
             const huddle = stragglerHuddlePoint(el, pack);
-            const mates = pack.filter((other) => other !== el);
-            const bunch = flockCentroid(mates.length ? mates : pack);
+            const mates = pack.filter((other) => other !== el && eweGap(el, other) < 8);
+            const bunch = mates.length ? flockCentroid(mates) : p;
             let fx = p.x - d.x;
-            let fy = (p.y - d.y) * 1.25;
+            let fy = (p.y - d.y) * 1.15;
             const flen = Math.hypot(fx, fy) || 1;
             fx /= flen;
             fy /= flen;
@@ -3417,12 +3417,11 @@
             const clen = Math.hypot(cx, cy) || 1;
             cx /= clen;
             cy /= clen;
-            const awayHelps = fx * hx + fy * hy;
-            const awayW = awayHelps < 0 ? 0.18 : 0.5;
-            let dx = fx * awayW + hx * 0.42 + cx * 0.16;
-            let dy = fy * awayW + hy * 0.42 + cy * 0.16;
+            const drift = ((nameHash((el.dataset.id || el.dataset.name) || '') % 5) - 2) * 0.14;
+            let dx = fx * 0.72 + hx * 0.08 + cx * 0.16 + (Math.random() - 0.5) * 0.55 + drift;
+            let dy = fy * 0.72 + hy * 0.08 + cy * 0.16 + (Math.random() - 0.5) * 0.55;
             const len = Math.hypot(dx, dy) || 1;
-            const step = 5.2 + Math.random() * 2.4;
+            const step = 2.6 + Math.random() * 2.4;
             return clampLobbyPoint(p.x + (dx / len) * step, p.y + (dy / len) * step);
         }
 
@@ -3430,24 +3429,23 @@
             if (!el || !el.isConnected) return;
             if (el.classList.contains('is-in') || el.classList.contains('is-gating') || el.classList.contains('is-entering')) return;
             if (el.classList.contains('is-walking')) return;
+            const last = Number(el.dataset.spookAt) || 0;
+            if (last && performance.now() - last < 1400) return;
             const p = visualEwePoint(el);
             const huddle = stragglerHuddlePoint(el, pack);
             const toHuddle = Math.hypot(huddle.gx - p.x, huddle.gy - p.y);
-            if (toHuddle < 3.2) return;
-            const dest = toHuddle < 7 ? huddle : fleePointForSheep(el, dog, pack);
+            if (toHuddle < 2.6) return;
+            el.dataset.spookAt = String(performance.now());
+            const dest = fleePointForSheep(el, dog, pack);
             const depth = lobbyDepth(dest.gy);
             walkEweOnField(el, slotFromEwe(el, {
                 gx: dest.gx,
                 gy: dest.gy,
                 scale: depth.scale,
                 z: depth.z
-            }), () => {
-                const still = document.querySelector('#flockChorus .tv-dog');
-                if (!still || !pastureHoldsBandit() || isInHuddle(el)) return;
-                spookSheepFromDog(el, still, remainingFieldSheep(), still.classList.contains('is-yipping'));
-            }, hard
-                ? { cycle: 0.38, minSeconds: 0.42, maxSeconds: 1.35 }
-                : { cycle: 0.46, minSeconds: 0.5, maxSeconds: 1.7 });
+            }), null, hard
+                ? { cycle: 0.5, minSeconds: 0.7, maxSeconds: 2.2 }
+                : { cycle: 0.58, minSeconds: 0.85, maxSeconds: 2.6 });
         }
 
         function flowFlockFromDog(dog, hard) {
@@ -3455,19 +3453,11 @@
             const pack = remainingFieldSheep();
             const stray = pack.filter((el) => !isInHuddle(el));
             if (!stray.length) return;
-            const focus = (banditFocus && banditFocus.isConnected) ? banditFocus : null;
-            const nearest = pickHerdTarget(stray, dog);
-            const range = hard ? BANDIT_HERD_RADIUS + 10 : BANDIT_HERD_RADIUS + 6;
-            if (nearest && eweGap(dog, nearest) > 24 && !hard) return;
-            const working = !!(nearest && eweGap(dog, nearest) <= range + 4);
+            const range = hard ? BANDIT_HERD_RADIUS + 5 : BANDIT_HERD_RADIUS + 1;
             idleHerdSheep().forEach((el) => {
                 if (isInHuddle(el)) return;
-                const nearDog = eweGap(dog, el) <= range;
-                const inCluster = !focus || el === focus || eweGap(el, focus) <= BANDIT_HERD_RADIUS + 10;
-                const flockLift = working && !isInHuddle(el);
-                if (nearDog || (inCluster && focus && eweGap(dog, focus) <= range + 3) || flockLift) {
-                    spookSheepFromDog(el, dog, pack, (hard || dog.classList.contains('is-yipping')) && nearDog);
-                }
+                if (eweGap(dog, el) > range) return;
+                spookSheepFromDog(el, dog, pack, hard || dog.classList.contains('is-yipping'));
             });
         }
 
@@ -3483,9 +3473,9 @@
             const loop = () => {
                 if (gen !== wranglerGen || !dog || !dog.isConnected || !pastureHoldsBandit()) return;
                 corralNearBandit(dog);
-                banditHerdTimer = window.setTimeout(loop, 180);
+                banditHerdTimer = window.setTimeout(loop, 320);
             };
-            banditHerdTimer = window.setTimeout(loop, 40);
+            banditHerdTimer = window.setTimeout(loop, 80);
         }
 
         function stopBanditYips(dog) {
@@ -3499,6 +3489,11 @@
             if (dog.classList.contains('is-walking') || dog.classList.contains('is-jumping')) return;
             faceWranglerAtSheep(dog);
             dog.classList.remove('is-yipping');
+            dog.querySelectorAll('.tv-dog-yips i').forEach((el) => {
+                el.style.animation = 'none';
+                void el.offsetWidth;
+                el.style.animation = '';
+            });
             void dog.offsetWidth;
             dog.classList.add('is-yipping');
             window.clearTimeout(banditYipEnd);
@@ -3839,14 +3834,15 @@
                 if (gen !== wranglerGen || !dog.isConnected) return;
                 dog.classList.remove('is-placed');
                 keepBanditBusy(dog, gen);
-                keepCorrallingNearBandit(dog, gen);
                 if (restore) {
                     faceWranglerAtSheep(dog);
+                    keepCorrallingNearBandit(dog, gen);
                     runWrangler(dog, gen);
                     return;
                 }
                 walkBanditTo(dog, spot.gx, spot.gy, () => {
                     if (gen !== wranglerGen) return;
+                    keepCorrallingNearBandit(dog, gen);
                     runWrangler(dog, gen);
                 }, { gait: 'run', fromJump: true, skipFace: true });
             });
