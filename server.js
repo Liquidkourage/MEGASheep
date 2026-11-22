@@ -15,6 +15,7 @@ const {
     postgresEnabled,
     initPostgres,
     fetchPostgresQuestions,
+    appendPostgresQuestions,
     replacePostgresQuestions,
     insertPostgresSnapshot,
     loadLatestPostgresSnapshot,
@@ -142,8 +143,13 @@ const DEMO_QUESTIONS = [
     { id: 1, prompt: "Name a food that starts with the letter 'P'", correct_answers: ["pizza", "pasta", "potato", "pear", "peach", "pineapple", "pancake", "popcorn"], round: 1, question_order: 1 },
     { id: 2, prompt: "Name a movie that won an Oscar", correct_answers: ["titanic", "forrest gump", "the godfather", "schindler's list", "casablanca", "gone with the wind"], round: 1, question_order: 2 },
     { id: 3, prompt: "Name a country in Europe", correct_answers: ["france", "germany", "italy", "spain", "england", "netherlands", "belgium", "switzerland"], round: 1, question_order: 3 },
-    { id: 4, prompt: "Name a famous scientist", correct_answers: ["einstein", "newton", "darwin", "curie", "tesla", "galileo", "hawking", "edison"], round: 2, question_order: 1 },
-    { id: 5, prompt: "Name a type of music genre", correct_answers: ["rock", "jazz", "pop", "classical", "hip hop", "country", "blues", "electronic"], round: 2, question_order: 2 }
+    { id: 4, prompt: "Name a famous scientist", correct_answers: ["einstein", "newton", "darwin", "curie", "tesla", "galileo", "hawking", "edison"], round: 1, question_order: 4 },
+    { id: 5, prompt: "Name a type of music genre", correct_answers: ["rock", "jazz", "pop", "classical", "hip hop", "country", "blues", "electronic"], round: 1, question_order: 5 },
+    { id: 6, prompt: "A 4-letter word found in the title of a play by William Shakespeare (including contractions, common titles only, no Roman numerals)", correct_answers: ["all's", "ends", "john", "king", "lear", "like", "lost", "much", "part", "tale", "that", "tyre", "well"], round: 2, question_order: 1 },
+    { id: 7, prompt: "A \"G\"-starting film that grossed at least $300 million worldwide (not counting leading articles, be specific)", correct_answers: ["guardians of the galaxy", "gravity", "ghost", "gladiator", "grease", "gone with the wind", "gone girl", "goldeneye"], round: 2, question_order: 2 },
+    { id: 8, prompt: "A US state that borders another US state for over 400 miles (land or river borders only)", correct_answers: ["oklahoma", "texas", "california", "nevada", "idaho", "montana", "new mexico", "louisiana", "mississippi", "kansas"], round: 2, question_order: 3 },
+    { id: 9, prompt: "A person/place/thing/event in the first 4 lines of \"We Didn't Start The Fire\" (before the mini-instrumental)", correct_answers: ["harry truman", "doris day", "red china", "johnnie ray", "south pacific", "walter winchell", "joe dimaggio", "marilyn monroe"], round: 2, question_order: 4 },
+    { id: 10, prompt: "A musical credited to the duo of Rodgers and Hammerstein", correct_answers: ["oklahoma!", "carousel", "state fair", "allegro", "south pacific", "the king and i", "cinderella", "the sound of music"], round: 2, question_order: 5 }
 ];
 
 function currentGameQuestion(game) {
@@ -201,13 +207,20 @@ async function fetchDatabaseQuestions() {
 
 async function seedPostgresFromFileBank() {
     if (!postgresEnabled()) return;
-    const existing = await fetchPostgresQuestions();
-    if (existing.length) return;
     const fromFile = await loadFileQuestionBank();
     if (!fromFile.length) return;
-    await replacePostgresQuestions(fromFile);
-    liveQuestionBankCache = { at: 0, value: null };
-    logger.info(`🌱 Seeded Railway Postgres with ${fromFile.length} show questions`);
+    const existing = await fetchPostgresQuestions();
+    if (!existing.length) {
+        await replacePostgresQuestions(fromFile);
+        liveQuestionBankCache = { at: 0, value: null };
+        logger.info(`🌱 Seeded Railway Postgres with ${fromFile.length} show questions`);
+        return;
+    }
+    const result = await appendPostgresQuestions(fromFile);
+    if (result.added) {
+        liveQuestionBankCache = { at: 0, value: null };
+        logger.info(`🌱 Appended ${result.added} show questions (${result.total} in bank)`);
+    }
 }
 
 async function loadFileQuestionBank() {

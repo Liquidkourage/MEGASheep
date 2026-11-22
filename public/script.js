@@ -758,6 +758,12 @@ function setupEventListeners() {
     
     const leaveGameBtn = document.getElementById('leaveGameBtn');
     if (leaveGameBtn) leaveGameBtn.addEventListener('click', leaveGame);
+
+    const backToPastureBtn = document.getElementById('backToPastureBtn');
+    if (backToPastureBtn) backToPastureBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        leaveGame();
+    });
     
     // Host game management
     const refreshQuestionsBtn = document.getElementById('refreshQuestionsBtn');
@@ -2306,6 +2312,7 @@ function applyPlayerState(packet, source) {
             packet = packet.gameState;
         }
         if (typeof packet.gameCode !== 'string') return;
+        if (IS_PLAYER_ROUTE && !joinedLiveGame) return;
         const LS = window.MEGASheepLockstep;
         const result = (LS && LS.applyServerState)
             ? LS.applyServerState(packet, lockstepCtx)
@@ -2672,6 +2679,7 @@ function handleGradingComplete(gameStateData) {
 }
 
 function handleGameFinished(gameStateData) {
+    if (IS_PLAYER_ROUTE && !joinedLiveGame) return;
     gameState = gameStateData;
     clearTimer();
     showScreen('gameOver');

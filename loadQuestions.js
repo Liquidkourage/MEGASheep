@@ -3,7 +3,7 @@ const path = require('path');
 require('dotenv').config();
 
 const { createClient } = require('@supabase/supabase-js');
-const { postgresEnabled, initPostgres, replacePostgresQuestions } = require('./db');
+const { postgresEnabled, initPostgres, replacePostgresQuestions, appendPostgresQuestions } = require('./db');
 
 const supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY)
     ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
@@ -62,6 +62,11 @@ async function loadQuestionsFromFile(filename) {
                     currentOrder++;
                     currentQuestion = null;
                 }
+                const roundMatch = trimmed.match(/^#\s*round\s+(\d+)/i);
+                if (roundMatch) {
+                    currentRound = Number(roundMatch[1]);
+                    currentOrder = 1;
+                }
                 continue;
             }
 
@@ -93,6 +98,46 @@ async function loadQuestionsFromFile(filename) {
     } catch (error) {
         console.error('❌ Error reading file:', error);
         return null;
+    }
+}
+
+async function appendQuestionsToDatabase(questions) {
+    try {
+        if (postgresEnabled()) {
+            console.log('🗄️  Appending new questions to Railway Postgres...');
+            await initPostgres();
+            const result = await appendPostgresQuestions(questions);
+            console.log(`✅ Appended ${result.added} questions (${result.total} in bank)`);
+            return true;
+        }
+        if (!supabase) {
+            console.error('❌ No DATABASE_URL or Supabase credentials');
+            return false;
+        }
+        console.log('🗄️  Appending new questions to Supabase...');
+        const { data: existing, error: readError } = await supabase
+            .from('questions')
+            .select('prompt');
+        if (readError) {
+            console.error('❌ Error reading existing questions:', readError);
+            return false;
+        }
+        const seen = new Set((existing || []).map((row) => String(row.prompt || '').trim().toLowerCase()));
+        const toAdd = questions.filter((q) => q.prompt && !seen.has(String(q.prompt).trim().toLowerCase()));
+        if (!toAdd.length) {
+            console.log('✅ Nothing new to append');
+            return true;
+        }
+        const { data, error } = await supabase.from('questions').insert(toAdd).select();
+        if (error) {
+            console.error('❌ Error appending questions:', error);
+            return false;
+        }
+        console.log(`✅ Successfully appended ${data.length} questions`);
+        return true;
+    } catch (error) {
+        console.error('❌ Error appending questions:', error);
+        return false;
     }
 }
 
@@ -161,10 +206,12 @@ async function main() {
     const filename = args[0];
     const previewOnly = args.includes('--preview');
     const confirmReplace = args.includes('--confirm') || process.env.AUTO_CONFIRM === 'true';
+    const confirmAppend = args.includes('--append');
     
     if (!filename) {
-        console.log('Usage: node loadQuestions.js <filename> [--preview|--confirm]');
+        console.log('Usage: node loadQuestions.js <filename> [--preview|--confirm|--append]');
         console.log('  --preview  Parse and print only');
+        console.log('  --append   Add questions whose prompts are not already in the bank');
         console.log('  --confirm  REPLACE the entire question bank with this file');
         console.log('');
         console.log('File format:');
@@ -206,20 +253,30 @@ async function main() {
     // Preview questions
     await previewQuestions(questions);
     
-    if (previewOnly || !confirmReplace) {
+    if (previewOnly || (!confirmReplace && !confirmAppend)) {
         console.log(previewOnly
             ? '👀 Preview mode - no questions were inserted'
-            : '👀 Preview only. Re-run with --confirm to REPLACE the entire question bank.');
+            : '👀 Preview only. Re-run with --append to add missing questions, or --confirm to REPLACE the entire question bank.');
         return;
     }
 
-    console.log('\n⚠️  This replaces EVERY question in the database.');
-    if (process.env.AUTO_CONFIRM === 'true') {
-        console.log('🤖 Auto-confirming due to AUTO_CONFIRM=true');
+    if (confirmReplace && confirmAppend) {
+        console.error('❌ Use either --append or --confirm, not both');
+        return;
+    }
+
+    if (confirmReplace) {
+        console.log('\n⚠️  This replaces EVERY question in the database.');
+        if (process.env.AUTO_CONFIRM === 'true') {
+            console.log('🤖 Auto-confirming due to AUTO_CONFIRM=true');
+        }
+    } else {
+        console.log('\n➕ Appending questions whose prompts are not already in the bank.');
     }
     
-    // Insert questions
-    const success = await insertQuestionsToDatabase(questions);
+    const success = confirmAppend
+        ? await appendQuestionsToDatabase(questions)
+        : await insertQuestionsToDatabase(questions);
     
     if (success) {
         console.log('\n🎉 Questions loaded successfully!');
@@ -234,4 +291,4 @@ if (require.main === module) {
     main().catch(console.error);
 }
 
-module.exports = { loadQuestionsFromFile, insertQuestionsToDatabase }; 
+module.exports = { loadQuestionsFromFile, insertQuestionsToDatabase, appendQuestionsToDatabase }; 

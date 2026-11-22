@@ -1136,11 +1136,12 @@ body.player-app .player-board {
 body.player-app .player-board-you {
     flex: 0 0 auto;
     display: grid;
-    grid-template-columns: 84px minmax(0, 1fr) auto;
-    align-items: center;
+    grid-template-columns: 72px minmax(0, 1fr) auto;
+    align-items: end;
     gap: 10px;
-    min-height: 88px;
-    padding: 10px 14px;
+    min-height: 100px;
+    padding: 10px 14px 12px;
+    overflow: visible;
     border: 3px solid var(--ink);
     border-radius: 18px;
     background: #f6e6b2;
@@ -1216,11 +1217,12 @@ body.player-app .player-board-list {
 body.player-app .player-board-row,
 body.player-app .player-finale-row {
     display: grid;
-    grid-template-columns: 48px minmax(0, 1fr) auto;
-    align-items: center;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: end;
     gap: 8px;
-    min-height: 44px;
-    padding: 4px 10px;
+    min-height: 56px;
+    padding: 6px 10px 8px;
+    overflow: visible;
     border: 2px solid var(--ink);
     border-radius: 14px;
     background: var(--cream);
@@ -1235,26 +1237,31 @@ body.player-app .player-finale-row.is-you {
 body.player-app .player-board-row.is-1,
 body.player-app .player-board-row.is-2,
 body.player-app .player-board-row.is-3 {
-    grid-template-columns: 58px minmax(0, 1fr) auto;
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    min-height: 62px;
 }
 
 body.player-app .player-board-ewe,
 body.player-app .player-finale-ewe {
     position: relative;
-    width: 48px;
-    margin: 0;
-    filter: drop-shadow(0 3px 0 rgba(20, 16, 8, 0.28));
+    width: 44px;
+    height: auto;
+    margin: 0 0 -2px;
+    align-self: end;
+    overflow: visible;
+    filter: drop-shadow(0 2px 0 rgba(20, 16, 8, 0.22));
 }
 
 body.player-app .player-board-you .player-board-ewe,
 body.player-app .player-board-row.is-1 .player-board-ewe,
 body.player-app .player-board-row.is-2 .player-board-ewe,
 body.player-app .player-board-row.is-3 .player-board-ewe {
-    width: 58px;
+    width: 52px;
 }
 
 body.player-app .player-board-you .player-board-ewe.is-hero {
-    width: 84px;
+    width: 72px;
+    margin-bottom: 0;
 }
 
 body.player-app .player-board-ewe figcaption,

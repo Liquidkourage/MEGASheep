@@ -1717,26 +1717,42 @@
         function placeFinaleFlock(list, names) {
             const rest = rankedPlayers(list).slice(3);
             if (!rest.length) return [];
-            const packed = packTrapezoid(
-                rest.length,
-                { left: 50, right: 68, y: 68 },
-                { left: 42, right: 72, y: 92 }
-            );
-            const byPlayer = new Map();
-            rest.forEach((player, index) => {
+            const n = rest.length;
+            const rows = n <= 8 ? 2 : n <= 18 ? 3 : n <= 32 ? 4 : n <= 48 ? 5 : 6;
+            const counts = [];
+            let remaining = n;
+            for (let r = 0; r < rows; r += 1) {
+                const leftRows = rows - r;
+                const take = r === rows - 1 ? remaining : Math.ceil(remaining / leftRows);
+                counts.push(take);
+                remaining -= take;
+            }
+            const packed = [];
+            const far = { left: 8, right: 70, y: 52 };
+            const near = { left: 46, right: 73, y: 70 };
+            for (let r = 0; r < rows; r += 1) {
+                const t = rows <= 1 ? 0.5 : r / (rows - 1);
+                const y = far.y + t * (near.y - far.y);
+                const left = far.left + t * (near.left - far.left);
+                const right = far.right + t * (near.right - far.right);
+                const count = counts[r];
+                for (let c = 0; c < count; c += 1) {
+                    packed.push({
+                        x: left + ((c + 0.5) / Math.max(count, 1)) * (right - left),
+                        y,
+                        z: 6 + r * 5,
+                        scale: pastureScale(y) * 0.78
+                    });
+                }
+            }
+            return rest.map((player, index) => {
                 const spot = packed[packed.length - 1 - index] || packed[0];
-                byPlayer.set(player, resultSlot(player, names, {
-                    x: spot.x,
-                    y: spot.y,
-                    z: (spot.z || 12) + Math.max(0, 10 - index),
-                    scale: spot.scale || 1
-                }, {
-                    named: index < 12 || spot.y >= 84,
-                    fullName: true,
-                    minGy: 66
-                }));
+                return resultSlot(player, names, spot, {
+                    named: false,
+                    minGy: 51,
+                    scale: 0.78
+                });
             });
-            return rest.map((player) => byPlayer.get(player)).filter(Boolean);
         }
 
         function placeResultsFlock(list, names) {
@@ -4857,11 +4873,15 @@
             if (!rows.length) return '';
             const extra = extras || {};
             const boardId = extra.boardId || 'scoreRankBoard';
+            const planted = extra.planted ? ` is-${extra.planted}` : '';
             const x = extra.x != null ? extra.x : RANK_SIGN_AT.x;
             const y = extra.y != null ? extra.y : RANK_SIGN_AT.y;
             const width = extra.width != null ? extra.width : 26;
+            const pos = extra.planted === 'finale'
+                ? ''
+                : `style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:0.45deg; --z:4"`;
             return `
-                <aside class="tv-sign tv-score-ranks" style="--x:${Number(x).toFixed(2)}%; --y:${Number(y).toFixed(2)}%; --w:${Number(width).toFixed(2)}vw; --tilt:0.45deg; --z:4">
+                <aside class="tv-sign tv-score-ranks${planted}" ${pos}>
                     <img class="tv-sign-art" src="sprites/meadow-sign-tall.png?v=2026-11-21T12-00-00" alt="" aria-hidden="true">
                     <div class="tv-sign-face">
                         <p class="tv-rank-kicker">Bleat-erboard</p>
@@ -5543,10 +5563,8 @@
                 ${tvPodiumHtml(players)}
                 ${tvRankSignHtml(players, {
                     boardId: 'finalRankBoard',
-                    width: 30,
-                    x: 82,
-                    y: 58,
-                    cols: 1
+                    cols: 1,
+                    planted: 'finale'
                 })}
             `, players);
             mountRankSign();

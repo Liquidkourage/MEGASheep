@@ -2259,10 +2259,14 @@ html, body {
 }
 
 .tv-standings .tv-flock,
-.tv-final .tv-flock,
 .tv-history .tv-flock {
     z-index: 3;
     overflow: hidden;
+}
+
+.tv-final .tv-flock {
+    z-index: 3;
+    overflow: visible;
 }
 
 .tv-score-top {
@@ -2731,8 +2735,26 @@ html, body {
     line-height: 1.08;
 }
 
-.tv-final .tv-score-ranks {
-    --w: 30vw;
+.tv-final .tv-score-ranks,
+.tv-final .tv-score-ranks.is-finale {
+    left: auto;
+    right: 1.8%;
+    top: auto;
+    bottom: 16%;
+    width: min(20vw, 340px);
+    aspect-ratio: 769 / 986;
+    max-height: 72vh;
+    transform: perspective(2000px) rotateY(2.2deg) rotateX(-3.2deg) rotateZ(0.35deg);
+    transform-origin: 50% 100%;
+}
+
+.tv-final .tv-score-ranks .tv-sign-art,
+.tv-final .tv-score-ranks.is-finale .tv-sign-art {
+    width: 100%;
+    height: auto;
+    max-height: 72vh;
+    object-fit: contain;
+    object-position: bottom center;
 }
 
 .tv-final .tv-score-ranks .tv-rank-n,

@@ -113,6 +113,42 @@ async function fetchPostgresQuestions() {
     }
 }
 
+async function appendPostgresQuestions(questions) {
+    if (!Array.isArray(questions) || questions.length === 0) {
+        throw new Error('No questions to append');
+    }
+    const p = await ensurePool();
+    if (!p) throw new Error('DATABASE_URL is not set');
+    const existing = await fetchPostgresQuestions();
+    const seen = new Set(existing.map((q) => String(q.prompt || '').trim().toLowerCase()));
+    const toAdd = questions.filter((q) => {
+        const prompt = String(q.prompt || '').trim();
+        if (!prompt) return false;
+        const key = prompt.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+    if (!toAdd.length) return { added: 0, total: existing.length };
+    const client = await p.connect();
+    try {
+        await client.query('BEGIN');
+        for (const q of toAdd) {
+            await client.query(
+                'INSERT INTO questions (prompt, correct_answers, round, question_order) VALUES ($1, $2::jsonb, $3, $4)',
+                [q.prompt, JSON.stringify(q.correct_answers || []), q.round || 1, q.question_order || 1]
+            );
+        }
+        await client.query('COMMIT');
+    } catch (e) {
+        try { await client.query('ROLLBACK'); } catch (_) {}
+        throw e;
+    } finally {
+        client.release();
+    }
+    return { added: toAdd.length, total: existing.length + toAdd.length };
+}
+
 async function replacePostgresQuestions(questions) {
     if (!Array.isArray(questions) || questions.length === 0) {
         throw new Error('Refusing to replace the question bank with an empty list');
@@ -186,6 +222,7 @@ module.exports = {
     postgresEnabled,
     initPostgres,
     fetchPostgresQuestions,
+    appendPostgresQuestions,
     replacePostgresQuestions,
     insertPostgresSnapshot,
     loadLatestPostgresSnapshot,

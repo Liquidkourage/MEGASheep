@@ -83,4 +83,87 @@ The English Patient
 Titanic
 Shakespeare in Love
 American Beauty
-Gladiator 
+Gladiator
+
+# Round 2
+
+A 4-letter word found in the title of a play by William Shakespeare (including contractions, common titles only, no Roman numerals)
+All's
+Ends
+John
+King
+Lear
+Like
+Lost
+Much
+Part
+Tale
+That
+Tyre
+Well
+
+A "G"-starting film that grossed at least $300 million worldwide (not counting leading articles, be specific)
+Guardians Of The Galaxy Vol. 2
+Guardians Of The Galaxy
+Gravity
+Godzilla (1998)
+Ghost
+Godzilla Vs. Kong
+Gladiator
+Greatest Showman
+Gone With The Wind
+Grease
+Godzilla: King Of The Monsters
+Godzilla (2014)
+GI Joe: Retaliation
+The Golden Compass
+Gone Girl
+The Great Gatsby
+GoldenEye
+The Great Wall
+The Good Dinosaur
+Green Book
+A Good Day To Die Hard
+GI Joe: The Rise Of Cobra
+
+A US state that borders another US state for over 400 miles (land or river borders only)
+Oklahoma
+Texas
+California
+Nevada
+Idaho
+Montana
+New Mexico
+Louisiana
+Mississippi
+Kansas
+
+A person/place/thing/event in the first 4 lines of "We Didn't Start The Fire" (before the mini-instrumental)
+Harry Truman
+Doris Day
+Red China
+Johnnie Ray
+South Pacific
+Walter Winchell
+Joe DiMaggio
+Joe McCarthy
+Richard Nixon
+Studebaker
+Television
+North Korea
+South Korea
+Marilyn Monroe
+
+A musical credited to the duo of Rodgers and Hammerstein
+Oklahoma!
+Carousel
+State Fair
+Allegro
+South Pacific
+The King And I
+Me And Juliet
+Pipe Dream
+Cinderella
+Flower Drum Song
+The Sound Of Music
+ 
