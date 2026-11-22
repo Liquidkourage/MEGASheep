@@ -1728,8 +1728,8 @@
                 remaining -= take;
             }
             const packed = [];
-            const far = { left: 8, right: 70, y: 52 };
-            const near = { left: 46, right: 73, y: 70 };
+            const far = { left: 5, right: 54, y: 53 };
+            const near = { left: 3, right: 56, y: 86 };
             for (let r = 0; r < rows; r += 1) {
                 const t = rows <= 1 ? 0.5 : r / (rows - 1);
                 const y = far.y + t * (near.y - far.y);
@@ -4894,6 +4894,7 @@
         }
 
         function mountRankSign() {
+            if (document.querySelector('.tv-finale-stack')) return;
             const chorus = document.getElementById('flockChorus');
             const sign = document.querySelector('.tv-stage > .tv-score-ranks, .tv-standings > .tv-score-ranks');
             if (chorus && sign) chorus.appendChild(sign);
@@ -5560,12 +5561,14 @@
             if (gameStateData) gameState = gameStateData;
             const players = rankedPlayers(gameState && gameState.players);
             paintMeadowScreen('tv-final', `
-                ${tvPodiumHtml(players)}
-                ${tvRankSignHtml(players, {
-                    boardId: 'finalRankBoard',
-                    cols: 1,
-                    planted: 'finale'
-                })}
+                <div class="tv-finale-stack">
+                    ${tvRankSignHtml(players, {
+                        boardId: 'finalRankBoard',
+                        cols: 1,
+                        planted: 'finale'
+                    })}
+                    ${tvPodiumHtml(players)}
+                </div>
             `, players);
             mountRankSign();
             armBoardScroll('finalRankBoard', players.length);
