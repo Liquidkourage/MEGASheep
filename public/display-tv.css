@@ -3181,16 +3181,16 @@ html, body {
 }
 
 .tv-podium-name {
-    margin: 0 0 0.15em;
+    margin: 0.1em 0.55em 0;
     max-width: 100%;
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(2rem, 4.2vh, 3.4rem);
+    font-size: clamp(1.45rem, 3vh, 2.35rem);
     font-weight: 800;
     letter-spacing: -0.04em;
     line-height: 1.05;
-    color: #f6ecc4;
+    color: #1a140c;
     text-align: center;
-    text-shadow: 0 4px 18px rgba(4, 10, 18, 0.7);
+    text-shadow: 0 1px 0 rgba(255, 244, 214, 0.4);
     overflow: visible;
     text-overflow: clip;
     white-space: normal;
@@ -3198,7 +3198,11 @@ html, body {
 }
 
 .tv-podium-spot.is-1 .tv-podium-name {
-    font-size: clamp(2.8rem, 6vh, 5rem);
+    font-size: clamp(1.75rem, 3.6vh, 2.85rem);
+}
+
+.tv-podium-spot.is-3 .tv-podium-name {
+    font-size: clamp(1.2rem, 2.5vh, 1.9rem);
 }
 
 .tv-podium .tv-ewe {
@@ -3238,13 +3242,14 @@ html, body {
 }
 
 .tv-crate {
+    position: relative;
     width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 0.08em;
-    padding: 0.35em 0.4em 0.5em;
+    justify-content: space-between;
+    gap: 0.12em;
+    padding: 0.55em 0.45em 0.4em;
     background: #c9c2b0;
     border: 6px solid #1a140c;
     border-radius: 14px 14px 20px 20px;
@@ -3253,6 +3258,23 @@ html, body {
         0 10px 0 #1a140c;
     color: #1a140c;
     font-family: Outfit, "Segoe UI", sans-serif;
+}
+
+.tv-crate-place {
+    position: absolute;
+    top: 0.12em;
+    left: 0.18em;
+    z-index: 2;
+    margin: 0;
+    font-size: clamp(1.35rem, 3vh, 2.3rem);
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    line-height: 1;
+    opacity: 0.72;
+}
+
+.tv-crate-score {
+    margin-top: auto;
 }
 
 .tv-podium-spot.is-1 .tv-crate {
@@ -3276,11 +3298,15 @@ html, body {
 }
 
 .tv-board-stack .tv-podium-name {
-    font-size: clamp(1.55rem, 3.1vh, 2.5rem);
+    font-size: clamp(1.15rem, 2.35vh, 1.8rem);
 }
 
 .tv-board-stack .tv-podium-spot.is-1 .tv-podium-name {
-    font-size: clamp(2rem, 4.1vh, 3.2rem);
+    font-size: clamp(1.3rem, 2.7vh, 2.05rem);
+}
+
+.tv-board-stack .tv-podium-spot.is-3 .tv-podium-name {
+    font-size: clamp(1.05rem, 2.1vh, 1.55rem);
 }
 
 .tv-board-stack .tv-podium .tv-ewe {
@@ -3339,20 +3365,20 @@ html, body {
     min-height: 9.5vh;
 }
 
-.tv-board-stack .tv-crate span {
-    font-size: clamp(1.7rem, 3.6vh, 2.6rem);
+.tv-board-stack .tv-crate-place {
+    font-size: clamp(1.2rem, 2.6vh, 1.9rem);
 }
 
 .tv-board-stack .tv-crate b {
     font-size: clamp(2.2rem, 4.8vh, 3.6rem);
 }
 
-.tv-crate span {
-    font-size: clamp(2.2rem, 5vh, 3.6rem);
+.tv-crate .tv-crate-place {
+    font-size: clamp(1.45rem, 3.1vh, 2.4rem);
     font-weight: 800;
     letter-spacing: -0.05em;
     line-height: 1;
-    opacity: 0.55;
+    opacity: 0.78;
 }
 
 .tv-crate b {
@@ -3520,10 +3546,7 @@ html, body {
 }
 
 .tv-final .tv-crate {
-    position: relative;
     flex: 0 0 auto;
-    justify-content: flex-start;
-    padding-top: 0.45em;
 }
 
 .tv-final .tv-podium-spot.is-1 .tv-crate {
@@ -3532,35 +3555,22 @@ html, body {
 }
 
 .tv-final .tv-podium-spot.is-2 .tv-crate {
-    height: 17vh;
-    min-height: 17vh;
+    height: 18vh;
+    min-height: 18vh;
 }
 
 .tv-final .tv-podium-spot.is-3 .tv-crate {
-    height: 11vh;
-    min-height: 11vh;
+    height: 14vh;
+    min-height: 14vh;
 }
 
 .tv-final .tv-podium-name {
-    color: #ffe9a8;
-    text-shadow:
-        0 0 18px rgba(255, 210, 96, 0.45),
-        0 4px 18px rgba(4, 10, 18, 0.7);
+    color: #1a140c;
+    text-shadow: 0 1px 0 rgba(255, 244, 214, 0.4);
 }
 
-.tv-final .tv-podium-spot.is-1 .tv-crate::before {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: -0.55em;
-    width: 1.15em;
-    height: 1.15em;
-    border-radius: 50%;
-    background:
-        radial-gradient(circle at 50% 50%, #fff3c0 0 18%, transparent 19%),
-        conic-gradient(#e4c56b 0 12%, #8a5a12 0 20%, #e4c56b 0 37%, #8a5a12 0 45%, #e4c56b 0 62%, #8a5a12 0 70%, #e4c56b 0 87%, #8a5a12 0 95%, #e4c56b 0);
-    box-shadow: 0 2px 0 #1a140c;
-    transform: translateX(-50%);
+.tv-final .tv-crate-place {
+    font-size: clamp(1.7rem, 3.6vh, 2.7rem);
 }
 
 .tv-final .tv-sky-name img {

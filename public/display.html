@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T21-10-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T21-20-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -5364,13 +5364,13 @@
                         const coat = (hash % 3) + 1;
                         return `
                             <div class="tv-podium-spot is-${place}">
-                                <p class="tv-podium-name">${escapeDisplayText(player.name)}</p>
                                 <figure class="tv-ewe" data-coat="${coat}" data-mood="idle" aria-hidden="true">
                                     ${EWE_ART}
                                 </figure>
                                 <div class="tv-crate">
-                                    <span>${place}</span>
-                                    <b>${Number(player.score) || 0}</b>
+                                    <span class="tv-crate-place">${place}</span>
+                                    <p class="tv-podium-name">${escapeDisplayText(player.name)}</p>
+                                    <b class="tv-crate-score">${Number(player.score) || 0}</b>
                                 </div>
                             </div>
                         `;
