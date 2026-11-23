@@ -281,19 +281,6 @@ function playerGameCode() {
     return (gameState && gameState.gameCode) || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
 }
 
-function syncPlayerJoinCode() {
-    const code = String(playerGameCode() || '').trim();
-    const ok = /^\d{4}$/.test(code);
-    document.querySelectorAll('[data-player-join-code]').forEach((el) => {
-        el.hidden = !ok;
-        const num = el.querySelector('.player-join-code-num');
-        if (num) num.textContent = ok ? code : '';
-        else el.textContent = ok ? code : '';
-        if (ok) el.setAttribute('aria-label', `Player code ${code}`);
-        else el.removeAttribute('aria-label');
-    });
-}
-
 function getMyAnswerForCurrentQuestion() {
     try {
         if (gameState && gameState.myAnswer) return String(gameState.myAnswer);
@@ -395,7 +382,6 @@ function savePlayerIdentity(gameCode, playerName) {
         }
         localStorage.setItem('player.savedAt', String(Date.now()));
     } catch (_) {}
-    if (typeof IS_PLAYER_ROUTE !== 'undefined' && IS_PLAYER_ROUTE) syncPlayerJoinCode();
 }
 
 function clearPlayerIdentity() {
@@ -630,7 +616,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     try { const grp = gameCodeInput.closest('.form-group'); if (grp) grp.style.display = 'none'; } catch(_) {}
                     // Override any saved identity code with the URL code
                     try { sessionStorage.setItem('gameCode', codeParam); localStorage.setItem('player.gameCode', codeParam); } catch(_) {}
-                    syncPlayerJoinCode();
                 }
                 const playerNameInput = document.getElementById('playerName');
                 if (playerNameInput) playerNameInput.focus();
@@ -1180,10 +1165,7 @@ function showScreen(screenName) {
     if (screens[screenName] && screens[screenName].classList) {
         screens[screenName].classList.add('active');
     }
-    if (IS_PLAYER_ROUTE) {
-        syncPlayerJoinCode();
-        armPlayerPasture();
-    }
+    if (IS_PLAYER_ROUTE) armPlayerPasture();
 }
 
 // Create a new game
@@ -2367,7 +2349,6 @@ function applyPlayerState(packet, source) {
         if (!result.applied) return;
 
         gameState = packet;
-        if (IS_PLAYER_ROUTE) syncPlayerJoinCode();
         if (typeof packet.currentQuestion === 'number') currentQuestionIndex = packet.currentQuestion;
         if (Array.isArray(packet.questions) && packet.questions.length) questions = packet.questions;
 
