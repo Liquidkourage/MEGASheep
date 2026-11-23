@@ -771,7 +771,7 @@ body.player-app #gameScreen .game-header {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 8px 12px 8px 62px;
+    padding: 8px 12px 8px clamp(62px, 8vw, 92px);
     background: none;
     border: 0;
 }
@@ -792,11 +792,11 @@ body.player-app .player-compact-status {
 }
 
 body.player-app #gameScreen .question-counter {
-    font-size: 1.05rem;
+    font-size: clamp(1.05rem, 2.4vw, 1.55rem);
 }
 
 body.player-app .player-compact-status {
-    font-size: 0.82rem;
+    font-size: clamp(0.82rem, 1.8vw, 1.15rem);
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -812,14 +812,14 @@ body.player-app .game-header-actions {
 body.player-app .player-icon-btn {
     width: auto;
     min-width: 52px;
-    min-height: 44px;
-    padding: 0 12px;
+    min-height: clamp(44px, 6.2vw, 56px);
+    padding: 0 clamp(12px, 1.6vw, 18px);
     border: 0;
     border-radius: 14px;
     background: url("sprites/player-wood-btn.png?v=2026-11-22T01-35-00") center / 100% 100% no-repeat;
     color: var(--ink);
     font-family: var(--title);
-    font-size: 0.86rem;
+    font-size: clamp(0.86rem, 1.8vw, 1.12rem);
     font-weight: 700;
     letter-spacing: 0.02em;
 }
@@ -831,16 +831,16 @@ body.player-app .player-icon-btn[aria-expanded="true"] {
 }
 
 body.player-app #gameScreen .timer {
-    width: 52px;
+    width: clamp(52px, 7vw, 80px);
     min-width: 52px;
-    min-height: 52px;
+    min-height: clamp(52px, 7vw, 80px);
     padding: 0;
     border: 0;
     border-radius: 50%;
     background: url("sprites/player-moon.png?v=2026-11-22T01-30-00") center / contain no-repeat;
     color: var(--ink);
     font-family: var(--title);
-    font-size: 1.15rem;
+    font-size: clamp(1.15rem, 2.2vw, 1.7rem);
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -872,13 +872,13 @@ body.player-app #gameScreen .question-container {
 
 body.player-app #gameScreen .player-play-stage {
     flex: 1 1 auto;
-    width: min(100%, 38rem);
+    width: min(100%, 58rem);
     max-height: none;
     min-height: 0;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-    gap: 8px;
+    gap: clamp(8px, 1.4vh, 16px);
     overflow: visible;
 }
 
@@ -924,7 +924,7 @@ body.player-app #playerAnswerForm.player-sign.player-thought-bubble {
     position: relative;
     width: 100%;
     margin: 0 !important;
-    padding: 20px 20px 18px;
+    padding: clamp(18px, 2.4vh, 28px) clamp(20px, 2.4vw, 32px) clamp(16px, 2vh, 24px);
     background: #f6ead0;
     border: 4px solid var(--ink);
     border-radius: 42px;
@@ -939,7 +939,7 @@ body.player-app #playerAnswerForm.player-thought-bubble .player-sign-art {
 }
 
 body.player-app #playerAnswerForm.player-thought-bubble .player-sign-face {
-    gap: 8px;
+    gap: clamp(8px, 1.4vh, 14px);
 }
 
 body.player-app #playerAnswerForm.player-thought-bubble .player-answer-label {
@@ -1024,13 +1024,13 @@ body.player-app #gameScreen .question-text,
 body.player-app #gameScreen #questionText {
     flex: 0 0 auto;
     margin: 0;
-    padding: 22px 24px 24px;
+    padding: clamp(20px, 3vh, 36px) clamp(22px, 3.2vw, 42px) clamp(22px, 3.2vh, 38px);
     background: url("sprites/player-plaque.png?v=2026-11-22T01-20-00") center / 100% 100% no-repeat;
     color: var(--wood);
     font-family: var(--title);
-    font-size: clamp(1.35rem, 2.2vw + 2.2vh, 2.1rem) !important;
+    font-size: clamp(1.5rem, 4.2vw + 1.2vh, 3.4rem) !important;
     font-weight: 700;
-    line-height: 1.22;
+    line-height: 1.18;
     letter-spacing: 0;
     text-shadow: none;
     overflow-y: auto !important;
@@ -1053,7 +1053,7 @@ body.player-app #playerAnswerForm,
 body.player-app #playerAnswerForm.player-sign {
     display: flex;
     flex-direction: column;
-    gap: 8px !important;
+    gap: clamp(8px, 1.4vh, 14px) !important;
     width: 100%;
     margin: 0 !important;
     padding: 16px 18px 18px;
@@ -1071,11 +1071,22 @@ body.player-app .player-play-stage.is-locked #submitAnswerBtn {
 
 body.player-app #playerAnswerForm input,
 body.player-app #answerInput {
-    min-height: 52px;
+    min-height: clamp(52px, 7.2vh, 72px);
+    font-size: clamp(1.12rem, 2.4vw, 1.6rem);
 }
 
 body.player-app #submitAnswerBtn {
     width: 100%;
+    min-height: clamp(52px, 7.2vh, 68px);
+    font-size: clamp(1.15rem, 2.2vw, 1.5rem);
+}
+
+body.player-app #playerAnswerForm .player-answer-label {
+    font-size: clamp(0.78rem, 1.5vw, 1rem);
+}
+
+body.player-app #playerAnswerForm .player-answer-hint {
+    font-size: clamp(0.88rem, 1.6vw, 1.1rem);
 }
 
 body.player-app .player-answer-hint {
@@ -2131,8 +2142,8 @@ body.player-app .keep-awake-fab {
     top: max(10px, calc(env(safe-area-inset-top, 0px) + 6px));
     left: max(10px, calc(env(safe-area-inset-left, 0px) + 6px));
     z-index: 50;
-    width: 44px;
-    height: 44px;
+    width: clamp(44px, 5.5vw, 68px);
+    height: clamp(44px, 5.5vw, 68px);
     min-height: 44px;
     padding: 0;
     border: 0;
