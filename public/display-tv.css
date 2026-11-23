@@ -914,6 +914,13 @@ html, body {
     padding: clamp(22px, 2.4vw, 40px) clamp(28px, 3vw, 52px) 8px;
 }
 
+.tv-play-hud {
+    display: flex;
+    align-items: flex-start;
+    gap: clamp(12px, 1.4vw, 24px);
+    flex: 0 0 auto;
+}
+
 .tv-play-copy {
     flex: 1 1 auto;
     min-width: 0;
@@ -941,15 +948,17 @@ html, body {
 
 .tv-corner-code {
     position: absolute;
-    left: max(1.6vw, 18px);
-    bottom: max(1.8vh, 16px);
+    top: max(1.4vh, 12px);
+    right: max(1.4vw, 16px);
+    left: auto;
+    bottom: auto;
     z-index: 40;
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
-    gap: 0.45em;
+    gap: 0.28em;
     margin: 0;
-    padding: 0.42em 0.62em 0.42em 0.42em;
+    padding: 0.38em 0.42em 0.4em;
     background: #f3e2b4;
     border: 0.16em solid #1a140c;
     border-radius: 0.42em;
@@ -957,12 +966,16 @@ html, body {
     pointer-events: none;
 }
 
+.tv-play-top .tv-corner-code {
+    position: static;
+}
+
 .tv-corner-code-qr {
     display: block;
     flex: 0 0 auto;
-    width: clamp(6.6rem, 14.8vh, 10.8rem);
-    height: clamp(6.6rem, 14.8vh, 10.8rem);
-    padding: 0.28em;
+    width: clamp(5.2rem, 11.6vh, 8.4rem);
+    height: clamp(5.2rem, 11.6vh, 8.4rem);
+    padding: 0.22em;
     object-fit: contain;
     background: #fbf3dc;
     border: 0.12em solid #1a140c;
@@ -973,28 +986,30 @@ html, body {
 .tv-corner-code-copy {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.1em;
+    align-items: center;
+    gap: 0.08em;
 }
 
 .tv-corner-code-kicker {
     margin: 0;
     font-family: Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(0.95rem, 2.1vh, 1.45rem);
+    font-size: clamp(0.85rem, 1.8vh, 1.25rem);
     font-weight: 800;
     letter-spacing: 0.08em;
     line-height: 1;
     text-transform: uppercase;
+    text-align: center;
     color: #1a140c;
 }
 
 .tv-corner-code-num {
     margin: 0;
     font-family: Outfit, Fredoka, "Segoe UI", sans-serif;
-    font-size: clamp(2.2rem, 5.6vh, 4.2rem);
+    font-size: clamp(1.8rem, 4.4vh, 3.2rem);
     font-weight: 800;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     line-height: 1;
+    text-align: center;
     color: #1a140c;
 }
 

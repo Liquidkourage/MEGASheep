@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T19-40-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T21-25-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1010,7 +1010,6 @@
 
         const LOBBY_FIELD = { left: 2, right: 98, top: 18, bottom: 90 };
         const PLAY_FIELD = { left: 3, right: 50, top: 52, bottom: 91 };
-        const CODE_KEEP_OUT = { right: 32, top: 69 };
         const RESULTS_FIELD = { left: 8, right: 92, top: 64, bottom: 93 };
         const RESULTS_FAR = { left: 22, right: 78, y: 66 };
         const RESULTS_NEAR = { left: 8, right: 92, y: 92 };
@@ -1118,12 +1117,8 @@
             const inset = lobby
                 ? 2 + (1 - depthT(gy)) * 7
                 : 2 + (1 - depthT(gy)) * 8;
-            let left = field.left + inset;
-            if (codeKeepOutActive() && gy > CODE_KEEP_OUT.top) {
-                left = Math.max(left, CODE_KEEP_OUT.right);
-            }
             return {
-                left,
+                left: field.left + inset,
                 right: field.right - inset
             };
         }
@@ -1175,20 +1170,6 @@
             return minGy + towardTrees * towardTrees * (document.querySelector('.tv-lobby') ? 3 : 5);
         }
 
-        function codeKeepOutActive() {
-            return !!document.querySelector('.tv-corner-code');
-        }
-
-        function clearCodeKeepOut(gx, gy) {
-            if (!codeKeepOutActive() || !(gx < CODE_KEEP_OUT.right && gy > CODE_KEEP_OUT.top)) {
-                return { gx, gy };
-            }
-            const toRight = CODE_KEEP_OUT.right - gx;
-            const toTop = gy - CODE_KEEP_OUT.top;
-            if (toRight <= toTop) return { gx: CODE_KEEP_OUT.right, gy };
-            return { gx, gy: CODE_KEEP_OUT.top };
-        }
-
         function clampLobbyPoint(gx, gy) {
             const field = pastureField();
             let cy = Math.min(field.bottom, Math.max(field.top, gy));
@@ -1196,13 +1177,10 @@
             const xs = fieldXRange(cy);
             let cx = Math.min(xs.right, Math.max(xs.left, gx));
             cy = Math.min(field.bottom, Math.max(cy, minFootGy(cx)));
-            const cleared = clearCodeKeepOut(cx, cy);
-            cx = cleared.gx;
-            cy = cleared.gy;
             cy = Math.min(field.bottom, Math.max(field.top, cy));
             const xs2 = fieldXRange(cy);
             cx = Math.min(xs2.right, Math.max(xs2.left, cx));
-            return clearCodeKeepOut(cx, cy);
+            return { gx: cx, gy: cy };
         }
 
         function pinEweToGrass(el) {
@@ -1510,7 +1488,7 @@
             const gyRaw = g.y + (((hash >> 3) % 5) - 2) * bounce;
             const gy = offstage ? gyRaw : Math.min(93, Math.max(extra.minGy != null ? extra.minGy : 58, gyRaw));
             const gxClamped = offstage ? gxRaw : Math.min(96, Math.max(2, gxRaw));
-            const kept = offstage ? { gx: gxClamped, gy } : clearCodeKeepOut(gxClamped, gy);
+            const kept = { gx: gxClamped, gy };
             const scale = (extra.parade || extra.paradeWait)
                 ? (Number(g.scale) || pastureScale(kept.gy))
                 : pastureScale(kept.gy) * (extra.scale || 1);
@@ -2984,13 +2962,15 @@
                             <p class="tv-play-meta"><span>Round ${roundNumber}</span><span>${questionInRound} of ${perRound}</span></p>
                             <h1 class="question-prompt">${currentQuestion ? currentQuestion.prompt : 'Loading question...'}</h1>
                         </div>
-                        <div class="timer-display">
-                            <div class="timer-circle" id="timerCircle">
-                                <span class="timer-text" id="displayTimer">${Number.isFinite(Number(gameState.timeLeft)) ? gameState.timeLeft : 30}</span>
+                        <div class="tv-play-hud">
+                            <div class="timer-display">
+                                <div class="timer-circle" id="timerCircle">
+                                    <span class="timer-text" id="displayTimer">${Number.isFinite(Number(gameState.timeLeft)) ? gameState.timeLeft : 30}</span>
+                                </div>
                             </div>
+                            ${tvCornerCodeHtml()}
                         </div>
                     </div>
-                    ${tvCornerCodeHtml()}
                 </div>
             `;
             renderFlock(gameState.players);
@@ -3217,8 +3197,7 @@
                 gx: Math.min(maxX, Math.max(minX, x)),
                 gy: Math.min(PLAY_FIELD.bottom - 0.5, Math.max(PLAY_FIELD.top + 1.2, y))
             };
-            if (opts && opts.offstage) return point;
-            return clearCodeKeepOut(point.gx, point.gy);
+            return point;
         }
 
         function banditSheepGap(gx, gy, other) {
@@ -5097,12 +5076,7 @@
         function paradeTravel(width, n) {
             const w = Number(width) || 10;
             const pad = n === 1 ? Math.max(18, w * 0.72) : Math.max(22, w * 0.78);
-            let startX = -pad;
-            if (codeKeepOutActive()) {
-                const half = n === 1 ? 0 : Math.max(5.4, w * 0.44);
-                startX = CODE_KEEP_OUT.right + half + 2;
-            }
-            return { startX, destX: 100 + pad };
+            return { startX: -pad, destX: 100 + pad };
         }
 
         function packFlagHolders(count, cx, cy, width, laneScale, zBase) {
