@@ -3687,12 +3687,21 @@ function playerScoreGroupMine(group, myName, playerAnswer) {
     return !!(answer && String((group && group.answer) || '').toLowerCase().trim() === answer);
 }
 
+function playerScoreMatchCount(group) {
+    return Math.max(
+        Array.isArray(group && group.players) ? group.players.length : 0,
+        Number(group && group.count) || 0,
+        1
+    );
+}
+
 function playerScoreCardHtml(group, mine) {
     const names = ((group && group.players) || []).map(playerScoreNameOf).filter(Boolean);
     const pts = Math.max(0, Number(group && group.points) || 0);
+    const matches = Math.min(4, playerScoreMatchCount(group));
     const answer = String((group && group.answer) || '').trim() || 'Answer';
     const who = names.length ? names.join(', ') : 'No one';
-    return `<article class="player-score-card${mine ? ' is-mine' : ''}" aria-label="${escapePlayer(answer)}, +${pts}">
+    return `<article class="player-score-card${mine ? ' is-mine' : ''}" data-matches="${matches}" aria-label="${escapePlayer(answer)}, +${pts}">
         <div class="player-score-card-head">
             <p class="player-score-card-word">${escapePlayer(answer)}</p>
             <b class="player-score-card-pts">+${pts}</b>
@@ -3701,24 +3710,22 @@ function playerScoreCardHtml(group, mine) {
     </article>`;
 }
 
-function playerScoreLeftoverHtml(missedCorrect) {
+function playerScoreRestHtml(missedCorrect, misses, myName, playerAnswer) {
     const leftover = Array.isArray(missedCorrect) ? missedCorrect : [];
-    if (!leftover.length) return '';
-    const chips = leftover.map((item) => `<li>${escapePlayer(item)}</li>`).join('');
-    return `<aside class="player-score-leftover" aria-label="Ungiven correct answers">
-        <p>Pasteur-ized</p>
-        <ul>${chips}</ul>
-    </aside>`;
-}
-
-function playerScoreMissesHtml(groups, myName, playerAnswer) {
-    const chips = groups.map((group) => {
+    const leftoverChips = leftover.map((item) => `<li>${escapePlayer(item)}</li>`).join('');
+    const leftoverBlock = leftoverChips
+        ? `<aside class="player-score-band is-leftover" aria-label="Ungiven correct answers"><p>Pasteur-ized</p><ul>${leftoverChips}</ul></aside>`
+        : '';
+    const missChips = misses.map((group) => {
         const answer = String((group && group.answer) || '').trim() || 'No answer';
         const mine = playerScoreGroupMine(group, myName, playerAnswer);
         return `<li${mine ? ' class="is-mine"' : ''}>${escapePlayer(answer)}</li>`;
     }).join('');
-    if (!chips) return '';
-    return `<ul class="player-score-misses" aria-label="Wrong answers">${chips}</ul>`;
+    const missBlock = missChips
+        ? `<aside class="player-score-band is-wrong" aria-label="Wrong answers"><p>Wrong</p><ul>${missChips}</ul></aside>`
+        : '';
+    if (!leftoverBlock && !missBlock) return '';
+    return `<div class="player-score-rest">${leftoverBlock}${missBlock}</div>`;
 }
 
 function playerScoreSupportHtml(playerAnswer, playerAnswerGroup, missedCorrect) {
@@ -3739,10 +3746,9 @@ function playerScoreSupportHtml(playerAnswer, playerAnswerGroup, missedCorrect) 
         return String(a.answer || '').localeCompare(String(b.answer || ''), undefined, { sensitivity: 'base' });
     });
     const scoredCards = scored.map((group) => playerScoreCardHtml(group, playerScoreGroupMine(group, myName, playerAnswer))).join('');
-    const leftover = playerScoreLeftoverHtml(missedCorrect);
-    const missBlock = playerScoreMissesHtml(misses, myName, playerAnswer);
-    if (!scoredCards && !leftover && !missBlock) return '';
-    return `<div class="player-score-support">${scoredCards ? `<div class="player-score-grid">${scoredCards}</div>` : ''}${leftover}${missBlock}</div>`;
+    const rest = playerScoreRestHtml(missedCorrect, misses, myName, playerAnswer);
+    if (!scoredCards && !rest) return '';
+    return `<div class="player-score-support">${scoredCards ? `<div class="player-score-grid">${scoredCards}</div>` : ''}${rest}</div>`;
 }
 
 function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints, playerRank, totalPlayers, missedCorrect }) {

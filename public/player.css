@@ -1483,9 +1483,24 @@ body.player-app .player-score-card {
     background: #fff8e6;
 }
 
-body.player-app .player-score-card.is-mine {
+body.player-app .player-score-card[data-matches="1"] {
     background: #ffe27a;
-    box-shadow: 0 0 0 2px #1a3878;
+}
+
+body.player-app .player-score-card[data-matches="2"] {
+    background: #f4c48a;
+}
+
+body.player-app .player-score-card[data-matches="3"] {
+    background: #c8dba0;
+}
+
+body.player-app .player-score-card[data-matches="4"] {
+    background: #b9cbe3;
+}
+
+body.player-app .player-score-card.is-mine {
+    box-shadow: 0 0 0 3px #1a3878;
 }
 
 body.player-app .player-score-card-head {
@@ -1519,8 +1534,20 @@ body.player-app .player-score-card-pts {
     text-align: center;
 }
 
-body.player-app .player-score-card.is-mine .player-score-card-pts {
+body.player-app .player-score-card[data-matches="1"] .player-score-card-pts {
     background: #fff4c4;
+}
+
+body.player-app .player-score-card[data-matches="2"] .player-score-card-pts {
+    background: #fde6c4;
+}
+
+body.player-app .player-score-card[data-matches="3"] .player-score-card-pts {
+    background: #e8f3cc;
+}
+
+body.player-app .player-score-card[data-matches="4"] .player-score-card-pts {
+    background: #e4eef8;
 }
 
 body.player-app .player-score-card-who {
@@ -1533,45 +1560,37 @@ body.player-app .player-score-card-who {
     overflow-wrap: anywhere;
 }
 
-body.player-app .player-score-leftover {
+body.player-app .player-score-rest {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
     margin: 12px 0 0;
-    padding: 10px 2px 8px;
+    padding: 10px 2px 2px;
     border-top: 2px solid var(--ink);
 }
 
-body.player-app .player-score-leftover + .player-score-misses {
-    margin-top: 8px;
-    padding-top: 10px;
-    border-top: 2px solid var(--ink);
+body.player-app .player-score-band,
+body.player-app .player-score-band ul {
+    display: contents;
 }
 
-body.player-app .player-score-leftover p {
-    margin: 0 0 8px;
+body.player-app .player-score-band p {
+    margin: 0;
+    flex-shrink: 0;
     color: var(--wood);
     font-family: var(--title);
     font-size: 0.88rem;
     font-weight: 800;
     letter-spacing: 0.02em;
+    white-space: nowrap;
 }
 
-body.player-app .player-score-leftover ul,
-body.player-app .player-score-misses {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
+body.player-app .player-score-band.is-wrong p {
+    margin-left: 6px;
 }
 
-body.player-app .player-score-grid + .player-score-misses {
-    margin-top: 12px;
-    padding-top: 10px;
-    border-top: 2px solid var(--ink);
-}
-
-body.player-app .player-score-leftover li,
-body.player-app .player-score-misses li {
+body.player-app .player-score-band li {
     padding: 5px 10px 6px;
     border: 2px solid var(--ink);
     border-radius: 999px;
@@ -1584,12 +1603,12 @@ body.player-app .player-score-misses li {
     overflow-wrap: anywhere;
 }
 
-body.player-app .player-score-misses li {
+body.player-app .player-score-band.is-wrong li {
     background: #efe4c8;
     color: var(--wood);
 }
 
-body.player-app .player-score-misses li.is-mine {
+body.player-app .player-score-band.is-wrong li.is-mine {
     background: #ffe27a;
     color: var(--ink);
     box-shadow: 0 0 0 2px #1a3878;
