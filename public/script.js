@@ -2834,7 +2834,7 @@ function handleGameStateUpdate(data) {
 
 const PLAYER_JOIN_FIELD = { left: 12, right: 88, top: 58, bottom: 90 };
 const PLAYER_LOBBY_FIELD = { left: 8, right: 92, top: 58, bottom: 92 };
-const PLAYER_SUBMIT_FIELD = { left: 36, right: 64, top: 60, bottom: 88 };
+const PLAYER_SUBMIT_FIELD = { left: 28, right: 72, top: 52, bottom: 90 };
 const PLAYER_SUBMIT_PADDOCK_GX = 210;
 let playerSubmitEweTimer = 0;
 const PLAYER_JOIN_SPOTS = [
@@ -2848,7 +2848,7 @@ function playerSubmitField() {
 }
 
 function playerSubmitHomeSpot() {
-    return { gx: 50, gy: 48 };
+    return { gx: 50, gy: 78 };
 }
 
 function playerSubmitLocked() {

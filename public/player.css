@@ -863,30 +863,40 @@ body.player-app #gameScreen .question-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
-    padding: 8px 12px 12px;
-    overflow-x: visible;
+    justify-content: stretch;
+    padding: 4px 12px 8px;
+    overflow-x: hidden;
     overflow-y: auto;
     background: none;
 }
 
 body.player-app #gameScreen .player-play-stage {
-    width: min(100%, 28rem);
-    max-height: 100%;
+    flex: 1 1 auto;
+    width: min(100%, 38rem);
+    max-height: none;
     min-height: 0;
     display: flex;
     flex-direction: column;
+    justify-content: flex-end;
     gap: 8px;
     overflow: visible;
 }
 
 body.player-app .player-think-stack {
     position: relative;
+    flex: 0 1 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: flex-end;
     width: 100%;
     min-width: 0;
+    min-height: 0;
+    padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
+}
+
+body.player-app .player-play-stage.is-locked:not(.is-editing) {
+    justify-content: center;
 }
 
 body.player-app .player-locked-readout {
@@ -941,9 +951,9 @@ body.player-app .player-thought-tail {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    margin-top: 0;
-    margin-bottom: -10px;
+    gap: 4px;
+    margin-top: 2px;
+    margin-bottom: -8px;
     pointer-events: none;
     transition: opacity 0.28s ease, transform 0.36s ease;
     transform-origin: 50% 0%;
@@ -989,9 +999,10 @@ body.player-app #gameScreen .player-submit-pasture {
     position: relative;
     inset: auto;
     z-index: 1;
+    flex-shrink: 0;
     width: 100%;
-    height: clamp(5.5rem, 16vh, 7.25rem);
-    margin-top: -8px;
+    height: clamp(7.5rem, 24vh, 13rem);
+    margin-top: 0;
     overflow: visible;
     pointer-events: none;
 }
@@ -1002,7 +1013,7 @@ body.player-app .player-play-stage.is-locked:not(.is-editing) .player-submit-pas
 }
 
 body.player-app #gameScreen .player-submit-pasture .player-ewe {
-    width: clamp(96px, 28vw, 148px);
+    width: clamp(132px, 40vw, 220px);
 }
 
 body.player-app #gameScreen .player-submit-pasture .player-ewe.is-to-paddock.is-walking .player-ewe-strip {
@@ -1011,6 +1022,7 @@ body.player-app #gameScreen .player-submit-pasture .player-ewe.is-to-paddock.is-
 
 body.player-app #gameScreen .question-text,
 body.player-app #gameScreen #questionText {
+    flex: 0 0 auto;
     margin: 0;
     padding: 22px 24px 24px;
     background: url("sprites/player-plaque.png?v=2026-11-22T01-20-00") center / 100% 100% no-repeat;
@@ -1089,8 +1101,21 @@ body.player-app.keyboard-open #gameScreen .player-play-stage {
     justify-content: flex-start;
 }
 
+body.player-app.keyboard-open #gameScreen .player-play-stage {
+    justify-content: flex-end;
+}
+
+body.player-app.keyboard-open #gameScreen .player-think-stack {
+    flex: 0 1 auto;
+    justify-content: flex-end;
+}
+
 body.player-app.keyboard-open #gameScreen .player-submit-pasture {
-    height: 4.5rem;
+    height: clamp(5.2rem, 16vh, 7rem);
+}
+
+body.player-app.keyboard-open #gameScreen .player-submit-pasture .player-ewe {
+    width: clamp(96px, 28vw, 140px);
 }
 
 body.player-app.keyboard-open #gameScreen .question-text,
@@ -2159,18 +2184,23 @@ body.player-app #lobbyScreen .player-masthead {
     }
 
     body.player-app #gameScreen .player-play-stage {
+        flex: 1 1 auto;
         flex-direction: row;
-        align-items: center;
+        align-items: stretch;
         padding-bottom: 0;
         width: 100%;
         max-width: none;
         overflow: visible;
+        gap: 16px;
     }
 
     body.player-app .player-think-stack {
-        flex: 0 0 min(42vw, 300px);
-        width: min(42vw, 300px);
-        padding-top: 22px;
+        flex: 1 1 46%;
+        width: auto;
+        max-width: 28rem;
+        padding-top: 4px;
+        padding-bottom: 0;
+        justify-content: flex-start;
     }
 
     body.player-app #playerAnswerForm.player-thought-bubble,
@@ -2186,13 +2216,18 @@ body.player-app #lobbyScreen .player-masthead {
         display: none;
     }
 
+    body.player-app .player-thought-tail {
+        gap: 2px;
+        margin-bottom: -14px;
+    }
+
     body.player-app #gameScreen .player-submit-pasture {
-        height: 4.35rem;
-        margin-top: -12px;
+        height: 3.6rem;
+        margin-top: 0;
     }
 
     body.player-app #gameScreen .player-submit-pasture .player-ewe {
-        width: clamp(72px, 12vw, 96px);
+        width: 80px;
     }
 }
 
