@@ -162,6 +162,7 @@ function setPlayerAnswerChrome({ locked = false, editing = false, reason = '' } 
             banner.textContent = '';
         }
     }
+    if (typeof IS_PLAYER_ROUTE !== 'undefined' && IS_PLAYER_ROUTE) syncPlayerSubmitScene();
 }
 
 function setPlayerSubmitEnabled(enabled) {
@@ -188,6 +189,25 @@ function setPlayerSubmitEnabled(enabled) {
             editing: !!window._playerEditing && enabled,
             reason: window._playerEditReason || ''
         });
+    }
+}
+
+function syncPlayerSubmitScene() {
+    if (!IS_PLAYER_ROUTE) return;
+    paintPlayerSubmitEwe();
+    const form = document.getElementById('playerAnswerForm');
+    const locked = playerSubmitLocked();
+    if (form && form.toggleAttribute) form.toggleAttribute('inert', locked);
+    const readout = document.getElementById('playerLockedReadout');
+    if (!readout) return;
+    if (locked) {
+        const typed = (document.getElementById('answerInput') && document.getElementById('answerInput').value) || '';
+        const answer = String(typed || getMyAnswerForCurrentQuestion() || '').trim();
+        readout.hidden = false;
+        readout.textContent = answer ? `Locked in — ${answer}` : 'Locked in';
+    } else {
+        readout.hidden = true;
+        readout.textContent = '';
     }
 }
 
@@ -2814,7 +2834,9 @@ function handleGameStateUpdate(data) {
 
 const PLAYER_JOIN_FIELD = { left: 12, right: 88, top: 58, bottom: 90 };
 const PLAYER_LOBBY_FIELD = { left: 8, right: 92, top: 58, bottom: 92 };
-const PLAYER_SUBMIT_FIELD = { left: 16, right: 84, top: 72, bottom: 90 };
+const PLAYER_SUBMIT_FIELD = { left: 36, right: 64, top: 60, bottom: 88 };
+const PLAYER_SUBMIT_PADDOCK_GX = 210;
+let playerSubmitEweTimer = 0;
 const PLAYER_JOIN_SPOTS = [
     { gx: 22, gy: 74 },
     { gx: 48, gy: 83 },
@@ -2822,10 +2844,16 @@ const PLAYER_JOIN_SPOTS = [
 ];
 
 function playerSubmitField() {
-    if (typeof window !== 'undefined' && window.innerWidth > window.innerHeight) {
-        return { left: 80, right: 97, top: 58, bottom: 90 };
-    }
     return PLAYER_SUBMIT_FIELD;
+}
+
+function playerSubmitHomeSpot() {
+    return { gx: 50, gy: 48 };
+}
+
+function playerSubmitLocked() {
+    const stage = document.querySelector('#gameScreen .player-play-stage');
+    return !!(stage && stage.classList.contains('is-locked') && !stage.classList.contains('is-editing'));
 }
 
 function playerPastureField(el) {
@@ -2989,32 +3017,104 @@ function paintPlayerLobbyFlock(players) {
     });
 }
 
+function clearPlayerSubmitEweTimer() {
+    if (playerSubmitEweTimer) {
+        window.clearTimeout(playerSubmitEweTimer);
+        playerSubmitEweTimer = 0;
+    }
+}
+
+function playerSubmitPin(el, gx, gy, walk) {
+    const field = playerSubmitField();
+    pinPlayerEwe(el, {
+        gx,
+        gy,
+        s: playerPastureScale(gy, field),
+        z: Math.round(8 + gy)
+    }, walk);
+}
+
+function sendPlayerSubmitEweToPaddock(el, { instant } = {}) {
+    if (!el) return;
+    if (el.classList.contains('is-off') || el.classList.contains('is-to-paddock')) return;
+    clearPlayerWander(el);
+    clearPlayerSubmitEweTimer();
+    el.classList.remove('is-thinking', 'is-left');
+    const home = playerSubmitHomeSpot();
+    if (instant) {
+        el.classList.remove('is-walking', 'is-to-paddock');
+        el.classList.add('is-off');
+        playerSubmitPin(el, PLAYER_SUBMIT_PADDOCK_GX, home.gy, 0);
+        return;
+    }
+    el.classList.add('is-walking', 'is-to-paddock');
+    playerSubmitPin(el, PLAYER_SUBMIT_PADDOCK_GX, home.gy, 1.15);
+    playerSubmitEweTimer = window.setTimeout(() => {
+        el.classList.remove('is-walking');
+        el.classList.add('is-off');
+        playerSubmitEweTimer = 0;
+    }, 1160);
+}
+
+function recallPlayerSubmitEwe(el, { instant } = {}) {
+    if (!el) return;
+    const home = playerSubmitHomeSpot();
+    const comingBack = el.classList.contains('is-off') || el.classList.contains('is-to-paddock');
+    clearPlayerSubmitEweTimer();
+    clearPlayerWander(el);
+    if (instant || !comingBack) {
+        el.classList.remove('is-walking', 'is-to-paddock', 'is-off', 'is-left');
+        el.classList.add('is-thinking');
+        playerSubmitPin(el, home.gx, home.gy, 0);
+        return;
+    }
+    el.classList.remove('is-off', 'is-thinking');
+    el.classList.add('is-walking', 'is-left');
+    playerSubmitPin(el, home.gx, home.gy, 1.05);
+    playerSubmitEweTimer = window.setTimeout(() => {
+        el.classList.remove('is-walking', 'is-left', 'is-to-paddock');
+        el.classList.add('is-thinking');
+        playerSubmitEweTimer = 0;
+    }, 1060);
+}
+
+function syncPlayerSubmitEweMotion(el) {
+    if (!el) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (playerSubmitLocked()) {
+        sendPlayerSubmitEweToPaddock(el, {
+            instant: reduce || el.classList.contains('is-off')
+        });
+        return;
+    }
+    const comingBack = el.classList.contains('is-off') || el.classList.contains('is-to-paddock');
+    recallPlayerSubmitEwe(el, {
+        instant: reduce || (!comingBack) || !window._playerEditing
+    });
+}
+
 function paintPlayerSubmitEwe() {
     const pasture = document.getElementById('playerSubmitPasture');
-    if (!pasture || !IS_PLAYER_ROUTE) return;
+    const play = document.getElementById('gameScreen');
+    if (!pasture || !IS_PLAYER_ROUTE || !play || !play.classList.contains('active')) return;
     const name = String(currentPlayerName || sessionStorage.getItem('playerName') || 'Sheep').trim() || 'Sheep';
+    const home = playerSubmitHomeSpot();
+    const locked = playerSubmitLocked();
     let el = pasture.querySelector('.player-ewe');
     if (!el) {
-        const field = playerSubmitField();
-        const landscape = typeof window !== 'undefined' && window.innerWidth > window.innerHeight;
-        const gx = landscape ? 88 : 68;
-        const gy = landscape ? 72 : 82;
         el = document.createElement('figure');
         el.className = 'player-ewe is-you';
         el.innerHTML = `<span class="player-ewe-art" aria-hidden="true"><span class="player-ewe-strip"></span></span><figcaption></figcaption>`;
-        pinPlayerEwe(el, {
-            gx,
-            gy,
-            s: playerPastureScale(gy, field),
-            z: Math.round(8 + gy)
-        });
+        playerSubmitPin(el, locked ? PLAYER_SUBMIT_PADDOCK_GX : home.gx, home.gy, 0);
+        if (locked) el.classList.add('is-off');
+        else el.classList.add('is-thinking');
         pasture.appendChild(el);
-        schedulePlayerWander(el);
     }
     el.dataset.coat = String(playerCoatOf(name));
     el.classList.add('is-you');
     const tag = el.querySelector('figcaption');
     if (tag) tag.textContent = name;
+    syncPlayerSubmitEweMotion(el);
 }
 
 function armPlayerPasture() {
@@ -3025,7 +3125,7 @@ function armPlayerPasture() {
         paintPlayerLobbyFlock((gameState && gameState.players) || []);
     }
     const play = document.getElementById('gameScreen');
-    if (play && play.classList.contains('active')) paintPlayerSubmitEwe();
+    if (play && play.classList.contains('active')) syncPlayerSubmitScene();
 }
 
 // Display functions
@@ -3301,7 +3401,7 @@ function displayCurrentQuestion() {
     
     // Update players list
     updateGamePlayersList();
-    if (IS_PLAYER_ROUTE) paintPlayerSubmitEwe();
+    if (IS_PLAYER_ROUTE) syncPlayerSubmitScene();
 }
 
 function displayQuestionResults() {

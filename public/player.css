@@ -653,10 +653,6 @@ body.player-app #gameScreen {
     position: relative;
 }
 
-body.player-app #gameScreen .player-submit-pasture {
-    z-index: 0;
-}
-
 body.player-app #gameScreen .game-header,
 body.player-app #gameScreen .question-container {
     position: relative;
@@ -762,9 +758,10 @@ body.player-app #gameScreen .question-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     padding: 8px 12px 12px;
-    overflow: hidden;
+    overflow-x: visible;
+    overflow-y: auto;
     background: none;
 }
 
@@ -774,10 +771,137 @@ body.player-app #gameScreen .player-play-stage {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    gap: 8px;
+    overflow: visible;
+}
+
+body.player-app .player-think-stack {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+}
+
+body.player-app .player-locked-readout {
+    width: 100%;
+    margin: 0;
+    padding: 12px 16px;
+    border: 3px solid var(--ink);
+    border-radius: 18px;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--title);
+    font-size: clamp(1rem, 3.6vw, 1.2rem);
+    font-weight: 700;
+    line-height: 1.3;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+body.player-app .player-locked-readout[hidden] {
+    display: none !important;
+}
+
+body.player-app #playerAnswerForm.player-thought-bubble,
+body.player-app #playerAnswerForm.player-sign.player-thought-bubble {
+    position: relative;
+    width: 100%;
+    margin: 0 !important;
+    padding: 20px 20px 18px;
+    background: #f6ead0;
+    border: 4px solid var(--ink);
+    border-radius: 42px;
+    box-shadow: 0 8px 0 rgba(20, 16, 8, 0.28);
+    overflow: visible;
+    transition: opacity 0.32s ease, transform 0.4s ease;
+    transform-origin: 50% 110%;
+}
+
+body.player-app #playerAnswerForm.player-thought-bubble .player-sign-art {
+    display: none;
+}
+
+body.player-app #playerAnswerForm.player-thought-bubble .player-sign-face {
+    gap: 8px;
+}
+
+body.player-app #playerAnswerForm.player-thought-bubble .player-answer-label {
+    color: var(--wood);
+    letter-spacing: 0.06em;
+}
+
+body.player-app .player-thought-tail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-top: 0;
+    margin-bottom: -10px;
+    pointer-events: none;
+    transition: opacity 0.28s ease, transform 0.36s ease;
+    transform-origin: 50% 0%;
+    z-index: 2;
+}
+
+body.player-app .player-thought-tail span {
+    display: block;
+    border: 3px solid var(--ink);
+    border-radius: 50%;
+    background: #f6ead0;
+    box-shadow: 0 3px 0 rgba(20, 16, 8, 0.2);
+}
+
+body.player-app .player-thought-tail span:nth-child(1) {
+    width: 18px;
+    height: 18px;
+}
+
+body.player-app .player-thought-tail span:nth-child(2) {
+    width: 12px;
+    height: 12px;
+}
+
+body.player-app .player-thought-tail span:nth-child(3) {
+    width: 8px;
+    height: 8px;
+}
+
+body.player-app .player-play-stage.is-locked:not(.is-editing) .player-thought-bubble {
+    position: absolute;
+    opacity: 0;
+    transform: scale(0.18) translateY(28px);
+    pointer-events: none;
+}
+
+body.player-app .player-play-stage.is-locked:not(.is-editing) .player-thought-tail {
+    opacity: 0;
+    transform: scale(0.4) translateY(-8px);
+}
+
+body.player-app #gameScreen .player-submit-pasture {
+    position: relative;
+    inset: auto;
+    z-index: 1;
+    width: 100%;
+    height: clamp(5.5rem, 16vh, 7.25rem);
+    margin-top: -8px;
+    overflow: visible;
+    pointer-events: none;
+}
+
+body.player-app .player-play-stage.is-locked:not(.is-editing) .player-submit-pasture:has(.is-off) {
+    height: 0;
+    margin: 0;
+}
+
+body.player-app #gameScreen .player-submit-pasture .player-ewe {
+    width: clamp(96px, 28vw, 148px);
+}
+
+body.player-app #gameScreen .player-submit-pasture .player-ewe.is-to-paddock.is-walking .player-ewe-strip {
+    animation-duration: 0.38s;
 }
 
 body.player-app #gameScreen .question-text,
@@ -818,7 +942,8 @@ body.player-app #playerAnswerForm.player-sign {
     padding: 16px 18px 18px;
 }
 
-body.player-app .player-answer-sign .player-answer-hint {
+body.player-app .player-answer-sign .player-answer-hint,
+body.player-app #playerAnswerForm.player-thought-bubble .player-answer-hint {
     color: var(--wood);
     text-shadow: none;
 }
@@ -857,6 +982,10 @@ body.player-app .player-play-stage.is-editing #answerInput {
 body.player-app.keyboard-open #gameScreen .question-container,
 body.player-app.keyboard-open #gameScreen .player-play-stage {
     justify-content: flex-start;
+}
+
+body.player-app.keyboard-open #gameScreen .player-submit-pasture {
+    height: 4.5rem;
 }
 
 body.player-app.keyboard-open #gameScreen .question-text,
@@ -1549,6 +1678,50 @@ body.player-app .success-message {
 body.player-app #joinGameScreen .player-masthead,
 body.player-app #lobbyScreen .player-masthead {
     padding: 8px 56px 4px;
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    body.player-app #gameScreen .question-container {
+        background: none;
+        justify-content: center;
+    }
+
+    body.player-app #gameScreen .player-play-stage {
+        flex-direction: row;
+        align-items: center;
+        padding-bottom: 0;
+        width: 100%;
+        max-width: none;
+        overflow: visible;
+    }
+
+    body.player-app .player-think-stack {
+        flex: 0 0 min(42vw, 300px);
+        width: min(42vw, 300px);
+        padding-top: 22px;
+    }
+
+    body.player-app #playerAnswerForm.player-thought-bubble,
+    body.player-app #playerAnswerForm.player-sign.player-thought-bubble {
+        flex: 0 0 auto;
+        width: 100%;
+        height: auto;
+        padding: 10px 12px 10px;
+        border-radius: 28px;
+    }
+
+    body.player-app #playerAnswerForm.player-thought-bubble .player-answer-hint {
+        display: none;
+    }
+
+    body.player-app #gameScreen .player-submit-pasture {
+        height: 4.35rem;
+        margin-top: -12px;
+    }
+
+    body.player-app #gameScreen .player-submit-pasture .player-ewe {
+        width: clamp(72px, 12vw, 96px);
+    }
 }
 
 @media (max-height: 560px) {

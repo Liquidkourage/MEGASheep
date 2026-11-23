@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=2026-11-22T01-30-00">
-    <link rel="stylesheet" href="player.css?v=2026-11-22T22-41-00">
+    <link rel="stylesheet" href="player.css?v=2026-11-22T22-54-00">
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     <script>
@@ -129,7 +129,6 @@
 
         <!-- Game Screen -->
         <div id="gameScreen" class="screen">
-            <div id="playerSubmitPasture" class="player-pasture player-submit-pasture" aria-hidden="true"></div>
             <div class="game-header">
                 <div class="game-info">
                     <span class="question-counter">R<span id="roundNumber">1</span> · Q<span id="questionNumber">1</span>/<span id="totalQuestions">5</span></span>
@@ -144,15 +143,20 @@
             <div class="question-container">
                 <div class="player-play-stage">
                     <h2 id="questionText" class="question-text"></h2>
-                    <div id="playerAnswerForm" class="answer-form player-sign player-answer-sign" style="display: none;">
-                        <img class="player-sign-art" src="sprites/player-plaque.png?v=2026-11-22T01-30-00" alt="">
-                        <div class="player-sign-face">
-                            <div id="editRequestNotice" class="player-edit-banner" hidden></div>
-                            <label for="answerInput" class="player-answer-label">Your answer</label>
-                            <input type="text" id="answerInput" placeholder="Type your answer" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" inputmode="text" aria-describedby="playerAnswerHint">
-                            <button id="submitAnswerBtn" class="btn btn-primary">Submit answer</button>
-                            <p id="playerAnswerHint" class="player-answer-hint">Rarer correct answers score more.</p>
+                    <div class="player-think-stack">
+                        <p id="playerLockedReadout" class="player-locked-readout" hidden></p>
+                        <div id="playerAnswerForm" class="answer-form player-sign player-answer-sign player-thought-bubble" style="display: none;">
+                            <img class="player-sign-art" src="sprites/player-plaque.png?v=2026-11-22T01-30-00" alt="">
+                            <div class="player-sign-face">
+                                <div id="editRequestNotice" class="player-edit-banner" hidden></div>
+                                <label for="answerInput" class="player-answer-label">Your answer</label>
+                                <input type="text" id="answerInput" placeholder="Type your answer" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" inputmode="text" aria-describedby="playerAnswerHint">
+                                <button id="submitAnswerBtn" class="btn btn-primary">Submit answer</button>
+                                <p id="playerAnswerHint" class="player-answer-hint">Rarer correct answers score more.</p>
+                            </div>
                         </div>
+                        <div class="player-thought-tail" aria-hidden="true"><span></span><span></span><span></span></div>
+                        <div id="playerSubmitPasture" class="player-pasture player-submit-pasture" aria-hidden="true"></div>
                     </div>
                 </div>
                 <div id="playerCommPanel" class="player-comm-panel" hidden>
@@ -401,7 +405,7 @@
     <script src="apply-state.js?v=2026-11-18T21-20-00"></script>
     <script src="answer-match.js?v=2026-11-22T10-45-00"></script>
     <script src="player-submit.js?v=2026-11-22T07-55-00"></script>
-    <script src="script.js?v=2026-11-22T22-41-00"></script>
+    <script src="script.js?v=2026-11-22T22-52-00"></script>
   <!-- Removed sticky player footer -->
 </body>
 </html>
