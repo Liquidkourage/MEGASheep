@@ -1562,17 +1562,20 @@ body.player-app .player-score-card-who {
 
 body.player-app .player-score-rest {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 8px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
     margin: 12px 0 0;
     padding: 10px 2px 2px;
     border-top: 2px solid var(--ink);
 }
 
-body.player-app .player-score-band,
-body.player-app .player-score-band ul {
-    display: contents;
+body.player-app .player-score-band {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    min-width: 0;
 }
 
 body.player-app .player-score-band p {
@@ -1586,8 +1589,14 @@ body.player-app .player-score-band p {
     white-space: nowrap;
 }
 
-body.player-app .player-score-band.is-wrong p {
-    margin-left: 6px;
+body.player-app .player-score-band ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    min-width: 0;
 }
 
 body.player-app .player-score-band li {
