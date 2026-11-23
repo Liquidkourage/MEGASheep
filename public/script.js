@@ -3114,7 +3114,10 @@ function displayQuestionResults() {
     // Update the scoring title to show "Question Results"
     const scoringTitle = document.getElementById('scoringTitle');
     if (scoringTitle) {
-        scoringTitle.textContent = 'The reveal';
+        const perRound = Math.max(1, Number(gameState.questionsPerRound || (gameState.settings && gameState.settings.questionsPerRound) || 5));
+        const questionNumber = (Number(gameState.currentQuestion) || 0) + 1;
+        const roundNumber = Math.max(1, Math.ceil(questionNumber / perRound));
+        scoringTitle.textContent = `Round ${roundNumber} · Q${questionNumber}`;
         console.log('📊 Updated scoring title');
     } else {
         console.log('📊 Scoring title element not found');
@@ -3449,49 +3452,76 @@ function playerBoardPlace(rank) {
     return '';
 }
 
-function playerBoardRowHtml(player, rank, mine, pts) {
+function playerIsMine(player, myName) {
+    const name = String((player && player.name) || '').toLowerCase();
+    if (myName && name === myName) return true;
+    return !!(player && typeof socket !== 'undefined' && socket && player.id === socket.id);
+}
+
+function playerPtsOf(player) {
+    return player && player.total != null ? player.total : playerScoreOf(player);
+}
+
+function playerCrateHtml(player, rank, pts, options) {
+    const extra = options || {};
     const delay = ((rank % 7) * 0.12).toFixed(2);
-    return `<div class="player-board-row ${playerBoardPlace(rank)}${mine ? ' is-you' : ''}">
-        <figure class="player-ewe player-board-ewe" data-coat="${playerCoatOf(player.name)}" style="--idle:${delay}s" aria-hidden="true">
+    const classes = [
+        extra.row ? 'player-board-row' : 'player-podium-spot',
+        playerBoardPlace(rank),
+        extra.mine ? 'is-you' : '',
+        extra.hero ? 'is-hero' : ''
+    ].filter(Boolean).join(' ');
+    const meta = extra.meta
+        ? `<p class="player-crate-meta">${escapePlayer(extra.meta)}</p>`
+        : '';
+    return `<div class="${classes}">
+        <figure class="player-ewe player-board-ewe${extra.hero ? ' is-hero' : ''}" data-coat="${playerCoatOf(player.name)}" style="--idle:${delay}s" aria-hidden="true">
             <span class="player-ewe-art"><span class="player-ewe-strip"></span></span>
         </figure>
-        <p class="player-board-who"><span class="player-board-rank">#${rank}</span> ${escapePlayer(player.name || 'Sheep')}</p>
-        <b class="player-board-pts">${pts}</b>
+        <div class="player-crate">
+            <span class="player-crate-place">${rank}</span>
+            <p class="player-crate-name">${escapePlayer(player.name || 'Sheep')}</p>
+            ${meta}
+            <b class="player-crate-score">${pts}</b>
+        </div>
     </div>`;
 }
 
 function playerBoardHtml(ranked, extras) {
     const extra = extras || {};
+    const list = Array.isArray(ranked) ? ranked : [];
     const myName = String(extra.myName || sessionStorage.getItem('playerName') || currentPlayerName || '').toLowerCase();
-    const you = ranked.find((player, index) => {
-        const name = String(player.name || '').toLowerCase();
-        return name === myName || player.id === (typeof socket !== 'undefined' && socket && socket.id);
-    });
-    const youRank = you ? ranked.indexOf(you) + 1 : 0;
-    const youPts = you ? (you.total != null ? you.total : playerScoreOf(you)) : 0;
-    const youCard = you ? `
-        <section class="player-board-you ${playerBoardPlace(youRank)}">
-            <figure class="player-ewe player-board-ewe is-hero" data-coat="${playerCoatOf(you.name)}" aria-hidden="true">
-                <span class="player-ewe-art"><span class="player-ewe-strip"></span></span>
-            </figure>
-            <div class="player-board-you-copy">
-                <p class="player-board-you-rank">#${youRank}</p>
-                <p class="player-board-you-name">${escapePlayer(you.name || 'Sheep')}</p>
-                <p class="player-board-you-meta">${extra.youMeta || `${youPts} total`}</p>
-            </div>
-            <b class="player-board-pts">${youPts}</b>
-        </section>` : '';
-    const rows = ranked.map((player, index) => {
-        const rank = index + 1;
-        const mine = String(player.name || '').toLowerCase() === myName || player.id === (typeof socket !== 'undefined' && socket && socket.id);
-        const pts = player.total != null ? player.total : playerScoreOf(player);
-        return playerBoardRowHtml(player, rank, mine, pts);
-    }).join('');
+    const you = list.find((player) => playerIsMine(player, myName));
+    const youRank = you ? list.indexOf(you) + 1 : 0;
+    const youPts = you ? playerPtsOf(you) : 0;
+    const podium = `<div class="player-podium">${[
+        { player: list[1], place: 2 },
+        { player: list[0], place: 1 },
+        { player: list[2], place: 3 }
+    ].map(({ player, place }) => {
+        if (!player) return `<div class="player-podium-spot is-${place}"></div>`;
+        return playerCrateHtml(player, place, playerPtsOf(player), {
+            mine: playerIsMine(player, myName),
+            hero: place === 1
+        });
+    }).join('')}</div>`;
+    const youCard = (you && youRank > 3)
+        ? `<section class="player-board-you">${playerCrateHtml(you, youRank, youPts, {
+            mine: true,
+            hero: true,
+            meta: extra.youMeta
+        })}</section>`
+        : '';
+    const rows = list.map((player, index) => playerCrateHtml(player, index + 1, playerPtsOf(player), {
+        row: true,
+        mine: playerIsMine(player, myName)
+    })).join('');
     const kind = extra.kind ? ` is-${extra.kind}` : '';
     const title = extra.title
         ? `<h3 class="player-board-title">${escapePlayer(extra.title)}</h3>`
         : '';
     return `<div class="player-board${kind}">
+        ${podium}
         ${youCard}
         ${title}
         <div class="player-board-list">${rows}</div>
@@ -3529,7 +3559,7 @@ function displayRoundResults() {
     const lastRound = currentRoundStandingsFromState(gameState);
     if (scoringTitle) {
         const roundNum = lastRound?.roundNumber || Math.ceil(((gameState.currentQuestion || 0) + 1) / (gameState.questionsPerRound || 5));
-        scoringTitle.textContent = `Round ${roundNum} Results`;
+        scoringTitle.textContent = `Round ${roundNum}`;
     }
     
     const answersList = document.getElementById('answersList');
