@@ -13,6 +13,7 @@
         let selectedGradeChip = null;
         let lastRenderedQuestionIndex = null;
         let gradingDraftEpoch = '';
+        let rescoreQuestionIndex = null;
         const lockstepCtx = { lastSeq: -1, lastEpoch: '' };
 
         function getCurrentQuestionIndex() {
@@ -2009,7 +2010,8 @@
         function applyCategorization() {
             if (!currentGame) return;
             const phase = currentGame.gameState;
-            if (phase && phase !== 'grading') {
+            const rescoring = rescoreQuestionIndex != null;
+            if (!rescoring && phase && phase !== 'grading') {
                 showToast('Wait until the question ends before completing grading', 'error');
                 return;
             }
@@ -2082,6 +2084,14 @@
             }
 
             try {
+                if (rescoring) {
+                    socket.emit('rescoreQuestion', {
+                        gameCode: currentGame.gameCode,
+                        questionIndex: rescoreQuestionIndex,
+                        categorizedAnswers: categorization
+                    });
+                    console.log('✅ Successfully emitted rescoreQuestion');
+                } else {
                 const LS = window.MEGASheepLockstep;
                 const epoch = currentGame.epoch || (LS && LS.gameEpoch
                     ? LS.gameEpoch(currentGame.gameCode, getCurrentQuestionIndex(), currentGame.gameState)
@@ -2094,6 +2104,7 @@
                     forceComplete
                 });
                 console.log('✅ Successfully emitted completeGrading');
+                }
             } catch (error) {
                 console.error('❌ Error emitting completeGrading:', error);
                 alert('Error submitting grading: ' + error.message);
@@ -3275,9 +3286,38 @@
             try { bindLiveAnswerStream(); } catch (_) {}
         },
         apply: function (state, result) {
+            if (rescoreQuestionIndex != null) return;
             applyEmbeddedState(state, result || { applied: true, epochChanged: true });
         },
+        applyRescore: function (state, log) {
+            if (!state || !log) return;
+            rescoreQuestionIndex = Number(log.questionIndex);
+            const players = Array.isArray(state.players) ? state.players : [];
+            const answersBySocket = {};
+            Object.entries(log.answersByStableId || {}).forEach(([stable, answer]) => {
+                const player = players.find((p) => String(p.stableId || p.id) === String(stable));
+                answersBySocket[player && player.id ? player.id : ('ghost_' + stable)] = answer;
+            });
+            const question = (Array.isArray(state.questions) ? state.questions[rescoreQuestionIndex] : null) || {
+                prompt: log.prompt,
+                correct_answers: log.correct_answers
+            };
+            gradingDraftEpoch = '';
+            lastRenderedQuestionIndex = null;
+            applyEmbeddedState(Object.assign({}, state, {
+                gameState: 'grading',
+                currentQuestion: rescoreQuestionIndex,
+                currentQuestionIndex: rescoreQuestionIndex,
+                currentQuestionData: question,
+                currentAnswerGroups: Array.isArray(log.answerGroups) ? log.answerGroups.slice() : [],
+                categorizationData: log.categorization,
+                answersBySocket,
+                pendingEdits: [],
+                epoch: 'rescore:' + state.gameCode + ':' + rescoreQuestionIndex
+            }), { applied: true, epochChanged: true });
+        },
         discard: function () {
+            rescoreQuestionIndex = null;
             try { discardGradingDraft(); } catch (_) {}
         },
         handleAnswer: function (playerName, answer, isClarification) {

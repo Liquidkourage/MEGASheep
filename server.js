@@ -189,6 +189,103 @@ function normalizeQuestions(list) {
     })).filter(q => q.prompt);
 }
 
+function cloneJson(value, fallback) {
+    try {
+        return JSON.parse(JSON.stringify(value));
+    } catch (_) {
+        return fallback;
+    }
+}
+
+function showHasStarted(game) {
+    return !!(game && game.gameState && game.gameState !== 'waiting');
+}
+
+function frozenThroughIndex(game) {
+    if (!showHasStarted(game)) return -1;
+    return Number(game.currentQuestion) || 0;
+}
+
+function isUpcomingQuestionIndex(game, index) {
+    const i = Number(index);
+    if (!Number.isInteger(i) || i < 0) return false;
+    return i > frozenThroughIndex(game);
+}
+
+function customShowQuestionId() {
+    return `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function reindexShowQuestions(list) {
+    return (Array.isArray(list) ? list : []).map((q, i) => ({
+        ...q,
+        question_order: i + 1
+    }));
+}
+
+function frozenPrefixMatches(game, incoming) {
+    const through = frozenThroughIndex(game);
+    if (through < 0) return true;
+    const current = Array.isArray(game.questions) ? game.questions : [];
+    if (!Array.isArray(incoming) || incoming.length < through + 1) return false;
+    for (let i = 0; i <= through; i += 1) {
+        const a = current[i] || {};
+        const b = incoming[i] || {};
+        if (String(a.id) !== String(b.id) || String(a.prompt || '') !== String(b.prompt || '')) return false;
+    }
+    return true;
+}
+
+function pointsByStableFromCurrent(game) {
+    const out = {};
+    for (const [sid, pts] of (game.pointsForCurrentQuestion || new Map()).entries()) {
+        const player = game.players.get(sid);
+        const stable = player?.stableId || sid;
+        out[stable] = (Number(out[stable]) || 0) + (Number(pts) || 0);
+    }
+    return out;
+}
+
+function applyStableScoreDelta(game, pointsByStableId, sign) {
+    const dir = Number(sign) || 0;
+    if (!dir) return;
+    for (const [stableId, pts] of Object.entries(pointsByStableId || {})) {
+        const add = dir * (Number(pts) || 0);
+        const cur = game.scoresByStableId.get(stableId) || 0;
+        game.scoresByStableId.set(stableId, Math.max(0, cur + add));
+        for (const [sid, player] of game.players.entries()) {
+            if ((player.stableId || player.id) === stableId) {
+                const next = Math.max(0, (game.scores.get(sid) || 0) + add);
+                game.scores.set(sid, next);
+                player.score = next;
+            }
+        }
+    }
+}
+
+function answersMapFromStable(game, answersByStableId) {
+    const map = new Map();
+    for (const [stable, answer] of Object.entries(answersByStableId || {})) {
+        let sid = game.socketByStableId && game.socketByStableId.get(stable);
+        if (!sid) {
+            sid = `ghost_${stable}`;
+            if (!game.players.has(sid)) {
+                game.players.set(sid, {
+                    id: sid,
+                    stableId: stable,
+                    name: 'Unknown',
+                    score: game.scoresByStableId.get(stable) || 0,
+                    answers: [],
+                    isVirtual: false
+                });
+                game.socketByStableId.set(stable, sid);
+            }
+        }
+        map.set(sid, answer);
+    }
+    return map;
+}
+
 async function fetchDatabaseQuestions() {
     const fromPg = await fetchPostgresQuestions();
     if (fromPg.length) return fromPg;
@@ -364,6 +461,7 @@ class Game {
         this.currentQuestionScored = false; // Track if current question has been scored
         this.answersNeedingEdit = new Map(); // socketId -> { reason, requestedAt, originalAnswer }
         this.roundAnswerGroups = []; // CRITICAL FIX: Initialize roundAnswerGroups array
+        this.questionLog = [];
         // ONE source of truth: this.answers (socketId -> answer)
         this.socketByStableId = new Map();
         this.hostToken = null;
@@ -901,7 +999,35 @@ class Game {
     }
     
     this.currentQuestionScored = true;
+    this.recordQuestionLog();
     logger.debug(`✅ Current question points applied to cumulative scores`);
+  }
+
+  recordQuestionLog() {
+    try {
+        const q = currentGameQuestion(this);
+        const answersByStableId = {};
+        for (const [sid, answer] of (this.answers || new Map()).entries()) {
+            const player = this.players.get(sid);
+            const stable = player?.stableId || sid;
+            answersByStableId[stable] = answer;
+        }
+        const entry = {
+            questionIndex: this.currentQuestion ?? 0,
+            prompt: q?.prompt || '',
+            correct_answers: Array.isArray(q?.correct_answers) ? [...q.correct_answers] : [],
+            answersByStableId,
+            answerGroups: cloneJson(this.currentAnswerGroups || [], []),
+            categorization: cloneJson(this.categorizationData, null),
+            pointsByStableId: pointsByStableFromCurrent(this)
+        };
+        if (!Array.isArray(this.questionLog)) this.questionLog = [];
+        const existing = this.questionLog.findIndex((row) => Number(row.questionIndex) === Number(entry.questionIndex));
+        if (existing >= 0) this.questionLog[existing] = entry;
+        else this.questionLog.push(entry);
+    } catch (e) {
+        logger.warn('Failed to record question log:', e?.message);
+    }
   }
 
   resetQuestionScoring() {
@@ -1025,6 +1151,8 @@ class Game {
         gameState: this.gameState || 'waiting',
         scores: this.scores ? Object.fromEntries(this.scores) : {},
         questions: this.questions || [],
+        questionLog: Array.isArray(this.questionLog) ? this.questionLog : [],
+        currentQuestionScored: !!this.currentQuestionScored,
               currentAnswerGroups: this.currentAnswerGroups || [],
               categorizationData: this.categorizationData || null,
         timeLeft: this.timeLeft || 0,
@@ -1540,6 +1668,7 @@ function serializeGame(game) {
       isTestMode: !!game.isTestMode,
       seq: game.seq || 0,
       roundHistory: game.roundHistory,
+      questionLog: Array.isArray(game.questionLog) ? game.questionLog : [],
       settings: game.settings,
       createdAt: game.createdAt
     };
@@ -1630,6 +1759,7 @@ function restoreGameFromSnapshot(snap) {
     game.isTestMode = !!s.isTestMode;
     game.seq = Number(s.seq) || 0;
     game.roundHistory = Array.isArray(s.roundHistory) ? s.roundHistory : [];
+    game.questionLog = Array.isArray(s.questionLog) ? s.questionLog : [];
     game.settings = s.settings || game.settings;
     game.createdAt = s.createdAt || Date.now();
     game.hostToken = s.hostToken || game.hostToken;
@@ -3552,12 +3682,247 @@ io.on('connection', (socket) => {
             const bank = await getQuestionBank(game.settings && game.settings.questionSet === 'demo');
             questionsToLoad = bank.questions;
         }
-        game.questions = questionsToLoad;
-        io.to(data.gameCode).emit('questionsLoaded', {
-            gameCode: data.gameCode,
-            questionsCount: questionsToLoad.length,
-            questions: questionsToLoad
-        });
+        if (!frozenPrefixMatches(game, questionsToLoad)) {
+            socket.emit('gameError', { message: 'Cannot replace questions that have already been played.' });
+            return;
+        }
+        game.questions = reindexShowQuestions(questionsToLoad);
+        broadcastState(game, 'questionsLoaded');
+    });
+
+    socket.on('setShowQuestions', (data) => {
+        if (!data || !data.gameCode || !canControlGame(data.gameCode)) return;
+        const game = activeGames.get(data.gameCode);
+        if (!game) {
+            socket.emit('gameError', { message: 'Game not found' });
+            return;
+        }
+        const incoming = normalizeQuestions(data.questions);
+        if (!incoming.length) {
+            if (showHasStarted(game)) {
+                socket.emit('gameError', { message: 'The show already has questions in play.' });
+                return;
+            }
+            game.questions = [];
+            broadcastState(game, 'questionsLoaded');
+            return;
+        }
+        if (!frozenPrefixMatches(game, incoming)) {
+            socket.emit('gameError', { message: 'Cannot move or delete questions that have already been played.' });
+            return;
+        }
+        game.questions = reindexShowQuestions(incoming);
+        broadcastState(game, 'questionsLoaded');
+    });
+
+    socket.on('updateShowQuestion', (data) => {
+        if (!data || !data.gameCode || !canControlGame(data.gameCode)) return;
+        const game = activeGames.get(data.gameCode);
+        if (!game) {
+            socket.emit('gameError', { message: 'Game not found' });
+            return;
+        }
+        const index = Number(data.index);
+        const current = Array.isArray(game.questions) ? game.questions[index] : null;
+        if (!current) {
+            socket.emit('gameError', { message: 'That question is not in the rundown.' });
+            return;
+        }
+        const next = normalizeQuestions([{
+            ...current,
+            prompt: data.prompt != null ? data.prompt : current.prompt,
+            correct_answers: data.correct_answers != null ? data.correct_answers : current.correct_answers
+        }])[0];
+        if (!next) {
+            socket.emit('gameError', { message: 'Question needs a prompt.' });
+            return;
+        }
+        next.id = current.id;
+        next.round = current.round || next.round;
+        next.question_order = current.question_order || index + 1;
+        game.questions[index] = next;
+        broadcastState(game, 'showQuestionUpdated');
+    });
+
+    socket.on('addShowQuestion', (data) => {
+        if (!data || !data.gameCode || !canControlGame(data.gameCode)) return;
+        const game = activeGames.get(data.gameCode);
+        if (!game) {
+            socket.emit('gameError', { message: 'Game not found' });
+            return;
+        }
+        const incoming = data.question && typeof data.question === 'object'
+            ? data.question
+            : { prompt: data.prompt, correct_answers: data.correct_answers };
+        const made = normalizeQuestions([{
+            ...incoming,
+            id: incoming.id != null ? incoming.id : customShowQuestionId()
+        }])[0];
+        if (!made) {
+            socket.emit('gameError', { message: 'Custom questions need a prompt.' });
+            return;
+        }
+        if (!Array.isArray(game.questions)) game.questions = [];
+        const afterIndex = data.afterIndex == null ? game.questions.length - 1 : Number(data.afterIndex);
+        const insertAt = Number.isInteger(afterIndex) ? afterIndex + 1 : game.questions.length;
+        const floor = frozenThroughIndex(game) + 1;
+        if (insertAt < floor) {
+            socket.emit('gameError', { message: 'Cannot insert a question into the part of the show already played.' });
+            return;
+        }
+        const at = Math.max(floor, Math.min(game.questions.length, insertAt));
+        game.questions.splice(at, 0, made);
+        game.questions = reindexShowQuestions(game.questions);
+        broadcastState(game, 'questionsLoaded');
+    });
+
+    socket.on('reorderShowQuestions', (data) => {
+        if (!data || !data.gameCode || !canControlGame(data.gameCode)) return;
+        const game = activeGames.get(data.gameCode);
+        if (!game) {
+            socket.emit('gameError', { message: 'Game not found' });
+            return;
+        }
+        const fromIndex = Number(data.fromIndex);
+        const toIndex = Number(data.toIndex);
+        if (!isUpcomingQuestionIndex(game, fromIndex) || !isUpcomingQuestionIndex(game, toIndex)) {
+            socket.emit('gameError', { message: 'Only upcoming questions can be reordered.' });
+            return;
+        }
+        const list = Array.isArray(game.questions) ? game.questions.slice() : [];
+        if (fromIndex >= list.length || toIndex >= list.length) {
+            socket.emit('gameError', { message: 'That question is not in the rundown.' });
+            return;
+        }
+        const [row] = list.splice(fromIndex, 1);
+        list.splice(toIndex, 0, row);
+        game.questions = reindexShowQuestions(list);
+        broadcastState(game, 'questionsLoaded');
+    });
+
+    socket.on('skipShowQuestion', (data) => {
+        if (!data || !data.gameCode || !canControlGame(data.gameCode)) return;
+        const game = activeGames.get(data.gameCode);
+        if (!game) {
+            socket.emit('gameError', { message: 'Game not found' });
+            return;
+        }
+        const index = Number(data.index);
+        if (!isUpcomingQuestionIndex(game, index)) {
+            socket.emit('gameError', { message: 'Only upcoming questions can be skipped.' });
+            return;
+        }
+        const list = Array.isArray(game.questions) ? game.questions.slice() : [];
+        if (index >= list.length) {
+            socket.emit('gameError', { message: 'That question is not in the rundown.' });
+            return;
+        }
+        list.splice(index, 1);
+        game.questions = reindexShowQuestions(list);
+        broadcastState(game, 'questionsLoaded');
+    });
+
+    socket.on('playQuestionNext', (data) => {
+        if (!data || !data.gameCode || !canControlGame(data.gameCode)) return;
+        const game = activeGames.get(data.gameCode);
+        if (!game) {
+            socket.emit('gameError', { message: 'Game not found' });
+            return;
+        }
+        const index = Number(data.index);
+        if (!isUpcomingQuestionIndex(game, index)) {
+            socket.emit('gameError', { message: 'Only upcoming questions can be moved next.' });
+            return;
+        }
+        const list = Array.isArray(game.questions) ? game.questions.slice() : [];
+        if (index >= list.length) {
+            socket.emit('gameError', { message: 'That question is not in the rundown.' });
+            return;
+        }
+        const [row] = list.splice(index, 1);
+        const dest = frozenThroughIndex(game) + 1;
+        const destClamped = Math.max(0, Math.min(list.length, dest));
+        list.splice(destClamped, 0, row);
+        game.questions = reindexShowQuestions(list);
+        broadcastState(game, 'questionsLoaded');
+    });
+
+    socket.on('rescoreQuestion', (data) => {
+        if (!data || !data.gameCode || !canControlGame(data.gameCode)) return;
+        const game = activeGames.get(data.gameCode);
+        if (!game) {
+            socket.emit('gameError', { message: 'Game not found' });
+            return;
+        }
+        const phase = game.gameState;
+        if (phase === 'playing' || phase === 'grading') {
+            socket.emit('gameError', { message: 'Finish the live question before re-grading a former one.' });
+            return;
+        }
+        const questionIndex = Number(data.questionIndex);
+        if (!Number.isInteger(questionIndex) || questionIndex < 0) {
+            socket.emit('gameError', { message: 'Missing question to rescore.' });
+            return;
+        }
+        if (!Array.isArray(game.questionLog)) game.questionLog = [];
+        const log = game.questionLog.find((row) => Number(row.questionIndex) === questionIndex);
+        if (!log) {
+            socket.emit('gameError', { message: 'No scoring snapshot for that question.' });
+            return;
+        }
+        const categorizedAnswers = data.categorizedAnswers || {};
+        const normalized = {
+            correctAnswerBuckets: Array.isArray(categorizedAnswers.correctAnswerBuckets) ? [...categorizedAnswers.correctAnswerBuckets] : [],
+            wrong: Array.isArray(categorizedAnswers.wrong) ? [...categorizedAnswers.wrong] : [],
+            uncategorized: Array.isArray(categorizedAnswers.uncategorized) ? [...categorizedAnswers.uncategorized] : []
+        };
+        const saved = {
+            answers: new Map(game.answers || []),
+            groups: cloneJson(game.currentAnswerGroups || [], []),
+            categorization: cloneJson(game.categorizationData, null),
+            points: new Map(game.pointsForCurrentQuestion || []),
+            scored: !!game.currentQuestionScored,
+            currentQuestion: game.currentQuestion
+        };
+        try {
+            game.currentQuestion = questionIndex;
+            game.answers = answersMapFromStable(game, log.answersByStableId);
+            game.categorizationData = normalized;
+            game.pointsForCurrentQuestion = new Map();
+            game.currentQuestionScored = false;
+            game.calculateScores();
+            const newPoints = pointsByStableFromCurrent(game);
+            applyStableScoreDelta(game, log.pointsByStableId, -1);
+            applyStableScoreDelta(game, newPoints, 1);
+            const logIndex = game.questionLog.findIndex((row) => Number(row.questionIndex) === questionIndex);
+            const updated = {
+                ...log,
+                answerGroups: cloneJson(game.currentAnswerGroups || [], []),
+                categorization: cloneJson(normalized, null),
+                pointsByStableId: newPoints
+            };
+            if (logIndex >= 0) game.questionLog[logIndex] = updated;
+            else game.questionLog.push(updated);
+            const keepGroups = Number(saved.currentQuestion) === questionIndex;
+            game.currentQuestion = saved.currentQuestion;
+            game.answers = saved.answers;
+            game.categorizationData = keepGroups ? normalized : saved.categorization;
+            game.pointsForCurrentQuestion = saved.points;
+            game.currentQuestionScored = saved.scored;
+            if (!keepGroups) game.currentAnswerGroups = saved.groups;
+        } catch (err) {
+            game.currentQuestion = saved.currentQuestion;
+            game.answers = saved.answers;
+            game.currentAnswerGroups = saved.groups;
+            game.categorizationData = saved.categorization;
+            game.pointsForCurrentQuestion = saved.points;
+            game.currentQuestionScored = saved.scored;
+            console.error('rescoreQuestion failed:', err);
+            socket.emit('gameError', { message: 'Could not rescore that question.' });
+            return;
+        }
+        try { persistSnapshot(game, 'question_rescored'); } catch (_) {}
+        broadcastState(game, 'questionRescored');
     });
 
     // Player leave game handler for manual disconnect

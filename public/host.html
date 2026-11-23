@@ -409,15 +409,85 @@
             backdrop-filter: blur(10px);
         }
 
-        /* Question Picker */
-        .qp-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
-        .qp-toolbar input { flex:1; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.35); color:#fff; }
-        .qp-list { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:10px; max-height:min(64vh, 720px); overflow-y:auto; }
-        .qp-item { background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px; cursor:pointer; transition: background .15s ease, border-color .15s ease; }
-        .qp-item:hover { background: rgba(255,255,255,0.09); }
-        .qp-item.selected { border-color:#28a745; box-shadow: inset 0 0 0 2px rgba(40,167,69,0.35); }
-        .qp-item h4 { margin:0 0 6px 0; font-size:14px; color:#fff; }
-        .qp-item .qp-meta { font-size:12px; color:#bbb; }
+        /* Question rundown */
+        #panelQuestions:not([hidden]) {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            margin-bottom: 0;
+        }
+        .qp-show {
+            display: grid;
+            grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.15fr);
+            gap: 16px;
+            min-height: 0;
+            flex: 1;
+        }
+        .qp-show .dashboard-panel {
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .qp-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap: wrap; }
+        .qp-toolbar[hidden] { display: none !important; }
+        .qp-toolbar input, .qp-inspector textarea, .qp-inspector input[type="text"] {
+            flex:1;
+            padding:10px;
+            border-radius:8px;
+            border:1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.35);
+            color:#fff;
+            font: inherit;
+        }
+        .qp-rows, .qp-bank-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+        }
+        .qp-row, .qp-bank-item {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            padding: 10px 12px;
+            cursor: pointer;
+            color: #fff;
+        }
+        .qp-row { display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: start; }
+        .qp-row:hover, .qp-bank-item:hover { background: rgba(255,255,255,0.09); }
+        .qp-row.is-selected, .qp-bank-item.is-selected { border-color: #28a745; box-shadow: inset 0 0 0 2px rgba(40,167,69,0.35); }
+        .qp-row.is-live { border-color: #ffc107; }
+        .qp-row.is-scored { opacity: 0.9; }
+        .qp-row h4, .qp-bank-item h4 { margin: 0 0 4px 0; font-size: 14px; color: #fff; }
+        .qp-meta { font-size: 12px; color: #bbb; }
+        .qp-status {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #9ec5ff;
+            white-space: nowrap;
+        }
+        .qp-row.is-live .qp-status { color: #ffc107; }
+        .qp-row.is-scored .qp-status { color: #8fd19e; }
+        .qp-handle {
+            color: #8899aa;
+            cursor: grab;
+            font-size: 16px;
+            line-height: 1.2;
+            user-select: none;
+        }
+        .qp-handle.is-off { visibility: hidden; cursor: default; }
+        .qp-inspector-body { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
+        .qp-inspector label { font-size: 12px; color: #bbb; font-weight: 700; }
+        .qp-inspector textarea { min-height: 88px; resize: vertical; width: 100%; }
+        .qp-inspector textarea#qpInspectAnswers { min-height: 140px; }
+        .qp-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        .qp-notice { font-size: 13px; color: #ffd56a; min-height: 1.2em; }
+        .qp-empty { color: #bbb; padding: 18px 8px; }
 
         .panel-header {
             display: flex;
@@ -1507,19 +1577,42 @@
             </section>
 
             <section id="panelQuestions" class="tab-panel" data-host-panel="questions" hidden>
-                <div class="dashboard-panel" id="questionPickerPanel">
-                    <div class="panel-header">
-                        <h3>🗂️ Question Picker <span id="qpCount" style="font-size:.8em;color:#bbb;margin-left:6px;">0 selected</span></h3>
-                        <div>
-                            <span id="qpSource" style="font-size:.8em;color:#bbb;margin-right:8px;">—</span>
-                            <button id="qpLoadBtn" class="control-btn secondary">Load Questions</button>
-                            <button id="qpUseBtn" class="control-btn success" disabled>Use Selected (0)</button>
+                <div class="qp-show">
+                    <div class="dashboard-panel" id="questionPickerPanel">
+                        <div class="panel-header">
+                            <h3 id="qpListTitle">Tonight's rundown <span id="qpCount" style="font-size:.8em;color:#bbb;margin-left:6px;">0 questions</span></h3>
+                            <div class="qp-actions">
+                                <span id="qpSource" style="font-size:.8em;color:#bbb;">—</span>
+                                <button id="qpBankBtn" class="control-btn secondary" type="button">Add from bank</button>
+                                <button id="qpCustomBtn" class="control-btn secondary" type="button">Add custom</button>
+                            </div>
+                        </div>
+                        <div class="qp-toolbar" id="qpBankToolbar" hidden>
+                            <input id="qpSearch" placeholder="Search the question bank..." />
+                            <button id="qpBankBackBtn" class="control-btn secondary" type="button">Back to rundown</button>
+                        </div>
+                        <p id="qpNotice" class="qp-notice"></p>
+                        <div id="qpList" class="qp-rows"></div>
+                    </div>
+                    <div class="dashboard-panel qp-inspector" id="questionInspectorPanel">
+                        <div class="panel-header">
+                            <h3 id="qpInspectTitle">Question</h3>
+                        </div>
+                        <div class="qp-inspector-body">
+                            <label for="qpInspectPrompt">Prompt</label>
+                            <textarea id="qpInspectPrompt" placeholder="Question players will see"></textarea>
+                            <label for="qpInspectAnswers">Expected answers (one per line)</label>
+                            <textarea id="qpInspectAnswers" placeholder="Pizza&#10;Pasta"></textarea>
+                            <div class="qp-actions">
+                                <button id="qpSaveBtn" class="control-btn success" type="button">Save for this show</button>
+                                <button id="qpPlayNextBtn" class="control-btn secondary" type="button">Play next</button>
+                                <button id="qpSkipBtn" class="control-btn warning" type="button">Skip</button>
+                                <button id="qpRescoreBtn" class="control-btn secondary" type="button">Re-grade</button>
+                                <button id="qpAddBankBtn" class="control-btn success" type="button" hidden>Add to rundown</button>
+                                <button id="qpAddCustomSaveBtn" class="control-btn success" type="button" hidden>Add custom question</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="qp-toolbar">
-                        <input id="qpSearch" placeholder="Search questions..." />
-                    </div>
-                    <div id="qpList" class="qp-list"></div>
                 </div>
             </section>
 
@@ -1682,14 +1775,18 @@
 
     <script>window.MEGASHEEP_GRADING_EMBEDDED = true;</script>
     <script src="answer-match.js?v=2026-11-22T10-45-00"></script>
-    <script src="grading-board.js?v=2026-11-22T10-45-00"></script>
+    <script src="grading-board.js?v=2026-11-23T20-00-00"></script>
     <script>
         // Socket.IO connection
         let socket = null;
         let currentGame = null;
         let gameState = 'waiting'; // waiting, playing, scoring, finished
         let qpAll = [];
-        let qpSelectedIds = new Set();
+        let qpView = 'rundown';
+        let qpSelectedIndex = 0;
+        let qpBankPreviewId = null;
+        let qpCustomMode = false;
+        let hostRescoreIndex = null;
         let creatingNewGame = false;
         let lastOpenedGradingQuestion = null;
         let lastAutoGradeEpoch = '';
@@ -1761,6 +1858,10 @@
                 try { updatePlayerListWithResponses(); } catch (_) {}
 
                 const phase = state.gameState;
+                try { renderRundown(); } catch (_) {}
+                if (result.epochChanged && (phase === 'playing' || phase === 'grading')) {
+                    hostRescoreIndex = null;
+                }
                 if (result.epochChanged) {
                     if (phase !== 'grading') lastOpenedGradingQuestion = null;
                     if (phase !== 'scoring' && phase !== 'roundComplete' && phase !== 'overallLeaderboard') {
@@ -1771,7 +1872,7 @@
                     }
                 }
 
-                if (phase === 'scoring' || phase === 'roundComplete' || phase === 'overallLeaderboard') {
+                if (source !== 'questionRescored' && hostRescoreIndex == null && (phase === 'scoring' || phase === 'roundComplete' || phase === 'overallLeaderboard')) {
                     lastAutoGradeEpoch = '';
                     try { switchHostTab('results'); } catch (_) {}
                 } else if (phase === 'playing' || phase === 'grading') {
@@ -1913,14 +2014,15 @@
                     lockstepCtx.lastEpoch = '';
                     lockstepCtx.lastGameCode = '';
                     try { window._answersByName = {}; window._questionHistory = []; } catch (_) {}
-                    qpSelectedIds = new Set();
+                    qpSelectedIndex = 0;
+                    qpBankPreviewId = null;
+                    qpCustomMode = false;
+                    qpView = 'rundown';
+                    hostRescoreIndex = null;
                     creatingNewGame = false;
-                    saveQpSel();
-                } else {
-                    restoreQpSel();
                 }
                 applyHostState(data, 'gameCreated');
-                renderQp();
+                qpLoad();
                 emitGameSettings();
                 qpLoad();
                 const code = currentGame && currentGame.gameCode;
@@ -1967,6 +2069,13 @@
             });
             
             socket.on('gameStarted', (data) => applyHostState(data, 'gameStarted'));
+            socket.on('questionRescored', (data) => {
+                applyHostState(data, 'questionRescored');
+                hostRescoreIndex = null;
+                try { window.MEGASheepGrading && window.MEGASheepGrading.discard(); } catch (_) {}
+                try { switchHostTab('questions'); } catch (_) {}
+                setQpNotice('Scores updated for that question. The TV stayed on the current scene.');
+            });
             
             socket.on('gameEnded', (data) => {
                 gameState = 'finished';
@@ -2178,6 +2287,10 @@
                 panel.hidden = !match;
             });
             placeGradingBoard(tab);
+            if (tab === 'questions') {
+                if (!qpAll.length) qpLoad();
+                renderRundown();
+            }
         }
 
         function placeGradingBoard(tab) {
@@ -2209,6 +2322,18 @@
             const idle = document.getElementById('gradeIdleNote');
             const board = document.getElementById('gradingInterface');
             const phase = state && state.gameState;
+            if (hostRescoreIndex != null && phase !== 'playing' && phase !== 'grading') {
+                if (idle) idle.hidden = true;
+                if (board) board.style.display = 'block';
+                updateCompleteGradingButton('grading');
+                const btn = document.getElementById('applyCategorizationBtn');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Rescore question';
+                    btn.title = 'Apply this sorting to the former question without changing the TV scene.';
+                }
+                return;
+            }
             if (phase === 'playing' || phase === 'grading') {
                 if (idle) idle.hidden = true;
                 if (board) board.style.display = 'block';
@@ -2739,7 +2864,6 @@
                 if (data.status === 'success') {
                     // Store game info
                     saveHostSession(data.gameCode, data.hostToken);
-                    saveQpSel();
                     
                     // Join the game room via socket
                     socket.emit('createGame', { gameCode: data.gameCode });
@@ -3032,76 +3156,298 @@
             });
         }
 
+        function setQpNotice(message) {
+            const el = document.getElementById('qpNotice');
+            if (el) el.textContent = message || '';
+        }
+
+        function showQuestions() {
+            return Array.isArray(currentGame && currentGame.questions) ? currentGame.questions : [];
+        }
+
+        function qpPhaseStarted() {
+            const phase = hostPhase();
+            return phase && phase !== 'waiting';
+        }
+
+        function qpFrozenThrough() {
+            if (!qpPhaseStarted()) return -1;
+            return Number(currentGame && currentGame.currentQuestion) || 0;
+        }
+
+        function qpQuestionStatus(index) {
+            const questions = showQuestions();
+            if (!questions[index]) return 'upcoming';
+            const log = Array.isArray(currentGame && currentGame.questionLog) ? currentGame.questionLog : [];
+            if (log.some((row) => Number(row.questionIndex) === index)) return 'scored';
+            if (!qpPhaseStarted()) return 'upcoming';
+            const current = Number(currentGame && currentGame.currentQuestion) || 0;
+            const phase = hostPhase();
+            if (index < current) return 'scored';
+            if (index === current) {
+                if (phase === 'playing' || phase === 'grading') return 'live';
+                if (currentGame && currentGame.currentQuestionScored) return 'scored';
+                if (phase === 'scoring' || phase === 'roundComplete' || phase === 'overallLeaderboard' || phase === 'finished') return 'scored';
+                return 'live';
+            }
+            return 'upcoming';
+        }
+
+        function qpNeedGame() {
+            if (currentGame && currentGame.gameCode) return true;
+            setQpNotice('Create or resume a game first.');
+            return false;
+        }
+
+        function answersText(question) {
+            return (Array.isArray(question && question.correct_answers) ? question.correct_answers : []).join('\n');
+        }
+
+        function parseAnswers(text) {
+            return String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+        }
+
         async function qpLoad() {
             try {
-                const btn = document.getElementById('qpLoadBtn');
                 const sourceEl = document.getElementById('qpSource');
-                if (btn) { btn.disabled = true; btn.textContent = 'Loading…'; }
                 const preferDemo = document.getElementById('questionSet')?.value === 'demo';
                 const res = await fetch('/api/load-questions' + (preferDemo ? '?source=demo' : ''));
                 const json = await res.json();
                 qpAll = Array.isArray(json.questions) ? json.questions : [];
                 if (sourceEl) sourceEl.textContent = questionSourceLabel(json.source, json.count || qpAll.length);
-                restoreQpSel();
-                renderQp();
+                renderRundown();
             } catch (e) {
                 console.warn('Failed to load questions', e);
-                alert('Failed to load questions');
-            } finally {
-                const btn = document.getElementById('qpLoadBtn');
-                if (btn) { btn.disabled = false; btn.textContent = 'Load Questions'; }
+                setQpNotice('Could not load the question bank.');
             }
         }
 
-        function renderQp() {
+        function renderRundown() {
             const list = document.getElementById('qpList');
-            const search = document.getElementById('qpSearch');
             const count = document.getElementById('qpCount');
-            const useBtn = document.getElementById('qpUseBtn');
+            const title = document.getElementById('qpListTitle');
+            const bankToolbar = document.getElementById('qpBankToolbar');
             if (!list) return;
-            const term = (search?.value || '').toLowerCase().trim();
+            if (bankToolbar) bankToolbar.hidden = qpView !== 'bank';
+            list.className = qpView === 'bank' ? 'qp-bank-list' : 'qp-rows';
             list.innerHTML = '';
-            const items = qpAll.filter(q => !term || String(q.prompt||'').toLowerCase().includes(term));
-            items.forEach(q => {
-                const div = document.createElement('div');
-                div.className = 'qp-item' + (qpSelectedIds.has(q.id) ? ' selected' : '');
-                div.onclick = () => { toggleSelectQ(q.id); };
-                div.innerHTML = `
-                    <h4>#${q.id}: ${escapeHtml(q.prompt || '')}</h4>
-                    <div class="qp-meta">Round ${q.round ?? '-'} • Order ${q.question_order ?? '-'}</div>
-                `;
-                list.appendChild(div);
+            if (qpView === 'bank') {
+                if (title) title.innerHTML = 'Question bank <span id="qpCount" style="font-size:.8em;color:#bbb;margin-left:6px;">' + qpAll.length + ' in bank</span>';
+                const term = (document.getElementById('qpSearch')?.value || '').toLowerCase().trim();
+                const items = qpAll.filter((q) => !term || String(q.prompt || '').toLowerCase().includes(term));
+                if (!items.length) {
+                    list.innerHTML = '<p class="qp-empty">No questions in this bank match that search.</p>';
+                }
+                items.forEach((q) => {
+                    const div = document.createElement('div');
+                    div.className = 'qp-bank-item' + (String(qpBankPreviewId) === String(q.id) ? ' is-selected' : '');
+                    div.innerHTML = `<h4>${escapeHtml(q.prompt || '')}</h4><div class="qp-meta">${(q.correct_answers || []).length} expected answers</div>`;
+                    div.addEventListener('click', () => {
+                        qpCustomMode = false;
+                        qpBankPreviewId = q.id;
+                        renderRundown();
+                    });
+                    list.appendChild(div);
+                });
+            } else {
+                const questions = showQuestions();
+                if (title) title.innerHTML = "Tonight's rundown <span id=\"qpCount\" style=\"font-size:.8em;color:#bbb;margin-left:6px;\">" + questions.length + ' question' + (questions.length === 1 ? '' : 's') + '</span>';
+                if (count) count.textContent = questions.length + ' question' + (questions.length === 1 ? '' : 's');
+                if (!questions.length) {
+                    list.innerHTML = '<p class="qp-empty">Add questions from the bank or write a custom one. Start Game will use this rundown.</p>';
+                }
+                if (qpSelectedIndex < 0) qpSelectedIndex = 0;
+                if (questions.length && qpSelectedIndex > questions.length) qpSelectedIndex = questions.length - 1;
+                questions.forEach((q, index) => {
+                    const status = qpQuestionStatus(index);
+                    const div = document.createElement('div');
+                    div.className = 'qp-row is-' + status + (index === qpSelectedIndex && !qpCustomMode ? ' is-selected' : '');
+                    div.dataset.index = String(index);
+                    const canDrag = status === 'upcoming';
+                    div.draggable = canDrag;
+                    div.innerHTML = `
+                        <span class="qp-handle${canDrag ? '' : ' is-off'}" aria-hidden="true">::</span>
+                        <div>
+                            <h4>Q${index + 1}. ${escapeHtml(q.prompt || '')}</h4>
+                            <div class="qp-meta">${(q.correct_answers || []).length} expected answers</div>
+                        </div>
+                        <span class="qp-status">${status}</span>
+                    `;
+                    div.addEventListener('click', () => {
+                        qpCustomMode = false;
+                        qpView = 'rundown';
+                        qpSelectedIndex = index;
+                        renderRundown();
+                    });
+                    if (canDrag) {
+                        div.addEventListener('dragstart', (event) => {
+                            event.dataTransfer.setData('text/plain', String(index));
+                            event.dataTransfer.effectAllowed = 'move';
+                        });
+                        div.addEventListener('dragover', (event) => {
+                            event.preventDefault();
+                            event.dataTransfer.dropEffect = 'move';
+                        });
+                        div.addEventListener('drop', (event) => {
+                            event.preventDefault();
+                            const fromIndex = Number(event.dataTransfer.getData('text/plain'));
+                            emitShow('reorderShowQuestions', { fromIndex, toIndex: index });
+                            qpSelectedIndex = index;
+                        });
+                    }
+                    list.appendChild(div);
+                });
+            }
+            fillInspector();
+        }
+
+        function fillInspector() {
+            const promptEl = document.getElementById('qpInspectPrompt');
+            const answersEl = document.getElementById('qpInspectAnswers');
+            const title = document.getElementById('qpInspectTitle');
+            const saveBtn = document.getElementById('qpSaveBtn');
+            const playBtn = document.getElementById('qpPlayNextBtn');
+            const skipBtn = document.getElementById('qpSkipBtn');
+            const rescoreBtn = document.getElementById('qpRescoreBtn');
+            const addBankBtn = document.getElementById('qpAddBankBtn');
+            const addCustomBtn = document.getElementById('qpAddCustomSaveBtn');
+            if (!promptEl || !answersEl) return;
+            const hideAll = () => {
+                [saveBtn, playBtn, skipBtn, rescoreBtn, addBankBtn, addCustomBtn].forEach((btn) => {
+                    if (btn) btn.hidden = true;
+                });
+            };
+            hideAll();
+            if (qpView === 'bank') {
+                const q = qpAll.find((item) => String(item.id) === String(qpBankPreviewId)) || null;
+                if (title) title.textContent = q ? 'Bank question' : 'Pick a bank question';
+                promptEl.value = q ? (q.prompt || '') : '';
+                answersEl.value = q ? answersText(q) : '';
+                promptEl.readOnly = true;
+                answersEl.readOnly = true;
+                if (addBankBtn) addBankBtn.hidden = !q;
+                return;
+            }
+            promptEl.readOnly = false;
+            answersEl.readOnly = false;
+            if (qpCustomMode) {
+                if (title) title.textContent = 'Custom question';
+                if (!promptEl.dataset.customTouched) {
+                    promptEl.value = '';
+                    answersEl.value = '';
+                    promptEl.dataset.customTouched = '1';
+                }
+                if (addCustomBtn) addCustomBtn.hidden = false;
+                return;
+            }
+            delete promptEl.dataset.customTouched;
+            const questions = showQuestions();
+            const q = questions[qpSelectedIndex];
+            if (!q) {
+                if (title) title.textContent = 'Question';
+                promptEl.value = '';
+                answersEl.value = '';
+                return;
+            }
+            const status = qpQuestionStatus(qpSelectedIndex);
+            if (title) title.textContent = 'Q' + (qpSelectedIndex + 1) + ' · ' + status;
+            promptEl.value = q.prompt || '';
+            answersEl.value = answersText(q);
+            if (saveBtn) saveBtn.hidden = false;
+            if (playBtn) playBtn.hidden = status !== 'upcoming';
+            if (skipBtn) skipBtn.hidden = status !== 'upcoming';
+            if (rescoreBtn) {
+                rescoreBtn.hidden = status !== 'scored';
+                const liveBusy = hostPhase() === 'playing' || hostPhase() === 'grading';
+                rescoreBtn.disabled = liveBusy;
+                rescoreBtn.title = liveBusy
+                    ? 'Finish the live question first, then you can re-grade.'
+                    : 'Open this question on the Grade tab and adjust buckets.';
+            }
+        }
+
+        function emitShow(eventName, extra) {
+            if (!qpNeedGame() || !socket) return;
+            socket.emit(eventName, Object.assign({ gameCode: currentGame.gameCode }, extra || {}));
+        }
+
+        function insertAfterIndex() {
+            const questions = showQuestions();
+            if (!questions.length) return questions.length - 1;
+            if (qpView === 'rundown' && qpQuestionStatus(qpSelectedIndex) === 'upcoming') return qpSelectedIndex;
+            return questions.length - 1;
+        }
+
+        function saveShowQuestion() {
+            emitShow('updateShowQuestion', {
+                index: qpSelectedIndex,
+                prompt: document.getElementById('qpInspectPrompt')?.value,
+                correct_answers: parseAnswers(document.getElementById('qpInspectAnswers')?.value)
             });
-            const selectedCount = qpSelectedIds.size;
-            if (count) count.textContent = `${selectedCount} selected`;
-            if (useBtn) { useBtn.disabled = selectedCount < 1; useBtn.textContent = `Use Selected (${selectedCount})`; }
-            saveQpSel();
         }
 
-        function toggleSelectQ(id) {
-            if (qpSelectedIds.has(id)) qpSelectedIds.delete(id);
-            else qpSelectedIds.add(id);
-            renderQp();
+        function addBankQuestion() {
+            const q = qpAll.find((item) => String(item.id) === String(qpBankPreviewId));
+            if (!q) return;
+            const afterIndex = insertAfterIndex();
+            emitShow('addShowQuestion', { question: q, afterIndex });
+            qpView = 'rundown';
+            qpSelectedIndex = afterIndex + 1;
+            setQpNotice('Added to tonight\'s rundown.');
         }
 
-        function saveQpSel() {
-            try { localStorage.setItem('qpSelectedIds', JSON.stringify(Array.from(qpSelectedIds))); } catch (_) {}
+        function addCustomQuestion() {
+            const afterIndex = insertAfterIndex();
+            emitShow('addShowQuestion', {
+                prompt: document.getElementById('qpInspectPrompt')?.value,
+                correct_answers: parseAnswers(document.getElementById('qpInspectAnswers')?.value),
+                afterIndex
+            });
+            qpCustomMode = false;
+            qpView = 'rundown';
+            qpSelectedIndex = afterIndex + 1;
+            setQpNotice('Custom question added to the rundown.');
         }
-        function restoreQpSel() {
+
+        function openRescore() {
+            const index = qpSelectedIndex;
+            if (qpQuestionStatus(index) !== 'scored') return;
+            const phase = hostPhase();
+            if (phase === 'playing' || phase === 'grading') {
+                setQpNotice('Finish the live question first, then you can re-grade.');
+                return;
+            }
+            const log = (Array.isArray(currentGame && currentGame.questionLog) ? currentGame.questionLog : [])
+                .find((row) => Number(row.questionIndex) === index);
+            if (!log) {
+                setQpNotice('No scoring snapshot for that question yet.');
+                return;
+            }
+            hostRescoreIndex = index;
+            switchHostTab('grade');
+            const idle = document.getElementById('gradeIdleNote');
+            const board = document.getElementById('gradingInterface');
+            if (idle) idle.hidden = true;
+            if (board) board.style.display = 'block';
+            updateCompleteGradingButton('grading');
+            const btn = document.getElementById('applyCategorizationBtn');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Rescore question';
+            }
             try {
-                const raw = localStorage.getItem('qpSelectedIds');
-                if (!raw) return;
-                const arr = JSON.parse(raw);
-                if (Array.isArray(arr)) qpSelectedIds = new Set(arr);
-            } catch (_) {}
+                window.MEGASheepGrading && window.MEGASheepGrading.applyRescore(currentGame, log);
+            } catch (e) {
+                console.warn('applyRescore failed', e);
+                setQpNotice('Could not open that question for re-grade.');
+                hostRescoreIndex = null;
+            }
         }
 
         function escapeHtml(s){
             return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
         }
 
-        const qpLoadBtn = document.getElementById('qpLoadBtn');
-        if (qpLoadBtn) qpLoadBtn.addEventListener('click', qpLoad);
         ['questionSet', 'timerDuration', 'maxPlayers', 'questionsPerRound', 'banditAt'].forEach((id) => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('change', () => {
@@ -3110,20 +3456,30 @@
             });
         });
         const qpSearch = document.getElementById('qpSearch');
-        if (qpSearch) qpSearch.addEventListener('input', renderQp);
-        const qpUseBtn = document.getElementById('qpUseBtn');
-        if (qpUseBtn) qpUseBtn.addEventListener('click', () => {
-            try {
-                if (!currentGame || !currentGame.gameCode) { alert('No active game'); return; }
-                if (qpSelectedIds.size < 1) { alert('Select at least one question.'); return; }
-                const byId = new Map(qpAll.map(q=>[q.id,q]));
-                const selected = Array.from(qpSelectedIds).map(id => byId.get(id)).filter(Boolean);
-                socket.emit('loadQuestions', { gameCode: currentGame.gameCode, questions: selected });
-                alert('Loaded selected questions into game');
-                // Persist set per game code for resilience
-                try { localStorage.setItem(`qpSet_${currentGame.gameCode}`, JSON.stringify(selected.map(q=>q.id))); } catch (_) {}
-            } catch (e) { console.warn('Failed to use selected questions', e); }
+        if (qpSearch) qpSearch.addEventListener('input', renderRundown);
+        document.getElementById('qpBankBtn')?.addEventListener('click', () => {
+            qpView = 'bank';
+            qpCustomMode = false;
+            if (!qpAll.length) qpLoad();
+            else renderRundown();
         });
+        document.getElementById('qpBankBackBtn')?.addEventListener('click', () => {
+            qpView = 'rundown';
+            renderRundown();
+        });
+        document.getElementById('qpCustomBtn')?.addEventListener('click', () => {
+            qpView = 'rundown';
+            qpCustomMode = true;
+            const promptEl = document.getElementById('qpInspectPrompt');
+            if (promptEl) delete promptEl.dataset.customTouched;
+            renderRundown();
+        });
+        document.getElementById('qpSaveBtn')?.addEventListener('click', saveShowQuestion);
+        document.getElementById('qpPlayNextBtn')?.addEventListener('click', () => emitShow('playQuestionNext', { index: qpSelectedIndex }));
+        document.getElementById('qpSkipBtn')?.addEventListener('click', () => emitShow('skipShowQuestion', { index: qpSelectedIndex }));
+        document.getElementById('qpRescoreBtn')?.addEventListener('click', openRescore);
+        document.getElementById('qpAddBankBtn')?.addEventListener('click', addBankQuestion);
+        document.getElementById('qpAddCustomSaveBtn')?.addEventListener('click', addCustomQuestion);
 
         // Keyboard shortcuts for modal fullscreen
         document.addEventListener('keydown', (e) => {

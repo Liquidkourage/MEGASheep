@@ -2367,6 +2367,14 @@ function applyPlayerState(packet, source) {
         const phase = packet.gameState;
         if (!result.epochChanged) {
             if (phase === 'waiting') updateLobbyDisplay();
+            if (phase === 'playing') {
+                const liveQ = packet.currentQuestionData || (Array.isArray(questions) ? questions[currentQuestionIndex] : null);
+                const qt = document.getElementById('questionText');
+                if (qt && liveQ && liveQ.prompt && qt.textContent !== liveQ.prompt) {
+                    qt.textContent = liveQ.prompt;
+                    try { fitPlayerQuestionText(qt); } catch (_) {}
+                }
+            }
             if (phase === 'playing' && packet.myAnswer && !window._playerEditing && !window._submitInFlight) {
                 try {
                     const code = playerGameCode();

@@ -271,6 +271,18 @@
                             ? state.playerCount
                             : (Array.isArray(state.players) ? state.players.length : 0);
                         try { updateResponseIndicator(count, total, state.answeredPlayers); } catch (_) {}
+                        const promptEl = document.querySelector('.tv-play .question-prompt');
+                        if (promptEl) {
+                            const nextPrompt = currentPromptText();
+                            if (nextPrompt && promptEl.textContent !== nextPrompt) {
+                                promptEl.textContent = nextPrompt;
+                                try { fitPlayPrompt(); } catch (_) {}
+                            }
+                        }
+                        return;
+                    }
+                    if (state.gameState === 'scoring' || state.gameState === 'roundComplete' || state.gameState === 'overallLeaderboard' || state.gameState === 'finished') {
+                        gameState = state;
                         return;
                     }
                 }

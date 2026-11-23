@@ -136,6 +136,7 @@ function redactStateForViewer(state, viewer) {
     view.pendingEdits = [];
     view.myAnswer = null;
     view.myPendingEdit = null;
+    view.questionLog = [];
     view.players = publicPlayersFromState(state);
     view.answeredPlayers = answeredPlayersFromState(state);
     view.sentBackPlayers = sentBackPlayersFromState(state);
@@ -158,6 +159,7 @@ function redactStateForViewer(state, viewer) {
   view.pendingEdits = mine;
   view.myPendingEdit = mine[0] || null;
   view.myAnswer = findMyAnswer(state, viewer);
+  view.questionLog = [];
 
   if (live) {
     view.currentAnswerGroups = [];
