@@ -3363,6 +3363,28 @@ function updateLobbyDisplay() {
 
 
 
+function fitPlayerQuestionText(el) {
+    if (!el) return;
+    const n = String(el.textContent || '').replace(/\s+/g, ' ').trim().length;
+    const long = n > 72;
+    el.classList.toggle('is-long', long);
+    el.scrollTop = 0;
+    const stage = el.closest('.player-play-stage');
+    if (!stage) return;
+    stage.classList.toggle('has-long-prompt', long);
+    stage.classList.remove('is-tight');
+    const pin = () => {
+        const header = document.querySelector('#gameScreen .game-header');
+        const headerBottom = header ? header.getBoundingClientRect().bottom : 0;
+        const qTop = el.getBoundingClientRect().top;
+        const overflow = stage.scrollHeight > stage.clientHeight + 4 || qTop < headerBottom + 2;
+        stage.classList.toggle('is-tight', overflow);
+        el.scrollTop = 0;
+        stage.scrollTop = 0;
+    };
+    requestAnimationFrame(() => requestAnimationFrame(pin));
+}
+
 function displayCurrentQuestion() {
     console.log('🔍 Debug: displayCurrentQuestion called');
     console.log('🔍 Debug: questions array length:', questions.length);
@@ -3391,6 +3413,7 @@ function displayCurrentQuestion() {
         qt.style.overflow = '';
         qt.style.webkitLineClamp = 'unset';
         qt.style.display = '';
+        fitPlayerQuestionText(qt);
     }
     
     // Calculate round and question within round

@@ -885,12 +885,12 @@ body.player-app #gameScreen .player-play-stage {
     flex-direction: column;
     justify-content: flex-end;
     gap: clamp(8px, 1.4vh, 16px);
-    overflow: visible;
+    overflow: hidden;
 }
 
 body.player-app .player-think-stack {
     position: relative;
-    flex: 0 1 auto;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1036,7 +1036,8 @@ body.player-app #gameScreen .player-submit-pasture .player-ewe.is-to-paddock.is-
 
 body.player-app #gameScreen .question-text,
 body.player-app #gameScreen #questionText {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-height: 0;
     margin: 0;
     padding: clamp(20px, 3vh, 36px) clamp(22px, 3.2vw, 42px) clamp(22px, 3.2vh, 38px);
     background: url("sprites/player-plaque.png?v=2026-11-22T01-20-00") center / 100% 100% no-repeat;
@@ -1047,7 +1048,41 @@ body.player-app #gameScreen #questionText {
     line-height: 1.18;
     letter-spacing: 0;
     text-shadow: none;
+    overflow-wrap: anywhere;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.player-app #gameScreen .question-text.is-long,
+body.player-app #gameScreen #questionText.is-long {
+    min-height: 8rem;
+    font-size: clamp(1.5rem, 3.4vw + 1vh, 2.2rem) !important;
+    padding: clamp(16px, 2.4vh, 28px) clamp(18px, 2.8vw, 34px) clamp(18px, 2.6vh, 30px);
+}
+
+body.player-app #gameScreen .player-play-stage.has-long-prompt .player-submit-pasture {
+    height: clamp(5.2rem, 16vh, 9.5rem);
+}
+
+body.player-app #gameScreen .player-play-stage.has-long-prompt .player-submit-pasture .player-ewe {
+    width: clamp(108px, 32vw, 168px);
+}
+
+body.player-app #gameScreen .player-play-stage.is-tight {
+    justify-content: flex-start;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-height: 720px) {
+    body.player-app #gameScreen .player-play-stage.has-long-prompt {
+        justify-content: flex-start;
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
 }
 
 body.player-app .player-edit-banner {
@@ -2466,6 +2501,15 @@ body.player-app #lobbyScreen .player-masthead {
         padding-top: 4px;
         padding-bottom: 0;
         justify-content: flex-start;
+        min-height: 0;
+    }
+
+    body.player-app #gameScreen .question-text,
+    body.player-app #gameScreen #questionText {
+        flex: 1 1 0;
+        min-width: 0;
+        min-height: 0;
+        align-self: stretch;
     }
 
     body.player-app #playerAnswerForm.player-thought-bubble,
