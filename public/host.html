@@ -440,6 +440,30 @@
             color:#fff;
             font: inherit;
         }
+        .control-btn[hidden], .qp-tab[hidden] { display: none !important; }
+        .qp-show .panel-header { gap: 12px; flex-wrap: wrap; }
+        .qp-view-tabs {
+            display: flex;
+            gap: 0;
+            background: rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 3px;
+        }
+        .qp-tab {
+            border: 0;
+            background: transparent;
+            color: #bbb;
+            font: inherit;
+            font-size: 13px;
+            font-weight: 800;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .qp-tab.is-on { background: #007bff; color: #fff; }
+        .qp-inspect-tools { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+        .qp-inspect-tools .control-btn { padding: 6px 10px; font-size: 12px; }
+        .qp-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 8px; }
         .qp-rows, .qp-bank-list {
             display: flex;
             flex-direction: column;
@@ -485,11 +509,9 @@
         .qp-inspector label { font-size: 12px; color: #bbb; font-weight: 700; }
         .qp-inspector textarea { min-height: 88px; resize: vertical; width: 100%; }
         .qp-inspector textarea#qpInspectAnswers { min-height: 140px; }
-        .qp-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        .qp-source { font-size: 12px; color: #8899aa; margin: 0 0 8px; min-height: 1.2em; }
         .qp-notice { font-size: 13px; color: #ffd56a; min-height: 1.2em; }
         .qp-empty { color: #bbb; padding: 18px 8px; }
-        .qp-view-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
-        .qp-view-tabs .control-btn.is-on { background: #007bff; color: #fff; }
         .qp-checks { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; }
         .qp-checks label { display: flex; align-items: center; gap: 8px; color: #fff; font-weight: 600; font-size: 13px; }
         .qp-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
@@ -1587,18 +1609,18 @@
                     <div class="dashboard-panel" id="questionPickerPanel">
                         <div class="panel-header">
                             <h3 id="qpListTitle">Tonight's rundown <span id="qpCount" style="font-size:.8em;color:#bbb;margin-left:6px;">0 questions</span></h3>
-                            <div class="qp-view-tabs">
-                                <button id="qpTonightBtn" class="control-btn secondary is-on" type="button">Tonight</button>
-                                <button id="qpPlaylistsBtn" class="control-btn secondary" type="button">Playlists</button>
-                                <button id="qpBankBtn" class="control-btn secondary" type="button">Library</button>
+                            <div class="qp-view-tabs" role="tablist">
+                                <button id="qpTonightBtn" class="qp-tab is-on" type="button">Tonight</button>
+                                <button id="qpPlaylistsBtn" class="qp-tab" type="button">Playlists</button>
+                                <button id="qpBankBtn" class="qp-tab" type="button">Library</button>
                             </div>
                         </div>
                         <div class="qp-toolbar">
-                            <span id="qpSource" style="font-size:.8em;color:#bbb;">—</span>
                             <input id="qpSearch" placeholder="Search..." />
                             <button id="qpCustomBtn" class="control-btn secondary" type="button">New question</button>
-                            <button id="qpNewPlaylistBtn" class="control-btn secondary" type="button">New playlist</button>
+                            <button id="qpNewPlaylistBtn" class="control-btn secondary" type="button" hidden>New playlist</button>
                         </div>
+                        <p id="qpSource" class="qp-source"></p>
                         <div id="qpAttached" class="qp-chip-row"></div>
                         <p id="qpNotice" class="qp-notice"></p>
                         <div id="qpList" class="qp-rows"></div>
@@ -1606,6 +1628,12 @@
                     <div class="dashboard-panel qp-inspector" id="questionInspectorPanel">
                         <div class="panel-header">
                             <h3 id="qpInspectTitle">Question</h3>
+                            <div class="qp-inspect-tools">
+                                <button id="qpPlayNextBtn" class="control-btn secondary" type="button" hidden>Play next</button>
+                                <button id="qpSkipBtn" class="control-btn warning" type="button" hidden>Skip</button>
+                                <button id="qpRescoreBtn" class="control-btn secondary" type="button" hidden>Re-grade</button>
+                                <button id="qpDeletePlaylistBtn" class="control-btn warning" type="button" hidden>Delete</button>
+                            </div>
                         </div>
                         <div class="qp-inspector-body">
                             <label id="qpInspectNameLabel" for="qpInspectName" hidden>Playlist name</label>
@@ -1617,16 +1645,10 @@
                             <label id="qpPlaylistLabel">On playlists</label>
                             <div id="qpPlaylistBox" class="qp-checks"></div>
                             <div class="qp-actions">
-                                <button id="qpSaveBtn" class="control-btn success" type="button">Save for this show</button>
+                                <button id="qpSaveBtn" class="control-btn success" type="button" hidden>Save for this show</button>
                                 <button id="qpSaveLibraryBtn" class="control-btn success" type="button" hidden>Save to library</button>
-                                <button id="qpPlayNextBtn" class="control-btn secondary" type="button">Play next</button>
-                                <button id="qpSkipBtn" class="control-btn warning" type="button">Skip</button>
-                                <button id="qpRescoreBtn" class="control-btn secondary" type="button">Re-grade</button>
-                                <button id="qpAddBankBtn" class="control-btn success" type="button" hidden>Add to tonight</button>
-                                <button id="qpAddCustomSaveBtn" class="control-btn success" type="button" hidden>Add to tonight</button>
-                                <button id="qpAttachBtn" class="control-btn success" type="button" hidden>Attach to tonight</button>
                                 <button id="qpSavePlaylistBtn" class="control-btn success" type="button" hidden>Save playlist</button>
-                                <button id="qpDeletePlaylistBtn" class="control-btn warning" type="button" hidden>Delete playlist</button>
+                                <button id="qpUseBtn" class="control-btn success" type="button" hidden>Add to tonight</button>
                             </div>
                         </div>
                     </div>
@@ -3299,6 +3321,13 @@
             renderRundown();
         }
 
+        function syncQpChrome() {
+            const newQ = document.getElementById('qpCustomBtn');
+            const newP = document.getElementById('qpNewPlaylistBtn');
+            if (newQ) newQ.hidden = qpView === 'playlists';
+            if (newP) newP.hidden = qpView !== 'playlists';
+        }
+
         function renderAttachedChips() {
             const row = document.getElementById('qpAttached');
             if (!row) return;
@@ -3432,6 +3461,7 @@
                     list.appendChild(div);
                 });
             }
+            syncQpChrome();
             fillInspector();
         }
 
@@ -3440,7 +3470,7 @@
             const label = document.getElementById('qpPlaylistLabel');
             if (!box) return;
             box.innerHTML = '';
-            const show = !qpNewPlaylistMode && (qpCustomMode || questionId != null || qpView === 'library' || qpView === 'rundown');
+            const show = !qpNewPlaylistMode && (qpCustomMode || questionId != null);
             if (label) label.hidden = !show || !qpPlaylists.length;
             if (!show) return;
             qpPlaylists.forEach((p) => {
@@ -3466,16 +3496,14 @@
             const playBtn = document.getElementById('qpPlayNextBtn');
             const skipBtn = document.getElementById('qpSkipBtn');
             const rescoreBtn = document.getElementById('qpRescoreBtn');
-            const addBankBtn = document.getElementById('qpAddBankBtn');
-            const addCustomBtn = document.getElementById('qpAddCustomSaveBtn');
-            const attachBtn = document.getElementById('qpAttachBtn');
+            const useBtn = document.getElementById('qpUseBtn');
             const savePlaylistBtn = document.getElementById('qpSavePlaylistBtn');
             const deletePlaylistBtn = document.getElementById('qpDeletePlaylistBtn');
             const nameLabel = document.getElementById('qpInspectNameLabel');
             const promptLabel = document.getElementById('qpInspectPromptLabel');
             const answersLabel = document.getElementById('qpInspectAnswersLabel');
             if (!promptEl || !answersEl) return;
-            const allBtns = [saveBtn, saveLibBtn, playBtn, skipBtn, rescoreBtn, addBankBtn, addCustomBtn, attachBtn, savePlaylistBtn, deletePlaylistBtn];
+            const allBtns = [saveBtn, saveLibBtn, playBtn, skipBtn, rescoreBtn, useBtn, savePlaylistBtn, deletePlaylistBtn];
             allBtns.forEach((btn) => { if (btn) btn.hidden = true; });
             if (nameEl) nameEl.hidden = true;
             if (nameLabel) nameLabel.hidden = true;
@@ -3485,6 +3513,7 @@
             if (answersLabel) answersLabel.hidden = false;
             promptEl.readOnly = false;
             answersEl.readOnly = false;
+            if (useBtn) useBtn.textContent = 'Add to tonight';
 
             if (qpNewPlaylistMode || (qpView === 'playlists' && !qpBankPreviewId)) {
                 const playlist = qpPlaylists.find((p) => String(p.id) === String(qpPlaylistId));
@@ -3495,17 +3524,21 @@
                 answersEl.hidden = true;
                 if (promptLabel) promptLabel.hidden = true;
                 if (answersLabel) answersLabel.hidden = true;
+                fillPlaylistBox(null);
+                const label = document.getElementById('qpPlaylistLabel');
+                if (label) label.hidden = true;
+                if (!qpNewPlaylistMode && !playlist) return;
                 if (nameEl) {
                     nameEl.hidden = false;
                     if (qpNewPlaylistMode && !nameEl.dataset.touched) nameEl.value = '';
                     else if (playlist && !nameEl.dataset.touched) nameEl.value = playlist.name || '';
                 }
                 if (nameLabel) nameLabel.hidden = false;
-                fillPlaylistBox(null);
-                const label = document.getElementById('qpPlaylistLabel');
-                if (label) label.hidden = true;
                 if (savePlaylistBtn) savePlaylistBtn.hidden = false;
-                if (attachBtn) attachBtn.hidden = !playlist;
+                if (useBtn && playlist) {
+                    useBtn.hidden = false;
+                    useBtn.textContent = 'Attach playlist';
+                }
                 if (deletePlaylistBtn) deletePlaylistBtn.hidden = !playlist;
                 return;
             }
@@ -3519,7 +3552,7 @@
                 }
                 fillPlaylistBox(null);
                 if (saveLibBtn) saveLibBtn.hidden = false;
-                if (addCustomBtn) addCustomBtn.hidden = false;
+                if (useBtn) useBtn.hidden = false;
                 return;
             }
             delete promptEl.dataset.customTouched;
@@ -3528,16 +3561,19 @@
             if (qpView === 'library' || qpView === 'playlists') {
                 const q = qpAll.find((item) => String(item.id) === String(qpBankPreviewId)) || null;
                 if (title) title.textContent = q ? 'Library question' : 'Question';
-                promptEl.value = q ? (q.prompt || '') : '';
-                answersEl.value = q ? answersText(q) : '';
-                fillPlaylistBox(q && q.id);
-                if (q) {
-                    if (saveLibBtn) saveLibBtn.hidden = false;
-                    if (addBankBtn) addBankBtn.hidden = false;
+                if (!q) {
+                    promptEl.hidden = true;
+                    answersEl.hidden = true;
+                    if (promptLabel) promptLabel.hidden = true;
+                    if (answersLabel) answersLabel.hidden = true;
+                    fillPlaylistBox(null);
+                    return;
                 }
-                if (qpView === 'playlists' && qpPlaylistId) {
-                    if (attachBtn) attachBtn.hidden = false;
-                }
+                promptEl.value = q.prompt || '';
+                answersEl.value = answersText(q);
+                fillPlaylistBox(q.id);
+                if (saveLibBtn) saveLibBtn.hidden = false;
+                if (useBtn) useBtn.hidden = false;
                 return;
             }
 
@@ -3566,6 +3602,18 @@
                     ? 'Finish the live question first, then you can re-grade.'
                     : 'Open this question on the Grade tab and adjust buckets.';
             }
+        }
+
+        function useQpItem() {
+            if (qpCustomMode) {
+                addCustomQuestion();
+                return;
+            }
+            if (qpView === 'playlists' && qpPlaylistId && !qpBankPreviewId) {
+                attachSelectedPlaylist();
+                return;
+            }
+            addBankQuestion();
         }
 
         function emitShow(eventName, extra) {
@@ -3786,9 +3834,7 @@
         document.getElementById('qpPlayNextBtn')?.addEventListener('click', () => emitShow('playQuestionNext', { index: qpSelectedIndex }));
         document.getElementById('qpSkipBtn')?.addEventListener('click', () => emitShow('skipShowQuestion', { index: qpSelectedIndex }));
         document.getElementById('qpRescoreBtn')?.addEventListener('click', openRescore);
-        document.getElementById('qpAddBankBtn')?.addEventListener('click', addBankQuestion);
-        document.getElementById('qpAddCustomSaveBtn')?.addEventListener('click', addCustomQuestion);
-        document.getElementById('qpAttachBtn')?.addEventListener('click', attachSelectedPlaylist);
+        document.getElementById('qpUseBtn')?.addEventListener('click', useQpItem);
         document.getElementById('qpSavePlaylistBtn')?.addEventListener('click', savePlaylistFromInspector);
         document.getElementById('qpDeletePlaylistBtn')?.addEventListener('click', deleteSelectedPlaylist);
 
