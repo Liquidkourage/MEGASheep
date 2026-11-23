@@ -1229,10 +1229,8 @@ body.player-app .player-score-wrap {
     position: relative;
     flex: 1;
     min-height: 0;
-    display: grid;
-    grid-template-rows: minmax(18rem, 1.2fr) minmax(11rem, 0.9fr);
-    align-items: stretch;
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
     padding: 0 8px 8px;
 }
 
@@ -1243,19 +1241,20 @@ body.player-app .player-score-stage {
     width: 100%;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     justify-content: flex-end;
-    overflow: visible;
+    overflow: hidden;
 }
 
 body.player-app .player-score-unit {
     position: relative;
-    z-index: 2;
+    z-index: 4;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
     align-items: center;
     width: min(100%, 26rem);
-    margin: 0 0 2vh;
+    margin: 0 auto 1vh;
     animation: playerScoreRise 0.55s cubic-bezier(0.14, 1.38, 0.32, 1) both;
 }
 
@@ -1326,7 +1325,7 @@ body.player-app .player-score-burst {
     animation: playerScoreBurst 0.55s 0.18s cubic-bezier(0.14, 1.38, 0.32, 1) both;
 }
 
-body.player-app .player-score-flag.is-pennant {
+body.player-app .player-score-unit .player-score-flag.is-pennant {
     width: min(46vw, 10rem);
     height: clamp(9.5rem, 28vh, 13.5rem);
     margin-bottom: -1.4rem;
@@ -1345,11 +1344,11 @@ body.player-app .player-score-flag.is-pennant .player-score-flag-face {
     gap: 0.2em;
 }
 
-body.player-app .player-score-flag.is-pennant .player-score-answer {
+body.player-app .player-score-unit .player-score-flag.is-pennant .player-score-answer {
     font-size: clamp(1.05rem, 5.2vw, 1.55rem);
 }
 
-body.player-app .player-score-flag.is-cloth {
+body.player-app .player-score-unit .player-score-flag.is-cloth {
     width: min(86vw, 24rem);
     height: clamp(5.4rem, 16vh, 7.4rem);
     margin-bottom: 0.2rem;
@@ -1425,39 +1424,180 @@ body.player-app .player-score-rank {
     line-height: 1.1;
 }
 
-body.player-app .player-field-sign {
+body.player-app .player-score-hill {
+    position: absolute;
+    left: 2%;
+    right: 2%;
+    top: 36%;
+    height: 38%;
+    z-index: 1;
     display: flex;
-    flex-direction: column;
-    min-height: 0;
-    width: min(100%, 32rem);
-    margin: 0 auto;
-    padding: 24px 36px 28px;
-    overflow: hidden;
-}
-
-body.player-app .player-field-sign .player-sign-face {
-    flex: 1;
-    min-height: 0;
+    flex-wrap: wrap;
+    align-content: flex-end;
+    align-items: flex-end;
+    justify-content: space-around;
+    gap: 6px 8px;
+    padding: 0 2px;
     overflow: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    gap: 6px;
-    padding: 4px 8px 10px;
-    scrollbar-width: thin;
-    scrollbar-color: #6b4423 transparent;
+    scrollbar-width: none;
 }
 
-body.player-app .player-field-sign .player-answers-board {
-    flex: none;
-    min-height: 0;
+body.player-app .player-score-hill::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+}
+
+body.player-app .player-score-mini {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 0 1 auto;
+}
+
+body.player-app .player-score-mini .player-score-burst {
+    min-width: 1.6em;
+    min-height: 1.1em;
+    padding: 0.06em 0.3em;
+    font-size: 0.72rem;
+    animation: none;
+}
+
+body.player-app .player-score-mini.is-pennant {
+    width: clamp(72px, 22vw, 108px);
+}
+
+body.player-app .player-score-mini .player-score-flag.is-pennant {
+    width: 100%;
+    height: clamp(3.6rem, 11vh, 5rem);
+    margin-bottom: -0.7rem;
+    animation: none;
+}
+
+body.player-app .player-score-mini .player-score-flag.is-pennant .player-score-answer {
+    font-size: clamp(0.72rem, 3.2vw, 0.95rem);
+}
+
+body.player-app .player-score-mini.is-cloth {
+    width: clamp(118px, 38vw, 168px);
+}
+
+body.player-app .player-score-mini .player-score-flag.is-cloth {
+    width: 100%;
+    height: clamp(2.8rem, 9vh, 3.8rem);
+    margin-bottom: 0;
+    animation: none;
+}
+
+body.player-app .player-score-mini .player-score-flag.is-cloth::before,
+body.player-app .player-score-mini .player-score-flag.is-cloth::after {
+    height: 2.4rem;
+    width: 5px;
+}
+
+body.player-app .player-score-mini .player-score-flag.is-cloth .player-score-answer {
+    font-size: clamp(0.78rem, 3.4vw, 1rem);
+}
+
+body.player-app .player-score-mini .player-score-holders {
+    width: 100%;
+    padding: 0 4%;
+}
+
+body.player-app .player-score-mini .player-ewe,
+body.player-app .player-score-mini .player-score-holders .player-ewe.is-you,
+body.player-app .player-score-mini .player-score-holders .player-ewe:not(.is-you) {
+    width: clamp(48px, 15vw, 68px);
+}
+
+body.player-app .player-score-mini .player-ewe figcaption {
+    font-size: 0.62rem;
+    max-width: 8.6em;
+    padding: 1px 5px 2px;
+    white-space: normal;
     overflow: visible;
+    text-overflow: unset;
+    text-align: center;
 }
 
-body.player-app .player-field-sign .player-answers-label {
-    margin: 6px 0 4px;
+body.player-app .player-score-mini .player-score-extras {
+    font-size: 0.62rem;
+    padding: 2px 7px 3px;
+}
+
+body.player-app .player-score-mini.is-asleep {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    width: auto;
+    max-width: 46%;
+}
+
+body.player-app .player-score-mini.is-asleep .player-ewe.is-sad {
+    width: min(100%, clamp(92px, 30vw, 140px));
+}
+
+body.player-app .player-score-post {
+    position: relative;
+    isolation: isolate;
+    width: clamp(118px, 36vw, 168px);
+    padding: 10px 12px 18px;
+}
+
+body.player-app .player-score-post-art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    pointer-events: none;
+    z-index: 0;
+    filter: drop-shadow(0 6px 0 rgba(20, 16, 8, 0.28));
+}
+
+body.player-app .player-score-post-face {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 4px 6px 10px;
+    color: var(--ink);
+    text-align: center;
+}
+
+body.player-app .player-score-post-face p {
+    margin: 0;
     color: var(--wood);
-    text-shadow: none;
-    font-size: clamp(1.02rem, 3.8vw, 1.22rem);
+    font-family: var(--title);
+    font-size: clamp(0.62rem, 2.6vw, 0.76rem);
+    font-weight: 800;
+    line-height: 1.05;
+}
+
+body.player-app .player-score-post-face ul {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+body.player-app .player-score-post-face li {
+    padding: 4px 6px;
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    background: #f6ead0;
+    color: var(--ink);
+    font-family: var(--title);
+    font-size: clamp(0.72rem, 3vw, 0.88rem);
+    font-weight: 700;
+    overflow-wrap: anywhere;
 }
 
 body.player-app .player-score-stage .player-ewe {
@@ -1465,23 +1605,29 @@ body.player-app .player-score-stage .player-ewe {
     left: auto;
     top: auto;
     transform: none;
-    width: clamp(104px, 32vw, 150px);
     z-index: 3;
 }
 
-body.player-app .player-score-holders .player-ewe.is-you {
+body.player-app .player-score-unit .player-ewe {
+    width: clamp(104px, 32vw, 150px);
+}
+
+body.player-app .player-score-unit .player-score-holders .player-ewe.is-you {
     width: clamp(112px, 34vw, 158px);
 }
 
-body.player-app .player-score-holders .player-ewe:not(.is-you) {
+body.player-app .player-score-unit .player-score-holders .player-ewe:not(.is-you) {
     width: clamp(88px, 26vw, 124px);
 }
 
 body.player-app .player-score-stage .player-ewe.is-sad {
-    width: min(100%, clamp(200px, 70vw, 320px));
     max-width: 100%;
     aspect-ratio: 1.85 / 1;
     align-self: center;
+}
+
+body.player-app .player-score-unit .player-ewe.is-sad {
+    width: min(100%, clamp(200px, 70vw, 320px));
 }
 
 body.player-app .player-score-stage .player-ewe.is-sad .player-ewe-art {
@@ -1490,6 +1636,7 @@ body.player-app .player-score-stage .player-ewe.is-sad .player-ewe-art {
 
 body.player-app .player-score-stage .player-ewe.is-sad figcaption {
     bottom: -1.45em;
+    white-space: nowrap;
 }
 
 body.player-app .player-score-stage .player-ewe.is-sad .player-ewe-strip {
@@ -1553,12 +1700,12 @@ body.player-app .player-score-unit.is-asleep {
 }
 
 @media (max-height: 500px) {
-    body.player-app .player-score-flag.is-pennant {
+    body.player-app .player-score-unit .player-score-flag.is-pennant {
         height: clamp(5.2rem, 30vh, 8rem);
         margin-bottom: -0.8rem;
     }
 
-    body.player-app .player-score-flag.is-cloth {
+    body.player-app .player-score-unit .player-score-flag.is-cloth {
         height: clamp(3.4rem, 18vh, 5rem);
         width: min(70vw, 20rem);
     }
@@ -1574,66 +1721,52 @@ body.player-app .player-score-unit.is-asleep {
     }
 }
 
-@media (max-height: 640px) {
-    body.player-app .player-score-wrap {
-        grid-template-rows: minmax(12rem, 1.1fr) minmax(8rem, 1fr);
-    }
-}
-
 @media (max-height: 500px) and (orientation: landscape) {
-    body.player-app .player-score-wrap {
-        grid-template-columns: minmax(14rem, 1.1fr) minmax(16rem, 1fr);
-        grid-template-rows: 1fr;
-        gap: 12px;
-        padding: 4px 10px 8px;
+    body.player-app .player-score-hill {
+        left: 48%;
+        right: 2%;
+        top: 18%;
+        height: auto;
+        bottom: 6%;
     }
 
-    body.player-app .player-score-stage {
-        min-width: 0;
-        justify-content: flex-end;
-        padding-top: 8px;
-        padding-bottom: 0;
+    body.player-app .player-score-unit {
+        width: min(48vw, 22rem);
+        margin: 0 0 0 4%;
+        align-self: flex-end;
     }
 
-    body.player-app .player-field-sign {
-        width: min(100%, 28rem);
-        margin: 0;
-    }
-
-    body.player-app .player-score-flag.is-pennant {
+    body.player-app .player-score-stage > .player-score-flag.is-pennant,
+    body.player-app .player-score-unit.is-pennant .player-score-flag.is-pennant {
         height: 38vh;
         margin-bottom: -1rem;
     }
 
-    body.player-app .player-score-flag.is-cloth {
+    body.player-app .player-score-unit .player-score-flag.is-cloth {
         height: 22vh;
         width: min(44vw, 20rem);
-    }
-
-    body.player-app .player-score-unit {
-        width: min(52vw, 22rem);
-        margin-bottom: 0;
     }
 }
 
 @media (min-width: 720px) {
     body.player-app .player-score-wrap {
-        grid-template-columns: minmax(18rem, 1.1fr) minmax(22rem, 1fr);
-        grid-template-rows: 1fr;
-        justify-content: center;
-        gap: 18px;
         padding: 8px 16px 16px;
     }
 
-    body.player-app .player-score-stage {
-        min-width: 0;
+    body.player-app .player-score-hill {
+        left: 46%;
+        right: 2%;
+        top: 16%;
+        height: auto;
+        bottom: 6%;
+        justify-content: flex-end;
+        align-content: flex-end;
     }
 
-    body.player-app .player-field-sign {
-        width: min(100%, 32rem);
-        max-width: 32rem;
-        margin: 0;
-        align-self: stretch;
+    body.player-app .player-score-unit {
+        width: min(44%, 24rem);
+        margin: 0 auto 1vh 4%;
+        align-self: flex-end;
     }
 }
 

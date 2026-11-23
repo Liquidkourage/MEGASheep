@@ -3658,10 +3658,11 @@ function playerScoreEweHtml(who, extras) {
     const extra = extras || {};
     const name = playerScoreNameOf(who) || 'Sheep';
     const caption = extra.caption != null ? extra.caption : name;
-    const classes = ['player-ewe', extra.you ? 'is-you' : '', extra.sad ? 'is-sad' : ''].filter(Boolean).join(' ');
+    const classes = ['player-ewe', extra.you ? 'is-you' : '', extra.sad ? 'is-sad' : '', extra.mini ? 'is-mini' : ''].filter(Boolean).join(' ');
+    const tag = caption === '' ? '' : `<figcaption>${escapePlayer(caption)}</figcaption>`;
     return `<figure class="${classes}" data-coat="${playerCoatOf(who && who.name ? who : name)}">
         <span class="player-ewe-art" aria-hidden="true"><span class="player-ewe-strip"></span></span>
-        <figcaption>${escapePlayer(caption)}</figcaption>
+        ${tag}
     </figure>`;
 }
 
@@ -3677,21 +3678,110 @@ function playerScorePeers(group, myName) {
     return { others, count };
 }
 
-function playerScoreFieldSign(playerAnswer, playerAnswerGroup, missedCorrect) {
-    const leftoverAll = Array.isArray(missedCorrect) ? missedCorrect : [];
-    const leftover = leftoverAll.length
-        ? `<div class="player-answers-label">Pasteur-ized</div>
-            <div class="player-answers-chips">${leftoverAll.map((item) =>
-                `<div class="compact-answer leftover"><span class="text">${escapePlayer(item)}</span></div>`
-            ).join('')}</div>`
+function playerScoreGroupMine(group, myName, playerAnswer) {
+    const mine = String(myName || '').toLowerCase();
+    if (Array.isArray(group && group.players) && group.players.some((entry) => String(playerScoreNameOf(entry)).toLowerCase() === mine)) {
+        return true;
+    }
+    const answer = String(playerAnswer || '').toLowerCase().trim();
+    return !!(answer && String((group && group.answer) || '').toLowerCase().trim() === answer);
+}
+
+function playerScoreGroupCount(group) {
+    return Math.max(
+        Array.isArray(group && group.players) ? group.players.length : 0,
+        Number(group && group.count) || 0,
+        1
+    );
+}
+
+function playerScoreMiniPennant(group) {
+    const who = playerScoreWho(playerScoreNameOf((group.players || [])[0]));
+    const pts = Math.max(0, Number(group.points) || 0);
+    const answer = String(group.answer || '').trim() || 'Answer';
+    return `<div class="player-score-mini is-pennant" aria-label="${escapePlayer(answer)}, ${pts} points">
+        <div class="player-score-flag is-pennant">
+            <img class="player-score-flag-art" src="sprites/parade-pennant.png?v=2026-11-19T23-20-00" alt="">
+            <div class="player-score-flag-face">
+                <p class="player-score-answer">${escapePlayer(answer)}</p>
+                <b class="player-score-burst">+${pts}</b>
+            </div>
+        </div>
+        ${playerScoreEweHtml(who, { mini: true })}
+    </div>`;
+}
+
+function playerScoreMiniCloth(group) {
+    const names = ((group && group.players) || []).map(playerScoreNameOf).filter(Boolean);
+    const a = playerScoreWho(names[0]);
+    const b = names[1] ? playerScoreWho(names[1]) : null;
+    const extras = names.slice(2);
+    const pts = Math.max(0, Number(group.points) || 0);
+    const answer = String(group.answer || '').trim() || 'Answer';
+    const extraLabel = extras.length
+        ? extras.slice(0, 2).join(', ') + (extras.length > 2 ? '…' : '')
         : '';
-    return `<aside class="player-sign player-field-sign" aria-label="Answers this question">
-        <img class="player-sign-art" src="sprites/player-plaque.png?v=2026-11-22T01-30-00" alt="">
-        <div class="player-sign-face">
-            ${createAllAnswersSection(gameState.currentAnswerGroups, playerAnswerGroup, playerAnswer)}
-            ${leftover}
+    return `<div class="player-score-mini is-cloth" aria-label="${escapePlayer(answer)}, ${pts} points">
+        <div class="player-score-flag is-cloth">
+            <img class="player-score-flag-art" src="sprites/parade-banner.png?v=2026-11-19T23-20-00" alt="">
+            <div class="player-score-flag-face">
+                <p class="player-score-answer">${escapePlayer(answer)}</p>
+                <b class="player-score-burst">+${pts}</b>
+            </div>
+        </div>
+        <div class="player-score-holders">
+            ${playerScoreEweHtml(a, { mini: true })}
+            ${b ? playerScoreEweHtml(b, { mini: true }) : ''}
+        </div>
+        ${extraLabel ? `<p class="player-score-extras">${escapePlayer(extraLabel)}</p>` : ''}
+    </div>`;
+}
+
+function playerScoreMiniSleep(group) {
+    const names = ((group && group.players) || []).map(playerScoreNameOf).filter(Boolean);
+    const answer = String(group.answer || '').trim() || 'No answer';
+    const lead = playerScoreWho(names[0] || 'Sheep');
+    const extra = names.slice(1, 3);
+    const more = extra.map((name) => playerScoreEweHtml(playerScoreWho(name), { mini: true, sad: true, caption: '' })).join('');
+    return `<div class="player-score-mini is-asleep" aria-label="${escapePlayer(answer)}">
+        ${playerScoreEweHtml(lead, { mini: true, sad: true, caption: answer })}
+        ${more}
+    </div>`;
+}
+
+function playerScoreLeftoverPost(missedCorrect) {
+    const leftover = Array.isArray(missedCorrect) ? missedCorrect : [];
+    if (!leftover.length) return '';
+    const chips = leftover.map((item) => `<li>${escapePlayer(item)}</li>`).join('');
+    return `<aside class="player-score-post is-leftover" aria-label="Ungiven correct answers">
+        <img class="player-score-post-art" src="sprites/meadow-sign.png?v=2026-11-21T12-00-00" alt="">
+        <div class="player-score-post-face">
+            <p>Pasteur-ized</p>
+            <ul>${chips}</ul>
         </div>
     </aside>`;
+}
+
+function playerScoreFlockHtml(playerAnswer, playerAnswerGroup, missedCorrect) {
+    const groups = Array.isArray(gameState && gameState.currentAnswerGroups) ? gameState.currentAnswerGroups : [];
+    const myName = sessionStorage.getItem('playerName') || currentPlayerName || '';
+    const bits = [];
+    const leftover = playerScoreLeftoverPost(missedCorrect);
+    if (leftover) bits.push(leftover);
+    const hits = [];
+    const sleeps = [];
+    groups.forEach((group) => {
+        if (playerScoreGroupMine(group, myName, playerAnswer)) return;
+        const pts = Number(group && group.points) || 0;
+        if (pts > 0) {
+            hits.push(playerScoreGroupCount(group) <= 1 ? playerScoreMiniPennant(group) : playerScoreMiniCloth(group));
+        } else {
+            sleeps.push(playerScoreMiniSleep(group));
+        }
+    });
+    bits.push(...hits, ...sleeps);
+    if (!bits.length) return '';
+    return `<div class="player-score-hill">${bits.join('')}</div>`;
 }
 
 function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints, playerRank, totalPlayers, missedCorrect }) {
@@ -3705,32 +3795,28 @@ function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints,
     const unique = isCorrect && count <= 1;
     const rankBit = (playerRank > 0 && totalPlayers > 0) ? `#${playerRank} of ${totalPlayers}` : '';
     const rankChip = rankBit ? `<p class="player-score-rank">${rankBit}</p>` : '';
-    const field = playerScoreFieldSign(playerAnswer, playerAnswerGroup, missedCorrect);
-    const wrap = (meadow) => `<div class="player-score-wrap">${meadow}${field}</div>`;
+    const hill = playerScoreFlockHtml(playerAnswer, playerAnswerGroup, missedCorrect);
+    const wrap = (cls, html) => `<div class="player-score-wrap"><div class="player-score-stage ${cls}">${hill}${html}</div></div>`;
 
     if (!isCorrect) {
-        return wrap(`<div class="player-score-stage is-miss">
-            <div class="player-score-unit is-asleep">
-                ${playerScoreEweHtml(me, { you: true, sad: true, caption: shown })}
-                ${rankChip}
-            </div>
+        return wrap('is-miss', `<div class="player-score-unit is-asleep">
+            ${playerScoreEweHtml(me, { you: true, sad: true, caption: shown })}
+            ${rankChip}
         </div>`);
     }
 
     const burst = `<b class="player-score-burst">+${pts}</b>`;
     if (unique) {
-        return wrap(`<div class="player-score-stage is-hit is-unique">
-            <div class="player-score-unit is-pennant">
-                <div class="player-score-flag is-pennant is-gold">
-                    <img class="player-score-flag-art" src="sprites/parade-pennant-gold.png?v=2026-11-22T09-22-00" alt="">
-                    <div class="player-score-flag-face">
-                        <p class="player-score-answer">${escapePlayer(playerAnswerGroup.answer || shown)}</p>
-                        ${burst}
-                    </div>
+        return wrap('is-hit is-unique', `<div class="player-score-unit is-pennant">
+            <div class="player-score-flag is-pennant is-gold">
+                <img class="player-score-flag-art" src="sprites/parade-pennant-gold.png?v=2026-11-22T09-22-00" alt="">
+                <div class="player-score-flag-face">
+                    <p class="player-score-answer">${escapePlayer(playerAnswerGroup.answer || shown)}</p>
+                    ${burst}
                 </div>
-                ${playerScoreEweHtml(me, { you: true })}
-                ${rankChip}
             </div>
+            ${playerScoreEweHtml(me, { you: true })}
+            ${rankChip}
         </div>`);
     }
 
@@ -3739,22 +3825,20 @@ function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints,
     const extraLabel = extras.length
         ? extras.slice(0, 2).join(', ') + (extras.length > 2 ? '…' : '')
         : '';
-    return wrap(`<div class="player-score-stage is-hit is-shared">
-        <div class="player-score-unit is-cloth">
-            <div class="player-score-flag is-cloth">
-                <img class="player-score-flag-art" src="sprites/parade-banner.png?v=2026-11-19T23-20-00" alt="">
-                <div class="player-score-flag-face">
-                    <p class="player-score-answer">${escapePlayer(playerAnswerGroup.answer || shown)}</p>
-                    ${burst}
-                </div>
+    return wrap('is-hit is-shared', `<div class="player-score-unit is-cloth">
+        <div class="player-score-flag is-cloth">
+            <img class="player-score-flag-art" src="sprites/parade-banner.png?v=2026-11-19T23-20-00" alt="">
+            <div class="player-score-flag-face">
+                <p class="player-score-answer">${escapePlayer(playerAnswerGroup.answer || shown)}</p>
+                ${burst}
             </div>
-            <div class="player-score-holders">
-                ${playerScoreEweHtml(me, { you: true })}
-                ${holder ? playerScoreEweHtml(holder) : ''}
-            </div>
-            ${extraLabel ? `<p class="player-score-extras">${escapePlayer(extraLabel)}</p>` : ''}
-            ${rankChip}
         </div>
+        <div class="player-score-holders">
+            ${playerScoreEweHtml(me, { you: true })}
+            ${holder ? playerScoreEweHtml(holder) : ''}
+        </div>
+        ${extraLabel ? `<p class="player-score-extras">${escapePlayer(extraLabel)}</p>` : ''}
+        ${rankChip}
     </div>`);
 }
 
