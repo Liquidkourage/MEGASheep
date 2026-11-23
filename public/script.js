@@ -147,16 +147,15 @@ function setPlayerAnswerChrome({ locked = false, editing = false, reason = '' } 
         btn.textContent = editing ? 'Submit new answer' : (locked ? 'Locked in' : 'Submit answer');
     }
     if (hint) {
-        hint.textContent = editing
-            ? 'The host sent this back. Make it more specific, then submit again.'
-            : (locked
-                ? 'Answer received. Hang tight while the host finishes this question.'
-                : 'Rarer correct answers score more.');
+        hint.textContent = locked && !editing
+            ? 'Answer received. Hang tight while the host finishes this question.'
+            : 'Rarer correct answers score more.';
     }
     if (banner) {
         if (editing) {
+            const note = String(reason || 'Please be more specific').trim() || 'Please be more specific';
             banner.hidden = false;
-            banner.textContent = reason || 'The host wants a more specific answer.';
+            banner.textContent = `SENT BACK - ${note}`;
         } else {
             banner.hidden = true;
             banner.textContent = '';
