@@ -466,6 +466,23 @@ document.addEventListener('DOMContentLoaded', () => {
       setKeepAwakeLabel(keepAwakeEnabled);
     });
     setKeepAwakeLabel(keepAwakeEnabled);
+
+    const answerInput = document.getElementById('answerInput');
+    if (IS_PLAYER_ROUTE && answerInput) {
+      const armKeepAwakeForPlay = async () => {
+        let pref = '';
+        try { pref = localStorage.getItem('player.keepAwake') || ''; } catch (_) {}
+        if (pref === '0' || keepAwakeEnabled) return;
+        keepAwakeEnabled = true;
+        const ok = await attemptEnableKeepAwake();
+        if (!ok) keepAwakeEnabled = false;
+        else {
+          try { localStorage.setItem('player.keepAwake', '1'); } catch (_) {}
+        }
+        setKeepAwakeLabel(keepAwakeEnabled);
+      };
+      answerInput.addEventListener('focus', armKeepAwakeForPlay, { once: true });
+    }
   }
 
   if (IS_PLAYER_ROUTE && window.visualViewport) {

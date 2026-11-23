@@ -771,8 +771,8 @@ body.player-app #gameScreen .game-header {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    min-height: 56px;
-    padding: 8px 10px 8px clamp(56px, 8vw, 92px);
+    min-height: 64px;
+    padding: 8px 10px 8px 12px;
     background: none;
     border: 0;
 }
@@ -817,15 +817,15 @@ body.player-app .game-header-actions {
 
 body.player-app .player-icon-btn {
     width: auto;
-    min-width: 48px;
-    min-height: 48px;
-    padding: 0 12px;
+    min-width: 52px;
+    min-height: 56px;
+    padding: 0 16px;
     border: 0;
     border-radius: 14px;
     background: url("sprites/player-wood-btn.png?v=2026-11-22T01-35-00") center / 100% 100% no-repeat;
     color: var(--ink);
     font-family: var(--title);
-    font-size: 1.05rem;
+    font-size: clamp(1.12rem, 3.6vw, 1.35rem);
     font-weight: 700;
     letter-spacing: 0.02em;
 }
@@ -837,17 +837,17 @@ body.player-app .player-icon-btn[aria-expanded="true"] {
 }
 
 body.player-app #gameScreen .timer {
-    width: clamp(52px, 7vw, 80px);
-    min-width: 52px;
-    min-height: clamp(52px, 7vw, 80px);
+    width: clamp(64px, 18vw, 96px);
+    min-width: 64px;
+    min-height: clamp(64px, 18vw, 96px);
     padding: 0;
     border: 0;
     border-radius: 50%;
     background: url("sprites/player-moon.png?v=2026-11-22T01-30-00") center / contain no-repeat;
     color: var(--ink);
     font-family: var(--title);
-    font-size: clamp(1.15rem, 2.2vw, 1.7rem);
-    font-weight: 700;
+    font-size: clamp(1.45rem, 5vw, 2.1rem);
+    font-weight: 800;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -898,7 +898,7 @@ body.player-app .player-think-stack {
     width: 100%;
     min-width: 0;
     min-height: 0;
-    padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
+    padding-bottom: max(28px, env(safe-area-inset-bottom, 0px));
 }
 
 body.player-app .player-play-stage.is-locked:not(.is-editing) {
@@ -1020,6 +1020,14 @@ body.player-app .player-play-stage.is-locked:not(.is-editing) .player-submit-pas
 
 body.player-app #gameScreen .player-submit-pasture .player-ewe {
     width: clamp(132px, 40vw, 220px);
+}
+
+body.player-app #gameScreen .player-submit-pasture .player-ewe figcaption {
+    font-size: clamp(0.95rem, 3.6vw, 1.28rem);
+    padding: 5px 12px 6px;
+    max-width: 12em;
+    bottom: -0.4em;
+    border-width: 3px;
 }
 
 body.player-app #gameScreen .player-submit-pasture .player-ewe.is-to-paddock.is-walking .player-ewe-strip {
@@ -2170,6 +2178,10 @@ body.player-app .keep-awake-fab[aria-pressed="true"] {
     opacity: 1;
     filter: none;
     box-shadow: 0 0 0 3px #1a3878;
+}
+
+body.player-app:has(#gameScreen.active) .keep-awake-fab {
+    display: none;
 }
 
 body.player-app .toast,
