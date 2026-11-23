@@ -1231,7 +1231,7 @@
 
         function createAnswerItemHTML(answerText, playerCount, semanticConfidence, playerNames) {
             let confidenceDisplay = '';
-            if (semanticConfidence !== undefined) {
+            if (semanticConfidence > 0) {
                 const confidenceColor = semanticConfidence >= 80 ? '#27ae60' : 
                                       semanticConfidence >= 50 ? '#f39c12' : '#e74c3c';
                 confidenceDisplay = `
@@ -1259,7 +1259,7 @@
             item.dataset.playerNames = Array.isArray(group.players) ? group.players.join(', ') : '';
             
             let confidenceDisplay = '';
-            if (group.semanticConfidence !== undefined) {
+            if (group.semanticConfidence > 0) {
                 const confidenceColor = group.semanticConfidence >= 80 ? '#27ae60' : 
                                       group.semanticConfidence >= 50 ? '#f39c12' : '#e74c3c';
                 confidenceDisplay = `
@@ -1317,12 +1317,15 @@
             chip.title = bestConfidence >= GUESS_ACCEPT_MIN
                 ? `Double-click to file as "${bestMatch}"`
                 : `Guess "${bestMatch}" is too weak to auto-file`;
-            const confidenceEl = chip.querySelector('.answer-confidence');
-            if (confidenceEl) {
-                const color = bestConfidence >= 80 ? '#27ae60' : bestConfidence >= 50 ? '#f39c12' : '#e74c3c';
-                confidenceEl.style.color = color;
-                confidenceEl.textContent = `🧠 ${bestConfidence}% → "${bestMatch}"`;
+            let confidenceEl = chip.querySelector('.answer-confidence');
+            if (!confidenceEl) {
+                confidenceEl = document.createElement('div');
+                confidenceEl.className = 'answer-confidence';
+                chip.appendChild(confidenceEl);
             }
+            const color = bestConfidence >= 80 ? '#27ae60' : bestConfidence >= 50 ? '#f39c12' : '#e74c3c';
+            confidenceEl.style.color = color;
+            confidenceEl.textContent = `🧠 ${bestConfidence}% → "${bestMatch}"`;
             return { bestMatch, bestConfidence };
         }
 

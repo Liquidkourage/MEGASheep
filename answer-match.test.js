@@ -30,7 +30,26 @@ function testStrongGate() {
     assert.ok(!match.isStrongMatch('popcorn', 'pop'));
 }
 
+function testFuzzyTypos() {
+    const connecticut = match.answerConfidence('conneticut', 'Connecticut');
+    assert.ok(connecticut >= 85, `conneticut should be a close match, got ${connecticut}`);
+    assert.ok(match.isStrongMatch('conneticut', 'Connecticut'));
+
+    const receive = match.answerConfidence('recieve', 'receive');
+    assert.ok(receive >= 80, `recieve should be a close match, got ${receive}`);
+
+    const colorado = match.answerConfidence('colorodo', 'colorado');
+    assert.ok(colorado >= 75 && colorado < 90, `colorodo should hint, not auto-file, got ${colorado}`);
+}
+
+function testFuzzyDoesNotReviveShortMisses() {
+    assert.strictEqual(match.answerConfidence('crack', 'quack'), 0);
+    assert.strictEqual(match.answerConfidence('night', 'might'), 0);
+}
+
 testExactAndClose();
 testWholeWordNotSubstring();
 testStrongGate();
+testFuzzyTypos();
+testFuzzyDoesNotReviveShortMisses();
 console.log('answer-match tests ok');
