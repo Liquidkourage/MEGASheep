@@ -3687,111 +3687,39 @@ function playerScoreGroupMine(group, myName, playerAnswer) {
     return !!(answer && String((group && group.answer) || '').toLowerCase().trim() === answer);
 }
 
-function playerScoreGroupCount(group) {
-    return Math.max(
-        Array.isArray(group && group.players) ? group.players.length : 0,
-        Number(group && group.count) || 0,
-        1
-    );
-}
-
-function playerScoreMiniPennant(group) {
-    const who = playerScoreWho(playerScoreNameOf((group.players || [])[0]));
-    const pts = Math.max(0, Number(group.points) || 0);
-    const answer = String(group.answer || '').trim() || 'Answer';
-    return `<div class="player-score-mini is-pennant" aria-label="${escapePlayer(answer)}, ${pts} points">
-        <div class="player-score-flag is-pennant">
-            <img class="player-score-flag-art" src="sprites/parade-pennant.png?v=2026-11-19T23-20-00" alt="">
-            <div class="player-score-flag-face">
-                <p class="player-score-answer">${escapePlayer(answer)}</p>
-                <b class="player-score-burst">+${pts}</b>
-            </div>
-        </div>
-        ${playerScoreEweHtml(who, { mini: true })}
-    </div>`;
-}
-
-function playerScoreMiniCloth(group) {
+function playerScoreCardHtml(group, mine) {
     const names = ((group && group.players) || []).map(playerScoreNameOf).filter(Boolean);
-    const a = playerScoreWho(names[0]);
-    const b = names[1] ? playerScoreWho(names[1]) : null;
-    const extras = names.slice(2);
-    const pts = Math.max(0, Number(group.points) || 0);
-    const answer = String(group.answer || '').trim() || 'Answer';
-    const extraLabel = extras.length
-        ? extras.slice(0, 2).join(', ') + (extras.length > 2 ? '…' : '')
-        : '';
-    return `<div class="player-score-mini is-cloth" aria-label="${escapePlayer(answer)}, ${pts} points">
-        <div class="player-score-flag is-cloth">
-            <img class="player-score-flag-art" src="sprites/parade-banner.png?v=2026-11-19T23-20-00" alt="">
-            <div class="player-score-flag-face">
-                <p class="player-score-answer">${escapePlayer(answer)}</p>
-                <b class="player-score-burst">+${pts}</b>
-            </div>
+    const pts = Math.max(0, Number(group && group.points) || 0);
+    const answer = String((group && group.answer) || '').trim() || 'Answer';
+    const miss = pts <= 0;
+    const who = names.length ? names.join(', ') : 'No one';
+    const label = miss ? escapePlayer(answer) : `${escapePlayer(answer)}, +${pts}`;
+    return `<article class="player-score-card${mine ? ' is-mine' : ''}${miss ? ' is-miss' : ''}" aria-label="${label}">
+        <div class="player-score-card-head">
+            <p class="player-score-card-word">${escapePlayer(answer)}</p>
+            ${miss ? '' : `<b class="player-score-card-pts">+${pts}</b>`}
         </div>
-        <div class="player-score-holders">
-            ${playerScoreEweHtml(a, { mini: true })}
-            ${b ? playerScoreEweHtml(b, { mini: true }) : ''}
-        </div>
-        ${extraLabel ? `<p class="player-score-extras">${escapePlayer(extraLabel)}</p>` : ''}
-    </div>`;
+        <p class="player-score-card-who">${escapePlayer(who)}</p>
+    </article>`;
 }
 
-function playerScoreMiniSleep(group) {
-    const names = ((group && group.players) || []).map(playerScoreNameOf).filter(Boolean);
-    const answer = String(group.answer || '').trim() || 'No answer';
-    const lead = playerScoreWho(names[0] || 'Sheep');
-    const extra = names.slice(1, 3);
-    const more = extra.map((name) => playerScoreEweHtml(playerScoreWho(name), { mini: true, sad: true, caption: '' })).join('');
-    return `<div class="player-score-mini is-asleep" aria-label="${escapePlayer(answer)}">
-        ${playerScoreEweHtml(lead, { mini: true, sad: true, caption: answer })}
-        ${more}
-    </div>`;
-}
-
-function playerScoreLeftoverPost(missedCorrect) {
+function playerScoreLeftoverHtml(missedCorrect) {
     const leftover = Array.isArray(missedCorrect) ? missedCorrect : [];
     if (!leftover.length) return '';
     const chips = leftover.map((item) => `<li>${escapePlayer(item)}</li>`).join('');
-    const wide = leftover.length >= 4 ? ' is-wide' : '';
-    return `<aside class="player-score-post is-leftover${wide}" aria-label="Ungiven correct answers">
-        <img class="player-score-post-art" src="sprites/meadow-sign.png?v=2026-11-21T12-00-00" alt="">
-        <div class="player-score-post-face">
-            <p>Pasteur-ized</p>
-            <ul>${chips}</ul>
-        </div>
+    return `<aside class="player-score-leftover" aria-label="Ungiven correct answers">
+        <p>Pasteur-ized</p>
+        <ul>${chips}</ul>
     </aside>`;
 }
 
-function playerScoreFlockHtml(playerAnswer, playerAnswerGroup, missedCorrect) {
+function playerScoreSupportHtml(playerAnswer, playerAnswerGroup, missedCorrect) {
     const groups = Array.isArray(gameState && gameState.currentAnswerGroups) ? gameState.currentAnswerGroups : [];
     const myName = sessionStorage.getItem('playerName') || currentPlayerName || '';
-    const bits = [];
-    const leftover = playerScoreLeftoverPost(missedCorrect);
-    if (leftover) bits.push(leftover);
-    const hits = [];
-    const sleeps = [];
-    groups.forEach((group) => {
-        if (playerScoreGroupMine(group, myName, playerAnswer)) return;
-        const pts = Number(group && group.points) || 0;
-        if (pts > 0) {
-            hits.push(playerScoreGroupCount(group) <= 1 ? playerScoreMiniPennant(group) : playerScoreMiniCloth(group));
-        } else {
-            sleeps.push(playerScoreMiniSleep(group));
-        }
-    });
-    const left = [];
-    const right = [];
-    hits.forEach((html, i) => (i % 2 === 0 ? left : right).push(html));
-    sleeps.forEach((html) => right.push(html));
-    if (!left.length && !right.length && !leftover) return '';
-    return `<div class="player-score-hill">
-        ${leftover}
-        <div class="player-score-flanks">
-            <div class="player-score-flank is-left">${left.join('')}</div>
-            <div class="player-score-flank is-right">${right.join('')}</div>
-        </div>
-    </div>`;
+    const cards = groups.map((group) => playerScoreCardHtml(group, playerScoreGroupMine(group, myName, playerAnswer))).join('');
+    const leftover = playerScoreLeftoverHtml(missedCorrect);
+    if (!cards && !leftover) return '';
+    return `<div class="player-score-support">${cards ? `<div class="player-score-grid">${cards}</div>` : ''}${leftover}</div>`;
 }
 
 function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints, playerRank, totalPlayers, missedCorrect }) {
@@ -3805,8 +3733,8 @@ function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints,
     const unique = isCorrect && count <= 1;
     const rankBit = (playerRank > 0 && totalPlayers > 0) ? `#${playerRank} of ${totalPlayers}` : '';
     const rankChip = rankBit ? `<p class="player-score-rank">${rankBit}</p>` : '';
-    const hill = playerScoreFlockHtml(playerAnswer, playerAnswerGroup, missedCorrect);
-    const wrap = (cls, html) => `<div class="player-score-wrap"><div class="player-score-stage ${cls}">${hill}${html}</div></div>`;
+    const support = playerScoreSupportHtml(playerAnswer, playerAnswerGroup, missedCorrect);
+    const wrap = (cls, html) => `<div class="player-score-wrap"><div class="player-score-stage ${cls}">${html}${support}</div></div>`;
 
     if (!isCorrect) {
         return wrap('is-miss', `<div class="player-score-unit is-asleep">
@@ -3832,9 +3760,7 @@ function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints,
 
     const holder = others[0] ? playerScoreWho(others[0]) : null;
     const extras = others.slice(holder ? 1 : 0);
-    const extraLabel = extras.length
-        ? extras.slice(0, 2).join(', ') + (extras.length > 2 ? '…' : '')
-        : '';
+    const extraLabel = extras.join(', ');
     return wrap('is-hit is-shared', `<div class="player-score-unit is-cloth">
         <div class="player-score-flag is-cloth">
             <img class="player-score-flag-art" src="sprites/parade-banner.png?v=2026-11-19T23-20-00" alt="">

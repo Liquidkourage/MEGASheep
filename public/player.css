@@ -1249,7 +1249,9 @@ body.player-app .player-score-stage {
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-end;
+    gap: 6px;
     overflow: hidden;
+    padding: 0 0 4px;
 }
 
 body.player-app .player-score-unit {
@@ -1259,8 +1261,8 @@ body.player-app .player-score-unit {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: min(100%, 26rem);
-    margin: 0 auto 1vh;
+    width: min(100%, 22rem);
+    margin: 0 auto -10px;
     animation: playerScoreRise 0.55s cubic-bezier(0.14, 1.38, 0.32, 1) both;
 }
 
@@ -1332,9 +1334,9 @@ body.player-app .player-score-burst {
 }
 
 body.player-app .player-score-unit .player-score-flag.is-pennant {
-    width: min(46vw, 10rem);
-    height: clamp(9.5rem, 28vh, 13.5rem);
-    margin-bottom: -1.4rem;
+    width: min(40vw, 8.6rem);
+    height: clamp(7.2rem, 20vh, 10.5rem);
+    margin-bottom: -1.2rem;
     animation: playerScoreFlagUp 0.5s 0.06s cubic-bezier(0.14, 1.38, 0.32, 1) both;
 }
 
@@ -1351,12 +1353,12 @@ body.player-app .player-score-flag.is-pennant .player-score-flag-face {
 }
 
 body.player-app .player-score-unit .player-score-flag.is-pennant .player-score-answer {
-    font-size: clamp(1.05rem, 5.2vw, 1.55rem);
+    font-size: clamp(1.15rem, 5.4vw, 1.7rem);
 }
 
 body.player-app .player-score-unit .player-score-flag.is-cloth {
-    width: min(86vw, 24rem);
-    height: clamp(5.4rem, 16vh, 7.4rem);
+    width: min(88vw, 22rem);
+    height: clamp(4.6rem, 14vh, 6.4rem);
     margin-bottom: 0.2rem;
 }
 
@@ -1397,7 +1399,7 @@ body.player-app .player-score-holders {
     display: flex;
     align-items: flex-end;
     justify-content: space-around;
-    width: min(86vw, 24rem);
+    width: min(88vw, 22rem);
     padding: 0 6% 1.55em;
     z-index: 3;
 }
@@ -1411,8 +1413,11 @@ body.player-app .player-score-extras {
     background: var(--cream);
     color: var(--ink);
     font-family: var(--title);
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    overflow-wrap: anywhere;
 }
 
 body.player-app .player-score-rank {
@@ -1431,215 +1436,126 @@ body.player-app .player-score-rank {
     white-space: nowrap;
 }
 
-body.player-app .player-score-hill {
-    position: absolute;
-    inset: 12% 0 0 0;
-    z-index: 1;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 0 8px 46%;
-    overflow: visible;
-    pointer-events: none;
-}
-
-body.player-app .player-score-flanks {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    width: 100%;
-    gap: 8px;
-    pointer-events: none;
-}
-
-body.player-app .player-score-flank {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    align-content: flex-end;
-    gap: 8px 10px;
-    width: min(46%, 24rem);
-    pointer-events: none;
-}
-
-body.player-app .player-score-flank.is-left {
-    justify-content: flex-start;
-}
-
-body.player-app .player-score-flank.is-right {
-    justify-content: flex-end;
-}
-
-body.player-app .player-score-mini {
+body.player-app .player-score-support {
     position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    z-index: 3;
     flex: 0 1 auto;
-    opacity: 0.78;
-    filter: saturate(0.72) contrast(0.96);
+    min-height: 0;
+    max-height: 48%;
+    width: min(100%, 72rem);
+    margin: 0 auto;
+    padding: 10px 10px 12px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 3px solid var(--ink);
+    border-radius: 18px;
+    background: var(--cream);
+    color: var(--ink);
+    box-shadow: 3px 4px 0 #1a140c;
+    animation: playerScoreRise 0.45s 0.12s both;
 }
 
-body.player-app .player-score-mini .player-score-flag-art {
-    filter: drop-shadow(0 3px 4px rgba(4, 10, 18, 0.28));
+body.player-app .player-score-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10.25rem, 1fr));
+    gap: 8px;
 }
 
-body.player-app .player-score-mini .player-score-burst {
-    min-width: 1.35em;
-    min-height: 1em;
-    padding: 0.04em 0.22em;
-    border-width: 2px;
-    font-size: 0.58rem;
-    animation: none;
-}
-
-body.player-app .player-score-mini.is-pennant {
-    width: min(100%, clamp(48px, 12vw, 76px));
-}
-
-body.player-app .player-score-mini .player-score-flag.is-pennant {
-    width: 100%;
-    height: clamp(2.45rem, 7.2vh, 3.35rem);
-    margin-bottom: -0.55rem;
-    animation: none;
-}
-
-body.player-app .player-score-mini .player-score-flag.is-pennant .player-score-answer {
-    font-size: clamp(0.52rem, 2.2vw, 0.68rem);
-}
-
-body.player-app .player-score-mini.is-cloth {
-    width: min(100%, clamp(84px, 22vw, 124px));
-}
-
-body.player-app .player-score-mini .player-score-flag.is-cloth {
-    width: 100%;
-    height: clamp(1.85rem, 6vh, 2.55rem);
-    margin-bottom: 0;
-    animation: none;
-}
-
-body.player-app .player-score-mini .player-score-flag.is-cloth::before,
-body.player-app .player-score-mini .player-score-flag.is-cloth::after {
-    height: 1.55rem;
-    width: 4px;
-}
-
-body.player-app .player-score-mini .player-score-flag.is-cloth .player-score-answer {
-    font-size: clamp(0.58rem, 2.4vw, 0.76rem);
-}
-
-body.player-app .player-score-mini .player-score-holders {
-    width: 100%;
-    padding: 0 4% 1.15em;
-}
-
-body.player-app .player-score-mini .player-ewe,
-body.player-app .player-score-mini .player-score-holders .player-ewe.is-you,
-body.player-app .player-score-mini .player-score-holders .player-ewe:not(.is-you) {
-    width: clamp(32px, 9vw, 46px);
-}
-
-body.player-app .player-score-mini .player-ewe figcaption {
-    font-size: 0.5rem;
-    max-width: 8.4em;
-    padding: 1px 4px 1px;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: unset;
-    text-align: center;
-    line-height: 1.1;
-}
-
-body.player-app .player-score-mini .player-score-extras {
-    font-size: 0.5rem;
-    padding: 1px 5px 2px;
-}
-
-body.player-app .player-score-mini.is-asleep {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 3px;
-    width: min(100%, 6.4rem);
-    max-width: none;
-}
-
-body.player-app .player-score-mini.is-asleep .player-ewe.is-sad {
-    width: min(100%, clamp(52px, 15vw, 78px));
-}
-
-body.player-app .player-score-post {
-    position: relative;
-    isolation: isolate;
-    width: min(100%, 7.4rem);
-    padding: 8px 8px 32px;
-    opacity: 0.9;
-    filter: saturate(0.82);
-}
-
-body.player-app .player-score-post.is-wide {
-    width: min(100%, 10.6rem);
-}
-
-body.player-app .player-score-post-art {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: fill;
-    pointer-events: none;
-    z-index: 0;
-    filter: drop-shadow(0 4px 0 rgba(20, 16, 8, 0.24));
-}
-
-body.player-app .player-score-post-face {
-    position: relative;
-    z-index: 1;
+body.player-app .player-score-card {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    padding: 2px 4px 8px;
-    color: var(--ink);
+    min-width: 0;
+    padding: 7px 9px 8px;
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    background: #fff8e6;
+}
+
+body.player-app .player-score-card.is-mine {
+    background: #ffe27a;
+    box-shadow: 0 0 0 2px #1a3878;
+}
+
+body.player-app .player-score-card.is-miss {
+    background: #efe4c8;
+}
+
+body.player-app .player-score-card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+body.player-app .player-score-card-word {
+    margin: 0;
+    min-width: 0;
+    font-family: var(--title);
+    font-size: clamp(0.95rem, 2.8vw, 1.15rem);
+    font-weight: 800;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+}
+
+body.player-app .player-score-card-pts {
+    flex-shrink: 0;
+    min-width: 2.1em;
+    padding: 0.08em 0.4em;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    background: var(--cream);
+    color: var(--navy);
+    font-family: var(--title);
+    font-size: 0.82rem;
+    font-weight: 800;
     text-align: center;
 }
 
-body.player-app .player-score-post-face p {
-    margin: 0;
-    color: var(--wood);
-    font-family: var(--title);
-    font-size: 0.58rem;
-    font-weight: 800;
-    line-height: 1.05;
+body.player-app .player-score-card.is-mine .player-score-card-pts {
+    background: #fff4c4;
 }
 
-body.player-app .player-score-post-face ul {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3px;
+body.player-app .player-score-card-who {
+    margin: 0;
+    font-family: var(--title);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+body.player-app .player-score-leftover {
+    margin: 10px 0 0;
+    padding-top: 8px;
+    border-top: 2px solid var(--ink);
+}
+
+body.player-app .player-score-leftover p {
+    margin: 0 0 6px;
+    color: var(--wood);
+    font-family: var(--title);
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+body.player-app .player-score-leftover ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
     margin: 0;
     padding: 0;
     list-style: none;
 }
 
-body.player-app .player-score-post:not(.is-wide) .player-score-post-face ul {
-    grid-template-columns: 1fr;
-}
-
-body.player-app .player-score-post-face li {
-    padding: 2px 5px;
-    border: 1.5px solid var(--ink);
-    border-radius: 8px;
+body.player-app .player-score-leftover li {
+    padding: 4px 8px;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
     background: #f6ead0;
-    color: var(--ink);
     font-family: var(--title);
-    font-size: 0.62rem;
+    font-size: 0.78rem;
     font-weight: 700;
-    line-height: 1.1;
     overflow-wrap: anywhere;
 }
 
@@ -1652,11 +1568,11 @@ body.player-app .player-score-stage .player-ewe {
 }
 
 body.player-app .player-score-unit .player-ewe {
-    width: clamp(104px, 32vw, 150px);
+    width: clamp(92px, 26vw, 132px);
 }
 
 body.player-app .player-score-unit .player-score-holders .player-ewe.is-you {
-    width: clamp(112px, 34vw, 158px);
+    width: clamp(100px, 28vw, 140px);
 }
 
 body.player-app .player-score-unit .player-score-holders .player-ewe:not(.is-you) {
@@ -1672,7 +1588,7 @@ body.player-app .player-score-stage .player-ewe.is-sad {
 }
 
 body.player-app .player-score-unit .player-ewe.is-sad {
-    width: min(100%, clamp(200px, 70vw, 320px));
+    width: min(100%, clamp(160px, 48vw, 240px));
 }
 
 body.player-app .player-score-stage .player-ewe.is-sad .player-ewe-art {
@@ -1704,14 +1620,14 @@ body.player-app .player-score-stage .player-ewe[data-coat="3"].is-sad .player-ew
 }
 
 body.player-app .player-score-stage.is-miss {
-    align-items: center;
+    align-items: stretch;
     justify-content: flex-end;
-    padding: 0 10px 1vh;
+    padding: 0;
 }
 
 body.player-app .player-score-unit.is-asleep {
-    margin: 0;
-    width: min(100%, 22rem);
+    margin: 0 auto;
+    width: min(100%, 20rem);
     align-items: center;
 }
 
@@ -1739,7 +1655,8 @@ body.player-app .player-score-unit.is-asleep {
 @media (prefers-reduced-motion: reduce) {
     body.player-app .player-score-unit,
     body.player-app .player-score-flag.is-pennant,
-    body.player-app .player-score-burst {
+    body.player-app .player-score-burst,
+    body.player-app .player-score-support {
         animation: none;
     }
 }
@@ -1767,111 +1684,67 @@ body.player-app .player-score-unit.is-asleep {
 }
 
 @media (max-height: 500px) and (orientation: landscape) {
-    body.player-app .player-score-hill {
-        inset: 8% 0 0 0;
-        padding: 0 8px 28%;
+    body.player-app .player-score-stage {
         flex-direction: row;
-        flex-wrap: nowrap;
-        align-items: flex-end;
-        justify-content: space-between;
-    }
-
-    body.player-app .player-score-flanks {
-        width: auto;
-        flex: 1;
-    }
-
-    body.player-app .player-score-flank {
-        width: min(38%, 22rem);
+        align-items: stretch;
+        gap: 10px;
     }
 
     body.player-app .player-score-unit {
-        width: min(42vw, 22rem);
-        margin: 0 auto 0;
+        width: min(42vw, 20rem);
+        margin: 0;
+        justify-content: center;
+    }
+
+    body.player-app .player-score-support {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+        max-height: none;
     }
 
     body.player-app .player-score-stage > .player-score-flag.is-pennant,
     body.player-app .player-score-unit.is-pennant .player-score-flag.is-pennant {
-        height: 38vh;
+        height: 36vh;
         margin-bottom: -1rem;
     }
 
     body.player-app .player-score-unit .player-score-flag.is-cloth {
         height: 22vh;
-        width: min(44vw, 20rem);
+        width: min(40vw, 18rem);
     }
 }
 
 @media (min-width: 720px) {
-    body.player-app .player-score-hill {
-        inset: 24% 0 0 0;
-        padding: 0 1.5% 18%;
-        gap: 12px;
-        justify-content: flex-end;
-    }
-
-    body.player-app .player-score-post,
-    body.player-app .player-score-post.is-wide {
-        position: absolute;
-        left: 1.5%;
-        bottom: 22%;
-        width: min(100%, 13.5rem);
-    }
-
-    body.player-app .player-score-flank {
-        width: min(31%, 26rem);
-        gap: 10px 12px;
-    }
-
-    body.player-app .player-score-mini.is-pennant {
-        width: min(100%, clamp(52px, 5.6vw, 82px));
-    }
-
-    body.player-app .player-score-mini.is-cloth {
-        width: min(100%, clamp(104px, 10vw, 140px));
-    }
-
-    body.player-app .player-score-post {
-        width: min(100%, 8rem);
-    }
-
-    body.player-app .player-score-post.is-wide {
-        width: min(100%, 13.5rem);
-    }
-
-    body.player-app .player-score-post.is-wide .player-score-post-face ul {
-        grid-template-columns: 1fr 1fr 1fr;
-    }
-
     body.player-app .player-score-unit {
-        width: min(28rem, 36%);
-    }
-}
-
-@media (max-width: 719px) {
-    body.player-app .player-score-hill {
-        inset: 24% 0 0 0;
-        padding: 0 6px 50%;
+        width: min(24rem, 40%);
     }
 
-    body.player-app .player-score-post,
-    body.player-app .player-score-post.is-wide {
-        position: relative;
-        z-index: 2;
-        width: min(100%, 11.5rem);
-        padding-bottom: 36px;
+    body.player-app .player-score-grid {
+        grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+        gap: 10px;
+    }
+
+    body.player-app .player-score-card {
+        padding: 10px 12px 11px;
+    }
+
+    body.player-app .player-score-card-word {
+        font-size: clamp(1.02rem, 1.5vw, 1.22rem);
+    }
+
+    body.player-app .player-score-card-who {
+        font-size: 0.86rem;
     }
 }
 
 @media (max-width: 379px) {
-    body.player-app .player-score-flank {
-        width: min(48%, 12rem);
-        gap: 6px 6px;
+    body.player-app .player-score-grid {
+        grid-template-columns: 1fr;
     }
 
-    body.player-app .player-score-post,
-    body.player-app .player-score-post.is-wide {
-        width: min(100%, 10.8rem);
+    body.player-app .player-score-support {
+        padding: 8px;
     }
 }
 
