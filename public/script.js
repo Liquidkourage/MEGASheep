@@ -304,7 +304,7 @@ function presentSendBack(reason, originalAnswer) {
         if (!alreadyEditing) input.focus();
     }
     if (!alreadyEditing) {
-        showToast(`✏️ Edit requested by host: ${reason || 'Please be more specific'}`, 'warning');
+        showToast(reason || 'The host wants a more specific answer.', 'warning');
         if (navigator && navigator.vibrate) navigator.vibrate(120);
     }
 }
@@ -4558,6 +4558,7 @@ function showScoresModal() {
     const scoresModal = document.getElementById('scoresModal');
     const scoresList = document.getElementById('scoresList');
     if (!scoresModal || !scoresList) return;
+    document.body.classList.add('is-board-open');
     
     // Populate scores list
     scoresList.innerHTML = '';
@@ -4590,6 +4591,7 @@ function showScoresModal() {
 
 function closeScoresModal() {
     const scoresModal = document.getElementById('scoresModal');
+    document.body.classList.remove('is-board-open');
     scoresModal.style.opacity = '0';
     setTimeout(() => {
         scoresModal.style.display = 'none';
@@ -5309,7 +5311,7 @@ function showWaitingForGrading() {
     if (answersList) {
         // Get the submitted answer from window storage (only use window, not localStorage for current question)
         const submittedAnswer = getMyAnswerForCurrentQuestion();
-        const displayAnswer = submittedAnswer && submittedAnswer.trim() !== '' ? submittedAnswer : 'No Answer Received';
+        const displayAnswer = submittedAnswer && submittedAnswer.trim() !== '' ? submittedAnswer : 'No answer';
         console.log('🎯 Retrieved submitted answer:', submittedAnswer);
         console.log('🎯 Display answer:', displayAnswer);
         
@@ -5321,21 +5323,14 @@ function showWaitingForGrading() {
         answersList.style.minHeight = '0';
         answersList.style.paddingBottom = '8px';
         
+        const me = playerScoreWho(sessionStorage.getItem('playerName') || currentPlayerName);
         answersList.innerHTML = `
-            <div class="player-waiting-card">
-                <div class="player-waiting-answer">${displayAnswer}</div>
-                <div class="loading-spinner"></div>
-                <p>The host is grading. Hang tight.</p>
-            </div>
-        `;
-    }
-    
-    // Hide scores until grading is complete
-    const scoresList = document.getElementById('scoresList');
-    if (scoresList) {
-        scoresList.innerHTML = `
-            <div class="waiting-message">
-                <p>Scores will be updated after grading is complete</p>
+            <div class="player-paddock">
+                <p class="player-paddock-answer">${escapePlayer(displayAnswer)}</p>
+                <figure class="player-ewe is-you is-thinking player-idle-ewe" data-coat="${playerCoatOf(me)}" aria-hidden="true">
+                    <span class="player-ewe-art"><span class="player-ewe-strip"></span></span>
+                    <figcaption>${escapePlayer(me.name || 'Sheep')}</figcaption>
+                </figure>
             </div>
         `;
     }

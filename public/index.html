@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=2026-11-22T01-30-00">
-    <link rel="stylesheet" href="player.css?v=2026-11-23T08-10-00">
+    <link rel="stylesheet" href="player.css?v=2026-11-23T08-30-00">
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     <script>
@@ -260,15 +260,21 @@
 
         <!-- Disclosures & Credits -->
         <div id="aiDisclosureModal" class="modal player-ai-disclosure-modal" style="display: none;" hidden>
-            <div class="modal-content player-ai-disclosure-card" role="dialog" aria-modal="true" aria-labelledby="aiDisclosureTitle">
-                <div class="modal-header">
-                    <h4 id="aiDisclosureTitle">Disclosures &amp; Credits</h4>
-                    <button id="closeAiDisclosureBtn" class="player-ai-disclosure-close" type="button" aria-label="Close">×</button>
+            <div class="player-ai-disclosure-scene">
+                <div class="modal-content player-ai-disclosure-card" role="dialog" aria-modal="true" aria-labelledby="aiDisclosureTitle">
+                    <div class="modal-header">
+                        <h4 id="aiDisclosureTitle">Disclosures &amp; Credits</h4>
+                        <button id="closeAiDisclosureBtn" class="player-ai-disclosure-close" type="button" aria-label="Close">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>While MEGASheep was conceived, designed, and steered by creator Jay Borsom, its computer code was written entirely by generative AI development tools, which also performed much of the debugging, testing, and technical implementation under her direction.</p>
+                        <p>Sheep assets created by TokeGameArt.</p>
+                    </div>
                 </div>
-                <div class="modal-body">
-                    <p>While MEGASheep was conceived, designed, and steered by creator Jay Borsom, its computer code was written entirely by generative AI development tools, which also performed much of the debugging, testing, and technical implementation under her direction.</p>
-                    <p>Sheep assets created by TokeGameArt.</p>
-                </div>
+                <figure class="player-ewe player-idle-ewe is-thinking" data-coat="1" aria-hidden="true">
+                    <span class="player-ewe-art"><span class="player-ewe-strip"></span></span>
+                    <img class="player-thought" src="sprites/player-thought.png?v=2026-11-22T01-30-00" alt="">
+                </figure>
             </div>
         </div>
 
@@ -407,7 +413,7 @@
     <script src="answer-match.js?v=2026-11-22T10-45-00"></script>
     <script src="player-submit.js?v=2026-11-22T07-55-00"></script>
     <script src="sheep-coat.js?v=2026-11-22T23-00-00"></script>
-    <script src="script.js?v=2026-11-23T08-05-00"></script>
+    <script src="script.js?v=2026-11-23T08-30-00"></script>
   <!-- Removed sticky player footer -->
 </body>
 </html>
