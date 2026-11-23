@@ -12,6 +12,6 @@ alwaysApply: true
 - Size type, scores, QR codes, and timers for viewing from across a room.
 - Pairing and lobby share the cartoon night meadow. Panels are opaque outlined signs, not glass.
 - The unpaired TV sign shows the pairing code, with “Host: use this code to pair with this display” above it and “Players: wait for a numeric code to join” below it, each separated from the code. MEGASheep’s byline sits under the title in the sky, in that same outlined lettering, not on the sign.
-- The lobby join sign carries the MEGASheep pitch above the QR, then the QR, then “Player Code:” over the join number.
+- The lobby join sign carries the MEGASheep pitch above the QR, then the QR, then “Game Code:” over the join number.
 - Do not add phone breakpoints, 44px touch targets, portrait stacking, or hover-only essential behavior.
 - Phone constraints belong to player screens. Laptop constraints belong to the host console. Neither applies here.

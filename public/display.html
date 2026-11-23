@@ -587,7 +587,7 @@
             const code = tvJoinCode();
             if (!code) return '';
             const src = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(tvJoinUrl())}`;
-            return `<aside class="tv-corner-code" aria-label="Player code ${code}"><img class="tv-corner-code-qr" src="${src}" alt=""><span class="tv-corner-code-copy"><p class="tv-corner-code-kicker">Player Code</p><p class="tv-corner-code-num">${code}</p></span></aside>`;
+            return `<aside class="tv-corner-code" aria-label="Game code ${code}"><img class="tv-corner-code-qr" src="${src}" alt=""><span class="tv-corner-code-copy"><p class="tv-corner-code-kicker">Game Code</p><p class="tv-corner-code-num">${code}</p></span></aside>`;
         }
 
         function pitchCopyHtml() {
@@ -753,7 +753,7 @@
                         <div class="tv-sign-face">
                             ${pitchCopyHtml()}
                             <div id="qrCodeWaiting" class="qr-code"></div>
-                            <p class="tv-player-code-kicker">Player Code:</p>
+                            <p class="tv-player-code-kicker">Game Code:</p>
                             <p class="tv-lobby-code">${displayGameCode || 'XXXX'}</p>
                         </div>
                     </aside>
