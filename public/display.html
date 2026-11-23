@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T19-25-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T19-40-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -998,7 +998,7 @@
 
         const LOBBY_FIELD = { left: 2, right: 98, top: 18, bottom: 90 };
         const PLAY_FIELD = { left: 3, right: 50, top: 52, bottom: 91 };
-        const CODE_KEEP_OUT = { right: 27, top: 73 };
+        const CODE_KEEP_OUT = { right: 32, top: 69 };
         const RESULTS_FIELD = { left: 8, right: 92, top: 64, bottom: 93 };
         const RESULTS_FAR = { left: 22, right: 78, y: 66 };
         const RESULTS_NEAR = { left: 8, right: 92, y: 92 };
@@ -1106,8 +1106,12 @@
             const inset = lobby
                 ? 2 + (1 - depthT(gy)) * 7
                 : 2 + (1 - depthT(gy)) * 8;
+            let left = field.left + inset;
+            if (codeKeepOutActive() && gy > CODE_KEEP_OUT.top) {
+                left = Math.max(left, CODE_KEEP_OUT.right);
+            }
             return {
-                left: field.left + inset,
+                left,
                 right: field.right - inset
             };
         }
@@ -5080,12 +5084,13 @@
 
         function paradeTravel(width, n) {
             const w = Number(width) || 10;
-            if (n === 1) {
-                const pad = Math.max(18, w * 0.72);
-                return { startX: -pad, destX: 100 + pad };
+            const pad = n === 1 ? Math.max(18, w * 0.72) : Math.max(22, w * 0.78);
+            let startX = -pad;
+            if (codeKeepOutActive()) {
+                const half = n === 1 ? 0 : Math.max(5.4, w * 0.44);
+                startX = CODE_KEEP_OUT.right + half + 2;
             }
-            const pad = Math.max(22, w * 0.78);
-            return { startX: -pad, destX: 100 + pad };
+            return { startX, destX: 100 + pad };
         }
 
         function packFlagHolders(count, cx, cy, width, laneScale, zBase) {

@@ -939,14 +939,6 @@ html, body {
     text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55);
 }
 
-.tv-play .tv-flock,
-.tv-score .tv-flock,
-.tv-standings .tv-flock,
-.tv-final .tv-flock,
-.tv-score .tv-score-banners {
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 27% 100%, 27% 73%, 0 73%);
-}
-
 .tv-corner-code {
     position: absolute;
     left: max(1.6vw, 18px);
