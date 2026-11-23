@@ -2962,8 +2962,9 @@ function armJoinGrazers() {
     });
 }
 
-function playPlayerJoinPoof(el) {
+function playPlayerJoinPoof(el, opts) {
     if (!el) return;
+    const graze = !opts || opts.graze !== false;
     clearPlayerWander(el);
     el.classList.add('is-joining');
     const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2982,7 +2983,7 @@ function playPlayerJoinPoof(el) {
     const done = () => {
         if (!el.classList.contains('is-joining')) return;
         el.classList.remove('is-joining');
-        schedulePlayerWander(el);
+        if (graze) schedulePlayerWander(el);
     };
     const onEnd = (event) => {
         if (event.animationName && event.animationName !== 'playerEweJump') return;
@@ -3529,7 +3530,19 @@ function displayQuestionResults() {
     // Create two-column layout for desktop, single column for mobile
     const isMobile = window.innerWidth <= 768;
     
-    if (IS_PLAYER_ROUTE || isMobile) {
+    if (IS_PLAYER_ROUTE) {
+        answersList.style.display = 'flex';
+        answersList.style.flexDirection = 'column';
+        answersList.style.minHeight = '0';
+        answersList.style.overflow = 'hidden';
+        answersList.innerHTML = createPlayerScoreScene({
+            playerAnswer,
+            playerAnswerGroup,
+            playerPoints,
+            missedCorrect
+        });
+        armPlayerScoreScene();
+    } else if (isMobile) {
         answersList.style.display = 'flex';
         answersList.style.flexDirection = 'column';
         answersList.style.minHeight = '0';
@@ -3608,6 +3621,117 @@ function renderMissedCorrectSection(missed) {
         <div class="answers-results-grid">${items}</div>
       </div>
     `;
+}
+
+function playerScoreNameOf(entry) {
+    if (!entry) return '';
+    if (typeof entry === 'string') return entry;
+    return String(entry.name || '');
+}
+
+function playerScoreWho(name) {
+    const lower = String(name || '').toLowerCase();
+    const found = ((gameState && gameState.players) || []).find((player) => String(player.name || '').toLowerCase() === lower);
+    return found || { name: name || 'Sheep' };
+}
+
+function playerScoreEweHtml(who, extras) {
+    const extra = extras || {};
+    const name = playerScoreNameOf(who) || 'Sheep';
+    const caption = extra.caption != null ? extra.caption : name;
+    const classes = ['player-ewe', extra.you ? 'is-you' : '', extra.sad ? 'is-sad' : ''].filter(Boolean).join(' ');
+    return `<figure class="${classes}" data-coat="${playerCoatOf(who && who.name ? who : name)}">
+        <span class="player-ewe-art" aria-hidden="true"><span class="player-ewe-strip"></span></span>
+        <figcaption>${escapePlayer(caption)}</figcaption>
+    </figure>`;
+}
+
+function playerScorePeers(group, myName) {
+    const names = ((group && group.players) || []).map(playerScoreNameOf).filter(Boolean);
+    const mine = String(myName || '').toLowerCase();
+    const others = names.filter((name) => name.toLowerCase() !== mine);
+    const count = Math.max(
+        names.length,
+        Number(group && group.count) || 0,
+        1
+    );
+    return { others, count };
+}
+
+function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints, missedCorrect }) {
+    const myName = sessionStorage.getItem('playerName') || currentPlayerName || '';
+    const me = playerScoreWho(myName);
+    const answer = String(playerAnswer || '').trim();
+    const isCorrect = !!(playerAnswerGroup && Number(playerAnswerGroup.points) > 0);
+    const pts = Math.max(0, Number(playerPoints || (playerAnswerGroup && playerAnswerGroup.points) || 0));
+    const shown = answer || 'No answer';
+    const { others, count } = playerScorePeers(playerAnswerGroup, myName);
+    const unique = isCorrect && count <= 1;
+    const leftover = (!isCorrect && Array.isArray(missedCorrect) ? missedCorrect : []).slice(0, 4);
+
+    if (!isCorrect) {
+        const chips = leftover.map((item) => `<li>${escapePlayer(item)}</li>`).join('');
+        const sign = leftover.length
+            ? `<aside class="player-sign player-miss-sign" aria-label="Ungiven correct answers">
+                <img class="player-sign-art" src="sprites/player-plaque.png?v=2026-11-22T01-30-00" alt="">
+                <div class="player-sign-face">
+                    <h3>Pasteur-ized Answers</h3>
+                    <ul>${chips}</ul>
+                </div>
+            </aside>`
+            : '';
+        return `<div class="player-score-stage is-miss">
+            ${sign}
+            <div class="player-score-unit is-asleep">
+                ${playerScoreEweHtml(me, { you: true, sad: true, caption: shown })}
+            </div>
+        </div>`;
+    }
+
+    const burst = `<b class="player-score-burst">+${pts}</b>`;
+    if (unique) {
+        return `<div class="player-score-stage is-hit is-unique">
+            <div class="player-score-unit is-pennant">
+                <div class="player-score-flag is-pennant is-gold">
+                    <img class="player-score-flag-art" src="sprites/parade-pennant-gold.png?v=2026-11-22T09-22-00" alt="">
+                    <div class="player-score-flag-face">
+                        <p class="player-score-answer">${escapePlayer(playerAnswerGroup.answer || shown)}</p>
+                        ${burst}
+                    </div>
+                </div>
+                ${playerScoreEweHtml(me, { you: true })}
+            </div>
+        </div>`;
+    }
+
+    const holder = others[0] ? playerScoreWho(others[0]) : null;
+    const extras = others.slice(holder ? 1 : 0);
+    const extraLabel = extras.length
+        ? extras.slice(0, 2).join(', ') + (extras.length > 2 ? '…' : '')
+        : '';
+    return `<div class="player-score-stage is-hit is-shared">
+        <div class="player-score-unit is-cloth">
+            <div class="player-score-flag is-cloth">
+                <img class="player-score-flag-art" src="sprites/parade-banner.png?v=2026-11-19T23-20-00" alt="">
+                <div class="player-score-flag-face">
+                    <p class="player-score-answer">${escapePlayer(playerAnswerGroup.answer || shown)}</p>
+                    ${burst}
+                </div>
+            </div>
+            <div class="player-score-holders">
+                ${playerScoreEweHtml(me, { you: true })}
+                ${holder ? playerScoreEweHtml(holder) : ''}
+            </div>
+            ${extraLabel ? `<p class="player-score-extras">${escapePlayer(extraLabel)}</p>` : ''}
+        </div>
+    </div>`;
+}
+
+function armPlayerScoreScene() {
+    const stage = document.querySelector('#scoringScreen .player-score-stage');
+    if (!stage || !stage.classList.contains('is-hit')) return;
+    const you = stage.querySelector('.player-ewe.is-you');
+    if (you) playPlayerJoinPoof(you, { graze: false });
 }
 
 // Helper function to create personal result section

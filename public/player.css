@@ -519,27 +519,32 @@ body.player-app .player-pasture .player-ewe[data-coat="3"].is-walking .player-ew
 .player-ewe-poof i:nth-child(7) { --dx: -48; --dy: -62; --s: 1.05; width: 24%; animation-delay: 0.03s; }
 .player-ewe-poof i:nth-child(8) { --dx: 52; --dy: -58; --s: 1.02; width: 22%; animation-delay: 0.07s; }
 
-body.player-app .player-pasture .player-ewe.is-poofing .player-ewe-art {
+body.player-app .player-pasture .player-ewe.is-poofing .player-ewe-art,
+body.player-app .player-score-stage .player-ewe.is-poofing .player-ewe-art {
     z-index: 2;
     animation: playerEwePopIn 0.46s cubic-bezier(0.14, 1.38, 0.32, 1) both;
 }
 
-body.player-app .player-pasture .player-ewe.is-poofing figcaption {
+body.player-app .player-pasture .player-ewe.is-poofing figcaption,
+body.player-app .player-score-stage .player-ewe.is-poofing figcaption {
     z-index: 3;
     animation: playerEweTagPopIn 0.4s 0.08s cubic-bezier(0.14, 1.38, 0.32, 1) backwards;
 }
 
-body.player-app .player-pasture .player-ewe.is-joining .player-ewe-strip {
+body.player-app .player-pasture .player-ewe.is-joining .player-ewe-strip,
+body.player-app .player-score-stage .player-ewe.is-joining .player-ewe-strip {
     width: 1200%;
     background-image: url("sprites/sheep-01-jump.png?v=2026-11-18T21-40-00");
     animation: playerEweJump 0.5s steps(12, jump-none) forwards;
 }
 
-body.player-app .player-pasture .player-ewe[data-coat="2"].is-joining .player-ewe-strip {
+body.player-app .player-pasture .player-ewe[data-coat="2"].is-joining .player-ewe-strip,
+body.player-app .player-score-stage .player-ewe[data-coat="2"].is-joining .player-ewe-strip {
     background-image: url("sprites/sheep-02-jump.png?v=2026-11-18T21-40-00");
 }
 
-body.player-app .player-pasture .player-ewe[data-coat="3"].is-joining .player-ewe-strip {
+body.player-app .player-pasture .player-ewe[data-coat="3"].is-joining .player-ewe-strip,
+body.player-app .player-score-stage .player-ewe[data-coat="3"].is-joining .player-ewe-strip {
     background-image: url("sprites/sheep-03-jump.png?v=2026-11-18T21-40-00");
 }
 
@@ -1168,6 +1173,373 @@ body.player-app #scoringScreen #answersList {
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column;
+}
+
+body.player-app .player-score-stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    overflow: visible;
+}
+
+body.player-app .player-score-unit {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: min(100%, 26rem);
+    margin: 0 0 2vh;
+    animation: playerScoreRise 0.55s cubic-bezier(0.14, 1.38, 0.32, 1) both;
+}
+
+body.player-app .player-score-flag {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+}
+
+body.player-app .player-score-flag-art {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    pointer-events: none;
+    filter: drop-shadow(0 8px 10px rgba(4, 10, 18, 0.38));
+}
+
+body.player-app .player-score-flag.is-gold .player-score-flag-art {
+    filter: drop-shadow(0 8px 10px rgba(4, 10, 18, 0.38)) drop-shadow(0 0 12px rgba(255, 196, 48, 0.55));
+}
+
+body.player-app .player-score-flag.is-pennant.is-gold {
+    animation:
+        playerScoreFlagUp 0.5s 0.06s cubic-bezier(0.14, 1.38, 0.32, 1) both,
+        playerScoreGoldPulse 1.15s ease-in-out 0.5s 3;
+}
+
+body.player-app .player-score-stage.is-unique .player-score-burst {
+    background: #ffe27a;
+    box-shadow: 0 0 0 2px #1a3878, 0 0 18px rgba(255, 196, 48, 0.85);
+}
+
+body.player-app .player-score-flag-face {
+    position: absolute;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--ink);
+}
+
+body.player-app .player-score-answer {
+    margin: 0;
+    max-width: 100%;
+    font-family: var(--title);
+    font-weight: 800;
+    line-height: 1.05;
+    overflow-wrap: anywhere;
+}
+
+body.player-app .player-score-burst {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.4em;
+    min-height: 1.4em;
+    padding: 0.12em 0.45em;
+    border: 3px solid var(--ink);
+    border-radius: 999px;
+    background: var(--cream);
+    color: var(--navy);
+    font-family: var(--title);
+    font-size: 1.15rem;
+    font-weight: 800;
+    animation: playerScoreBurst 0.55s 0.18s cubic-bezier(0.14, 1.38, 0.32, 1) both;
+}
+
+body.player-app .player-score-flag.is-pennant {
+    width: min(46vw, 10rem);
+    height: clamp(9.5rem, 28vh, 13.5rem);
+    margin-bottom: -1.4rem;
+    animation: playerScoreFlagUp 0.5s 0.06s cubic-bezier(0.14, 1.38, 0.32, 1) both;
+}
+
+body.player-app .player-score-unit.is-pennant .player-ewe {
+    margin-top: -1.05rem;
+}
+
+body.player-app .player-score-flag.is-pennant .player-score-flag-face {
+    left: 22%;
+    right: 10%;
+    top: 8%;
+    bottom: 46%;
+    gap: 0.2em;
+}
+
+body.player-app .player-score-flag.is-pennant .player-score-answer {
+    font-size: clamp(1.05rem, 5.2vw, 1.55rem);
+}
+
+body.player-app .player-score-flag.is-cloth {
+    width: min(86vw, 24rem);
+    height: clamp(5.4rem, 16vh, 7.4rem);
+    margin-bottom: 0.2rem;
+}
+
+body.player-app .player-score-flag.is-cloth::before,
+body.player-app .player-score-flag.is-cloth::after {
+    content: "";
+    position: absolute;
+    top: 92%;
+    width: 7px;
+    height: 4.6rem;
+    background: linear-gradient(90deg, #2d1a0e, #6b4423 45%, #3f2714);
+    box-shadow: 1px 0 0 #1a140c, -1px 0 0 #1a140c;
+    border-radius: 1px;
+    z-index: 0;
+}
+
+body.player-app .player-score-flag.is-cloth::before {
+    left: 8%;
+}
+
+body.player-app .player-score-flag.is-cloth::after {
+    right: 8%;
+}
+
+body.player-app .player-score-flag.is-cloth .player-score-flag-face {
+    left: 10%;
+    right: 10%;
+    top: 12%;
+    bottom: 22%;
+    gap: 0.15em;
+}
+
+body.player-app .player-score-flag.is-cloth .player-score-answer {
+    font-size: clamp(1.2rem, 5.6vw, 1.8rem);
+}
+
+body.player-app .player-score-holders {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-around;
+    width: min(86vw, 24rem);
+    padding: 0 6%;
+    z-index: 3;
+}
+
+body.player-app .player-score-extras {
+    margin: 4px 0 0;
+    max-width: 90%;
+    padding: 3px 10px 4px;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: var(--title);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+body.player-app .player-score-stage .player-ewe {
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+    width: clamp(104px, 32vw, 150px);
+    z-index: 3;
+}
+
+body.player-app .player-score-holders .player-ewe.is-you {
+    width: clamp(112px, 34vw, 158px);
+}
+
+body.player-app .player-score-holders .player-ewe:not(.is-you) {
+    width: clamp(88px, 26vw, 124px);
+}
+
+body.player-app .player-score-stage .player-ewe.is-sad {
+    width: min(100%, clamp(140px, 44vw, 210px));
+    max-width: 100%;
+    aspect-ratio: 1.85 / 1;
+    align-self: flex-end;
+}
+
+body.player-app .player-score-stage .player-ewe.is-sad .player-ewe-art {
+    aspect-ratio: 1.85 / 1;
+}
+
+body.player-app .player-score-stage .player-ewe.is-sad figcaption {
+    bottom: -1.45em;
+}
+
+body.player-app .player-score-stage .player-ewe.is-sad .player-ewe-strip {
+    width: 600%;
+    background-image: url("sprites/sheep-01-sleep.png?v=2026-11-21T18-25-00");
+    background-position: center bottom;
+    animation: playerEweSleep 1.8s steps(6, jump-none) infinite;
+}
+
+body.player-app .player-score-stage .player-ewe[data-coat="2"].is-sad .player-ewe-strip {
+    background-image: url("sprites/sheep-02-sleep.png?v=2026-11-21T18-25-00");
+}
+
+body.player-app .player-score-stage .player-ewe[data-coat="3"].is-sad .player-ewe-strip {
+    background-image: url("sprites/sheep-03-sleep.png?v=2026-11-21T18-25-00");
+}
+
+@keyframes playerEweSleep {
+    to { transform: translateX(-83.333%); }
+}
+
+body.player-app .player-score-stage.is-miss {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0 10px 7vh;
+}
+
+body.player-app .player-miss-sign {
+    position: relative;
+    left: auto;
+    top: auto;
+    z-index: 1;
+    width: min(44%, 11rem);
+    margin: 0;
+    padding: 14px 14px 16px;
+    flex-shrink: 0;
+    align-self: flex-end;
+}
+
+body.player-app .player-miss-sign .player-sign-face {
+    gap: 6px;
+    padding: 4px 2px 6px;
+}
+
+body.player-app .player-miss-sign h3 {
+    margin: 0;
+    color: var(--wood);
+    font-family: var(--title);
+    font-size: 0.86rem;
+    line-height: 1.1;
+    text-align: center;
+}
+
+body.player-app .player-miss-sign ul {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+body.player-app .player-miss-sign li {
+    padding: 6px 8px;
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    background: #f6ead0;
+    color: var(--ink);
+    font-family: var(--title);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+body.player-app .player-score-unit.is-asleep {
+    margin: 0;
+    width: auto;
+    flex: 1 1 auto;
+    align-items: flex-end;
+}
+
+@keyframes playerScoreRise {
+    0% { transform: translateY(18px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes playerScoreFlagUp {
+    0% { transform: translateY(22%) scale(0.86); opacity: 0; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes playerScoreBurst {
+    0% { transform: scale(0.2); opacity: 0; }
+    60% { transform: scale(1.16); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes playerScoreGoldPulse {
+    0%, 100% { filter: drop-shadow(0 0 0 rgba(255, 210, 70, 0)); }
+    50% { filter: drop-shadow(0 0 18px rgba(255, 210, 70, 0.9)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.player-app .player-score-unit,
+    body.player-app .player-score-flag.is-pennant,
+    body.player-app .player-score-burst {
+        animation: none;
+    }
+}
+
+@media (max-height: 500px) {
+    body.player-app .player-score-flag.is-pennant {
+        height: clamp(5.2rem, 30vh, 8rem);
+        margin-bottom: -0.8rem;
+    }
+
+    body.player-app .player-score-flag.is-cloth {
+        height: clamp(3.4rem, 18vh, 5rem);
+        width: min(70vw, 20rem);
+    }
+
+    body.player-app .player-score-unit {
+        margin-bottom: 0;
+    }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    body.player-app .player-score-stage {
+        flex-direction: row;
+        justify-content: center;
+        align-items: flex-end;
+        gap: 16px;
+        padding-top: 12px;
+        padding-bottom: 8px;
+    }
+
+    body.player-app .player-miss-sign {
+        position: relative;
+        left: auto;
+        top: auto;
+        width: min(38vw, 14rem);
+        margin-bottom: 8px;
+    }
+
+    body.player-app .player-score-flag.is-pennant {
+        height: 38vh;
+        margin-bottom: -1rem;
+    }
+
+    body.player-app .player-score-flag.is-cloth {
+        height: 22vh;
+        width: min(44vw, 20rem);
+    }
+
+    body.player-app .player-score-unit {
+        width: min(52vw, 22rem);
+        margin-bottom: 0;
+    }
 }
 
 body.player-app #scoringScreen .player-board,
