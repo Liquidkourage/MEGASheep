@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T21-32-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T21-40-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -668,12 +668,20 @@
             if (plaque) {
                 const host = hudOffsetParent(plaque);
                 const hr = host.getBoundingClientRect();
+                plaque.style.transform = 'none';
                 const pw = plaque.offsetWidth;
                 const ph = plaque.offsetHeight;
                 if (pw && ph) {
-                    const gap = Math.max(14, moon.d * 0.1);
-                    plaque.style.left = `${Math.max(8, moon.cx - moon.d / 2 - gap - pw - hr.left)}px`;
-                    plaque.style.top = `${Math.max(8, moon.cy - ph / 2 - hr.top)}px`;
+                    const gap = Math.max(10, moon.d * 0.08);
+                    const moonRight = moon.cx + moon.d / 2 - hr.left;
+                    const pad = 10;
+                    const room = hr.width - moonRight - gap - pad;
+                    if (room > 64 && pw > room) {
+                        plaque.style.transform = `scale(${room / pw})`;
+                        plaque.style.transformOrigin = 'left top';
+                    }
+                    plaque.style.left = `${moonRight + gap}px`;
+                    plaque.style.top = `${Math.max(8, pad)}px`;
                     plaque.style.right = 'auto';
                     plaque.style.bottom = 'auto';
                 }

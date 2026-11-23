@@ -912,7 +912,7 @@ html, body {
     min-width: 0;
     position: relative;
     z-index: 5;
-    padding: clamp(22px, 2.4vw, 40px) min(34vw, 520px) 8px clamp(28px, 3vw, 52px);
+    padding: clamp(22px, 2.4vw, 40px) min(24vw, 380px) 8px clamp(28px, 3vw, 52px);
 }
 
 .tv-play-hud {
@@ -922,7 +922,7 @@ html, body {
 .tv-play-copy {
     flex: 1 1 auto;
     min-width: 0;
-    max-width: min(100%, 62vw);
+    max-width: min(100%, 72vw);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -1049,18 +1049,25 @@ html, body {
     z-index: 2;
     margin: 0;
     padding: 0;
-    transform: translateY(2%);
-    font-family: Outfit, Fredoka, "Segoe UI", sans-serif !important;
+    transform: translateY(4%);
+    font-family: Fredoka, Outfit, "Segoe UI", sans-serif !important;
     font-size: calc(var(--moon-d, 8.83vw) * var(--timer-fit, 0.44)) !important;
-    font-weight: 800;
-    letter-spacing: -0.05em;
+    font-weight: 700;
+    letter-spacing: 0.02em;
     line-height: 1;
-    color: #241c12 !important;
-    -webkit-text-stroke: 0.035em #f6e6b2;
+    color: #ffe27a !important;
+    -webkit-text-stroke: 0.11em #1a140c;
     paint-order: stroke fill;
+    filter:
+        drop-shadow(0 0 1.2px #0b1018)
+        drop-shadow(0.05em 0.07em 0 #0b1018);
     text-shadow:
-        0 1px 0 rgba(255, 248, 230, 0.9),
-        0 0 0.12em rgba(246, 230, 178, 0.55) !important;
+        0 0.04em 0 rgba(255, 248, 220, 0.45),
+        0 0 0.18em rgba(255, 214, 90, 0.35) !important;
+}
+
+.display-mode .timer-text.tick {
+    animation: moonTimerTick 0.38s cubic-bezier(0.22, 1.45, 0.36, 1);
 }
 
 .display-mode .timer-circle.warning {
@@ -1072,14 +1079,23 @@ html, body {
 }
 
 .display-mode .timer-circle.warning .timer-text {
-    color: #7a3e08 !important;
+    color: #ffb347 !important;
 }
 
 .display-mode .timer-circle.urgent .timer-text {
-    color: #8b1e16 !important;
-    text-shadow:
-        0 1px 0 rgba(255, 248, 230, 0.9),
-        0 0 0.16em rgba(255, 196, 170, 0.45) !important;
+    color: #ff6d5e !important;
+    animation: moonTimerUrgent 0.7s ease-in-out infinite;
+}
+
+@keyframes moonTimerTick {
+    0% { transform: translateY(4%) scale(1) rotate(0deg); }
+    38% { transform: translateY(4%) scale(1.14) rotate(-4deg); }
+    100% { transform: translateY(4%) scale(1) rotate(0deg); }
+}
+
+@keyframes moonTimerUrgent {
+    0%, 100% { transform: translateY(4%) scale(1); }
+    50% { transform: translateY(4%) scale(1.1); }
 }
 
 .display-mode .tv-play .question-prompt {
@@ -1095,7 +1111,7 @@ html, body {
     overflow-wrap: break-word;
     text-align: left;
     text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55) !important;
-    max-width: min(100%, 62vw) !important;
+    max-width: min(100%, 72vw) !important;
     color: #fff;
 }
 
@@ -2384,7 +2400,7 @@ html, body {
 }
 
 .tv-score .tv-score-top {
-    right: 29vw;
+    right: 24vw;
     width: auto;
     padding-right: 0.35em;
 }
