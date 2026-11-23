@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T21-40-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T21-51-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -675,12 +675,21 @@
                     const gap = Math.max(10, moon.d * 0.08);
                     const moonRight = moon.cx + moon.d / 2 - hr.left;
                     const pad = 10;
-                    const room = hr.width - moonRight - gap - pad;
+                    let minLeft = moonRight + gap;
+                    const board = document.querySelector('.tv-score-ranks');
+                    if (board) {
+                        const br = board.getBoundingClientRect();
+                        const overlapsVertically = pad < br.bottom - hr.top
+                            && pad + ph > br.top - hr.top;
+                        if (overlapsVertically) minLeft = Math.max(minLeft, br.right - hr.left + 8);
+                    }
+                    const room = hr.width - pad - minLeft;
                     if (room > 64 && pw > room) {
                         plaque.style.transform = `scale(${room / pw})`;
                         plaque.style.transformOrigin = 'left top';
                     }
-                    plaque.style.left = `${moonRight + gap}px`;
+                    const used = pw * (room > 64 && pw > room ? room / pw : 1);
+                    plaque.style.left = `${Math.min(minLeft, Math.max(pad, hr.width - pad - used))}px`;
                     plaque.style.top = `${Math.max(8, pad)}px`;
                     plaque.style.right = 'auto';
                     plaque.style.bottom = 'auto';
@@ -1639,7 +1648,7 @@
         const PARADE_LANES = 12;
         const PARADE_ROWS = 2;
         const MISS_SIGN_AT = { x: 18, y: 64 };
-        const RANK_SIGN_AT = { x: 83, y: 61.5 };
+        const RANK_SIGN_AT = { x: 69, y: 61.5 };
 
         function uniqueLeftoverAnswers(answers) {
             const seen = new Set();
@@ -5813,7 +5822,7 @@
                 ${tvRankSignHtml(players, {
                     boardId: 'finalRankBoard',
                     cols: 1,
-                    x: 80.5,
+                    x: 66,
                     y: 86,
                     width: 30,
                     subhead: 'Grand Total'

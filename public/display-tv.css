@@ -2400,7 +2400,7 @@ html, body {
 }
 
 .tv-score .tv-score-top {
-    right: 24vw;
+    right: 44vw;
     width: auto;
     padding-right: 0.35em;
 }
@@ -2815,7 +2815,7 @@ html, body {
 
 .tv-score-ranks {
     position: absolute;
-    left: var(--x, 84%);
+    left: var(--x, 69%);
     top: var(--y, 61.5%);
     right: auto;
     bottom: auto;
@@ -2908,7 +2908,7 @@ html, body {
 
 .tv-board-stack {
     position: absolute;
-    right: 2%;
+    right: 12%;
     bottom: 4%;
     width: min(40vw, 740px);
     z-index: 12;
