@@ -165,27 +165,52 @@ function setPlayerAnswerChrome({ locked = false, editing = false, reason = '' } 
     if (typeof IS_PLAYER_ROUTE !== 'undefined' && IS_PLAYER_ROUTE) syncPlayerSubmitScene();
 }
 
-function setPlayerCommLast(text) {
-    const last = document.getElementById('playerCommLast');
-    if (!last) return;
+function appendPlayerCommLine(who, text) {
+    const thread = document.getElementById('playerCommThread');
+    const empty = document.getElementById('playerCommEmpty');
+    if (!thread) return;
     const value = String(text || '').trim();
-    last.hidden = !value;
-    last.textContent = value;
+    if (!value) return;
+    const role = String(who || 'system').toLowerCase();
+    const line = document.createElement('p');
+    line.className = `player-comm-line is-${role === 'host' || role === 'you' ? role : 'system'}`;
+    if (role === 'you') line.textContent = `You: ${value}`;
+    else if (role === 'host') line.textContent = `Host: ${value}`;
+    else line.textContent = value;
+    thread.appendChild(line);
+    if (empty) empty.hidden = true;
+    while (thread.querySelectorAll('.player-comm-line').length > 8) {
+        const oldest = thread.querySelector('.player-comm-line');
+        if (!oldest) break;
+        oldest.remove();
+    }
+    thread.scrollTop = thread.scrollHeight;
 }
 
-function setPlayerCommOpen(open) {
-    const panel = document.getElementById('playerCommPanel');
+function setPlayerCommOpen(open, { focus } = {}) {
+    const modal = document.getElementById('playerCommModal');
     const btn = document.getElementById('toggleHostMsgBtn');
-    const play = document.getElementById('gameScreen');
-    if (panel) {
-        if (open) panel.removeAttribute('hidden');
-        else panel.setAttribute('hidden', '');
+    const closeBtn = document.getElementById('closePlayerCommBtn');
+    const composer = document.getElementById('playerCommInput');
+    if (modal) {
+        modal.classList.toggle('is-open', !!open);
+        modal.hidden = !open;
+        modal.style.display = open ? 'flex' : 'none';
     }
     if (btn) {
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
         btn.classList.toggle('is-open', !!open);
     }
-    if (play) play.classList.toggle('is-messaging', !!open);
+    document.body.classList.toggle('is-comm-open', !!open);
+    if (open) {
+        if (focus === 'close' && closeBtn) {
+            try { closeBtn.focus(); } catch (_) {}
+        } else if (composer) {
+            try { composer.focus(); } catch (_) {}
+        }
+    } else if (btn) {
+        try { btn.focus(); } catch (_) {}
+    }
 }
 
 function setPlayerSubmitEnabled(enabled) {
@@ -800,9 +825,13 @@ function setupEventListeners() {
         });
     }
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && aiDisclosureModal && !aiDisclosureModal.hidden) {
+        if (event.key !== 'Escape') return;
+        if (aiDisclosureModal && !aiDisclosureModal.hidden) {
             setAiDisclosureOpen(false);
+            return;
         }
+        const commModal = document.getElementById('playerCommModal');
+        if (commModal && !commModal.hidden) setPlayerCommOpen(false);
     });
     
     // Create game screen
@@ -897,123 +926,88 @@ function setupEventListeners() {
     const submitAnswerBtn = document.getElementById('submitAnswerBtn');
     if (submitAnswerBtn) submitAnswerBtn.addEventListener('click', submitAnswer);
     const askHostBtn = document.getElementById('askHostBtn');
-    // Use answerStatus as the multi-purpose input/display if contenteditable
-    let multiBox = document.getElementById('answerStatus');
-    const isMultiBoxEditable = !!(multiBox && multiBox.getAttribute && multiBox.getAttribute('contenteditable') === 'true');
-    const askHostInput = isMultiBoxEditable ? multiBox : document.getElementById('askHostInput');
-    if (askHostBtn) {
-        console.log('💬 [player] Send to Host button found; attaching handler');
-        const getText = () => {
-            if (!askHostInput) return '';
-            if (isMultiBoxEditable) return (askHostInput.innerText || '').trim();
-            return (askHostInput.value || '').trim();
-        };
-        const setText = (val) => {
-            if (!askHostInput) return;
-            if (isMultiBoxEditable) askHostInput.innerText = val;
-            else askHostInput.value = val;
-        };
-        const appendDmHistory = (who, text, suffix) => {
-            // Disabled chat history to prevent screen overflow
-            // try {
-            //     const box = document.getElementById('dmHistory');
-            //     if (!box) return;
-            //     const line = document.createElement('div');
-            //     line.textContent = `${who}: ${text}${suffix || ''}`;
-            //     box.appendChild(line);
-            //     while (box.children.length > 3) box.removeChild(box.firstChild);
-            // } catch (_) {}
-        };
-        const setPlaceholderIfEmpty = () => {
-            if (!askHostInput) return;
-            if (isMultiBoxEditable && !(askHostInput.innerText || '').trim()) {
-                askHostInput.setAttribute('data-empty', 'true');
-            } else if (isMultiBoxEditable) {
-                askHostInput.removeAttribute('data-empty');
-            }
-        };
-        const sendMessage = () => {
-            const q = getText();
-            if (!q) return;
-            console.log('💬 [player] Send-to-host clicked, text:', q);
+    const askHostInput = document.getElementById('playerCommInput');
+    const playerCommForm = document.getElementById('playerCommForm');
+    const playerCommModal = document.getElementById('playerCommModal');
+    const closePlayerCommBtn = document.getElementById('closePlayerCommBtn');
+    const toggleHostMsgBtn = document.getElementById('toggleHostMsgBtn');
+    const sendMessage = () => {
+        const q = askHostInput ? String(askHostInput.value || '').trim() : '';
+        if (!q) return;
+        console.log('💬 [player] Send-to-host clicked, text:', q);
+        try {
+            window.lastAskedQuestion = q;
+            sessionStorage.setItem('lastAskedQuestion', q);
+        } catch (_) {}
+        try {
+            const payload = { question: q };
             try {
-                window.lastAskedQuestion = q;
-                sessionStorage.setItem('lastAskedQuestion', q);
+                let resolvedGameCode = sessionStorage.getItem('gameCode') || null;
+                let resolvedPlayerName = sessionStorage.getItem('playerName') || null;
+                const gcInput = document.getElementById('gameCode');
+                if (!resolvedGameCode && gcInput && typeof gcInput.value === 'string' && gcInput.value.trim()) resolvedGameCode = gcInput.value.trim();
+                const pnInput = document.getElementById('playerName');
+                if (!resolvedPlayerName && pnInput && typeof pnInput.value === 'string' && pnInput.value.trim()) resolvedPlayerName = pnInput.value.trim();
+                if (!resolvedGameCode && typeof window.gameCode === 'string') resolvedGameCode = window.gameCode.trim();
+                if (!resolvedPlayerName && typeof window.playerName === 'string') resolvedPlayerName = window.playerName.trim();
+                if (resolvedGameCode) payload.gameCode = resolvedGameCode;
+                if (resolvedPlayerName) payload.playerName = resolvedPlayerName;
             } catch (_) {}
-            try {
-                socket.once('playerQuestionAck', (ack) => {
-                    console.log('💬 [player] playerQuestionAck (once):', ack);
-                    setPlayerCommLast(ack && ack.ok ? `You: ${q}` : `Not delivered: ${q}`);
-                    appendDmHistory('You', q, ack && ack.ok ? ' ✓' : ' (not delivered)');
-                });
-            } catch (_) {}
-            try {
-                const payload = { question: q };
-                try {
-                    let resolvedGameCode = sessionStorage.getItem('gameCode') || null;
-                    let resolvedPlayerName = sessionStorage.getItem('playerName') || null;
-                    const gcInput = document.getElementById('gameCode');
-                    if (!resolvedGameCode && gcInput && typeof gcInput.value === 'string' && gcInput.value.trim()) resolvedGameCode = gcInput.value.trim();
-                    const pnInput = document.getElementById('playerName');
-                    if (!resolvedPlayerName && pnInput && typeof pnInput.value === 'string' && pnInput.value.trim()) resolvedPlayerName = pnInput.value.trim();
-                    if (!resolvedGameCode && typeof window.gameCode === 'string') resolvedGameCode = window.gameCode.trim();
-                    if (!resolvedPlayerName && typeof window.playerName === 'string') resolvedPlayerName = window.playerName.trim();
-                    if (resolvedGameCode) payload.gameCode = resolvedGameCode;
-                    if (resolvedPlayerName) payload.playerName = resolvedPlayerName;
-                } catch (_) {}
-                console.log('💬 [player] playerQuestion payload:', payload);
-                socket.emit('playerQuestion', payload);
-            } catch (e) {
-                console.warn('💬 [player] Failed to emit playerQuestion', e);
+            console.log('💬 [player] playerQuestion payload:', payload);
+            socket.emit('playerQuestion', payload);
+        } catch (e) {
+            console.warn('💬 [player] Failed to emit playerQuestion', e);
+        }
+        appendPlayerCommLine('you', q);
+        if (askHostInput) askHostInput.value = '';
+    };
+    if (playerCommForm) {
+        playerCommForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            sendMessage();
+        });
+    } else if (askHostBtn) {
+        askHostBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            sendMessage();
+        });
+    }
+    if (askHostInput) {
+        askHostInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
             }
-            setPlayerCommLast(`You: ${q}`);
-            setText('');
-            setPlaceholderIfEmpty();
-        };
-        askHostBtn.addEventListener('click', sendMessage);
-        if (askHostInput) askHostInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }});
-        
-        // Clear messaging box when clicked
-        if (askHostInput) {
-            askHostInput.addEventListener('click', () => {
-                askHostInput.innerText = '';
-                setPlaceholderIfEmpty();
-            });
-        }
-        
-        const toggleHostMsgBtn = document.getElementById('toggleHostMsgBtn');
-        const hostMsgPanel = document.getElementById('playerCommPanel');
-        if (toggleHostMsgBtn && hostMsgPanel && !isHost) {
-            toggleHostMsgBtn.addEventListener('click', () => {
-                setPlayerCommOpen(hostMsgPanel.hasAttribute('hidden'));
-            });
-        }
-        // Placeholder styling for contenteditable
-        if (isMultiBoxEditable) {
-            multiBox.addEventListener('input', setPlaceholderIfEmpty);
-            setPlaceholderIfEmpty();
-        }
+        });
+    }
+    if (toggleHostMsgBtn && playerCommModal && !isHost) {
+        toggleHostMsgBtn.addEventListener('click', () => {
+            setPlayerCommOpen(playerCommModal.hidden, { focus: 'composer' });
+        });
+    }
+    if (closePlayerCommBtn) {
+        closePlayerCommBtn.addEventListener('click', () => setPlayerCommOpen(false));
+    }
+    if (playerCommModal) {
+        playerCommModal.addEventListener('click', (event) => {
+            if (event.target === playerCommModal) setPlayerCommOpen(false);
+        });
     }
 
-    // Delivery confirmation / failure
     if (typeof socket !== 'undefined') {
         try {
             socket.on('playerQuestionAck', (ack) => {
                 console.log('💬 [player] playerQuestionAck received:', ack);
-                if (ack && ack.ok) setPlayerCommLast(ack.question ? `You: ${ack.question}` : 'Sent.');
-                else setPlayerCommLast('Not delivered.');
+                if (ack && ack.ok) return;
+                appendPlayerCommLine('system', 'Not delivered.');
             });
             socket.on('hostAnswer', (data) => {
                 console.log('💬 [player] hostAnswer received:', data);
                 try {
                     const msg = data && data.answer ? data.answer : '';
                     if (!msg) return;
-                    setPlayerCommLast(`Host: ${msg}`);
-                    setPlayerCommOpen(true);
-                    const composer = document.getElementById('answerStatus');
-                    if (composer && !(composer.innerText || '').trim()) {
-                        composer.setAttribute('data-empty', 'true');
-                    }
+                    appendPlayerCommLine('host', msg);
+                    setPlayerCommOpen(true, { focus: 'close' });
                 } catch (_) {}
             });
         } catch (_) {}
@@ -2595,8 +2589,6 @@ function handleNextQuestion(gameStateData) {
         window._playerEditing = false;
         window._playerEditReason = '';
         setPlayerAnswerChrome({ locked: alreadySubmitted, editing: false });
-        const status = document.getElementById('answerStatus');
-        if (status) { status.innerHTML = ''; status.className = 'answer-status'; }
         const input = document.getElementById('answerInput');
         const btn = document.getElementById('submitAnswerBtn');
         if (input && !alreadySubmitted && !restoredDraft) {

@@ -1224,132 +1224,191 @@ body.player-app.keyboard-open #gameScreen #questionText {
     padding: 14px 16px 16px;
 }
 
-body.player-app .player-comm-panel {
-    position: relative !important;
-    left: auto !important;
-    right: auto !important;
-    bottom: auto !important;
-    top: auto !important;
-    z-index: 3;
-    flex: 0 0 auto;
-    flex-shrink: 0;
-    align-self: center;
-    width: min(100%, 58rem);
-    margin: 0 0 4px;
-    padding: 10px 12px 10px;
+body.player-app #playerCommModal.player-comm-modal {
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    top: var(--vv-offset, 0px);
+    height: var(--vvh, 100dvh);
+    max-height: var(--vvh, 100dvh);
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: rgba(7, 16, 24, 0.42);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    opacity: 1;
+    z-index: 10000;
+}
+
+body.player-app #playerCommModal.player-comm-modal.is-open {
+    display: flex !important;
+    opacity: 1 !important;
+}
+
+body.player-app .player-comm-scene {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: min(100%, 28rem);
+    max-height: calc(var(--vvh, 100dvh) - 24px);
+}
+
+body.player-app .player-comm-card {
+    width: 100%;
+    max-width: none;
+    max-height: min(32rem, calc(var(--vvh, 100dvh) - 9rem));
+    margin: 0;
+    padding: 14px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     background: var(--cream);
     border: 3px solid var(--ink);
     border-radius: 20px;
     box-shadow: 3px 4px 0 #1a140c;
+    animation: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    color: var(--wood);
 }
 
-body.player-app #gameScreen.is-messaging .player-play-stage {
-    flex: 1 1 auto;
-    min-height: 0;
-    justify-content: flex-start;
-    overflow-x: hidden;
-    overflow-y: auto;
+body.player-app .player-comm-card .modal-header {
+    flex-shrink: 0;
+    background: none;
+    border: 0;
+    color: var(--wood);
+    padding: 0 0 8px;
 }
 
-body.player-app #gameScreen.is-messaging #questionText,
-body.player-app #gameScreen.is-messaging .question-text {
-    flex: 0 0 auto;
-    min-height: 0;
-    overflow: visible !important;
-    font-size: clamp(1.35rem, 3.2vw + 0.8vh, 2.1rem) !important;
-    padding: 16px 20px 18px;
-}
-
-body.player-app #gameScreen.is-messaging .player-answer-hint {
-    display: none;
-}
-
-body.player-app #gameScreen.is-messaging .player-edit-banner {
-    padding: 8px 10px;
-    font-size: 0.88rem;
-}
-
-body.player-app #gameScreen.is-messaging #playerAnswerForm.player-thought-bubble {
-    padding: 10px 12px 8px;
-}
-
-body.player-app #gameScreen.is-messaging #playerAnswerForm.player-thought-bubble .player-sign-face {
-    gap: 8px;
-}
-
-body.player-app #gameScreen.is-messaging .player-submit-pasture {
-    height: clamp(4.4rem, 12vh, 6.4rem);
-}
-
-body.player-app #gameScreen.is-messaging .player-submit-pasture .player-ewe {
-    width: clamp(88px, 24vw, 128px);
-}
-
-body.player-app #gameScreen.is-messaging .player-think-stack {
-    padding-bottom: 20px;
-}
-
-body.player-app .player-comm-last {
-    margin: 0 0 8px;
+body.player-app .player-comm-card .modal-header h4 {
+    margin: 0;
     color: var(--wood);
     font-family: var(--title);
-    font-size: 0.98rem;
+    font-size: clamp(1.15rem, 4.2vw, 1.45rem);
     font-weight: 800;
-    line-height: 1.25;
-    overflow-wrap: anywhere;
 }
 
-body.player-app .player-comm-last[hidden] {
+body.player-app .player-comm-close {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    border: 0;
+    border-radius: 12px;
+    background: url("sprites/player-wood-btn.png?v=2026-11-22T01-35-00") center / 100% 100% no-repeat;
+    color: var(--wood);
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+body.player-app .player-comm-thread {
+    flex: 1 1 auto;
+    min-height: 5.5rem;
+    max-height: min(14rem, 38vh);
+    overflow-x: hidden;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0 0 10px;
+    padding: 4px 2px 8px;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.player-app .player-comm-empty {
+    margin: auto 0;
+    color: var(--wood-soft);
+    font-family: var(--title);
+    font-size: 0.98rem;
+    font-weight: 700;
+    line-height: 1.3;
+    text-align: center;
+}
+
+body.player-app .player-comm-empty[hidden] {
     display: none !important;
 }
 
-body.player-app .player-comm-row,
-body.player-app #playerCommRow {
-    display: flex !important;
+body.player-app .player-comm-line {
+    margin: 0;
+    padding: 8px 12px;
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    background: rgba(255, 248, 230, 0.92);
+    color: var(--ink);
+    font-family: var(--title);
+    font-size: 0.98rem;
+    font-weight: 800;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
+body.player-app .player-comm-line.is-you {
+    align-self: flex-end;
+    max-width: 92%;
+}
+
+body.player-app .player-comm-line.is-host {
+    align-self: flex-start;
+    max-width: 92%;
+    background: #e7f3d8;
+}
+
+body.player-app .player-comm-line.is-system {
+    align-self: center;
+    background: #f6e6b2;
+    color: var(--wood-soft);
+    font-style: italic;
+}
+
+body.player-app .player-comm-compose {
+    flex-shrink: 0;
+    display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-body.player-app #playerCommRow #answerStatus {
-    position: relative;
+body.player-app #playerCommInput {
+    width: 100%;
     min-height: 44px;
     margin: 0;
     padding: 10px 12px;
+    resize: none;
     border: 3px solid var(--ink);
     border-radius: 12px;
     background: rgba(255, 248, 230, 0.92);
     color: var(--ink);
-    text-align: left;
+    font-family: var(--body);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.3;
 }
 
-body.player-app #playerCommRow #answerStatus::before,
-body.player-app #answerStatus::before {
-    content: none;
-}
-
-body.player-app #playerCommRow #answerStatus[data-empty="true"]::before {
-    content: attr(data-placeholder) !important;
-    position: absolute;
-    left: 12px;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
+body.player-app #playerCommInput::placeholder {
     color: var(--wood-soft);
     font-style: italic;
-    pointer-events: none;
 }
 
-body.player-app #playerCommRow #answerStatus:not([data-empty="true"])::before,
-body.player-app #answerStatus:not([data-empty="true"])::before {
-    content: none !important;
-}
-
-body.player-app #playerCommRow #askHostBtn {
+body.player-app #askHostBtn {
     width: 100%;
+    min-height: 44px;
 }
 
-body.player-app #dmHistory {
-    display: none !important;
+body.player-app .player-comm-scene .player-ewe {
+    margin-top: 0;
+}
+
+body.player-app.keyboard-open .player-comm-scene .player-ewe {
+    display: none;
+}
+
+body.player-app.keyboard-open .player-comm-card {
+    max-height: calc(var(--vvh, 100dvh) - 24px);
+}
+
+body.player-app.keyboard-open .player-comm-thread {
+    min-height: 3.2rem;
+    max-height: 6.5rem;
 }
 
 /* Results */
@@ -3023,92 +3082,35 @@ body.player-app #lobbyScreen .player-masthead {
         width: 80px;
     }
 
-    body.player-app #gameScreen.is-messaging .question-container {
-        flex-direction: column;
-        align-items: stretch;
-        justify-content: flex-start;
-        overflow-x: hidden;
-        overflow-y: auto;
-        gap: 6px;
-        padding-bottom: 6px;
-    }
-
-    body.player-app #gameScreen.is-messaging .player-play-stage {
-        flex: 1 1 0;
-        min-height: 0;
-        flex-direction: row;
-        align-items: stretch;
-        overflow: hidden !important;
-        gap: 10px;
-    }
-
-    body.player-app #gameScreen.is-messaging .player-think-stack {
-        flex: 1 1 42%;
-        min-height: 0;
-        padding-bottom: 0;
-        overflow: hidden;
-        justify-content: flex-start;
-    }
-
-    body.player-app #gameScreen.is-messaging .player-thought-tail,
-    body.player-app #gameScreen.is-messaging .player-submit-pasture,
-    body.player-app #gameScreen.is-messaging .player-answer-label {
+    body.player-app .player-comm-scene .player-ewe {
         display: none;
     }
 
-    body.player-app #gameScreen.is-messaging #playerAnswerForm.player-thought-bubble,
-    body.player-app #gameScreen.is-messaging #playerAnswerForm.player-sign.player-thought-bubble {
-        max-height: 100%;
-        min-height: 0;
-        overflow: hidden;
-        padding: 6px 8px 8px;
-        gap: 6px;
+    body.player-app .player-comm-card {
+        max-height: calc(var(--vvh, 100dvh) - 16px);
+        padding: 10px 12px 12px;
     }
 
-    body.player-app #gameScreen.is-messaging #playerAnswerForm.player-thought-bubble .player-sign-face {
-        gap: 6px;
+    body.player-app .player-comm-thread {
+        min-height: 3rem;
+        max-height: 5.5rem;
+        margin-bottom: 8px;
     }
 
-    body.player-app #gameScreen.is-messaging .player-edit-banner {
-        padding: 4px 8px;
-        font-size: 0.8rem;
-    }
-
-    body.player-app #gameScreen.is-messaging #submitAnswerBtn {
-        min-height: 44px;
-        padding-top: 8px;
-        padding-bottom: 8px;
-    }
-
-    body.player-app #gameScreen.is-messaging .player-comm-panel {
-        position: relative !important;
-        left: auto !important;
-        right: auto !important;
-        width: 100%;
-        margin: 0;
-        padding: 6px 8px 8px;
-    }
-
-    body.player-app #gameScreen.is-messaging .player-comm-last {
-        margin-bottom: 4px;
-        font-size: 0.85rem;
-    }
-
-    body.player-app #gameScreen.is-messaging #playerCommRow {
+    body.player-app .player-comm-compose {
         flex-direction: row;
         align-items: stretch;
-        gap: 8px;
     }
 
-    body.player-app #gameScreen.is-messaging #playerCommRow #answerStatus {
+    body.player-app #playerCommInput {
         flex: 1 1 auto;
         min-width: 0;
         min-height: 44px;
     }
 
-    body.player-app #gameScreen.is-messaging #playerCommRow #askHostBtn {
+    body.player-app #askHostBtn {
         width: auto;
-        min-width: 7.5rem;
+        min-width: 5.5rem;
         flex: 0 0 auto;
     }
 }
