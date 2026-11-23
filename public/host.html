@@ -431,7 +431,7 @@
         }
         .qp-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap: wrap; }
         .qp-toolbar[hidden] { display: none !important; }
-        .qp-toolbar input, .qp-inspector textarea, .qp-inspector input[type="text"] {
+        .qp-toolbar input {
             flex:1;
             padding:10px;
             border-radius:8px;
@@ -439,6 +439,16 @@
             background: rgba(0,0,0,0.35);
             color:#fff;
             font: inherit;
+        }
+        .qp-inspector textarea {
+            padding:10px;
+            border-radius:8px;
+            border:1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.35);
+            color:#fff;
+            font: inherit;
+            width: 100%;
+            flex: 1 1 auto;
         }
         .control-btn[hidden], .qp-tab[hidden] { display: none !important; }
         .qp-show .panel-header { gap: 12px; flex-wrap: wrap; }
@@ -507,8 +517,26 @@
         .qp-handle.is-off { visibility: hidden; cursor: default; }
         .qp-inspector-body { display: flex; flex-direction: column; gap: 10px; min-height: 0; flex: 1; }
         .qp-inspector label { font-size: 12px; color: #bbb; font-weight: 700; }
-        .qp-inspector textarea { min-height: 88px; resize: vertical; width: 100%; }
-        .qp-inspector textarea#qpInspectAnswers { min-height: 140px; }
+        .qp-inspector textarea { min-height: 88px; resize: vertical; }
+        .qp-inspector textarea#qpInspectPrompt { flex: 0 1 30%; min-height: 96px; }
+        .qp-inspector textarea#qpInspectAnswers { flex: 1 1 50%; min-height: 140px; }
+        .qp-inspect-name {
+            flex: 1;
+            min-width: 140px;
+            margin: 0;
+            padding: 2px 0;
+            border: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.25);
+            border-radius: 0;
+            background: transparent;
+            color: #fff;
+            font: inherit;
+            font-size: 1.17em;
+            font-weight: 700;
+        }
+        .qp-inspect-name::placeholder { color: #8899aa; font-weight: 700; }
+        .qp-inspect-name[hidden] { display: none !important; }
+        .qp-inspector .panel-header h3[hidden] { display: none !important; }
         .qp-source { font-size: 12px; color: #8899aa; margin: 0 0 8px; min-height: 1.2em; }
         .qp-notice { font-size: 13px; color: #ffd56a; min-height: 1.2em; }
         .qp-empty { color: #bbb; padding: 18px 8px; }
@@ -1628,6 +1656,7 @@
                     <div class="dashboard-panel qp-inspector" id="questionInspectorPanel">
                         <div class="panel-header">
                             <h3 id="qpInspectTitle">Question</h3>
+                            <input id="qpInspectName" class="qp-inspect-name" type="text" placeholder="New playlist" hidden>
                             <div class="qp-inspect-tools">
                                 <button id="qpPlayNextBtn" class="control-btn secondary" type="button" hidden>Play next</button>
                                 <button id="qpSkipBtn" class="control-btn warning" type="button" hidden>Skip</button>
@@ -1636,8 +1665,6 @@
                             </div>
                         </div>
                         <div class="qp-inspector-body">
-                            <label id="qpInspectNameLabel" for="qpInspectName" hidden>Playlist name</label>
-                            <input id="qpInspectName" type="text" placeholder="Wedding, pub quiz, finale…" hidden>
                             <label id="qpInspectPromptLabel" for="qpInspectPrompt">Prompt</label>
                             <textarea id="qpInspectPrompt" placeholder="Question players will see"></textarea>
                             <label id="qpInspectAnswersLabel" for="qpInspectAnswers">Expected answers (one per line)</label>
@@ -3499,14 +3526,13 @@
             const useBtn = document.getElementById('qpUseBtn');
             const savePlaylistBtn = document.getElementById('qpSavePlaylistBtn');
             const deletePlaylistBtn = document.getElementById('qpDeletePlaylistBtn');
-            const nameLabel = document.getElementById('qpInspectNameLabel');
             const promptLabel = document.getElementById('qpInspectPromptLabel');
             const answersLabel = document.getElementById('qpInspectAnswersLabel');
             if (!promptEl || !answersEl) return;
             const allBtns = [saveBtn, saveLibBtn, playBtn, skipBtn, rescoreBtn, useBtn, savePlaylistBtn, deletePlaylistBtn];
             allBtns.forEach((btn) => { if (btn) btn.hidden = true; });
             if (nameEl) nameEl.hidden = true;
-            if (nameLabel) nameLabel.hidden = true;
+            if (title) title.hidden = false;
             promptEl.hidden = false;
             answersEl.hidden = false;
             if (promptLabel) promptLabel.hidden = false;
@@ -3517,23 +3543,29 @@
 
             if (qpNewPlaylistMode || (qpView === 'playlists' && !qpBankPreviewId)) {
                 const playlist = qpPlaylists.find((p) => String(p.id) === String(qpPlaylistId));
-                if (title) title.textContent = qpNewPlaylistMode ? 'New playlist' : (playlist ? playlist.name : 'Playlist');
-                promptEl.value = '';
-                answersEl.value = '';
-                promptEl.hidden = true;
-                answersEl.hidden = true;
-                if (promptLabel) promptLabel.hidden = true;
-                if (answersLabel) answersLabel.hidden = true;
                 fillPlaylistBox(null);
-                const label = document.getElementById('qpPlaylistLabel');
-                if (label) label.hidden = true;
-                if (!qpNewPlaylistMode && !playlist) return;
+                const boxLabel = document.getElementById('qpPlaylistLabel');
+                if (boxLabel) boxLabel.hidden = true;
+                if (!qpNewPlaylistMode && !playlist) {
+                    if (title) title.textContent = 'Playlist';
+                    promptEl.hidden = true;
+                    answersEl.hidden = true;
+                    if (promptLabel) promptLabel.hidden = true;
+                    if (answersLabel) answersLabel.hidden = true;
+                    return;
+                }
+                if (title) title.hidden = true;
                 if (nameEl) {
                     nameEl.hidden = false;
                     if (qpNewPlaylistMode && !nameEl.dataset.touched) nameEl.value = '';
                     else if (playlist && !nameEl.dataset.touched) nameEl.value = playlist.name || '';
                 }
-                if (nameLabel) nameLabel.hidden = false;
+                const draftKey = qpNewPlaylistMode ? 'new' : String(qpPlaylistId);
+                if (promptEl.dataset.playlistDraft !== draftKey) {
+                    promptEl.value = '';
+                    answersEl.value = '';
+                    promptEl.dataset.playlistDraft = draftKey;
+                }
                 if (savePlaylistBtn) savePlaylistBtn.hidden = false;
                 if (useBtn && playlist) {
                     useBtn.hidden = false;
@@ -3556,11 +3588,23 @@
                 return;
             }
             delete promptEl.dataset.customTouched;
+            delete promptEl.dataset.playlistDraft;
             if (nameEl) delete nameEl.dataset.touched;
 
             if (qpView === 'library' || qpView === 'playlists') {
                 const q = qpAll.find((item) => String(item.id) === String(qpBankPreviewId)) || null;
-                if (title) title.textContent = q ? 'Library question' : 'Question';
+                const playlist = qpPlaylists.find((p) => String(p.id) === String(qpPlaylistId));
+                if (qpView === 'playlists' && playlist) {
+                    if (title) title.hidden = true;
+                    if (nameEl) {
+                        nameEl.hidden = false;
+                        if (!nameEl.dataset.touched) nameEl.value = playlist.name || '';
+                    }
+                    if (savePlaylistBtn) savePlaylistBtn.hidden = false;
+                    if (deletePlaylistBtn) deletePlaylistBtn.hidden = false;
+                } else if (title) {
+                    title.textContent = q ? 'Library question' : 'Question';
+                }
                 if (!q) {
                     promptEl.hidden = true;
                     answersEl.hidden = true;
@@ -3714,7 +3758,25 @@
                 const nameEl = document.getElementById('qpInspectName');
                 if (nameEl) delete nameEl.dataset.touched;
                 qpView = 'playlists';
-                setQpNotice('Playlist saved.');
+                const prompt = document.getElementById('qpInspectPrompt')?.value;
+                const answers = parseAnswers(document.getElementById('qpInspectAnswers')?.value);
+                if (String(prompt || '').trim() && !qpBankPreviewId) {
+                    const saved = await libraryRequest('/api/library/questions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt,
+                            correct_answers: answers,
+                            playlistIds: qpPlaylistId != null ? [qpPlaylistId] : []
+                        })
+                    });
+                    if (saved.question && saved.question.id) qpBankPreviewId = saved.question.id;
+                    const promptEl = document.getElementById('qpInspectPrompt');
+                    if (promptEl) delete promptEl.dataset.playlistDraft;
+                    setQpNotice('Playlist saved with that question.');
+                } else {
+                    setQpNotice('Playlist saved.');
+                }
                 renderRundown();
             } catch (e) {
                 setQpNotice(e.message || 'Could not save playlist.');
@@ -3820,10 +3882,13 @@
             qpCustomMode = false;
             const nameEl = document.getElementById('qpInspectName');
             if (nameEl) delete nameEl.dataset.touched;
+            const promptEl = document.getElementById('qpInspectPrompt');
+            if (promptEl) delete promptEl.dataset.playlistDraft;
             document.getElementById('qpTonightBtn')?.classList.remove('is-on');
             document.getElementById('qpPlaylistsBtn')?.classList.add('is-on');
             document.getElementById('qpBankBtn')?.classList.remove('is-on');
             renderRundown();
+            document.getElementById('qpInspectName')?.focus();
         });
         document.getElementById('qpInspectName')?.addEventListener('input', () => {
             const nameEl = document.getElementById('qpInspectName');
