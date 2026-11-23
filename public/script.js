@@ -2814,14 +2814,24 @@ function handleGameStateUpdate(data) {
 
 const PLAYER_JOIN_FIELD = { left: 12, right: 88, top: 58, bottom: 90 };
 const PLAYER_LOBBY_FIELD = { left: 8, right: 92, top: 58, bottom: 92 };
+const PLAYER_SUBMIT_FIELD = { left: 16, right: 84, top: 72, bottom: 90 };
 const PLAYER_JOIN_SPOTS = [
     { gx: 22, gy: 74 },
     { gx: 48, gy: 83 },
     { gx: 78, gy: 69 }
 ];
 
+function playerSubmitField() {
+    if (typeof window !== 'undefined' && window.innerWidth > window.innerHeight) {
+        return { left: 80, right: 97, top: 58, bottom: 90 };
+    }
+    return PLAYER_SUBMIT_FIELD;
+}
+
 function playerPastureField(el) {
-    return el && el.closest('.player-grazers') ? PLAYER_JOIN_FIELD : PLAYER_LOBBY_FIELD;
+    if (el && el.closest('.player-grazers')) return PLAYER_JOIN_FIELD;
+    if (el && el.closest('.player-submit-pasture')) return playerSubmitField();
+    return PLAYER_LOBBY_FIELD;
 }
 
 function playerPastureScale(gy, field) {
@@ -2979,14 +2989,43 @@ function paintPlayerLobbyFlock(players) {
     });
 }
 
+function paintPlayerSubmitEwe() {
+    const pasture = document.getElementById('playerSubmitPasture');
+    if (!pasture || !IS_PLAYER_ROUTE) return;
+    const name = String(currentPlayerName || sessionStorage.getItem('playerName') || 'Sheep').trim() || 'Sheep';
+    let el = pasture.querySelector('.player-ewe');
+    if (!el) {
+        const field = playerSubmitField();
+        const landscape = typeof window !== 'undefined' && window.innerWidth > window.innerHeight;
+        const gx = landscape ? 88 : 68;
+        const gy = landscape ? 72 : 82;
+        el = document.createElement('figure');
+        el.className = 'player-ewe is-you';
+        el.innerHTML = `<span class="player-ewe-art" aria-hidden="true"><span class="player-ewe-strip"></span></span><figcaption></figcaption>`;
+        pinPlayerEwe(el, {
+            gx,
+            gy,
+            s: playerPastureScale(gy, field),
+            z: Math.round(8 + gy)
+        });
+        pasture.appendChild(el);
+        schedulePlayerWander(el);
+    }
+    el.dataset.coat = String(playerCoatOf(name));
+    el.classList.add('is-you');
+    const tag = el.querySelector('figcaption');
+    if (tag) tag.textContent = name;
+}
+
 function armPlayerPasture() {
     armJoinGrazers();
-    if (IS_PLAYER_ROUTE) {
-        const lobby = document.getElementById('lobbyScreen');
-        if (lobby && lobby.classList.contains('active')) {
-            paintPlayerLobbyFlock((gameState && gameState.players) || []);
-        }
+    if (!IS_PLAYER_ROUTE) return;
+    const lobby = document.getElementById('lobbyScreen');
+    if (lobby && lobby.classList.contains('active')) {
+        paintPlayerLobbyFlock((gameState && gameState.players) || []);
     }
+    const play = document.getElementById('gameScreen');
+    if (play && play.classList.contains('active')) paintPlayerSubmitEwe();
 }
 
 // Display functions
@@ -3262,6 +3301,7 @@ function displayCurrentQuestion() {
     
     // Update players list
     updateGamePlayersList();
+    if (IS_PLAYER_ROUTE) paintPlayerSubmitEwe();
 }
 
 function displayQuestionResults() {

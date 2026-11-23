@@ -649,6 +649,20 @@ body.player-app #lobbyScreen .lobby-actions {
 
 /* Play */
 
+body.player-app #gameScreen {
+    position: relative;
+}
+
+body.player-app #gameScreen .player-submit-pasture {
+    z-index: 0;
+}
+
+body.player-app #gameScreen .game-header,
+body.player-app #gameScreen .question-container {
+    position: relative;
+    z-index: 2;
+}
+
 body.player-app #gameScreen .game-header {
     flex-shrink: 0;
     display: flex;
