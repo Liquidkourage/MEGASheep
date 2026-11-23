@@ -3556,6 +3556,8 @@ function displayQuestionResults() {
             playerAnswer,
             playerAnswerGroup,
             playerPoints,
+            playerRank,
+            totalPlayers,
             missedCorrect
         });
         armPlayerScoreScene();
@@ -3675,7 +3677,7 @@ function playerScorePeers(group, myName) {
     return { others, count };
 }
 
-function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints, missedCorrect }) {
+function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints, playerRank, totalPlayers, missedCorrect }) {
     const myName = sessionStorage.getItem('playerName') || currentPlayerName || '';
     const me = playerScoreWho(myName);
     const answer = String(playerAnswer || '').trim();
@@ -3684,11 +3686,42 @@ function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints,
     const shown = answer || 'No answer';
     const { others, count } = playerScorePeers(playerAnswerGroup, myName);
     const unique = isCorrect && count <= 1;
-    const leftover = (!isCorrect && Array.isArray(missedCorrect) ? missedCorrect : []).slice(0, 4);
+    const leftoverField = (!isCorrect && Array.isArray(missedCorrect) ? missedCorrect : []).slice(0, 4);
+    const leftoverAll = Array.isArray(missedCorrect) ? missedCorrect : [];
+    const rankBit = (playerRank > 0 && totalPlayers > 0) ? `#${playerRank} of ${totalPlayers}` : '';
+    const peerBit = others.length
+        ? `with ${escapePlayer(others.slice(0, 3).join(', '))}${others.length > 3 ? '…' : ''}`
+        : (isCorrect ? 'Only ewe!' : '');
+    const youBits = [isCorrect ? 'Correct' : 'Missed', `${pts} pts`];
+    if (rankBit) youBits.push(rankBit);
+    if (peerBit) youBits.push(peerBit);
+    const leftoverChips = leftoverAll.length
+        ? `<div class="player-answers-label">Pasteur-ized</div>
+            <div class="player-answers-chips">${leftoverAll.map((item) =>
+                `<div class="compact-answer leftover"><span class="text">${escapePlayer(item)}</span></div>`
+            ).join('')}</div>`
+        : '';
+    const wrap = (meadow) => `<div class="player-score-wrap">
+        ${meadow}
+        ${rankBit ? `<p class="player-score-rank">${rankBit}</p>` : ''}
+        <button type="button" class="player-answers-toggle" id="playerAnswersToggle" aria-expanded="false" aria-controls="playerAnswersSheet">All answers</button>
+        <div class="player-answers-sheet" id="playerAnswersSheet" hidden role="dialog" aria-modal="true" aria-labelledby="playerAnswersHeading">
+            <button type="button" class="player-answers-backdrop" tabindex="-1" aria-label="Close answers"></button>
+            <div class="player-answers-sheet-face">
+                <div class="player-answers-sheet-bar">
+                    <h3 id="playerAnswersHeading">This question</h3>
+                    <button type="button" class="player-answers-close" id="playerAnswersClose">Close</button>
+                </div>
+                <p class="player-answers-you">${youBits.join(' · ')}</p>
+                ${createAllAnswersSection(gameState.currentAnswerGroups, playerAnswerGroup, playerAnswer)}
+                ${leftoverChips}
+            </div>
+        </div>
+    </div>`;
 
     if (!isCorrect) {
-        const chips = leftover.map((item) => `<li>${escapePlayer(item)}</li>`).join('');
-        const sign = leftover.length
+        const chips = leftoverField.map((item) => `<li>${escapePlayer(item)}</li>`).join('');
+        const sign = leftoverField.length
             ? `<aside class="player-sign player-miss-sign" aria-label="Ungiven correct answers">
                 <img class="player-sign-art" src="sprites/player-plaque.png?v=2026-11-22T01-30-00" alt="">
                 <div class="player-sign-face">
@@ -3697,17 +3730,17 @@ function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints,
                 </div>
             </aside>`
             : '';
-        return `<div class="player-score-stage is-miss">
+        return wrap(`<div class="player-score-stage is-miss">
             ${sign}
             <div class="player-score-unit is-asleep">
                 ${playerScoreEweHtml(me, { you: true, sad: true, caption: shown })}
             </div>
-        </div>`;
+        </div>`);
     }
 
     const burst = `<b class="player-score-burst">+${pts}</b>`;
     if (unique) {
-        return `<div class="player-score-stage is-hit is-unique">
+        return wrap(`<div class="player-score-stage is-hit is-unique">
             <div class="player-score-unit is-pennant">
                 <div class="player-score-flag is-pennant is-gold">
                     <img class="player-score-flag-art" src="sprites/parade-pennant-gold.png?v=2026-11-22T09-22-00" alt="">
@@ -3718,7 +3751,7 @@ function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints,
                 </div>
                 ${playerScoreEweHtml(me, { you: true })}
             </div>
-        </div>`;
+        </div>`);
     }
 
     const holder = others[0] ? playerScoreWho(others[0]) : null;
@@ -3726,7 +3759,7 @@ function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints,
     const extraLabel = extras.length
         ? extras.slice(0, 2).join(', ') + (extras.length > 2 ? '…' : '')
         : '';
-    return `<div class="player-score-stage is-hit is-shared">
+    return wrap(`<div class="player-score-stage is-hit is-shared">
         <div class="player-score-unit is-cloth">
             <div class="player-score-flag is-cloth">
                 <img class="player-score-flag-art" src="sprites/parade-banner.png?v=2026-11-19T23-20-00" alt="">
@@ -3741,14 +3774,34 @@ function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints,
             </div>
             ${extraLabel ? `<p class="player-score-extras">${escapePlayer(extraLabel)}</p>` : ''}
         </div>
-    </div>`;
+    </div>`);
 }
 
 function armPlayerScoreScene() {
-    const stage = document.querySelector('#scoringScreen .player-score-stage');
-    if (!stage || !stage.classList.contains('is-hit')) return;
-    const you = stage.querySelector('.player-ewe.is-you');
-    if (you) playPlayerJoinPoof(you, { graze: false });
+    const wrap = document.querySelector('#scoringScreen .player-score-wrap');
+    const stage = wrap && wrap.querySelector('.player-score-stage');
+    if (stage && stage.classList.contains('is-hit')) {
+        const you = stage.querySelector('.player-ewe.is-you');
+        if (you) playPlayerJoinPoof(you, { graze: false });
+    }
+    const toggle = document.getElementById('playerAnswersToggle');
+    const sheet = document.getElementById('playerAnswersSheet');
+    const close = document.getElementById('playerAnswersClose');
+    const backdrop = sheet && sheet.querySelector('.player-answers-backdrop');
+    if (!toggle || !sheet) return;
+    const setOpen = (open) => {
+        sheet.hidden = !open;
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) {
+            const closer = document.getElementById('playerAnswersClose');
+            if (closer) closer.focus();
+        } else {
+            toggle.focus();
+        }
+    };
+    toggle.addEventListener('click', () => setOpen(sheet.hidden));
+    if (close) close.addEventListener('click', () => setOpen(false));
+    if (backdrop) backdrop.addEventListener('click', () => setOpen(false));
 }
 
 // Helper function to create personal result section
@@ -3843,7 +3896,12 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
             const mine = isGroupMine(group) ? ' mine' : '';
             const pts = isCorrect ? `<span class="points-pill">${group.points}</span>` : '';
             const text = String(group.answer || '').replace(/[&<>"']/g, (c)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
-            return `<div class="compact-answer${mine}${isCorrect ? ' correct' : ' incorrect'}"><span class="rank">${rank ? '#'+rank : ''}</span><span class="text">${text}</span>${pts}</div>`;
+            const flock = Math.max(
+                Array.isArray(group.players) ? group.players.length : 0,
+                Number(group.count) || 0,
+                1
+            );
+            return `<div class="compact-answer${mine}${isCorrect ? ' correct' : ' incorrect'}"><span class="rank">${rank ? '#'+rank : ''}</span><span class="text">${text}</span><span class="flock">×${flock}</span>${pts}</div>`;
         };
         const sortedCorrect = [...correctAnswers].sort((a, b) => b.points - a.points);
         const sortedIncorrect = [...incorrectAnswers].sort((a, b) => {
