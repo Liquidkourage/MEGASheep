@@ -5621,6 +5621,9 @@
         function currentRoundStandings() {
             const history = (gameState && gameState.roundHistory) || [];
             const last = history[history.length - 1];
+            const live = gameState && gameState.liveRound;
+            if (last && live && last.roundNumber === live.roundNumber) return last;
+            if (live && Array.isArray(live.players) && live.players.length) return live;
             if (last && Array.isArray(last.players) && last.players.length) return last;
             const perRound = Math.max(1, Number((gameState && gameState.questionsPerRound)
                 || (gameState && gameState.settings && gameState.settings.questionsPerRound)

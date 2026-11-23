@@ -12,6 +12,11 @@ const { createClient } = require('@supabase/supabase-js');
 const { loadQuestionsFromFile } = require('./loadQuestions');
 const lockstep = require('./lockstep');
 const {
+    mergeRoundGroups,
+    scoresFromAnswerGroups,
+    historyWithLiveRound
+} = require('./round-standings');
+const {
     postgresEnabled,
     initPostgres,
     fetchPostgresQuestions,
@@ -1024,6 +1029,11 @@ class Game {
               categorizationData: this.categorizationData || null,
         timeLeft: this.timeLeft || 0,
         roundHistory: this.roundHistory || [],
+        liveRound: (() => {
+          try { return this.liveRoundStandings(); } catch (_) {
+            return { roundNumber: 1, players: [] };
+          }
+        })(),
               questionsPerRound: this.settings?.questionsPerRound || 5,
               settings: {
                 questionSet: this.settings?.questionSet || 'supabase',
@@ -1228,36 +1238,31 @@ class Game {
         }
     }
 
+    inProgressRoundGroups() {
+        return mergeRoundGroups(this.roundAnswerGroups, this.currentAnswerGroups);
+    }
+
     liveRoundData() {
         const perRound = Math.max(1, Number(this.settings.questionsPerRound) || 5);
         const currentRound = Math.max(1, Math.ceil((this.currentQuestion + 1) / perRound));
         const roundStartQuestion = (currentRound - 1) * perRound + 1;
         const roundEndQuestion = Math.min(currentRound * perRound, this.questions.length);
-        const roundSpecificScores = new Map();
-        Array.from(this.players.values()).forEach((player) => {
-            roundSpecificScores.set(player.name, 0);
-        });
-        (this.roundAnswerGroups || []).forEach((group) => {
-            if (!group.players || !group.players.length) return;
-            const pointsPerPlayer = group.points;
-            group.players.forEach((playerName) => {
-                const currentScore = roundSpecificScores.get(playerName) || 0;
-                roundSpecificScores.set(playerName, currentScore + pointsPerPlayer);
-            });
-        });
+        const players = Array.from(this.players.values());
+        const groups = this.inProgressRoundGroups();
+        const roundSpecificScores = scoresFromAnswerGroups(players, groups);
         const roundData = {
             roundNumber: currentRound,
             questionStart: roundStartQuestion,
             questionEnd: roundEndQuestion,
-            players: Array.from(this.players.values()).map((player) => ({
+            players: players.map((player) => ({
                 name: player.name,
                 score: roundSpecificScores.get(player.name) || 0
             })),
-            answerGroups: this.roundAnswerGroups || []
+            answerGroups: groups
         };
         try {
             const playerAnswersByName = {};
-            (this.roundAnswerGroups || []).forEach((group) => {
+            groups.forEach((group) => {
                 const entry = {
                     answer: group.answer,
                     points: group.points || 0,
@@ -1271,6 +1276,14 @@ class Game {
             roundData.playerAnswersByName = playerAnswersByName;
         } catch (_) {}
         return roundData;
+    }
+
+    liveRoundStandings() {
+        const live = this.liveRoundData();
+        return {
+            roundNumber: live.roundNumber,
+            players: live.players
+        };
     }
 
     completeRound() {
@@ -3048,9 +3061,14 @@ io.on('connection', (socket) => {
       return;
     }
     game.gameState = 'roundComplete';
-    const history = Array.isArray(game.roundHistory) ? game.roundHistory : [];
-    const patch = history.length ? null : { roundHistory: [game.liveRoundData()] };
-    const state = broadcastState(game, 'roundComplete', patch);
+    const live = game.liveRoundData();
+    const state = broadcastState(game, 'roundComplete', {
+      roundHistory: historyWithLiveRound(game.roundHistory, live),
+      liveRound: {
+        roundNumber: live.roundNumber,
+        players: live.players
+      }
+    });
     io.to(gameCode).emit('playerShowRoundResults', state);
             sbLogEvent(gameCode, 'show_round_leaderboard', {});
   });

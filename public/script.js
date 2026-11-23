@@ -3508,11 +3508,25 @@ function revealPlayerBoardYou(root) {
     });
 }
 
+function currentRoundStandingsFromState(state) {
+    const history = (state && Array.isArray(state.roundHistory)) ? state.roundHistory : [];
+    const last = history.length ? history[history.length - 1] : null;
+    const live = state && state.liveRound;
+    if (last && live && last.roundNumber === live.roundNumber) return last;
+    if (live && Array.isArray(live.players) && live.players.length) return live;
+    if (last && Array.isArray(last.players) && last.players.length) return last;
+    const perRound = Math.max(1, Number((state && state.questionsPerRound) || (state && state.settings && state.settings.questionsPerRound) || 5));
+    const questionNumber = (Number(state && state.currentQuestion) || 0) + 1;
+    return {
+        roundNumber: Math.max(1, Math.ceil(questionNumber / perRound)),
+        players: (state && state.players) || []
+    };
+}
+
 function displayRoundResults() {
     // Round summary (no per-question breakdown)
     const scoringTitle = document.getElementById('scoringTitle');
-    const roundHistory = Array.isArray(gameState.roundHistory) ? gameState.roundHistory : [];
-    const lastRound = roundHistory.length > 0 ? roundHistory[roundHistory.length - 1] : null;
+    const lastRound = currentRoundStandingsFromState(gameState);
     if (scoringTitle) {
         const roundNum = lastRound?.roundNumber || Math.ceil(((gameState.currentQuestion || 0) + 1) / (gameState.questionsPerRound || 5));
         scoringTitle.textContent = `Round ${roundNum} Results`;
