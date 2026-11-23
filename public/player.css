@@ -1232,16 +1232,20 @@ body.player-app #scoringScreen .screen-content {
 
 body.player-app #scoringScreen .screen-content h2 {
     flex-shrink: 0;
-    margin: 0 0 6px;
-    padding: 0 56px;
+    margin: 0 0 4px;
+    padding: 0 12px;
     text-align: center;
     color: #1a3878;
-    font-size: clamp(1.7rem, 7vw, 2.2rem);
+    font-size: clamp(1.7rem, 7vw, 2.35rem);
     line-height: 1.05;
     -webkit-text-stroke: 0.07em #f6e6b2;
     paint-order: stroke fill;
     filter: drop-shadow(0 0 1px #0b1018) drop-shadow(1px 2px 0 #0b1018);
     text-shadow: none;
+}
+
+body.player-app #scoringScreen:has(#scoresFab:not([style*="display: none"])) .screen-content h2 {
+    padding: 0 56px;
 }
 
 body.player-app #scoringScreen .answers-display {
@@ -1786,7 +1790,8 @@ body.player-app .player-score-unit.is-asleep {
     body.player-app .player-score-unit,
     body.player-app .player-score-flag.is-pennant,
     body.player-app .player-score-burst,
-    body.player-app .player-score-support {
+    body.player-app .player-score-support,
+    body.player-app .player-podium-spot {
         animation: none;
     }
 }
@@ -2155,21 +2160,21 @@ body.player-app .player-board {
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 10px;
-    width: min(100%, 58rem);
+    gap: 12px;
+    width: min(100%, 54rem);
     margin: 0 auto;
-    padding-top: 10px;
+    padding-top: 14px;
     overflow: visible;
 }
 
 body.player-app .player-podium {
     flex: 0 0 auto;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.28fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.34fr) minmax(0, 1fr);
     align-items: end;
-    gap: 8px 10px;
+    gap: 6px 12px;
     min-height: 0;
-    padding: 4px 4px 0;
+    padding: 8px 18px 0;
     overflow: visible;
 }
 
@@ -2181,7 +2186,12 @@ body.player-app .player-podium-spot {
     min-width: 0;
     color: #1a140c;
     overflow: visible;
+    animation: playerScoreRise 0.5s cubic-bezier(0.14, 1.38, 0.32, 1) both;
 }
+
+body.player-app .player-podium-spot.is-2 { animation-delay: 0.04s; }
+body.player-app .player-podium-spot.is-1 { animation-delay: 0.1s; }
+body.player-app .player-podium-spot.is-3 { animation-delay: 0.16s; }
 
 body.player-app .player-podium-spot.is-1 {
     background: none;
@@ -2190,6 +2200,7 @@ body.player-app .player-podium-spot.is-1 {
 body.player-app .player-podium-spot.is-empty {
     min-height: 0;
     background: none;
+    animation: none;
 }
 
 body.player-app .player-crate {
@@ -2199,105 +2210,113 @@ body.player-app .player-crate {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    min-height: 58px;
-    padding: 10px 10px 10px 2.4em;
+    gap: 1px;
+    min-height: 0;
+    padding: 8px 14px;
     background: #d9d3c4;
     border: 3px solid #1a140c;
-    border-radius: 18px;
+    border-radius: 16px;
     box-shadow:
         inset 0 0 0 3px #efe6d0,
-        0 4px 0 #1a140c;
+        0 5px 0 #1a140c;
     color: #1a140c;
 }
 
 body.player-app .player-podium-spot.is-1 .player-crate {
-    min-height: 72px;
+    min-height: 0;
+    padding: 22px 16px 18px;
     background: #e8c75a;
     box-shadow:
-        inset 0 0 0 3px #f6e6b2,
-        0 5px 0 #1a140c;
+        inset 0 0 0 3px #f8e7b4,
+        0 7px 0 #1a140c;
 }
 
 body.player-app .player-podium-spot.is-2 .player-crate {
-    min-height: 62px;
-    background: #d8d6cf;
+    padding: 14px 14px 12px;
+    background: #d5d3cc;
 }
 
 body.player-app .player-podium-spot.is-3 .player-crate {
-    min-height: 54px;
-    background: #c9844c;
+    padding: 7px 12px 8px;
+    background: #c67a42;
     box-shadow:
-        inset 0 0 0 3px #e8c9a4,
-        0 4px 0 #1a140c;
+        inset 0 0 0 3px #edc9a6,
+        0 5px 0 #1a140c;
 }
 
 body.player-app .player-crate-place {
     position: absolute;
     top: 50%;
-    left: 0.45em;
-    z-index: 2;
+    left: 0;
+    z-index: 3;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.7em;
-    height: 1.7em;
-    transform: translateY(-50%);
-    border: 2px solid #1a140c;
+    width: 1.85em;
+    height: 1.85em;
+    transform: translate(-28%, -50%);
+    border: 3px solid #1a140c;
     border-radius: 50%;
     background: #fff8e6;
     font-family: var(--title);
-    font-size: 0.92rem;
+    font-size: 0.95rem;
     font-weight: 800;
     letter-spacing: -0.04em;
     line-height: 1;
-    opacity: 1;
+    box-shadow: 0 2px 0 #1a140c;
 }
 
 body.player-app .player-podium-spot.is-1 .player-crate-place {
     background: #ffe27a;
-    width: 1.9em;
-    height: 1.9em;
-    font-size: 1.05rem;
+    width: 2.1em;
+    height: 2.1em;
+    font-size: 1.12rem;
 }
 
 body.player-app .player-podium-spot.is-2 .player-crate-place {
-    background: #ecece8;
+    background: #eef0f2;
 }
 
 body.player-app .player-podium-spot.is-3 .player-crate-place {
-    background: #e8c9a4;
+    background: #edc49a;
 }
 
 body.player-app .player-crate-name {
     min-width: 0;
     max-width: 100%;
     margin: 0;
+    padding: 0 0.2em;
     font-family: var(--title);
-    font-size: 0.95rem;
+    font-size: clamp(0.78rem, 2.7vw, 1rem);
     font-weight: 800;
-    line-height: 1.15;
+    line-height: 1.12;
     text-align: center;
     color: #1a140c;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
 }
 
 body.player-app .player-podium .is-1 .player-crate-name {
-    font-size: 1.12rem;
+    font-size: clamp(0.88rem, 3.2vw, 1.18rem);
 }
 
 body.player-app .player-crate-score {
-    margin-top: 0;
+    margin-top: 1px;
     font-family: var(--title);
-    font-size: 1.28rem;
+    font-size: 1.38rem;
     font-weight: 800;
     letter-spacing: -0.04em;
     line-height: 0.95;
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
 }
 
 body.player-app .player-podium .is-1 .player-crate-score {
-    font-size: 1.55rem;
+    font-size: 1.7rem;
 }
 
 body.player-app .player-board-you {
@@ -2305,13 +2324,14 @@ body.player-app .player-board-you {
     display: grid;
     grid-template-columns: auto auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 8px 10px;
-    min-height: 52px;
-    padding: 6px 12px 8px 8px;
+    gap: 6px 12px;
+    min-height: 56px;
+    margin: 0 6px;
+    padding: 4px 14px 6px 4px;
     overflow: visible;
     border: 3px solid #1a140c;
     border-radius: 999px;
-    background: #f6ead0;
+    background: #f4e6c4;
     box-shadow: 0 0 0 3px #1a3878, 0 4px 0 #1a140c;
 }
 
@@ -2319,14 +2339,17 @@ body.player-app .player-you-copy {
     min-width: 0;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: 1px;
 }
 
 body.player-app .player-you-rank {
     margin: 0;
+    padding-right: 12px;
+    border-right: 2px solid rgba(26, 20, 12, 0.28);
     color: var(--navy);
     font-family: var(--title);
-    font-size: clamp(1.35rem, 4.5vw, 1.7rem);
+    font-size: clamp(1.4rem, 4.8vw, 1.82rem);
     font-weight: 800;
     line-height: 1;
     white-space: nowrap;
@@ -2337,9 +2360,9 @@ body.player-app .player-you-name {
     margin: 0;
     color: #1a140c;
     font-family: var(--title);
-    font-size: clamp(0.95rem, 3.2vw, 1.15rem);
+    font-size: clamp(1.02rem, 3.4vw, 1.22rem);
     font-weight: 800;
-    line-height: 1.15;
+    line-height: 1.12;
     overflow-wrap: anywhere;
 }
 
@@ -2352,16 +2375,18 @@ body.player-app .player-you-total {
 }
 
 body.player-app .player-you-score {
-    min-width: 2.4em;
-    padding: 0.2em 0.7em 0.24em;
+    min-width: 2.6em;
+    padding: 0.22em 0.78em 0.26em;
     border: 3px solid #1a140c;
     border-radius: 999px;
     background: #ffe27a;
     color: #1a140c;
     font-family: var(--title);
-    font-size: 1.15rem;
+    font-size: 1.22rem;
     font-weight: 800;
     text-align: center;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 2px 0 #1a140c;
 }
 
 body.player-app .player-board-standings {
@@ -2370,11 +2395,11 @@ body.player-app .player-board-standings {
     max-height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 10px 12px 12px;
+    gap: 10px;
+    padding: 12px 14px 14px;
     overflow: hidden;
     border: 3px solid var(--ink);
-    border-radius: 18px;
+    border-radius: 20px;
     background: var(--cream);
     box-shadow: 3px 4px 0 #1a140c;
 }
@@ -2382,11 +2407,14 @@ body.player-app .player-board-standings {
 body.player-app .player-board-title {
     flex: 0 0 auto;
     margin: 0;
+    padding-bottom: 6px;
+    border-bottom: 2px solid rgba(26, 20, 12, 0.16);
     color: var(--wood);
     text-shadow: none;
     font-family: var(--title);
-    font-size: clamp(1.15rem, 3.6vw, 1.45rem);
+    font-size: clamp(1.32rem, 4.2vw, 1.68rem);
     font-weight: 800;
+    letter-spacing: 0.03em;
     text-align: center;
 }
 
@@ -2396,7 +2424,7 @@ body.player-app .player-board.is-event .player-board-title {
 }
 
 body.player-app .player-board.is-event .player-podium .is-1 .player-crate {
-    min-height: 78px;
+    padding: 24px 16px 20px;
 }
 
 body.player-app:has(#gameOverScreen.active)::before {
@@ -2439,60 +2467,75 @@ body.player-app .player-board-list {
     min-height: 0;
     display: grid;
     grid-template-columns: 1fr;
-    gap: 6px;
+    gap: 7px;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 4px;
+    padding-bottom: 2px;
 }
 
 body.player-app .player-board-row {
     display: grid;
-    grid-template-columns: 2.1em minmax(0, 1fr) auto;
+    grid-template-columns: 2em minmax(0, 1fr) auto;
     align-items: center;
     gap: 8px;
     min-height: 44px;
-    padding: 6px 10px;
+    padding: 6px 8px 6px 7px;
     overflow: hidden;
     border: 2px solid #1a140c;
-    border-radius: 12px;
-    background: #efe4c8;
+    border-radius: 14px;
+    background: #f3e7c8;
     color: #1a140c;
+    box-shadow: 0 2px 0 #1a140c;
 }
 
 body.player-app .player-board-rank {
-    color: var(--wood);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.7em;
+    height: 1.7em;
+    border: 2px solid #1a140c;
+    border-radius: 50%;
+    background: #fff8e6;
+    color: #1a140c;
     font-family: var(--title);
-    font-size: 0.95rem;
+    font-size: 0.82rem;
     font-weight: 800;
-    text-align: center;
+    line-height: 1;
 }
 
 body.player-app .player-board-name {
     min-width: 0;
     margin: 0;
     font-family: var(--title);
-    font-size: 0.98rem;
+    font-size: 1rem;
     font-weight: 800;
-    line-height: 1.15;
+    line-height: 1.12;
     overflow-wrap: anywhere;
 }
 
 body.player-app .player-board-pts {
-    min-width: 1.8em;
-    padding: 0.12em 0.55em;
+    min-width: 1.9em;
+    padding: 0.14em 0.58em;
     border: 2px solid #1a140c;
     border-radius: 999px;
     background: #fff8e6;
     font-family: var(--title);
-    font-size: 0.95rem;
+    font-size: 0.98rem;
     font-weight: 800;
     text-align: center;
+    font-variant-numeric: tabular-nums;
 }
 
 body.player-app .player-board-row.is-you {
     background: #ffe27a;
-    box-shadow: 0 0 0 2px #1a3878;
+    box-shadow: 0 0 0 2px #1a3878, 0 2px 0 #1a140c;
+}
+
+body.player-app .player-board-row.is-you .player-board-rank {
+    background: #1a3878;
+    color: #fff8e6;
 }
 
 body.player-app .player-podium-spot.is-you .player-crate {
@@ -2518,22 +2561,26 @@ body.player-app .player-finale-ewe {
     align-self: center;
     overflow: visible;
     z-index: 2;
-    filter: drop-shadow(0 2px 0 rgba(20, 16, 8, 0.22));
+    filter: drop-shadow(0 3px 0 rgba(20, 16, 8, 0.28));
 }
 
 body.player-app .player-podium .player-board-ewe {
-    width: 64px;
+    width: 68px;
+    margin-bottom: -16px;
     align-self: center;
 }
 
 body.player-app .player-podium .is-1 .player-board-ewe {
-    width: 88px;
-    margin-bottom: -12px;
+    width: 96px;
+    margin-bottom: -20px;
+    filter:
+        drop-shadow(0 4px 0 rgba(20, 16, 8, 0.28))
+        drop-shadow(0 0 12px rgba(255, 210, 80, 0.42));
 }
 
 body.player-app .player-board-you .player-board-ewe {
-    width: 56px;
-    margin: 0;
+    width: 66px;
+    margin: -4px 0 -10px -8px;
     align-self: center;
 }
 
@@ -2547,7 +2594,7 @@ body.player-app .player-finale-ewe figcaption {
         grid-template-columns: 1fr 1fr;
         grid-auto-flow: column;
         grid-template-rows: repeat(var(--board-rows, 6), auto);
-        gap: 6px 16px;
+        gap: 8px 22px;
         align-content: start;
     }
 }
@@ -2555,18 +2602,56 @@ body.player-app .player-finale-ewe figcaption {
 @media (max-width: 430px) {
     body.player-app .player-board-you {
         border-radius: 18px;
+        margin: 0 4px;
+        padding-left: 2px;
+    }
+
+    body.player-app .player-podium {
+        padding: 8px 16px 0;
+        gap: 4px 8px;
     }
 
     body.player-app .player-podium .player-board-ewe {
-        width: 52px;
+        width: 56px;
+        margin-bottom: -14px;
     }
 
     body.player-app .player-podium .is-1 .player-board-ewe {
-        width: 72px;
+        width: 76px;
+        margin-bottom: -16px;
     }
 
     body.player-app .player-crate {
-        padding-left: 2.15em;
+        padding: 7px 10px 7px;
+        border-radius: 14px;
+    }
+
+    body.player-app .player-podium-spot.is-1 .player-crate {
+        padding: 16px 12px 14px;
+    }
+
+    body.player-app .player-podium-spot.is-2 .player-crate {
+        padding: 11px 10px 10px;
+    }
+
+    body.player-app .player-podium-spot.is-3 .player-crate {
+        padding: 6px 10px 7px;
+    }
+
+    body.player-app .player-crate-place {
+        width: 1.65em;
+        height: 1.65em;
+        transform: translate(-22%, -50%);
+    }
+
+    body.player-app .player-podium-spot.is-1 .player-crate-place {
+        width: 1.9em;
+        height: 1.9em;
+    }
+
+    body.player-app .player-board-you .player-board-ewe {
+        width: 58px;
+        margin: -2px 0 -8px -4px;
     }
 }
 
@@ -2705,56 +2790,107 @@ body.player-app #lobbyScreen .player-masthead {
 }
 
 @media (max-height: 500px) {
+    body.player-app #scoringScreen .screen-content h2 {
+        margin-bottom: 0;
+        font-size: clamp(1.25rem, 5vh, 1.7rem);
+    }
+
     body.player-app .player-board {
         overflow: hidden;
         min-height: 0;
-        gap: 6px;
+        gap: 4px;
+        padding-top: 2px;
+    }
+
+    body.player-app .player-podium {
+        padding: 2px 14px 0;
+        gap: 2px 8px;
     }
 
     body.player-app .player-board-standings {
         flex: 1 1 auto;
-        min-height: 8rem;
+        min-height: 0;
+        padding: 6px 10px 8px;
+        gap: 4px;
+    }
+
+    body.player-app .player-board-title {
+        font-size: 1.05rem;
+        padding-bottom: 2px;
     }
 
     body.player-app .player-podium .player-board-ewe {
-        width: 40px;
+        width: 36px;
         margin-bottom: -8px;
     }
 
     body.player-app .player-podium .is-1 .player-board-ewe {
-        width: 52px;
+        width: 46px;
         margin-bottom: -8px;
     }
 
-    body.player-app .player-podium-spot.is-1 .player-crate,
-    body.player-app .player-podium-spot.is-2 .player-crate,
+    body.player-app .player-podium-spot.is-1 .player-crate {
+        min-height: 0;
+        padding: 6px 10px 6px;
+    }
+
+    body.player-app .player-podium-spot.is-2 .player-crate {
+        min-height: 0;
+        padding: 5px 10px 5px;
+    }
+
     body.player-app .player-podium-spot.is-3 .player-crate {
-        min-height: 44px;
-        padding-top: 6px;
-        padding-bottom: 6px;
+        min-height: 0;
+        padding: 4px 8px 4px;
+    }
+
+    body.player-app .player-crate-name,
+    body.player-app .player-podium .is-1 .player-crate-name {
+        font-size: 0.82rem;
+    }
+
+    body.player-app .player-crate-score,
+    body.player-app .player-podium .is-1 .player-crate-score {
+        font-size: 1.05rem;
     }
 
     body.player-app .player-board-you {
         min-height: 44px;
-        padding-top: 4px;
-        padding-bottom: 4px;
+        margin: 0 8px;
+        padding-top: 2px;
+        padding-bottom: 2px;
+    }
+
+    body.player-app .player-board-you .player-board-ewe {
+        width: 42px;
+        margin: -2px 0 -6px -4px;
+    }
+
+    body.player-app .player-you-rank {
+        font-size: 1.2rem;
+        padding-right: 8px;
+    }
+}
+
+@media (max-height: 560px) and (min-height: 501px) {
+    body.player-app .player-podium-spot.is-1 .player-crate,
+    body.player-app .player-board.is-event .player-podium .is-1 .player-crate {
+        min-height: 0;
+        padding: 14px 12px 12px;
+    }
+
+    body.player-app .player-podium-spot.is-2 .player-crate {
+        min-height: 0;
+        padding: 10px 10px 9px;
+    }
+
+    body.player-app .player-podium-spot.is-3 .player-crate {
+        min-height: 0;
+        padding: 6px 10px 7px;
     }
 }
 
 @media (max-height: 560px) {
-    body.player-app .player-podium-spot.is-1 .player-crate,
-    body.player-app .player-board.is-event .player-podium .is-1 .player-crate {
-        min-height: 58px;
-    }
-
-    body.player-app .player-podium-spot.is-2 .player-crate {
-        min-height: 50px;
-    }
-
-    body.player-app .player-podium-spot.is-3 .player-crate {
-        min-height: 46px;
-    }
-
     body.player-app #joinGameScreen .screen-content {
         justify-content: center;
     }
