@@ -82,7 +82,7 @@ process.on('SIGTERM', () => {
 // Middleware
 app.set('trust proxy', 1);
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 // Note: express.static moved after routes to allow custom routing
 
 // Supabase configuration — keep the client even if the first probe fails
@@ -4065,7 +4065,7 @@ function tryAutoAnswer(sock, state, gameCode) {
 }
 
 function sendLibraryError(res, error) {
-    const status = /not found|needs a prompt|needs a name/i.test(error && error.message) ? 400 : 500;
+    const status = /not found|needs a prompt|needs a name|CSV|header row|No questions/i.test(error && error.message) ? 400 : 500;
     res.status(status).json({ status: 'error', message: error.message || 'Library request failed' });
 }
 
@@ -4149,6 +4149,17 @@ app.put('/api/library/questions/:id/playlists', async (req, res) => {
         await library.setQuestionPlaylists(req.params.id, req.body && req.body.playlistIds);
         const data = await library.loadLibrary();
         res.json({ status: 'success', ...data });
+    } catch (error) {
+        sendLibraryError(res, error);
+    }
+});
+
+app.post('/api/library/import', async (req, res) => {
+    try {
+        const csv = req.body && (req.body.csv || req.body.text);
+        const playlistName = (req.body && req.body.playlistName) || library.playlistNameFromFilename(req.body && req.body.filename);
+        const result = await library.importCsv(csv, { playlistName });
+        res.json({ status: 'success', ...result });
     } catch (error) {
         sendLibraryError(res, error);
     }

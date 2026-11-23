@@ -59,6 +59,15 @@ async function run() {
         const leftover = await library.loadLibrary();
         assert.strictEqual(leftover.playlists.length, 1);
         assert.strictEqual(leftover.questions.length, 2);
+
+        const imported = await library.importCsv(
+            'id,question,answers,aliases_json\n1,Capital of France?,Paris|{}\n2,A new import?,Yes | No|{}\n',
+            { playlistName: 'CSV dump' }
+        );
+        assert.strictEqual(imported.added, 1);
+        assert.strictEqual(imported.skipped, 1);
+        assert.strictEqual(imported.playlist.name, 'CSV dump');
+        assert.strictEqual(imported.playlist.questionIds.length, 2);
         console.log('library.test.js ok');
     } finally {
         try { fs.unlinkSync(FILE); } catch (_) {}

@@ -1646,6 +1646,8 @@
                         <div class="qp-toolbar">
                             <input id="qpSearch" placeholder="Search..." />
                             <button id="qpCustomBtn" class="control-btn secondary" type="button">New question</button>
+                            <button id="qpImportBtn" class="control-btn secondary" type="button" hidden>Import CSV</button>
+                            <input id="qpImportFile" type="file" accept=".csv,text/csv,text/plain" hidden>
                             <button id="qpNewPlaylistBtn" class="control-btn secondary" type="button" hidden>New playlist</button>
                         </div>
                         <p id="qpSource" class="qp-source"></p>
@@ -3351,8 +3353,10 @@
         function syncQpChrome() {
             const newQ = document.getElementById('qpCustomBtn');
             const newP = document.getElementById('qpNewPlaylistBtn');
+            const importBtn = document.getElementById('qpImportBtn');
             if (newQ) newQ.hidden = qpView === 'playlists';
             if (newP) newP.hidden = qpView !== 'playlists';
+            if (importBtn) importBtn.hidden = qpView !== 'library';
         }
 
         function renderAttachedChips() {
@@ -3902,6 +3906,38 @@
         document.getElementById('qpUseBtn')?.addEventListener('click', useQpItem);
         document.getElementById('qpSavePlaylistBtn')?.addEventListener('click', savePlaylistFromInspector);
         document.getElementById('qpDeletePlaylistBtn')?.addEventListener('click', deleteSelectedPlaylist);
+        document.getElementById('qpImportBtn')?.addEventListener('click', () => {
+            document.getElementById('qpImportFile')?.click();
+        });
+        document.getElementById('qpImportFile')?.addEventListener('change', async (event) => {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+            try {
+                const csv = await file.text();
+                const json = await libraryRequest('/api/library/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ csv, filename: file.name })
+                });
+                qpView = 'playlists';
+                qpNewPlaylistMode = false;
+                qpCustomMode = false;
+                qpBankPreviewId = null;
+                if (json.playlist) qpPlaylistId = json.playlist.id;
+                document.getElementById('qpTonightBtn')?.classList.remove('is-on');
+                document.getElementById('qpPlaylistsBtn')?.classList.add('is-on');
+                document.getElementById('qpBankBtn')?.classList.remove('is-on');
+                const bits = [];
+                bits.push('Imported ' + json.added + ' question' + (json.added === 1 ? '' : 's'));
+                if (json.playlist && json.playlist.name) bits.push('into ' + json.playlist.name);
+                if (json.skipped) bits.push(json.skipped + ' already in the library');
+                setQpNotice(bits.join('. ') + '.');
+                renderRundown();
+            } catch (e) {
+                setQpNotice(e.message || 'Could not import that CSV.');
+            }
+        });
 
         // Keyboard shortcuts for modal fullscreen
         document.addEventListener('keydown', (e) => {

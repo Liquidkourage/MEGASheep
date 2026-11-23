@@ -11,6 +11,7 @@ const {
     setPostgresQuestionPlaylists
 } = require('./db');
 const { loadQuestionsFromFile } = require('./loadQuestions');
+const { parseQuestionCsv, playlistNameFromFilename } = require('./questionCsv');
 
 const FILE = process.env.MEGASHEEP_LIBRARY_FILE || path.join(__dirname, 'data', 'question-library.json');
 
@@ -207,6 +208,45 @@ async function setQuestionPlaylists(questionId, playlistIds) {
     return { playlists: store.playlists.map(shapePlaylist), source: 'file' };
 }
 
+async function importCsv(text, options) {
+    const parsed = parseQuestionCsv(text);
+    if (!parsed.questions.length) {
+        const reason = parsed.errors[0] || 'No questions found in that CSV.';
+        throw new Error(reason);
+    }
+    const lib = await loadLibrary();
+    const byPrompt = new Map(lib.questions.map((q) => [String(q.prompt || '').trim().toLowerCase(), q]));
+    const questionIds = [];
+    let added = 0;
+    let skipped = 0;
+    for (const incoming of parsed.questions) {
+        const key = String(incoming.prompt || '').trim().toLowerCase();
+        const existing = byPrompt.get(key);
+        if (existing) {
+            questionIds.push(existing.id);
+            skipped += 1;
+            continue;
+        }
+        const saved = await saveQuestion({
+            prompt: incoming.prompt,
+            correct_answers: incoming.correct_answers
+        });
+        byPrompt.set(key, saved.question);
+        questionIds.push(saved.question.id);
+        added += 1;
+    }
+    const playlistName = String(options && options.playlistName || '').trim() || 'Imported playlist';
+    const playlist = await savePlaylist({ name: playlistName, questionIds });
+    const data = await loadLibrary();
+    return {
+        added,
+        skipped,
+        errors: parsed.errors,
+        playlist: playlist.playlist,
+        ...data
+    };
+}
+
 async function questionsForPlaylists(playlistIds) {
     const lib = await loadLibrary();
     const wanted = (Array.isArray(playlistIds) ? playlistIds : []).map(String);
@@ -234,5 +274,7 @@ module.exports = {
     savePlaylist,
     deletePlaylist,
     setQuestionPlaylists,
-    questionsForPlaylists
+    questionsForPlaylists,
+    importCsv,
+    playlistNameFromFilename
 };
