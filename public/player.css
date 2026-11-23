@@ -76,6 +76,9 @@ body.player-app .screen {
     border-radius: 0;
     box-shadow: none;
     overflow: hidden;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    filter: none;
 }
 
 body.player-app .screen.active {
@@ -1605,7 +1608,7 @@ body.player-app {
 
 @media (min-width: 768px) {
     body.player-app .container {
-        max-width: 28rem;
-        margin: 0 auto;
+        max-width: none;
+        margin: 0;
     }
 }
