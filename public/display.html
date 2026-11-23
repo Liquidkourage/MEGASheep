@@ -46,6 +46,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="apply-state.js?v=2026-11-18T14-00-00"></script>
+    <script src="sheep-coat.js?v=2026-11-22T23-00-00"></script>
     <script>
         // Check if QRCode library loaded
         window.addEventListener('load', function() {
@@ -813,6 +814,9 @@
         }
 
         function nameHash(value) {
+            if (window.MEGASheepCoat && typeof window.MEGASheepCoat.nameHash === 'function') {
+                return window.MEGASheepCoat.nameHash(value);
+            }
             let hash = 2166136261;
             const text = String(value || '');
             for (let i = 0; i < text.length; i += 1) {
@@ -820,6 +824,14 @@
                 hash = Math.imul(hash, 16777619);
             }
             return Math.abs(hash);
+        }
+
+        function sheepCoatOf(player, fallback) {
+            const key = (player && (player.name || player.id || player.stableId)) || fallback || '';
+            if (window.MEGASheepCoat && typeof window.MEGASheepCoat.coatOf === 'function') {
+                return window.MEGASheepCoat.coatOf(key);
+            }
+            return (nameHash(key) % 2) + 1;
         }
 
         function sortedFlockPlayers(players) {
@@ -1371,7 +1383,7 @@
                     oy: 70,
                     scale: depth.scale,
                     z: depth.z,
-                    coat: (hash % 2) + 1,
+                    coat: sheepCoatOf(player, String(index)),
                     idle: ((hash % 17) * 0.18).toFixed(2),
                     mood: (hash % 3 === 0) ? 'eat' : 'idle'
                 };
@@ -1425,7 +1437,7 @@
                     oy: gate.approach.y + (((hash >> 4) % 5) - 2) * 0.12,
                     scale: depth.scale,
                     z: depth.z,
-                    coat: (hash % 2) + 1,
+                    coat: sheepCoatOf(player, String(index)),
                     idle: ((hash % 17) * 0.18).toFixed(2),
                     mood: (hash % 3 === 0) ? 'eat' : 'idle'
                 };
@@ -1467,7 +1479,7 @@
                 oy: 70,
                 scale,
                 z: g.z || depth.z,
-                coat: (hash % 2) + 1,
+                coat: sheepCoatOf(player),
                 idle: ((hash % 17) * 0.18).toFixed(2),
                 mood: extra.mood || ((hash % 3 === 0) ? 'eat' : 'idle'),
                 sad: !!extra.sad
@@ -1811,7 +1823,7 @@
                     oy: 70,
                     scale: g.scale,
                     z: g.z,
-                    coat: (hash % 2) + 1,
+                    coat: sheepCoatOf(player, String(index)),
                     idle: ((hash % 17) * 0.18).toFixed(2),
                     mood: (hash % 3 === 0) ? 'eat' : 'idle'
                 };
@@ -1850,7 +1862,7 @@
                     oy: Math.min(86, Math.max(56, o.y + (((hash >> 4) % 5) - 2) * 0.3)),
                     scale: g.scale,
                     z: g.z,
-                    coat: (hash % 2) + 1,
+                    coat: sheepCoatOf(player, String(index)),
                     idle: ((hash % 17) * 0.18).toFixed(2),
                     mood: 'idle'
                 };
@@ -5360,8 +5372,7 @@
                 <div class="tv-podium">
                     ${spots.map(({ player, place }) => {
                         if (!player) return `<div class="tv-podium-spot is-${place}"></div>`;
-                        const hash = nameHash(player.name || player.id);
-                        const coat = (hash % 3) + 1;
+                        const coat = sheepCoatOf(player);
                         return `
                             <div class="tv-podium-spot is-${place}">
                                 <figure class="tv-ewe" data-coat="${coat}" data-mood="idle" aria-hidden="true">

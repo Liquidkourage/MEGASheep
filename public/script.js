@@ -3003,13 +3003,13 @@ function paintPlayerLobbyFlock(players) {
             el = document.createElement('figure');
             el.className = 'player-ewe';
             el.dataset.id = id;
-            el.dataset.coat = String(playerCoatOf(player.name));
             el.style.setProperty('--idle', `${((occupied.length % 7) * 0.12).toFixed(2)}s`);
             el.innerHTML = `<span class="player-ewe-art" aria-hidden="true"><span class="player-ewe-strip"></span></span><figcaption></figcaption>`;
             pinPlayerEwe(el, spot);
             pasture.appendChild(el);
             schedulePlayerWander(el);
         }
+        el.dataset.coat = String(playerCoatOf(player));
         const mine = String(player.name || '').toLowerCase() === myName || player.id === (typeof socket !== 'undefined' && socket && socket.id);
         el.classList.toggle('is-you', !!mine);
         const tag = el.querySelector('figcaption');
@@ -3720,11 +3720,19 @@ function showAnswerDetails(answer, count, points, totalResponses) {
     showToast(`${answer}: ${uniquenessText}. ${pointsText}`, 'info');
 }
 
-function playerCoatOf(name) {
-    let hash = 0;
-    const text = String(name || '');
-    for (let i = 0; i < text.length; i += 1) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
-    return (Math.abs(hash) % 3) + 1;
+function playerCoatOf(playerOrName) {
+    if (window.MEGASheepCoat && typeof window.MEGASheepCoat.coatOf === 'function') {
+        return window.MEGASheepCoat.coatOf(playerOrName);
+    }
+    let hash = 2166136261;
+    const text = String((playerOrName && typeof playerOrName === 'object')
+        ? (playerOrName.name || playerOrName.id || playerOrName.stableId || '')
+        : (playerOrName || ''));
+    for (let i = 0; i < text.length; i += 1) {
+        hash ^= text.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (Math.abs(hash) % 2) + 1;
 }
 
 function escapePlayer(value) {
@@ -3773,7 +3781,7 @@ function playerCrateHtml(player, rank, pts, options) {
         ? `<p class="player-crate-meta">${escapePlayer(extra.meta)}</p>`
         : '';
     return `<div class="${classes}">
-        <figure class="player-ewe player-board-ewe${extra.hero ? ' is-hero' : ''}" data-coat="${playerCoatOf(player.name)}" style="--idle:${delay}s" aria-hidden="true">
+        <figure class="player-ewe player-board-ewe${extra.hero ? ' is-hero' : ''}" data-coat="${playerCoatOf(player)}" style="--idle:${delay}s" aria-hidden="true">
             <span class="player-ewe-art"><span class="player-ewe-strip"></span></span>
         </figure>
         <div class="player-crate">
