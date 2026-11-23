@@ -945,16 +945,36 @@ html, body {
     bottom: max(1.8vh, 16px);
     z-index: 40;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    gap: 0.12em;
+    gap: 0.45em;
     margin: 0;
-    padding: 0.42em 0.7em 0.48em;
+    padding: 0.42em 0.62em 0.42em 0.42em;
     background: #f3e2b4;
     border: 0.16em solid #1a140c;
     border-radius: 0.42em;
     box-shadow: 0.12em 0.16em 0 #1a140c;
     pointer-events: none;
+}
+
+.tv-corner-code-qr {
+    display: block;
+    flex: 0 0 auto;
+    width: clamp(6.6rem, 14.8vh, 10.8rem);
+    height: clamp(6.6rem, 14.8vh, 10.8rem);
+    padding: 0.28em;
+    object-fit: contain;
+    background: #fbf3dc;
+    border: 0.12em solid #1a140c;
+    border-radius: 0.22em;
+    box-sizing: border-box;
+}
+
+.tv-corner-code-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1em;
 }
 
 .tv-corner-code-kicker {

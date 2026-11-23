@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T19-05-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T19-15-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -578,11 +578,16 @@
             return /^\d{4}$/.test(code) ? code : '';
         }
 
+        function tvJoinUrl() {
+            const code = tvJoinCode();
+            return code ? `https://megasheep.liquidkourage.com/?game=${code}` : 'https://megasheep.liquidkourage.com';
+        }
+
         function tvCornerCodeHtml() {
             const code = tvJoinCode();
-            return code
-                ? `<aside class="tv-corner-code" aria-label="Player code ${code}"><p class="tv-corner-code-kicker">Player Code</p><p class="tv-corner-code-num">${code}</p></aside>`
-                : '';
+            if (!code) return '';
+            const src = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(tvJoinUrl())}`;
+            return `<aside class="tv-corner-code" aria-label="Player code ${code}"><img class="tv-corner-code-qr" src="${src}" alt=""><span class="tv-corner-code-copy"><p class="tv-corner-code-kicker">Player Code</p><p class="tv-corner-code-num">${code}</p></span></aside>`;
         }
 
         function pitchCopyHtml() {
@@ -768,8 +773,7 @@
                 else joinArt.addEventListener('load', scheduleJoinSignFit, { once: true });
             }
             setTimeout(() => {
-                const waitingUrl = window.currentGameCode ? `https://megasheep.liquidkourage.com/?game=${window.currentGameCode}` : 'https://megasheep.liquidkourage.com';
-                generateQRCode('qrCodeWaiting', waitingUrl);
+                generateQRCode('qrCodeWaiting', tvJoinUrl());
                 const img = document.querySelector('#qrCodeWaiting img');
                 if (img) img.addEventListener('load', scheduleJoinSignFit, { once: true });
                 scheduleJoinSignFit();
