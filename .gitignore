@@ -106,4 +106,7 @@ temp/
 uploads/
 
 # Live game snapshots (runtime, not source)
-snapshots/ 
+snapshots/
+
+# Local question library fallback (Postgres is canonical in production)
+data/ 

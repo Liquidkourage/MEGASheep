@@ -10,6 +10,7 @@ require('dotenv').config();
 
 const { createClient } = require('@supabase/supabase-js');
 const { loadQuestionsFromFile } = require('./loadQuestions');
+const library = require('./library');
 const lockstep = require('./lockstep');
 const {
     mergeRoundGroups,
@@ -462,6 +463,7 @@ class Game {
         this.answersNeedingEdit = new Map(); // socketId -> { reason, requestedAt, originalAnswer }
         this.roundAnswerGroups = []; // CRITICAL FIX: Initialize roundAnswerGroups array
         this.questionLog = [];
+        this.attachedPlaylistIds = [];
         // ONE source of truth: this.answers (socketId -> answer)
         this.socketByStableId = new Map();
         this.hostToken = null;
@@ -1152,6 +1154,7 @@ class Game {
         scores: this.scores ? Object.fromEntries(this.scores) : {},
         questions: this.questions || [],
         questionLog: Array.isArray(this.questionLog) ? this.questionLog : [],
+        attachedPlaylistIds: Array.isArray(this.attachedPlaylistIds) ? this.attachedPlaylistIds : [],
         currentQuestionScored: !!this.currentQuestionScored,
               currentAnswerGroups: this.currentAnswerGroups || [],
               categorizationData: this.categorizationData || null,
@@ -1669,6 +1672,7 @@ function serializeGame(game) {
       seq: game.seq || 0,
       roundHistory: game.roundHistory,
       questionLog: Array.isArray(game.questionLog) ? game.questionLog : [],
+      attachedPlaylistIds: Array.isArray(game.attachedPlaylistIds) ? game.attachedPlaylistIds : [],
       settings: game.settings,
       createdAt: game.createdAt
     };
@@ -1760,6 +1764,7 @@ function restoreGameFromSnapshot(snap) {
     game.seq = Number(s.seq) || 0;
     game.roundHistory = Array.isArray(s.roundHistory) ? s.roundHistory : [];
     game.questionLog = Array.isArray(s.questionLog) ? s.questionLog : [];
+    game.attachedPlaylistIds = Array.isArray(s.attachedPlaylistIds) ? s.attachedPlaylistIds : [];
     game.settings = s.settings || game.settings;
     game.createdAt = s.createdAt || Date.now();
     game.hostToken = s.hostToken || game.hostToken;
@@ -3847,6 +3852,42 @@ io.on('connection', (socket) => {
         broadcastState(game, 'questionsLoaded');
     });
 
+    socket.on('attachPlaylists', async (data) => {
+        if (!data || !data.gameCode || !canControlGame(data.gameCode)) return;
+        const game = activeGames.get(data.gameCode);
+        if (!game) {
+            socket.emit('gameError', { message: 'Game not found' });
+            return;
+        }
+        const playlistIds = Array.isArray(data.playlistIds) ? data.playlistIds : (data.playlistId != null ? [data.playlistId] : []);
+        if (!playlistIds.length) {
+            socket.emit('gameError', { message: 'Pick a playlist to attach.' });
+            return;
+        }
+        let incoming = [];
+        try {
+            incoming = await library.questionsForPlaylists(playlistIds);
+        } catch (e) {
+            socket.emit('gameError', { message: 'Could not load that playlist.' });
+            return;
+        }
+        if (!incoming.length) {
+            socket.emit('gameError', { message: 'That playlist has no questions yet.' });
+            return;
+        }
+        if (!Array.isArray(game.questions)) game.questions = [];
+        const have = new Set(game.questions.map((q) => String(q.id)));
+        const toAdd = normalizeQuestions(incoming.filter((q) => !have.has(String(q.id))));
+        if (!toAdd.length) {
+            game.attachedPlaylistIds = [...new Set([...(game.attachedPlaylistIds || []).map(String), ...playlistIds.map(String)])];
+            broadcastState(game, 'questionsLoaded');
+            return;
+        }
+        game.questions = reindexShowQuestions(game.questions.concat(toAdd));
+        game.attachedPlaylistIds = [...new Set([...(game.attachedPlaylistIds || []).map(String), ...playlistIds.map(String)])];
+        broadcastState(game, 'questionsLoaded');
+    });
+
     socket.on('rescoreQuestion', (data) => {
         if (!data || !data.gameCode || !canControlGame(data.gameCode)) return;
         const game = activeGames.get(data.gameCode);
@@ -4022,6 +4063,96 @@ function tryAutoAnswer(sock, state, gameCode) {
     }, 500 + Math.floor(Math.random()*7500));
   } catch(_) {}
 }
+
+function sendLibraryError(res, error) {
+    const status = /not found|needs a prompt|needs a name/i.test(error && error.message) ? 400 : 500;
+    res.status(status).json({ status: 'error', message: error.message || 'Library request failed' });
+}
+
+app.get('/api/library', async (req, res) => {
+    try {
+        const data = await library.loadLibrary();
+        res.json({ status: 'success', ...data });
+    } catch (error) {
+        sendLibraryError(res, error);
+    }
+});
+
+app.post('/api/library/questions', async (req, res) => {
+    try {
+        const saved = await library.saveQuestion(req.body || {});
+        if (Array.isArray(req.body && req.body.playlistIds)) {
+            await library.setQuestionPlaylists(saved.question.id, req.body.playlistIds);
+        }
+        const data = await library.loadLibrary();
+        res.json({ status: 'success', question: saved.question, ...data });
+    } catch (error) {
+        sendLibraryError(res, error);
+    }
+});
+
+app.put('/api/library/questions/:id', async (req, res) => {
+    try {
+        const saved = await library.saveQuestion({ ...(req.body || {}), id: req.params.id });
+        if (Array.isArray(req.body && req.body.playlistIds)) {
+            await library.setQuestionPlaylists(saved.question.id, req.body.playlistIds);
+        }
+        const data = await library.loadLibrary();
+        res.json({ status: 'success', question: saved.question, ...data });
+    } catch (error) {
+        sendLibraryError(res, error);
+    }
+});
+
+app.delete('/api/library/questions/:id', async (req, res) => {
+    try {
+        const result = await library.deleteQuestion(req.params.id);
+        const data = await library.loadLibrary();
+        res.json({ status: 'success', deleted: result.ok, ...data });
+    } catch (error) {
+        sendLibraryError(res, error);
+    }
+});
+
+app.post('/api/library/playlists', async (req, res) => {
+    try {
+        const saved = await library.savePlaylist(req.body || {});
+        const data = await library.loadLibrary();
+        res.json({ status: 'success', playlist: saved.playlist, ...data });
+    } catch (error) {
+        sendLibraryError(res, error);
+    }
+});
+
+app.put('/api/library/playlists/:id', async (req, res) => {
+    try {
+        const saved = await library.savePlaylist({ ...(req.body || {}), id: req.params.id });
+        const data = await library.loadLibrary();
+        res.json({ status: 'success', playlist: saved.playlist, ...data });
+    } catch (error) {
+        sendLibraryError(res, error);
+    }
+});
+
+app.delete('/api/library/playlists/:id', async (req, res) => {
+    try {
+        const result = await library.deletePlaylist(req.params.id);
+        const data = await library.loadLibrary();
+        res.json({ status: 'success', deleted: result.ok, ...data });
+    } catch (error) {
+        sendLibraryError(res, error);
+    }
+});
+
+app.put('/api/library/questions/:id/playlists', async (req, res) => {
+    try {
+        await library.setQuestionPlaylists(req.params.id, req.body && req.body.playlistIds);
+        const data = await library.loadLibrary();
+        res.json({ status: 'success', ...data });
+    } catch (error) {
+        sendLibraryError(res, error);
+    }
+});
 
 app.get('/api/load-questions', async (req, res) => {
     try {

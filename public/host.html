@@ -488,6 +488,12 @@
         .qp-actions { display: flex; flex-wrap: wrap; gap: 8px; }
         .qp-notice { font-size: 13px; color: #ffd56a; min-height: 1.2em; }
         .qp-empty { color: #bbb; padding: 18px 8px; }
+        .qp-view-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+        .qp-view-tabs .control-btn.is-on { background: #007bff; color: #fff; }
+        .qp-checks { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; }
+        .qp-checks label { display: flex; align-items: center; gap: 8px; color: #fff; font-weight: 600; font-size: 13px; }
+        .qp-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+        .qp-chip { font-size: 11px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 8px; border-radius: 999px; background: rgba(0,123,255,0.25); color: #9ec5ff; }
 
         .panel-header {
             display: flex;
@@ -1581,16 +1587,19 @@
                     <div class="dashboard-panel" id="questionPickerPanel">
                         <div class="panel-header">
                             <h3 id="qpListTitle">Tonight's rundown <span id="qpCount" style="font-size:.8em;color:#bbb;margin-left:6px;">0 questions</span></h3>
-                            <div class="qp-actions">
-                                <span id="qpSource" style="font-size:.8em;color:#bbb;">—</span>
-                                <button id="qpBankBtn" class="control-btn secondary" type="button">Add from bank</button>
-                                <button id="qpCustomBtn" class="control-btn secondary" type="button">Add custom</button>
+                            <div class="qp-view-tabs">
+                                <button id="qpTonightBtn" class="control-btn secondary is-on" type="button">Tonight</button>
+                                <button id="qpPlaylistsBtn" class="control-btn secondary" type="button">Playlists</button>
+                                <button id="qpBankBtn" class="control-btn secondary" type="button">Library</button>
                             </div>
                         </div>
-                        <div class="qp-toolbar" id="qpBankToolbar" hidden>
-                            <input id="qpSearch" placeholder="Search the question bank..." />
-                            <button id="qpBankBackBtn" class="control-btn secondary" type="button">Back to rundown</button>
+                        <div class="qp-toolbar">
+                            <span id="qpSource" style="font-size:.8em;color:#bbb;">—</span>
+                            <input id="qpSearch" placeholder="Search..." />
+                            <button id="qpCustomBtn" class="control-btn secondary" type="button">New question</button>
+                            <button id="qpNewPlaylistBtn" class="control-btn secondary" type="button">New playlist</button>
                         </div>
+                        <div id="qpAttached" class="qp-chip-row"></div>
                         <p id="qpNotice" class="qp-notice"></p>
                         <div id="qpList" class="qp-rows"></div>
                     </div>
@@ -1599,17 +1608,25 @@
                             <h3 id="qpInspectTitle">Question</h3>
                         </div>
                         <div class="qp-inspector-body">
-                            <label for="qpInspectPrompt">Prompt</label>
+                            <label id="qpInspectNameLabel" for="qpInspectName" hidden>Playlist name</label>
+                            <input id="qpInspectName" type="text" placeholder="Wedding, pub quiz, finale…" hidden>
+                            <label id="qpInspectPromptLabel" for="qpInspectPrompt">Prompt</label>
                             <textarea id="qpInspectPrompt" placeholder="Question players will see"></textarea>
-                            <label for="qpInspectAnswers">Expected answers (one per line)</label>
+                            <label id="qpInspectAnswersLabel" for="qpInspectAnswers">Expected answers (one per line)</label>
                             <textarea id="qpInspectAnswers" placeholder="Pizza&#10;Pasta"></textarea>
+                            <label id="qpPlaylistLabel">On playlists</label>
+                            <div id="qpPlaylistBox" class="qp-checks"></div>
                             <div class="qp-actions">
                                 <button id="qpSaveBtn" class="control-btn success" type="button">Save for this show</button>
+                                <button id="qpSaveLibraryBtn" class="control-btn success" type="button" hidden>Save to library</button>
                                 <button id="qpPlayNextBtn" class="control-btn secondary" type="button">Play next</button>
                                 <button id="qpSkipBtn" class="control-btn warning" type="button">Skip</button>
                                 <button id="qpRescoreBtn" class="control-btn secondary" type="button">Re-grade</button>
-                                <button id="qpAddBankBtn" class="control-btn success" type="button" hidden>Add to rundown</button>
-                                <button id="qpAddCustomSaveBtn" class="control-btn success" type="button" hidden>Add custom question</button>
+                                <button id="qpAddBankBtn" class="control-btn success" type="button" hidden>Add to tonight</button>
+                                <button id="qpAddCustomSaveBtn" class="control-btn success" type="button" hidden>Add to tonight</button>
+                                <button id="qpAttachBtn" class="control-btn success" type="button" hidden>Attach to tonight</button>
+                                <button id="qpSavePlaylistBtn" class="control-btn success" type="button" hidden>Save playlist</button>
+                                <button id="qpDeletePlaylistBtn" class="control-btn warning" type="button" hidden>Delete playlist</button>
                             </div>
                         </div>
                     </div>
@@ -1782,10 +1799,13 @@
         let currentGame = null;
         let gameState = 'waiting'; // waiting, playing, scoring, finished
         let qpAll = [];
+        let qpPlaylists = [];
         let qpView = 'rundown';
         let qpSelectedIndex = 0;
         let qpBankPreviewId = null;
+        let qpPlaylistId = null;
         let qpCustomMode = false;
+        let qpNewPlaylistMode = false;
         let hostRescoreIndex = null;
         let creatingNewGame = false;
         let lastOpenedGradingQuestion = null;
@@ -2016,7 +2036,9 @@
                     try { window._answersByName = {}; window._questionHistory = []; } catch (_) {}
                     qpSelectedIndex = 0;
                     qpBankPreviewId = null;
+                    qpPlaylistId = null;
                     qpCustomMode = false;
+                    qpNewPlaylistMode = false;
                     qpView = 'rundown';
                     hostRescoreIndex = null;
                     creatingNewGame = false;
@@ -2024,7 +2046,6 @@
                 applyHostState(data, 'gameCreated');
                 qpLoad();
                 emitGameSettings();
-                qpLoad();
                 const code = currentGame && currentGame.gameCode;
                 if (code) {
                     try { socket.emit('requestState', { gameCode: code }); } catch (_) {}
@@ -3207,54 +3228,166 @@
             return String(text || '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
         }
 
-        async function qpLoad() {
+        function applyLibraryPayload(json) {
+            if (Array.isArray(json.questions)) qpAll = json.questions;
+            if (Array.isArray(json.playlists)) qpPlaylists = json.playlists;
+            const sourceEl = document.getElementById('qpSource');
+            if (sourceEl) {
+                const count = qpAll.length;
+                sourceEl.textContent = (json.source === 'database' ? 'Library' : 'Local library') + ' · ' + count;
+            }
+        }
+
+        function playlistsForQuestion(questionId) {
+            return qpPlaylists.filter((p) => (p.questionIds || []).some((id) => String(id) === String(questionId)));
+        }
+
+        function selectedPlaylistIdsFromBox() {
+            return [...document.querySelectorAll('#qpPlaylistBox input[type="checkbox"]:checked')].map((el) => el.value);
+        }
+
+        function currentLibraryQuestion() {
+            if (qpView === 'library' || qpView === 'playlists') {
+                return qpAll.find((q) => String(q.id) === String(qpBankPreviewId)) || null;
+            }
+            const rundownQ = showQuestions()[qpSelectedIndex];
+            if (!rundownQ) return null;
+            return qpAll.find((q) => String(q.id) === String(rundownQ.id)) || null;
+        }
+
+        async function libraryRequest(url, options) {
+            const res = await fetch(url, options);
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || json.status === 'error') throw new Error(json.message || 'Library request failed');
+            applyLibraryPayload(json);
+            return json;
+        }
+
+        async function persistQuestionPlaylists(questionId) {
+            if (questionId == null || !String(questionId).match(/^\d+$/)) return;
             try {
-                const sourceEl = document.getElementById('qpSource');
-                const preferDemo = document.getElementById('questionSet')?.value === 'demo';
-                const res = await fetch('/api/load-questions' + (preferDemo ? '?source=demo' : ''));
-                const json = await res.json();
-                qpAll = Array.isArray(json.questions) ? json.questions : [];
-                if (sourceEl) sourceEl.textContent = questionSourceLabel(json.source, json.count || qpAll.length);
+                await libraryRequest('/api/library/questions/' + encodeURIComponent(questionId) + '/playlists', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ playlistIds: selectedPlaylistIdsFromBox() })
+                });
+                setQpNotice('Playlists updated.');
                 renderRundown();
             } catch (e) {
-                console.warn('Failed to load questions', e);
-                setQpNotice('Could not load the question bank.');
+                setQpNotice(e.message || 'Could not update playlists.');
             }
+        }
+
+        async function qpLoad() {
+            try {
+                const json = await libraryRequest('/api/library');
+                applyLibraryPayload(json);
+                renderRundown();
+            } catch (e) {
+                console.warn('Failed to load library', e);
+                setQpNotice('Could not load the question library.');
+            }
+        }
+
+        function setQpView(view) {
+            qpView = view;
+            qpCustomMode = false;
+            qpNewPlaylistMode = false;
+            document.getElementById('qpTonightBtn')?.classList.toggle('is-on', view === 'rundown');
+            document.getElementById('qpPlaylistsBtn')?.classList.toggle('is-on', view === 'playlists');
+            document.getElementById('qpBankBtn')?.classList.toggle('is-on', view === 'library');
+            renderRundown();
+        }
+
+        function renderAttachedChips() {
+            const row = document.getElementById('qpAttached');
+            if (!row) return;
+            row.innerHTML = '';
+            const ids = Array.isArray(currentGame && currentGame.attachedPlaylistIds) ? currentGame.attachedPlaylistIds : [];
+            ids.forEach((id) => {
+                const playlist = qpPlaylists.find((p) => String(p.id) === String(id));
+                const chip = document.createElement('span');
+                chip.className = 'qp-chip';
+                chip.textContent = playlist ? playlist.name : ('Playlist ' + id);
+                row.appendChild(chip);
+            });
+        }
+
+        function renderQuestionRow(q, extraClass, onClick) {
+            const div = document.createElement('div');
+            div.className = 'qp-bank-item' + (extraClass ? ' ' + extraClass : '');
+            const lists = playlistsForQuestion(q.id).map((p) => p.name);
+            div.innerHTML = `<h4>${escapeHtml(q.prompt || '')}</h4><div class="qp-meta">${(q.correct_answers || []).length} expected answers${lists.length ? ' · ' + lists.join(', ') : ''}</div>`;
+            div.addEventListener('click', onClick);
+            return div;
         }
 
         function renderRundown() {
             const list = document.getElementById('qpList');
-            const count = document.getElementById('qpCount');
             const title = document.getElementById('qpListTitle');
-            const bankToolbar = document.getElementById('qpBankToolbar');
             if (!list) return;
-            if (bankToolbar) bankToolbar.hidden = qpView !== 'bank';
-            list.className = qpView === 'bank' ? 'qp-bank-list' : 'qp-rows';
+            list.className = qpView === 'rundown' ? 'qp-rows' : 'qp-bank-list';
             list.innerHTML = '';
-            if (qpView === 'bank') {
-                if (title) title.innerHTML = 'Question bank <span id="qpCount" style="font-size:.8em;color:#bbb;margin-left:6px;">' + qpAll.length + ' in bank</span>';
-                const term = (document.getElementById('qpSearch')?.value || '').toLowerCase().trim();
+            renderAttachedChips();
+            const term = (document.getElementById('qpSearch')?.value || '').toLowerCase().trim();
+            if (qpView === 'library') {
+                if (title) title.innerHTML = 'Library <span id="qpCount" style="font-size:.8em;color:#bbb;margin-left:6px;">' + qpAll.length + '</span>';
                 const items = qpAll.filter((q) => !term || String(q.prompt || '').toLowerCase().includes(term));
-                if (!items.length) {
-                    list.innerHTML = '<p class="qp-empty">No questions in this bank match that search.</p>';
-                }
+                if (!items.length) list.innerHTML = '<p class="qp-empty">No library questions match that search.</p>';
                 items.forEach((q) => {
-                    const div = document.createElement('div');
-                    div.className = 'qp-bank-item' + (String(qpBankPreviewId) === String(q.id) ? ' is-selected' : '');
-                    div.innerHTML = `<h4>${escapeHtml(q.prompt || '')}</h4><div class="qp-meta">${(q.correct_answers || []).length} expected answers</div>`;
-                    div.addEventListener('click', () => {
+                    list.appendChild(renderQuestionRow(q, String(qpBankPreviewId) === String(q.id) ? 'is-selected' : '', () => {
                         qpCustomMode = false;
+                        qpNewPlaylistMode = false;
                         qpBankPreviewId = q.id;
                         renderRundown();
-                    });
-                    list.appendChild(div);
+                    }));
                 });
+            } else if (qpView === 'playlists') {
+                const playlist = qpPlaylists.find((p) => String(p.id) === String(qpPlaylistId));
+                if (title) title.innerHTML = (playlist ? escapeHtml(playlist.name) : 'Playlists') + ' <span id="qpCount" style="font-size:.8em;color:#bbb;margin-left:6px;">' + qpPlaylists.length + '</span>';
+                if (!playlist) {
+                    const filtered = qpPlaylists.filter((p) => !term || String(p.name || '').toLowerCase().includes(term));
+                    if (!filtered.length) list.innerHTML = '<p class="qp-empty">No playlists yet. Make one, then attach questions from the library.</p>';
+                    filtered.forEach((p) => {
+                        const div = document.createElement('div');
+                        div.className = 'qp-bank-item' + (String(qpPlaylistId) === String(p.id) ? ' is-selected' : '');
+                        div.innerHTML = `<h4>${escapeHtml(p.name)}</h4><div class="qp-meta">${p.count || 0} questions</div>`;
+                        div.addEventListener('click', () => {
+                            qpNewPlaylistMode = false;
+                            qpPlaylistId = p.id;
+                            qpBankPreviewId = null;
+                            renderRundown();
+                        });
+                        list.appendChild(div);
+                    });
+                } else {
+                    const back = document.createElement('div');
+                    back.className = 'qp-bank-item';
+                    back.innerHTML = '<h4>All playlists</h4><div class="qp-meta">Back to the setlist list</div>';
+                    back.addEventListener('click', () => {
+                        qpPlaylistId = null;
+                        qpBankPreviewId = null;
+                        qpNewPlaylistMode = false;
+                        renderRundown();
+                    });
+                    list.appendChild(back);
+                    const byId = new Map(qpAll.map((q) => [String(q.id), q]));
+                    const items = (playlist.questionIds || []).map((id) => byId.get(String(id))).filter(Boolean)
+                        .filter((q) => !term || String(q.prompt || '').toLowerCase().includes(term));
+                    if (!items.length) list.innerHTML = '<p class="qp-empty">This playlist is empty. Open Library and check this playlist on a question.</p>';
+                    items.forEach((q) => {
+                        list.appendChild(renderQuestionRow(q, String(qpBankPreviewId) === String(q.id) ? 'is-selected' : '', () => {
+                            qpBankPreviewId = q.id;
+                            qpCustomMode = false;
+                            renderRundown();
+                        }));
+                    });
+                }
             } else {
                 const questions = showQuestions();
                 if (title) title.innerHTML = "Tonight's rundown <span id=\"qpCount\" style=\"font-size:.8em;color:#bbb;margin-left:6px;\">" + questions.length + ' question' + (questions.length === 1 ? '' : 's') + '</span>';
-                if (count) count.textContent = questions.length + ' question' + (questions.length === 1 ? '' : 's');
                 if (!questions.length) {
-                    list.innerHTML = '<p class="qp-empty">Add questions from the bank or write a custom one. Start Game will use this rundown.</p>';
+                    list.innerHTML = '<p class="qp-empty">Attach a playlist, add from the library, or write a new question. Start Game uses this rundown.</p>';
                 }
                 if (qpSelectedIndex < 0) qpSelectedIndex = 0;
                 if (questions.length && qpSelectedIndex > questions.length) qpSelectedIndex = questions.length - 1;
@@ -3275,6 +3408,7 @@
                     `;
                     div.addEventListener('click', () => {
                         qpCustomMode = false;
+                        qpNewPlaylistMode = false;
                         qpView = 'rundown';
                         qpSelectedIndex = index;
                         renderRundown();
@@ -3301,48 +3435,115 @@
             fillInspector();
         }
 
+        function fillPlaylistBox(questionId) {
+            const box = document.getElementById('qpPlaylistBox');
+            const label = document.getElementById('qpPlaylistLabel');
+            if (!box) return;
+            box.innerHTML = '';
+            const show = !qpNewPlaylistMode && (qpCustomMode || questionId != null || qpView === 'library' || qpView === 'rundown');
+            if (label) label.hidden = !show || !qpPlaylists.length;
+            if (!show) return;
+            qpPlaylists.forEach((p) => {
+                const row = document.createElement('label');
+                const checked = (p.questionIds || []).some((id) => String(id) === String(questionId));
+                row.innerHTML = `<input type="checkbox" value="${escapeHtml(String(p.id))}"${checked ? ' checked' : ''}> ${escapeHtml(p.name)}`;
+                row.querySelector('input')?.addEventListener('change', () => {
+                    if (qpCustomMode) return;
+                    const q = currentLibraryQuestion();
+                    if (q && String(q.id).match(/^\d+$/)) persistQuestionPlaylists(q.id);
+                });
+                box.appendChild(row);
+            });
+        }
+
         function fillInspector() {
             const promptEl = document.getElementById('qpInspectPrompt');
             const answersEl = document.getElementById('qpInspectAnswers');
+            const nameEl = document.getElementById('qpInspectName');
             const title = document.getElementById('qpInspectTitle');
             const saveBtn = document.getElementById('qpSaveBtn');
+            const saveLibBtn = document.getElementById('qpSaveLibraryBtn');
             const playBtn = document.getElementById('qpPlayNextBtn');
             const skipBtn = document.getElementById('qpSkipBtn');
             const rescoreBtn = document.getElementById('qpRescoreBtn');
             const addBankBtn = document.getElementById('qpAddBankBtn');
             const addCustomBtn = document.getElementById('qpAddCustomSaveBtn');
+            const attachBtn = document.getElementById('qpAttachBtn');
+            const savePlaylistBtn = document.getElementById('qpSavePlaylistBtn');
+            const deletePlaylistBtn = document.getElementById('qpDeletePlaylistBtn');
+            const nameLabel = document.getElementById('qpInspectNameLabel');
+            const promptLabel = document.getElementById('qpInspectPromptLabel');
+            const answersLabel = document.getElementById('qpInspectAnswersLabel');
             if (!promptEl || !answersEl) return;
-            const hideAll = () => {
-                [saveBtn, playBtn, skipBtn, rescoreBtn, addBankBtn, addCustomBtn].forEach((btn) => {
-                    if (btn) btn.hidden = true;
-                });
-            };
-            hideAll();
-            if (qpView === 'bank') {
-                const q = qpAll.find((item) => String(item.id) === String(qpBankPreviewId)) || null;
-                if (title) title.textContent = q ? 'Bank question' : 'Pick a bank question';
-                promptEl.value = q ? (q.prompt || '') : '';
-                answersEl.value = q ? answersText(q) : '';
-                promptEl.readOnly = true;
-                answersEl.readOnly = true;
-                if (addBankBtn) addBankBtn.hidden = !q;
-                return;
-            }
+            const allBtns = [saveBtn, saveLibBtn, playBtn, skipBtn, rescoreBtn, addBankBtn, addCustomBtn, attachBtn, savePlaylistBtn, deletePlaylistBtn];
+            allBtns.forEach((btn) => { if (btn) btn.hidden = true; });
+            if (nameEl) nameEl.hidden = true;
+            if (nameLabel) nameLabel.hidden = true;
+            promptEl.hidden = false;
+            answersEl.hidden = false;
+            if (promptLabel) promptLabel.hidden = false;
+            if (answersLabel) answersLabel.hidden = false;
             promptEl.readOnly = false;
             answersEl.readOnly = false;
+
+            if (qpNewPlaylistMode || (qpView === 'playlists' && !qpBankPreviewId)) {
+                const playlist = qpPlaylists.find((p) => String(p.id) === String(qpPlaylistId));
+                if (title) title.textContent = qpNewPlaylistMode ? 'New playlist' : (playlist ? playlist.name : 'Playlist');
+                promptEl.value = '';
+                answersEl.value = '';
+                promptEl.hidden = true;
+                answersEl.hidden = true;
+                if (promptLabel) promptLabel.hidden = true;
+                if (answersLabel) answersLabel.hidden = true;
+                if (nameEl) {
+                    nameEl.hidden = false;
+                    if (qpNewPlaylistMode && !nameEl.dataset.touched) nameEl.value = '';
+                    else if (playlist && !nameEl.dataset.touched) nameEl.value = playlist.name || '';
+                }
+                if (nameLabel) nameLabel.hidden = false;
+                fillPlaylistBox(null);
+                const label = document.getElementById('qpPlaylistLabel');
+                if (label) label.hidden = true;
+                if (savePlaylistBtn) savePlaylistBtn.hidden = false;
+                if (attachBtn) attachBtn.hidden = !playlist;
+                if (deletePlaylistBtn) deletePlaylistBtn.hidden = !playlist;
+                return;
+            }
+
             if (qpCustomMode) {
-                if (title) title.textContent = 'Custom question';
+                if (title) title.textContent = 'New question';
                 if (!promptEl.dataset.customTouched) {
                     promptEl.value = '';
                     answersEl.value = '';
                     promptEl.dataset.customTouched = '1';
                 }
+                fillPlaylistBox(null);
+                if (saveLibBtn) saveLibBtn.hidden = false;
                 if (addCustomBtn) addCustomBtn.hidden = false;
                 return;
             }
             delete promptEl.dataset.customTouched;
+            if (nameEl) delete nameEl.dataset.touched;
+
+            if (qpView === 'library' || qpView === 'playlists') {
+                const q = qpAll.find((item) => String(item.id) === String(qpBankPreviewId)) || null;
+                if (title) title.textContent = q ? 'Library question' : 'Question';
+                promptEl.value = q ? (q.prompt || '') : '';
+                answersEl.value = q ? answersText(q) : '';
+                fillPlaylistBox(q && q.id);
+                if (q) {
+                    if (saveLibBtn) saveLibBtn.hidden = false;
+                    if (addBankBtn) addBankBtn.hidden = false;
+                }
+                if (qpView === 'playlists' && qpPlaylistId) {
+                    if (attachBtn) attachBtn.hidden = false;
+                }
+                return;
+            }
+
             const questions = showQuestions();
             const q = questions[qpSelectedIndex];
+            fillPlaylistBox(q && q.id);
             if (!q) {
                 if (title) title.textContent = 'Question';
                 promptEl.value = '';
@@ -3354,6 +3555,7 @@
             promptEl.value = q.prompt || '';
             answersEl.value = answersText(q);
             if (saveBtn) saveBtn.hidden = false;
+            if (saveLibBtn) saveLibBtn.hidden = false;
             if (playBtn) playBtn.hidden = status !== 'upcoming';
             if (skipBtn) skipBtn.hidden = status !== 'upcoming';
             if (rescoreBtn) {
@@ -3391,8 +3593,8 @@
             if (!q) return;
             const afterIndex = insertAfterIndex();
             emitShow('addShowQuestion', { question: q, afterIndex });
-            qpView = 'rundown';
             qpSelectedIndex = afterIndex + 1;
+            setQpView('rundown');
             setQpNotice('Added to tonight\'s rundown.');
         }
 
@@ -3404,9 +3606,95 @@
                 afterIndex
             });
             qpCustomMode = false;
-            qpView = 'rundown';
             qpSelectedIndex = afterIndex + 1;
-            setQpNotice('Custom question added to the rundown.');
+            setQpView('rundown');
+            setQpNotice('Added to tonight\'s rundown.');
+        }
+
+        async function saveLibraryQuestion() {
+            try {
+                const existing = qpCustomMode ? null : currentLibraryQuestion();
+                const libraryId = existing && String(existing.id).match(/^\d+$/) ? existing.id : undefined;
+                const payload = {
+                    id: libraryId,
+                    prompt: document.getElementById('qpInspectPrompt')?.value,
+                    correct_answers: parseAnswers(document.getElementById('qpInspectAnswers')?.value),
+                    playlistIds: selectedPlaylistIdsFromBox()
+                };
+                const json = payload.id && String(payload.id).match(/^\d+$/)
+                    ? await libraryRequest('/api/library/questions/' + encodeURIComponent(payload.id), {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    })
+                    : await libraryRequest('/api/library/questions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                const saved = json.question;
+                if (saved && saved.id) {
+                    await libraryRequest('/api/library/questions/' + encodeURIComponent(saved.id) + '/playlists', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ playlistIds: payload.playlistIds })
+                    });
+                    qpBankPreviewId = saved.id;
+                    qpCustomMode = false;
+                }
+                setQpNotice('Saved to the library.');
+                renderRundown();
+            } catch (e) {
+                setQpNotice(e.message || 'Could not save to the library.');
+            }
+        }
+
+        async function savePlaylistFromInspector() {
+            try {
+                const name = document.getElementById('qpInspectName')?.value;
+                const playlist = qpPlaylists.find((p) => String(p.id) === String(qpPlaylistId));
+                const json = await libraryRequest(qpNewPlaylistMode || !playlist ? '/api/library/playlists' : '/api/library/playlists/' + encodeURIComponent(playlist.id), {
+                    method: qpNewPlaylistMode || !playlist ? 'POST' : 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        questionIds: playlist && !qpNewPlaylistMode ? playlist.questionIds : []
+                    })
+                });
+                qpNewPlaylistMode = false;
+                if (json.playlist) qpPlaylistId = json.playlist.id;
+                const nameEl = document.getElementById('qpInspectName');
+                if (nameEl) delete nameEl.dataset.touched;
+                qpView = 'playlists';
+                setQpNotice('Playlist saved.');
+                renderRundown();
+            } catch (e) {
+                setQpNotice(e.message || 'Could not save playlist.');
+            }
+        }
+
+        async function deleteSelectedPlaylist() {
+            if (!qpPlaylistId) return;
+            if (!window.confirm('Delete this playlist? Questions stay in the library.')) return;
+            try {
+                await libraryRequest('/api/library/playlists/' + encodeURIComponent(qpPlaylistId), { method: 'DELETE' });
+                qpPlaylistId = null;
+                setQpNotice('Playlist deleted.');
+                renderRundown();
+            } catch (e) {
+                setQpNotice(e.message || 'Could not delete playlist.');
+            }
+        }
+
+        function attachSelectedPlaylist() {
+            if (!qpPlaylistId) {
+                setQpNotice('Pick a playlist first.');
+                return;
+            }
+            const playlistIds = [qpPlaylistId];
+            setQpView('rundown');
+            emitShow('attachPlaylists', { playlistIds });
+            setQpNotice('Playlist attached to tonight.');
         }
 
         function openRescore() {
@@ -3457,29 +3745,52 @@
         });
         const qpSearch = document.getElementById('qpSearch');
         if (qpSearch) qpSearch.addEventListener('input', renderRundown);
-        document.getElementById('qpBankBtn')?.addEventListener('click', () => {
-            qpView = 'bank';
-            qpCustomMode = false;
-            if (!qpAll.length) qpLoad();
-            else renderRundown();
+        document.getElementById('qpTonightBtn')?.addEventListener('click', () => setQpView('rundown'));
+        document.getElementById('qpPlaylistsBtn')?.addEventListener('click', () => {
+            qpPlaylistId = null;
+            qpBankPreviewId = null;
+            setQpView('playlists');
         });
-        document.getElementById('qpBankBackBtn')?.addEventListener('click', () => {
-            qpView = 'rundown';
-            renderRundown();
+        document.getElementById('qpBankBtn')?.addEventListener('click', () => {
+            qpBankPreviewId = null;
+            setQpView('library');
+            if (!qpAll.length) qpLoad();
         });
         document.getElementById('qpCustomBtn')?.addEventListener('click', () => {
-            qpView = 'rundown';
             qpCustomMode = true;
+            qpNewPlaylistMode = false;
+            qpBankPreviewId = null;
             const promptEl = document.getElementById('qpInspectPrompt');
             if (promptEl) delete promptEl.dataset.customTouched;
             renderRundown();
         });
+        document.getElementById('qpNewPlaylistBtn')?.addEventListener('click', () => {
+            qpView = 'playlists';
+            qpNewPlaylistMode = true;
+            qpPlaylistId = null;
+            qpBankPreviewId = null;
+            qpCustomMode = false;
+            const nameEl = document.getElementById('qpInspectName');
+            if (nameEl) delete nameEl.dataset.touched;
+            document.getElementById('qpTonightBtn')?.classList.remove('is-on');
+            document.getElementById('qpPlaylistsBtn')?.classList.add('is-on');
+            document.getElementById('qpBankBtn')?.classList.remove('is-on');
+            renderRundown();
+        });
+        document.getElementById('qpInspectName')?.addEventListener('input', () => {
+            const nameEl = document.getElementById('qpInspectName');
+            if (nameEl) nameEl.dataset.touched = '1';
+        });
         document.getElementById('qpSaveBtn')?.addEventListener('click', saveShowQuestion);
+        document.getElementById('qpSaveLibraryBtn')?.addEventListener('click', saveLibraryQuestion);
         document.getElementById('qpPlayNextBtn')?.addEventListener('click', () => emitShow('playQuestionNext', { index: qpSelectedIndex }));
         document.getElementById('qpSkipBtn')?.addEventListener('click', () => emitShow('skipShowQuestion', { index: qpSelectedIndex }));
         document.getElementById('qpRescoreBtn')?.addEventListener('click', openRescore);
         document.getElementById('qpAddBankBtn')?.addEventListener('click', addBankQuestion);
         document.getElementById('qpAddCustomSaveBtn')?.addEventListener('click', addCustomQuestion);
+        document.getElementById('qpAttachBtn')?.addEventListener('click', attachSelectedPlaylist);
+        document.getElementById('qpSavePlaylistBtn')?.addEventListener('click', savePlaylistFromInspector);
+        document.getElementById('qpDeletePlaylistBtn')?.addEventListener('click', deleteSelectedPlaylist);
 
         // Keyboard shortcuts for modal fullscreen
         document.addEventListener('keydown', (e) => {
