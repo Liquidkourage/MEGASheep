@@ -1212,6 +1212,7 @@ body.player-app #scoringScreen .screen-content h2 {
 body.player-app #scoringScreen .answers-display {
     flex: 1;
     min-height: 0;
+    width: 100%;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1220,6 +1221,8 @@ body.player-app #scoringScreen .answers-display {
 body.player-app #scoringScreen #answersList {
     flex: 1;
     min-height: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column;
@@ -1229,9 +1232,11 @@ body.player-app .player-score-wrap {
     position: relative;
     flex: 1;
     min-height: 0;
+    width: 100%;
+    max-width: none;
     display: flex;
     flex-direction: column;
-    padding: 0 8px 8px;
+    padding: 0;
 }
 
 body.player-app .player-score-stage {
@@ -1239,6 +1244,7 @@ body.player-app .player-score-stage {
     flex: 1;
     min-height: 0;
     width: 100%;
+    max-width: none;
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -1422,31 +1428,21 @@ body.player-app .player-score-rank {
     font-size: clamp(1rem, 4vw, 1.18rem);
     font-weight: 800;
     line-height: 1.1;
+    white-space: nowrap;
 }
 
 body.player-app .player-score-hill {
     position: absolute;
-    left: 2%;
-    right: 2%;
-    top: 36%;
-    height: 38%;
+    inset: 8% 0 0 0;
     z-index: 1;
-    display: flex;
-    flex-wrap: wrap;
-    align-content: flex-end;
-    align-items: flex-end;
-    justify-content: space-around;
-    gap: 6px 8px;
-    padding: 0 2px;
-    overflow: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-}
-
-body.player-app .player-score-hill::-webkit-scrollbar {
-    width: 0;
-    height: 0;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+    align-items: end;
+    justify-items: center;
+    gap: 8px 10px;
+    padding: 0 8px 28%;
+    overflow: visible;
 }
 
 body.player-app .player-score-mini {
@@ -1467,7 +1463,7 @@ body.player-app .player-score-mini .player-score-burst {
 }
 
 body.player-app .player-score-mini.is-pennant {
-    width: clamp(72px, 22vw, 108px);
+    width: min(100%, clamp(72px, 18vw, 128px));
 }
 
 body.player-app .player-score-mini .player-score-flag.is-pennant {
@@ -1482,7 +1478,7 @@ body.player-app .player-score-mini .player-score-flag.is-pennant .player-score-a
 }
 
 body.player-app .player-score-mini.is-cloth {
-    width: clamp(118px, 38vw, 168px);
+    width: min(100%, clamp(118px, 28vw, 200px));
 }
 
 body.player-app .player-score-mini .player-score-flag.is-cloth {
@@ -1533,8 +1529,8 @@ body.player-app .player-score-mini.is-asleep {
     flex-wrap: wrap;
     justify-content: center;
     gap: 4px;
-    width: auto;
-    max-width: 46%;
+    width: min(100%, 9rem);
+    max-width: none;
 }
 
 body.player-app .player-score-mini.is-asleep .player-ewe.is-sad {
@@ -1544,7 +1540,7 @@ body.player-app .player-score-mini.is-asleep .player-ewe.is-sad {
 body.player-app .player-score-post {
     position: relative;
     isolation: isolate;
-    width: clamp(118px, 36vw, 168px);
+    width: min(100%, clamp(118px, 22vw, 180px));
     padding: 10px 12px 18px;
 }
 
@@ -1723,17 +1719,14 @@ body.player-app .player-score-unit.is-asleep {
 
 @media (max-height: 500px) and (orientation: landscape) {
     body.player-app .player-score-hill {
-        left: 48%;
-        right: 2%;
-        top: 18%;
-        height: auto;
-        bottom: 6%;
+        inset: 4% 0 0 0;
+        padding: 0 8px 18%;
+        grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
     }
 
     body.player-app .player-score-unit {
-        width: min(48vw, 22rem);
-        margin: 0 0 0 4%;
-        align-self: flex-end;
+        width: min(42vw, 22rem);
+        margin: 0 auto 0;
     }
 
     body.player-app .player-score-stage > .player-score-flag.is-pennant,
@@ -1749,24 +1742,27 @@ body.player-app .player-score-unit.is-asleep {
 }
 
 @media (min-width: 720px) {
-    body.player-app .player-score-wrap {
-        padding: 8px 16px 16px;
+    body.player-app .player-score-hill {
+        inset: 6% 0 0 0;
+        padding: 0 2% 24%;
+        grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr));
+        gap: 12px 16px;
     }
 
-    body.player-app .player-score-hill {
-        left: 46%;
-        right: 2%;
-        top: 16%;
-        height: auto;
-        bottom: 6%;
-        justify-content: flex-end;
-        align-content: flex-end;
+    body.player-app .player-score-mini.is-pennant {
+        width: min(100%, clamp(88px, 9vw, 140px));
+    }
+
+    body.player-app .player-score-mini.is-cloth {
+        width: min(100%, clamp(140px, 14vw, 210px));
+    }
+
+    body.player-app .player-score-post {
+        width: min(100%, clamp(140px, 14vw, 200px));
     }
 
     body.player-app .player-score-unit {
-        width: min(44%, 24rem);
-        margin: 0 auto 1vh 4%;
-        align-self: flex-end;
+        width: min(28rem, 36%);
     }
 }
 
