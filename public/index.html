@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=2026-11-23T08-55-00">
-    <link rel="stylesheet" href="player.css?v=2026-11-23T18-45-00">
+    <link rel="stylesheet" href="player.css?v=2026-11-23T18-50-00">
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     <script>
@@ -28,6 +28,7 @@
 </head>
 <body class="player-app">
     <div class="container">
+        <p id="playerJoinCodeHud" class="player-join-code player-join-code-hud" data-player-join-code hidden></p>
         <!-- Welcome Screen removed: root should only show Join Game for players -->
 
         <!-- Create Game Screen removed: hosting happens on /host -->
@@ -132,6 +133,7 @@
             <div class="game-header">
                 <div class="game-info">
                     <span class="question-counter">Q<span id="questionNumber">1</span>/<span id="totalQuestions">5</span></span>
+                    <span id="playerJoinCodePlay" class="player-join-code" data-player-join-code hidden></span>
                     <span id="roundNumber" hidden>1</span>
                     <span id="playerCompactStatus" class="player-compact-status"></span>
                 </div>
@@ -430,7 +432,7 @@
     <script src="answer-match.js?v=2026-11-22T10-45-00"></script>
     <script src="player-submit.js?v=2026-11-22T07-55-00"></script>
     <script src="sheep-coat.js?v=2026-11-22T23-00-00"></script>
-    <script src="script.js?v=2026-11-23T18-45-00"></script>
+    <script src="script.js?v=2026-11-23T18-50-00"></script>
   <!-- Removed sticky player footer -->
 </body>
 </html>

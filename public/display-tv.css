@@ -939,6 +939,30 @@ html, body {
     text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55);
 }
 
+.tv-play-meta .tv-join-code {
+    letter-spacing: 0.08em;
+}
+
+.tv-sky-code {
+    position: absolute;
+    right: 3.2%;
+    top: 3.4%;
+    z-index: 5;
+    margin: 0;
+    font-family: Fredoka, Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(2.4rem, 6.2vh, 4.6rem);
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    color: #1a3878;
+    -webkit-text-stroke: 0.08em #f6e6b2;
+    paint-order: stroke fill;
+    filter:
+        drop-shadow(0 0 1.2px #0b1018)
+        drop-shadow(2px 3px 0 #0b1018);
+    pointer-events: none;
+}
+
 .display-mode .timer-display {
     position: static !important;
     top: auto !important;

@@ -8,14 +8,14 @@ alwaysApply: true
 On the audience scoring, round-standings, and finale screens (`/display` scoring, roundComplete, overallLeaderboard, finished), text is either large enough to read from across the room or it does not belong on this screen.
 
 - These screens share the cartoon night meadow. Panels are opaque outlined signs, not glass cards.
-- On scoring, ungiven correct answers share one modest planted field sign. Head it with “Pasteur-ized Answers” and pin each leftover answer on as its own wooden plaque. Do not let that sign dominate the meadow.
+- On scoring, ungiven correct answers share one modest planted field sign. Head it with “Pasture-ized Answers” and pin each leftover answer on as its own wooden plaque. Do not let that sign dominate the meadow.
 - A unique correct answer (one sheep) parades as a vertical pennant on a pole that sheep is carrying. That sheep wears a nametag with its name only, not a score. Size the badge to the sheep, wide enough that the full name shows, and keep it below the sheep so it does not sit on the pennant.
 - Correct answers given by more than one sheep parade as a short wide cloth banner raised on sticks to pennant height. Two sheep hold the pole ends; extra sheep (three or more) walk underneath the cloth. Name the two pole holders with their own nametags, one under each end, never on the cloth. List the extras on one shared badge under the banner, between the poles. Keep the parade on two tight foreground rows. Several answers cross at once, nearer row slightly larger, from one screen edge to the other. Parade in sets by flock size: every unique together, then every pair, then every triple, with only a short breath between sets. Do not split a set into leftover clumps. Do not use a planted wooden post for those answers. Do not stack individual extra nametags onto the banner to dodge collisions.
 - Wrong-answer sheep use the lying-down sleep strip. Keep them labeled in the field, scattered down the hill rather than lined on the horizon, away from the leftover-answer sign and the foreground parade.
 - Plant the leftover-answer sign and any grazing sheep on the grass. Nothing in the back sits in the sky.
 - Wrong answers are not boards. Those sheep graze in loose knots in the field, labeled with the wrong answer they gave. Keep them away from the leftover-answer sign. Do not line them up.
 - Do not reveal leftover answers as sky words. Sheep grazing aside scored nothing on this question.
-- Keep only words that carry the reveal: the prompt (on scoring), the round, ranks, sheep names, scores, answers with their points, and the painted sign headings “Pasteur-ized Answers” and “Bleat-erboard.”
+- Keep only words that carry the reveal: the prompt (on scoring), the round, the join code, ranks, sheep names, scores, answers with their points, and the painted sign headings “Pasture-ized Answers” and “Bleat-erboard.”
 - Do not duplicate a player count in text. The flock at a banner is the count.
 - Size kept type for a 1920×1080 landscape TV viewed from across a room.
 - Do not add scene titles, “coming soon” lines, URLs, or buttons that merely name the screen.
