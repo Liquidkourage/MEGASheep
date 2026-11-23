@@ -9,6 +9,7 @@ On the audience question screen (`/display` playing), text is either large enoug
 
 - Keep only words that carry the round: the prompt, the timer number, the round, the question index, the join code, and sheep names while they walk into the pen.
 - The join code is a bottom-left wooden “Player Code” plaque with a QR above the digits. Do not set those digits in the sky or next to Round/Q.
+- Keep that corner empty. Sheep, banners, the wrangler, and other sprites must not render under or over the plaque.
 - Name sheep only while they are walking from the pasture to the paddock. Grazing sheep and sheep already in the pen do not wear nametags. Size those nametags to the sheep, not the screen.
 - Size the round and question index for a TV viewed from across a room. Do not hide them in a caption.
 - Do not add “seconds” captions, kickers, puns, response-count sentences, URLs, or scene titles that merely name the question screen.

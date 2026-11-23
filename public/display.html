@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T19-15-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T19-25-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -998,6 +998,7 @@
 
         const LOBBY_FIELD = { left: 2, right: 98, top: 18, bottom: 90 };
         const PLAY_FIELD = { left: 3, right: 50, top: 52, bottom: 91 };
+        const CODE_KEEP_OUT = { right: 27, top: 73 };
         const RESULTS_FIELD = { left: 8, right: 92, top: 64, bottom: 93 };
         const RESULTS_FAR = { left: 22, right: 78, y: 66 };
         const RESULTS_NEAR = { left: 8, right: 92, y: 92 };
@@ -1158,14 +1159,34 @@
             return minGy + towardTrees * towardTrees * (document.querySelector('.tv-lobby') ? 3 : 5);
         }
 
+        function codeKeepOutActive() {
+            return !!document.querySelector('.tv-corner-code');
+        }
+
+        function clearCodeKeepOut(gx, gy) {
+            if (!codeKeepOutActive() || !(gx < CODE_KEEP_OUT.right && gy > CODE_KEEP_OUT.top)) {
+                return { gx, gy };
+            }
+            const toRight = CODE_KEEP_OUT.right - gx;
+            const toTop = gy - CODE_KEEP_OUT.top;
+            if (toRight <= toTop) return { gx: CODE_KEEP_OUT.right, gy };
+            return { gx, gy: CODE_KEEP_OUT.top };
+        }
+
         function clampLobbyPoint(gx, gy) {
             const field = pastureField();
             let cy = Math.min(field.bottom, Math.max(field.top, gy));
             cy = Math.max(cy, minFootGy(gx));
             const xs = fieldXRange(cy);
-            const cx = Math.min(xs.right, Math.max(xs.left, gx));
+            let cx = Math.min(xs.right, Math.max(xs.left, gx));
             cy = Math.min(field.bottom, Math.max(cy, minFootGy(cx)));
-            return { gx: cx, gy: cy };
+            const cleared = clearCodeKeepOut(cx, cy);
+            cx = cleared.gx;
+            cy = cleared.gy;
+            cy = Math.min(field.bottom, Math.max(field.top, cy));
+            const xs2 = fieldXRange(cy);
+            cx = Math.min(xs2.right, Math.max(xs2.left, cx));
+            return clearCodeKeepOut(cx, cy);
         }
 
         function pinEweToGrass(el) {
@@ -1472,9 +1493,11 @@
             const gxRaw = g.x + ((hash % 5) - 2) * scatter;
             const gyRaw = g.y + (((hash >> 3) % 5) - 2) * bounce;
             const gy = offstage ? gyRaw : Math.min(93, Math.max(extra.minGy != null ? extra.minGy : 58, gyRaw));
+            const gxClamped = offstage ? gxRaw : Math.min(96, Math.max(2, gxRaw));
+            const kept = offstage ? { gx: gxClamped, gy } : clearCodeKeepOut(gxClamped, gy);
             const scale = (extra.parade || extra.paradeWait)
-                ? (Number(g.scale) || pastureScale(gy))
-                : pastureScale(gy) * (extra.scale || 1);
+                ? (Number(g.scale) || pastureScale(kept.gy))
+                : pastureScale(kept.gy) * (extra.scale || 1);
             return {
                 id: player.stableId || player.id || player.name,
                 name: player.name || 'Sheep',
@@ -1487,8 +1510,8 @@
                 fullName: !!extra.fullName,
                 wrong: extra.wrong || '',
                 faceLeft: !!extra.faceLeft,
-                gx: offstage ? gxRaw : Math.min(96, Math.max(2, gxRaw)),
-                gy,
+                gx: kept.gx,
+                gy: kept.gy,
                 px: 80,
                 py: 70,
                 ox: 60,
@@ -1651,10 +1674,10 @@
             for (let tryAt = 0; tryAt < cols * rows; tryAt += 1) {
                 const col = (startCol + tryAt * 2) % cols;
                 const row = (startRow + Math.floor(tryAt / cols) + (tryAt % 2)) % rows;
-                const gx = 28 + col * 11 + ((hash >> (tryAt % 5)) % 5) - 2;
-                const gy = 57 + row * 8 + ((hash + tryAt * 5) % 7);
-                if (gx > 74 || gx < 26) continue;
-                if (gy > 82 || gy < 56) continue;
+                const gx = 32 + col * 10 + ((hash >> (tryAt % 5)) % 5) - 2;
+                const gy = 56 + row * 5 + ((hash + tryAt * 5) % 5);
+                if (gx > 74 || gx < 28) continue;
+                if (gy > 72 || gy < 56) continue;
                 if (avoid && Math.hypot(gx - avoid.x, (gy - avoid.y) * 1.2) < 18) continue;
                 if (Math.hypot(gx - RANK_SIGN_AT.x, (gy - RANK_SIGN_AT.y) * 1.2) < 18) continue;
                 if (occupied.some((spot) => Math.hypot(spot.x - gx, (spot.y - gy) * 1.15) < 14)) continue;
@@ -1750,8 +1773,8 @@
                 remaining -= take;
             }
             const packed = [];
-            const far = { left: 6, right: 54, y: 58 };
-            const near = { left: 4, right: 56, y: 88 };
+            const far = { left: 8, right: 54, y: 58 };
+            const near = { left: 28, right: 56, y: 72 };
             for (let r = 0; r < rows; r += 1) {
                 const t = rows <= 1 ? 0.5 : r / (rows - 1);
                 const y = far.y + t * (near.y - far.y);
@@ -3174,10 +3197,12 @@
         function clampBanditPoint(x, y, opts) {
             const minX = (opts && opts.offstage) ? BANDIT_OFFSTAGE_X : BANDIT_ONSTAGE_LEFT;
             const maxX = (opts && (opts.gate || opts.latch)) ? PLAY_FIELD.right + 14 : PLAY_FIELD.right - 1.2;
-            return {
+            const point = {
                 gx: Math.min(maxX, Math.max(minX, x)),
                 gy: Math.min(PLAY_FIELD.bottom - 0.5, Math.max(PLAY_FIELD.top + 1.2, y))
             };
+            if (opts && opts.offstage) return point;
+            return clearCodeKeepOut(point.gx, point.gy);
         }
 
         function banditSheepGap(gx, gy, other) {

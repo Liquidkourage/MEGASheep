@@ -17,6 +17,7 @@ On the audience scoring, round-standings, and finale screens (`/display` scoring
 - Do not reveal leftover answers as sky words. Sheep grazing aside scored nothing on this question.
 - Keep only words that carry the reveal: the prompt (on scoring), the round, the join code, ranks, sheep names, scores, answers with their points, and the painted sign headings “Pasture-ized Answers” and “Bleat-erboard.”
 - The join code is a bottom-left wooden “Player Code” plaque with a QR above the digits. Do not set those digits in the sky or next to Round.
+- Keep that corner empty. Sheep, banners, leftover signs, and other sprites must not render under or over the plaque.
 - Do not duplicate a player count in text. The flock at a banner is the count.
 - Size kept type for a 1920×1080 landscape TV viewed from across a room.
 - Do not add scene titles, “coming soon” lines, URLs, or buttons that merely name the screen.
