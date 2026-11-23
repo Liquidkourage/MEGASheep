@@ -1398,12 +1398,12 @@ body.player-app .player-score-holders {
     align-items: flex-end;
     justify-content: space-around;
     width: min(86vw, 24rem);
-    padding: 0 6%;
+    padding: 0 6% 1.55em;
     z-index: 3;
 }
 
 body.player-app .player-score-extras {
-    margin: 4px 0 0;
+    margin: -0.35em 0 0;
     max-width: 90%;
     padding: 3px 10px 4px;
     border: 2px solid var(--ink);
@@ -1411,7 +1411,7 @@ body.player-app .player-score-extras {
     background: var(--cream);
     color: var(--ink);
     font-family: var(--title);
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     font-weight: 700;
 }
 
@@ -1433,16 +1433,44 @@ body.player-app .player-score-rank {
 
 body.player-app .player-score-hill {
     position: absolute;
-    inset: 8% 0 0 0;
+    inset: 12% 0 0 0;
     z-index: 1;
     width: 100%;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
-    align-items: end;
-    justify-items: center;
-    gap: 8px 10px;
-    padding: 0 8px 28%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 0 8px 46%;
     overflow: visible;
+    pointer-events: none;
+}
+
+body.player-app .player-score-flanks {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    width: 100%;
+    gap: 8px;
+    pointer-events: none;
+}
+
+body.player-app .player-score-flank {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    align-content: flex-end;
+    gap: 8px 10px;
+    width: min(46%, 24rem);
+    pointer-events: none;
+}
+
+body.player-app .player-score-flank.is-left {
+    justify-content: flex-start;
+}
+
+body.player-app .player-score-flank.is-right {
+    justify-content: flex-end;
 }
 
 body.player-app .player-score-mini {
@@ -1452,96 +1480,110 @@ body.player-app .player-score-mini {
     flex-direction: column;
     align-items: center;
     flex: 0 1 auto;
+    opacity: 0.78;
+    filter: saturate(0.72) contrast(0.96);
+}
+
+body.player-app .player-score-mini .player-score-flag-art {
+    filter: drop-shadow(0 3px 4px rgba(4, 10, 18, 0.28));
 }
 
 body.player-app .player-score-mini .player-score-burst {
-    min-width: 1.6em;
-    min-height: 1.1em;
-    padding: 0.06em 0.3em;
-    font-size: 0.72rem;
+    min-width: 1.35em;
+    min-height: 1em;
+    padding: 0.04em 0.22em;
+    border-width: 2px;
+    font-size: 0.58rem;
     animation: none;
 }
 
 body.player-app .player-score-mini.is-pennant {
-    width: min(100%, clamp(72px, 18vw, 128px));
+    width: min(100%, clamp(48px, 12vw, 76px));
 }
 
 body.player-app .player-score-mini .player-score-flag.is-pennant {
     width: 100%;
-    height: clamp(3.6rem, 11vh, 5rem);
-    margin-bottom: -0.7rem;
+    height: clamp(2.45rem, 7.2vh, 3.35rem);
+    margin-bottom: -0.55rem;
     animation: none;
 }
 
 body.player-app .player-score-mini .player-score-flag.is-pennant .player-score-answer {
-    font-size: clamp(0.72rem, 3.2vw, 0.95rem);
+    font-size: clamp(0.52rem, 2.2vw, 0.68rem);
 }
 
 body.player-app .player-score-mini.is-cloth {
-    width: min(100%, clamp(118px, 28vw, 200px));
+    width: min(100%, clamp(84px, 22vw, 124px));
 }
 
 body.player-app .player-score-mini .player-score-flag.is-cloth {
     width: 100%;
-    height: clamp(2.8rem, 9vh, 3.8rem);
+    height: clamp(1.85rem, 6vh, 2.55rem);
     margin-bottom: 0;
     animation: none;
 }
 
 body.player-app .player-score-mini .player-score-flag.is-cloth::before,
 body.player-app .player-score-mini .player-score-flag.is-cloth::after {
-    height: 2.4rem;
-    width: 5px;
+    height: 1.55rem;
+    width: 4px;
 }
 
 body.player-app .player-score-mini .player-score-flag.is-cloth .player-score-answer {
-    font-size: clamp(0.78rem, 3.4vw, 1rem);
+    font-size: clamp(0.58rem, 2.4vw, 0.76rem);
 }
 
 body.player-app .player-score-mini .player-score-holders {
     width: 100%;
-    padding: 0 4%;
+    padding: 0 4% 1.15em;
 }
 
 body.player-app .player-score-mini .player-ewe,
 body.player-app .player-score-mini .player-score-holders .player-ewe.is-you,
 body.player-app .player-score-mini .player-score-holders .player-ewe:not(.is-you) {
-    width: clamp(48px, 15vw, 68px);
+    width: clamp(32px, 9vw, 46px);
 }
 
 body.player-app .player-score-mini .player-ewe figcaption {
-    font-size: 0.62rem;
-    max-width: 8.6em;
-    padding: 1px 5px 2px;
+    font-size: 0.5rem;
+    max-width: 8.4em;
+    padding: 1px 4px 1px;
     white-space: normal;
     overflow: visible;
     text-overflow: unset;
     text-align: center;
+    line-height: 1.1;
 }
 
 body.player-app .player-score-mini .player-score-extras {
-    font-size: 0.62rem;
-    padding: 2px 7px 3px;
+    font-size: 0.5rem;
+    padding: 1px 5px 2px;
 }
 
 body.player-app .player-score-mini.is-asleep {
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 4px;
-    width: min(100%, 9rem);
+    gap: 3px;
+    width: min(100%, 6.4rem);
     max-width: none;
 }
 
 body.player-app .player-score-mini.is-asleep .player-ewe.is-sad {
-    width: min(100%, clamp(92px, 30vw, 140px));
+    width: min(100%, clamp(52px, 15vw, 78px));
 }
 
 body.player-app .player-score-post {
     position: relative;
     isolation: isolate;
-    width: min(100%, clamp(118px, 22vw, 180px));
-    padding: 10px 12px 18px;
+    width: min(100%, 7.4rem);
+    padding: 8px 8px 32px;
+    opacity: 0.9;
+    filter: saturate(0.82);
+}
+
+body.player-app .player-score-post.is-wide {
+    width: min(100%, 10.6rem);
 }
 
 body.player-app .player-score-post-art {
@@ -1552,7 +1594,7 @@ body.player-app .player-score-post-art {
     object-fit: fill;
     pointer-events: none;
     z-index: 0;
-    filter: drop-shadow(0 6px 0 rgba(20, 16, 8, 0.28));
+    filter: drop-shadow(0 4px 0 rgba(20, 16, 8, 0.24));
 }
 
 body.player-app .player-score-post-face {
@@ -1560,8 +1602,8 @@ body.player-app .player-score-post-face {
     z-index: 1;
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    padding: 4px 6px 10px;
+    gap: 4px;
+    padding: 2px 4px 8px;
     color: var(--ink);
     text-align: center;
 }
@@ -1570,29 +1612,34 @@ body.player-app .player-score-post-face p {
     margin: 0;
     color: var(--wood);
     font-family: var(--title);
-    font-size: clamp(0.62rem, 2.6vw, 0.76rem);
+    font-size: 0.58rem;
     font-weight: 800;
     line-height: 1.05;
 }
 
 body.player-app .player-score-post-face ul {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
     margin: 0;
     padding: 0;
     list-style: none;
 }
 
+body.player-app .player-score-post:not(.is-wide) .player-score-post-face ul {
+    grid-template-columns: 1fr;
+}
+
 body.player-app .player-score-post-face li {
-    padding: 4px 6px;
-    border: 2px solid var(--ink);
-    border-radius: 10px;
+    padding: 2px 5px;
+    border: 1.5px solid var(--ink);
+    border-radius: 8px;
     background: #f6ead0;
     color: var(--ink);
     font-family: var(--title);
-    font-size: clamp(0.72rem, 3vw, 0.88rem);
+    font-size: 0.62rem;
     font-weight: 700;
+    line-height: 1.1;
     overflow-wrap: anywhere;
 }
 
@@ -1613,7 +1660,9 @@ body.player-app .player-score-unit .player-score-holders .player-ewe.is-you {
 }
 
 body.player-app .player-score-unit .player-score-holders .player-ewe:not(.is-you) {
-    width: clamp(88px, 26vw, 124px);
+    width: clamp(72px, 22vw, 104px);
+    opacity: 0.88;
+    filter: saturate(0.86);
 }
 
 body.player-app .player-score-stage .player-ewe.is-sad {
@@ -1719,9 +1768,21 @@ body.player-app .player-score-unit.is-asleep {
 
 @media (max-height: 500px) and (orientation: landscape) {
     body.player-app .player-score-hill {
-        inset: 4% 0 0 0;
-        padding: 0 8px 18%;
-        grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+        inset: 8% 0 0 0;
+        padding: 0 8px 28%;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: flex-end;
+        justify-content: space-between;
+    }
+
+    body.player-app .player-score-flanks {
+        width: auto;
+        flex: 1;
+    }
+
+    body.player-app .player-score-flank {
+        width: min(38%, 22rem);
     }
 
     body.player-app .player-score-unit {
@@ -1743,26 +1804,74 @@ body.player-app .player-score-unit.is-asleep {
 
 @media (min-width: 720px) {
     body.player-app .player-score-hill {
-        inset: 6% 0 0 0;
-        padding: 0 2% 24%;
-        grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr));
-        gap: 12px 16px;
+        inset: 24% 0 0 0;
+        padding: 0 1.5% 18%;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    body.player-app .player-score-post,
+    body.player-app .player-score-post.is-wide {
+        position: absolute;
+        left: 1.5%;
+        bottom: 22%;
+        width: min(100%, 13.5rem);
+    }
+
+    body.player-app .player-score-flank {
+        width: min(31%, 26rem);
+        gap: 10px 12px;
     }
 
     body.player-app .player-score-mini.is-pennant {
-        width: min(100%, clamp(88px, 9vw, 140px));
+        width: min(100%, clamp(52px, 5.6vw, 82px));
     }
 
     body.player-app .player-score-mini.is-cloth {
-        width: min(100%, clamp(140px, 14vw, 210px));
+        width: min(100%, clamp(104px, 10vw, 140px));
     }
 
     body.player-app .player-score-post {
-        width: min(100%, clamp(140px, 14vw, 200px));
+        width: min(100%, 8rem);
+    }
+
+    body.player-app .player-score-post.is-wide {
+        width: min(100%, 13.5rem);
+    }
+
+    body.player-app .player-score-post.is-wide .player-score-post-face ul {
+        grid-template-columns: 1fr 1fr 1fr;
     }
 
     body.player-app .player-score-unit {
         width: min(28rem, 36%);
+    }
+}
+
+@media (max-width: 719px) {
+    body.player-app .player-score-hill {
+        inset: 24% 0 0 0;
+        padding: 0 6px 50%;
+    }
+
+    body.player-app .player-score-post,
+    body.player-app .player-score-post.is-wide {
+        position: relative;
+        z-index: 2;
+        width: min(100%, 11.5rem);
+        padding-bottom: 36px;
+    }
+}
+
+@media (max-width: 379px) {
+    body.player-app .player-score-flank {
+        width: min(48%, 12rem);
+        gap: 6px 6px;
+    }
+
+    body.player-app .player-score-post,
+    body.player-app .player-score-post.is-wide {
+        width: min(100%, 10.8rem);
     }
 }
 

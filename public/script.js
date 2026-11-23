@@ -3753,7 +3753,8 @@ function playerScoreLeftoverPost(missedCorrect) {
     const leftover = Array.isArray(missedCorrect) ? missedCorrect : [];
     if (!leftover.length) return '';
     const chips = leftover.map((item) => `<li>${escapePlayer(item)}</li>`).join('');
-    return `<aside class="player-score-post is-leftover" aria-label="Ungiven correct answers">
+    const wide = leftover.length >= 4 ? ' is-wide' : '';
+    return `<aside class="player-score-post is-leftover${wide}" aria-label="Ungiven correct answers">
         <img class="player-score-post-art" src="sprites/meadow-sign.png?v=2026-11-21T12-00-00" alt="">
         <div class="player-score-post-face">
             <p>Pasteur-ized</p>
@@ -3779,9 +3780,18 @@ function playerScoreFlockHtml(playerAnswer, playerAnswerGroup, missedCorrect) {
             sleeps.push(playerScoreMiniSleep(group));
         }
     });
-    bits.push(...hits, ...sleeps);
-    if (!bits.length) return '';
-    return `<div class="player-score-hill">${bits.join('')}</div>`;
+    const left = [];
+    const right = [];
+    hits.forEach((html, i) => (i % 2 === 0 ? left : right).push(html));
+    sleeps.forEach((html) => right.push(html));
+    if (!left.length && !right.length && !leftover) return '';
+    return `<div class="player-score-hill">
+        ${leftover}
+        <div class="player-score-flanks">
+            <div class="player-score-flank is-left">${left.join('')}</div>
+            <div class="player-score-flank is-right">${right.join('')}</div>
+        </div>
+    </div>`;
 }
 
 function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints, playerRank, totalPlayers, missedCorrect }) {
