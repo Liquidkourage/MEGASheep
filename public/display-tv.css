@@ -77,6 +77,7 @@ html, body {
 }
 
 .tv-stage {
+    position: relative;
     width: 100%;
     height: 100%;
     padding: var(--tv-pad);
@@ -911,20 +912,17 @@ html, body {
     min-width: 0;
     position: relative;
     z-index: 5;
-    padding: clamp(22px, 2.4vw, 40px) clamp(28px, 3vw, 52px) 8px;
+    padding: clamp(22px, 2.4vw, 40px) min(34vw, 520px) 8px clamp(28px, 3vw, 52px);
 }
 
 .tv-play-hud {
-    display: flex;
-    align-items: flex-start;
-    gap: clamp(12px, 1.4vw, 24px);
-    flex: 0 0 auto;
+    display: none;
 }
 
 .tv-play-copy {
     flex: 1 1 auto;
     min-width: 0;
-    max-width: calc(100% - 0.2em);
+    max-width: min(100%, 62vw);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -964,10 +962,6 @@ html, body {
     border-radius: 0.42em;
     box-shadow: 0.12em 0.16em 0 #1a140c;
     pointer-events: none;
-}
-
-.tv-play-top .tv-corner-code {
-    position: static;
 }
 
 .tv-corner-code-qr {
@@ -1013,26 +1007,37 @@ html, body {
     color: #1a140c;
 }
 
-.display-mode .timer-display {
-    position: static !important;
-    top: auto !important;
-    right: auto !important;
-    flex: 0 0 auto;
+.display-mode .timer-display,
+.tv-moon-timer {
+    position: absolute !important;
+    left: 83.99%;
+    top: 15.05%;
+    width: 8.83vw;
+    height: 8.83vw;
+    transform: translate(-50%, -50%);
+    z-index: 8;
+    margin: 0;
+    padding: 0;
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    background: none;
 }
 
 .display-mode .timer-circle {
-    width: auto !important;
-    height: auto !important;
+    width: 100% !important;
+    height: 100% !important;
     border: none !important;
-    border-radius: 0 !important;
-    background: transparent !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 46% 42%, rgba(255, 248, 220, 0.2), transparent 62%) !important;
     backdrop-filter: none !important;
     box-shadow: none !important;
     overflow: visible !important;
+    animation: none !important;
 }
 
 .display-mode .timer-circle::before {
@@ -1040,22 +1045,41 @@ html, body {
 }
 
 .display-mode .timer-text {
-    font-family: Outfit, "Segoe UI", sans-serif !important;
-    font-size: clamp(5.4rem, 13vh, 8.6rem) !important;
+    position: relative;
+    z-index: 2;
+    margin: 0;
+    padding: 0;
+    transform: translateY(2%);
+    font-family: Outfit, Fredoka, "Segoe UI", sans-serif !important;
+    font-size: calc(var(--moon-d, 8.83vw) * var(--timer-fit, 0.44)) !important;
     font-weight: 800;
-    letter-spacing: -0.06em;
-    line-height: 0.86;
-    text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55) !important;
-    color: #fff !important;
+    letter-spacing: -0.05em;
+    line-height: 1;
+    color: #241c12 !important;
+    -webkit-text-stroke: 0.035em #f6e6b2;
+    paint-order: stroke fill;
+    text-shadow:
+        0 1px 0 rgba(255, 248, 230, 0.9),
+        0 0 0.12em rgba(246, 230, 178, 0.55) !important;
+}
+
+.display-mode .timer-circle.warning {
+    background: radial-gradient(circle at 46% 42%, rgba(232, 160, 60, 0.32), transparent 68%) !important;
+}
+
+.display-mode .timer-circle.urgent {
+    background: radial-gradient(circle at 46% 42%, rgba(210, 70, 50, 0.38), transparent 68%) !important;
 }
 
 .display-mode .timer-circle.warning .timer-text {
-    color: #f0d27a !important;
+    color: #7a3e08 !important;
 }
 
 .display-mode .timer-circle.urgent .timer-text {
-    color: #ff6d5e !important;
-    text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55) !important;
+    color: #8b1e16 !important;
+    text-shadow:
+        0 1px 0 rgba(255, 248, 230, 0.9),
+        0 0 0.16em rgba(255, 196, 170, 0.45) !important;
 }
 
 .display-mode .tv-play .question-prompt {
@@ -1071,7 +1095,7 @@ html, body {
     overflow-wrap: break-word;
     text-align: left;
     text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55) !important;
-    max-width: min(100%, 74vw) !important;
+    max-width: min(100%, 62vw) !important;
     color: #fff;
 }
 

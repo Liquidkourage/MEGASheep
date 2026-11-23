@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T21-25-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T21-32-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -600,6 +600,94 @@
             if (!code) return '';
             const src = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(tvJoinUrl())}`;
             return `<aside class="tv-corner-code" aria-label="Game code ${code}"><img class="tv-corner-code-qr" src="${src}" alt=""><span class="tv-corner-code-copy"><p class="tv-corner-code-kicker">Game Code</p><p class="tv-corner-code-num">${code}</p></span></aside>`;
+        }
+
+        const PASTURE_ART = { w: 1280, h: 720, moonX: 1075, moonY: 108.4, moonD: 113 };
+
+        function pastureCoverBox(pasture) {
+            const r = pasture.getBoundingClientRect();
+            const scale = Math.max(r.width / PASTURE_ART.w, r.height / PASTURE_ART.h);
+            const drawnW = PASTURE_ART.w * scale;
+            const drawnH = PASTURE_ART.h * scale;
+            return {
+                scale,
+                left: r.left + (r.width - drawnW) * 0.5,
+                top: r.top + (r.height - drawnH)
+            };
+        }
+
+        function moonViewport() {
+            const pasture = document.querySelector('.tv-pasture');
+            if (!pasture) return null;
+            const box = pastureCoverBox(pasture);
+            return {
+                cx: box.left + PASTURE_ART.moonX * box.scale,
+                cy: box.top + PASTURE_ART.moonY * box.scale,
+                d: PASTURE_ART.moonD * box.scale
+            };
+        }
+
+        function hudOffsetParent(el) {
+            let node = el && el.parentElement;
+            while (node && node !== document.body) {
+                const pos = window.getComputedStyle(node).position;
+                if (pos && pos !== 'static') return node;
+                node = node.parentElement;
+            }
+            return document.getElementById('displayScreen');
+        }
+
+        function syncMoonTimerSize(timeLeft) {
+            const timer = document.querySelector('.tv-moon-timer');
+            if (!timer) return;
+            const raw = timeLeft == null
+                ? ((timer.querySelector('.timer-text') || {}).textContent || '30')
+                : timeLeft;
+            const chars = String(raw).replace(/\D/g, '').length || 2;
+            const factor = chars >= 4 ? 0.28 : chars === 3 ? 0.34 : chars === 1 ? 0.5 : 0.44;
+            timer.style.setProperty('--timer-fit', String(factor));
+        }
+
+        function placeSkyHud() {
+            const moon = moonViewport();
+            if (!moon) return;
+            const timer = document.querySelector('.tv-moon-timer');
+            if (timer) {
+                const host = hudOffsetParent(timer);
+                const hr = host.getBoundingClientRect();
+                const d = moon.d;
+                timer.style.left = `${moon.cx - d / 2 - hr.left}px`;
+                timer.style.top = `${moon.cy - d / 2 - hr.top}px`;
+                timer.style.width = `${d}px`;
+                timer.style.height = `${d}px`;
+                timer.style.transform = 'none';
+                timer.style.setProperty('--moon-d', `${d}px`);
+                syncMoonTimerSize();
+            }
+            const plaque = document.querySelector('.tv-corner-code');
+            if (plaque) {
+                const host = hudOffsetParent(plaque);
+                const hr = host.getBoundingClientRect();
+                const pw = plaque.offsetWidth;
+                const ph = plaque.offsetHeight;
+                if (pw && ph) {
+                    const gap = Math.max(14, moon.d * 0.1);
+                    plaque.style.left = `${Math.max(8, moon.cx - moon.d / 2 - gap - pw - hr.left)}px`;
+                    plaque.style.top = `${Math.max(8, moon.cy - ph / 2 - hr.top)}px`;
+                    plaque.style.right = 'auto';
+                    plaque.style.bottom = 'auto';
+                }
+            }
+        }
+
+        function scheduleSkyHud() {
+            placeSkyHud();
+            const qr = document.querySelector('.tv-corner-code-qr');
+            if (qr && !qr.complete) qr.addEventListener('load', placeSkyHud, { once: true });
+            requestAnimationFrame(() => {
+                placeSkyHud();
+                requestAnimationFrame(placeSkyHud);
+            });
         }
 
         function pitchCopyHtml() {
@@ -2962,15 +3050,13 @@
                             <p class="tv-play-meta"><span>Round ${roundNumber}</span><span>${questionInRound} of ${perRound}</span></p>
                             <h1 class="question-prompt">${currentQuestion ? currentQuestion.prompt : 'Loading question...'}</h1>
                         </div>
-                        <div class="tv-play-hud">
-                            <div class="timer-display">
-                                <div class="timer-circle" id="timerCircle">
-                                    <span class="timer-text" id="displayTimer">${Number.isFinite(Number(gameState.timeLeft)) ? gameState.timeLeft : 30}</span>
-                                </div>
-                            </div>
-                            ${tvCornerCodeHtml()}
+                    </div>
+                    <div class="timer-display tv-moon-timer">
+                        <div class="timer-circle" id="timerCircle">
+                            <span class="timer-text" id="displayTimer">${Number.isFinite(Number(gameState.timeLeft)) ? gameState.timeLeft : 30}</span>
                         </div>
                     </div>
+                    ${tvCornerCodeHtml()}
                 </div>
             `;
             renderFlock(gameState.players);
@@ -2983,6 +3069,7 @@
             const fallbackResponseCount = gameState.answersReceived || 0;
             updateResponseIndicator(fallbackResponseCount, gameState.players.length, gameState.answeredPlayers);
             requestAnimationFrame(() => requestAnimationFrame(fitPlayPrompt));
+            scheduleSkyHud();
         }
 
         function fitQuestionPrompt(el, maxLines, minPx) {
@@ -4766,6 +4853,7 @@
             
             // Update timer display
             timerText.textContent = timeLeft;
+            syncMoonTimerSize(timeLeft);
             
             timerCircle.classList.remove('urgent', 'warning');
             if (timeLeft <= 5) {
@@ -4843,6 +4931,7 @@
             `;
             renderFlock(players || (gameState && gameState.players) || []);
             mountFinaleFair();
+            scheduleSkyHud();
         }
 
         function tvRankRowsHtml(players, startAt, options) {
@@ -6371,6 +6460,7 @@
                 layoutLobbyPlayers();
             }
             if (document.querySelector('.tv-play')) fitPlayPrompt();
+            placeSkyHud();
             document.querySelectorAll('.tv-score .tv-flag-face .tv-post-answer').forEach(fitBannerAnswer);
         });
 
