@@ -352,7 +352,6 @@ function presentSendBack(reason, originalAnswer) {
         if (!alreadyEditing) input.focus();
     }
     if (!alreadyEditing) {
-        showToast(reason || 'The host wants a more specific answer.', 'warning');
         if (navigator && navigator.vibrate) navigator.vibrate(120);
     }
 }
@@ -2449,7 +2448,7 @@ function handleGameJoined(data) {
     const showResumeToast = joinedLiveGame && autoResumeInProgress && hasHadSocketDisconnect;
     autoResumeInProgress = false;
     joinedLiveGame = true;
-    if (showResumeToast) {
+    if (showResumeToast && !IS_PLAYER_ROUTE) {
         try { showToast('Reconnected', 'success'); } catch (_) {}
     }
     try { savePlayerIdentity(data.gameCode || snapshot.gameCode, currentPlayerName || localStorage.getItem('player.name')); } catch (_) {}
@@ -2717,7 +2716,7 @@ function handleAnswerSubmitted() {
     window._submitInFlight = false;
     window._playerEditing = false;
     window._playerEditReason = '';
-    showToast('✅ Answer submitted! (Locked)', 'success');
+    // Player already sees the locked form and sheep walk to paddock.
     try {
         const code = gameState?.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
         const qIndex = (typeof gameState?.currentQuestion === 'number') ? gameState.currentQuestion : (typeof currentQuestionIndex === 'number' ? currentQuestionIndex : 0);
@@ -3973,6 +3972,7 @@ function createPersonalResultSection(playerAnswer, playerAnswerGroup, playerRank
 
 // Function to show answer details (for click interaction)
 function showAnswerDetails(answer, count, points, totalResponses) {
+    if (IS_PLAYER_ROUTE) return;
     const uniquenessText = count === 1 ? 'This was a unique answer!' : `${count} players gave this answer`;
     const pointsText = points > 0 ? `Each player earned ${points} points` : 'No points awarded';
     
@@ -4508,6 +4508,7 @@ function showSuccess(message) {
 }
 
 function showToast(message, type = 'info') {
+    if (IS_PLAYER_ROUTE) return;
     // Remove existing toasts
     const existingToasts = document.querySelectorAll('.toast-notification');
     existingToasts.forEach(toast => toast.remove());

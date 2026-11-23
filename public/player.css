@@ -2966,9 +2966,12 @@ body.player-app:has(#scoringScreen.active) .keep-awake-fab {
 }
 
 body.player-app .toast,
-body.player-app .error-message,
 body.player-app .success-message,
 body.player-app .toast-notification {
+    display: none !important;
+}
+
+body.player-app .error-message {
     position: fixed;
     left: 12px;
     right: 12px;
@@ -2987,32 +2990,6 @@ body.player-app .toast-notification {
     transform: none;
     font-family: var(--title);
     font-weight: 700;
-}
-
-body.player-app .toast-notification.show {
-    transform: none;
-}
-
-body.player-app .toast-content {
-    color: var(--wood);
-    padding: 2px 0;
-    gap: 8px;
-}
-
-body.player-app .toast-message {
-    font-family: var(--title);
-    font-size: 1rem;
-    font-weight: 800;
-    line-height: 1.2;
-}
-
-body.player-app .toast-close {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-    margin: 0;
-    color: var(--wood);
 }
 
 body.player-app #joinGameScreen .player-masthead,
