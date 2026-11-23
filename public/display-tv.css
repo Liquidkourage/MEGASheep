@@ -3467,10 +3467,10 @@ html, body {
 
 .tv-fair-ring {
     position: absolute;
-    left: 44%;
-    top: 78%;
-    width: 34%;
-    height: 24%;
+    left: 32%;
+    top: 62%;
+    width: 36%;
+    height: 28%;
     border: 0.55vw solid rgba(228, 197, 107, 0.78);
     border-radius: 50%;
     box-shadow:
@@ -3520,12 +3520,24 @@ html, body {
 }
 
 .tv-final .tv-podium {
-    left: 8%;
+    left: 6%;
     right: 40%;
     top: auto;
-    bottom: 2.4%;
-    height: 34vh;
+    bottom: 11%;
+    height: 50vh;
     z-index: 12;
+}
+
+.tv-final .tv-podium-spot.is-1 .tv-crate {
+    min-height: 13vh;
+}
+
+.tv-final .tv-podium-spot.is-2 .tv-crate {
+    min-height: 10vh;
+}
+
+.tv-final .tv-podium-spot.is-3 .tv-crate {
+    min-height: 8vh;
 }
 
 .tv-final .tv-podium-name {
