@@ -1137,6 +1137,7 @@ function showScreen(screenName) {
     if (screens[screenName] && screens[screenName].classList) {
         screens[screenName].classList.add('active');
     }
+    if (IS_PLAYER_ROUTE) armPlayerPasture();
 }
 
 // Create a new game
@@ -2811,6 +2812,183 @@ function handleGameStateUpdate(data) {
     if (myPendingEdit) presentSendBack(myPendingEdit.reason, myPendingEdit.originalAnswer);
 }
 
+const PLAYER_JOIN_FIELD = { left: 12, right: 88, top: 58, bottom: 90 };
+const PLAYER_LOBBY_FIELD = { left: 8, right: 92, top: 58, bottom: 92 };
+const PLAYER_JOIN_SPOTS = [
+    { gx: 22, gy: 74 },
+    { gx: 48, gy: 83 },
+    { gx: 78, gy: 69 }
+];
+
+function playerPastureField(el) {
+    return el && el.closest('.player-grazers') ? PLAYER_JOIN_FIELD : PLAYER_LOBBY_FIELD;
+}
+
+function playerPastureScale(gy, field) {
+    const span = Math.max(1, field.bottom - field.top);
+    const t = Math.min(1, Math.max(0, (gy - field.top) / span));
+    return 0.82 + t * 0.34;
+}
+
+function pinPlayerEwe(el, spot, walk) {
+    if (!el) return;
+    el.style.setProperty('--gx', String(spot.gx));
+    el.style.setProperty('--gy', String(spot.gy));
+    el.style.setProperty('--s', String(spot.s != null ? spot.s : playerPastureScale(spot.gy, playerPastureField(el))));
+    el.style.setProperty('--z', String(spot.z != null ? spot.z : Math.round(8 + spot.gy)));
+    el.style.setProperty('--walk', walk ? `${Number(walk).toFixed(2)}s` : '0s');
+}
+
+function playerEweOnStage(el) {
+    const screen = el && el.closest('.screen');
+    return !!(el && el.isConnected && screen && screen.classList.contains('active'));
+}
+
+function clearPlayerWander(el) {
+    if (!el) return;
+    if (el._playerWander) {
+        window.clearTimeout(el._playerWander);
+        el._playerWander = 0;
+    }
+}
+
+function schedulePlayerWander(el) {
+    clearPlayerWander(el);
+    if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    el._playerWander = window.setTimeout(() => wanderPlayerEwe(el), 1600 + Math.random() * 3800);
+}
+
+function wanderPlayerEwe(el) {
+    if (!playerEweOnStage(el) || el.classList.contains('is-thinking')) {
+        schedulePlayerWander(el);
+        return;
+    }
+    const field = playerPastureField(el);
+    const gx = parseFloat(el.style.getPropertyValue('--gx')) || 50;
+    const gy = parseFloat(el.style.getPropertyValue('--gy')) || 72;
+    const dest = {
+        gx: Math.min(field.right, Math.max(field.left, gx + (Math.random() - 0.5) * 24)),
+        gy: Math.min(field.bottom, Math.max(field.top, gy + (Math.random() - 0.5) * 14))
+    };
+    dest.s = playerPastureScale(dest.gy, field);
+    dest.z = Math.round(8 + dest.gy);
+    const seconds = 2.2 + Math.random() * 2.4;
+    el.classList.toggle('is-left', dest.gx < gx);
+    el.classList.add('is-walking');
+    pinPlayerEwe(el, dest, seconds);
+    el._playerWander = window.setTimeout(() => {
+        el.classList.remove('is-walking');
+        schedulePlayerWander(el);
+    }, seconds * 1000);
+}
+
+function playerPlaceHash(key) {
+    let hash = 0;
+    const text = String(key || '');
+    for (let i = 0; i < text.length; i += 1) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+    return Math.abs(hash);
+}
+
+function playerPastureSpot(key, occupied, field) {
+    const hash = playerPlaceHash(key);
+    let gx = field.left + ((hash % 97) / 97) * (field.right - field.left);
+    let gy = field.top + (((hash >> 3) % 89) / 89) * (field.bottom - field.top);
+    for (let i = 0; i < 14; i += 1) {
+        const clear = (occupied || []).every((spot) => Math.hypot(spot.gx - gx, (spot.gy - gy) * 1.35) > 14);
+        if (clear) break;
+        gx = field.left + Math.random() * (field.right - field.left);
+        gy = field.top + Math.random() * (field.bottom - field.top);
+    }
+    return {
+        gx,
+        gy,
+        s: playerPastureScale(gy, field),
+        z: Math.round(8 + gy)
+    };
+}
+
+function armJoinGrazers() {
+    const grazers = document.querySelectorAll('.player-grazers .player-ewe');
+    grazers.forEach((el, index) => {
+        if (!el.style.getPropertyValue('--gx')) {
+            const start = PLAYER_JOIN_SPOTS[index] || PLAYER_JOIN_SPOTS[0];
+            const field = PLAYER_JOIN_FIELD;
+            pinPlayerEwe(el, {
+                gx: start.gx,
+                gy: start.gy,
+                s: playerPastureScale(start.gy, field),
+                z: Math.round(8 + start.gy)
+            });
+        }
+        if (!el._playerWander) schedulePlayerWander(el);
+    });
+}
+
+function paintPlayerLobbyFlock(players) {
+    const pasture = document.getElementById('playersList');
+    if (!pasture) return;
+    pasture.classList.add('player-pasture');
+    const list = Array.isArray(players) ? players : [];
+    if (!list.length) {
+        [...pasture.querySelectorAll('.player-ewe')].forEach((el) => {
+            clearPlayerWander(el);
+            el.remove();
+        });
+        pasture.innerHTML = `<figure class="player-ewe player-idle-ewe is-thinking" data-coat="2" style="--idle:.2s">
+            <span class="player-ewe-art" aria-hidden="true"><span class="player-ewe-strip"></span></span>
+            <img class="player-thought" src="sprites/player-thought.png?v=2026-11-22T01-30-00" alt="">
+        </figure>`;
+        const idle = pasture.querySelector('.player-ewe');
+        pinPlayerEwe(idle, { gx: 50, gy: 76, s: 1.05, z: 24 });
+        return;
+    }
+    const wanted = new Map();
+    list.forEach((player) => {
+        wanted.set(String(player.stableId || player.id || player.name), player);
+    });
+    [...pasture.querySelectorAll('.player-ewe')].forEach((el) => {
+        if (!wanted.has(el.dataset.id)) {
+            clearPlayerWander(el);
+            el.remove();
+        }
+    });
+    const occupied = [...pasture.querySelectorAll('.player-ewe')].map((el) => ({
+        gx: parseFloat(el.style.getPropertyValue('--gx')) || 50,
+        gy: parseFloat(el.style.getPropertyValue('--gy')) || 70
+    }));
+    const myName = String(sessionStorage.getItem('playerName') || '').toLowerCase();
+    wanted.forEach((player, id) => {
+        let el = pasture.querySelector(`.player-ewe[data-id="${CSS.escape(id)}"]`);
+        if (!el) {
+            const spot = playerPastureSpot(id, occupied, PLAYER_LOBBY_FIELD);
+            occupied.push(spot);
+            el = document.createElement('figure');
+            el.className = 'player-ewe';
+            el.dataset.id = id;
+            el.dataset.coat = String(playerCoatOf(player.name));
+            el.style.setProperty('--idle', `${((occupied.length % 7) * 0.12).toFixed(2)}s`);
+            el.innerHTML = `<span class="player-ewe-art" aria-hidden="true"><span class="player-ewe-strip"></span></span><figcaption></figcaption>`;
+            pinPlayerEwe(el, spot);
+            pasture.appendChild(el);
+            schedulePlayerWander(el);
+        }
+        const mine = String(player.name || '').toLowerCase() === myName || player.id === (typeof socket !== 'undefined' && socket && socket.id);
+        el.classList.toggle('is-you', !!mine);
+        const tag = el.querySelector('figcaption');
+        if (tag) tag.textContent = player.name || 'Sheep';
+    });
+}
+
+function armPlayerPasture() {
+    armJoinGrazers();
+    if (IS_PLAYER_ROUTE) {
+        const lobby = document.getElementById('lobbyScreen');
+        if (lobby && lobby.classList.contains('active')) {
+            paintPlayerLobbyFlock((gameState && gameState.players) || []);
+        }
+    }
+}
+
 // Display functions
 function updateLobbyDisplay() {
     console.log('🎮 Script.js: updateLobbyDisplay called');
@@ -2887,8 +3065,9 @@ function updateLobbyDisplay() {
     if (playersList) {
         console.log('🎮 Script.js: Found playersList element, updating with', gameState.players?.length || 0, 'players');
         
-        // Only clear and rebuild if we have no players or if this is the initial load
-        if (!gameState.players || gameState.players.length === 0) {
+        if (IS_PLAYER_ROUTE) {
+            paintPlayerLobbyFlock(gameState.players || []);
+        } else if (!gameState.players || gameState.players.length === 0) {
             playersList.innerHTML = '';
             const waitingMessage = document.createElement('div');
             waitingMessage.className = 'waiting-message';
@@ -2898,27 +3077,6 @@ function updateLobbyDisplay() {
                     <img class="player-thought" src="sprites/player-thought.png?v=2026-11-22T01-30-00" alt="">
                 </figure>`;
             playersList.appendChild(waitingMessage);
-        } else if (IS_PLAYER_ROUTE) {
-            const escapePlayer = (value) => String(value || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-            const coatOf = (name) => {
-                let hash = 0;
-                const text = String(name || '');
-                for (let i = 0; i < text.length; i += 1) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
-                return (Math.abs(hash) % 3) + 1;
-            };
-            const myName = String(sessionStorage.getItem('playerName') || '').toLowerCase();
-            playersList.innerHTML = gameState.players.map((player, index) => {
-                const mine = String(player.name || '').toLowerCase() === myName || player.id === socket.id;
-                const delay = ((index % 7) * 0.12).toFixed(2);
-                return `<figure class="player-ewe${mine ? ' is-you' : ''}" data-coat="${coatOf(player.name)}" style="--idle:${delay}s">
-                    <span class="player-ewe-art" aria-hidden="true"><span class="player-ewe-strip"></span></span>
-                    <figcaption>${escapePlayer(player.name || 'Sheep')}</figcaption>
-                </figure>`;
-            }).join('');
         } else {
             // Clear existing players and rebuild with new logic
             playersList.innerHTML = '';

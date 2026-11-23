@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=2026-11-22T01-30-00">
-    <link rel="stylesheet" href="player.css?v=2026-11-22T22-25-00">
+    <link rel="stylesheet" href="player.css?v=2026-11-22T22-35-00">
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     <script>
@@ -34,6 +34,11 @@
 
         <!-- Join Game Screen (default active) -->
         <div id="joinGameScreen" class="screen active">
+            <div class="player-grazers" aria-hidden="true">
+                <figure class="player-ewe" data-coat="1" style="--idle:.1s"><span class="player-ewe-art"><span class="player-ewe-strip"></span></span></figure>
+                <figure class="player-ewe" data-coat="2" style="--idle:.4s"><span class="player-ewe-art"><span class="player-ewe-strip"></span></span></figure>
+                <figure class="player-ewe" data-coat="3" style="--idle:.7s"><span class="player-ewe-art"><span class="player-ewe-strip"></span></span></figure>
+            </div>
             <div class="screen-content">
                 <div class="player-masthead">
                     <img class="player-title" src="sprites/megasheep-title.png?v=2026-11-22T01-20-00" alt="MEGASheep">
@@ -53,11 +58,6 @@
                         </div>
                         <button id="joinGameSubmitBtn" class="btn btn-primary">Join the flock</button>
                     </div>
-                </div>
-                <div class="player-grazers" aria-hidden="true">
-                    <figure class="player-ewe" data-coat="1" style="--idle:.1s"><span class="player-ewe-art"><span class="player-ewe-strip"></span></span></figure>
-                    <figure class="player-ewe" data-coat="2" style="--idle:.4s"><span class="player-ewe-art"><span class="player-ewe-strip"></span></span></figure>
-                    <figure class="player-ewe" data-coat="3" style="--idle:.7s"><span class="player-ewe-art"><span class="player-ewe-strip"></span></span></figure>
                 </div>
                 <p id="playerJoinHint" class="visually-hidden">Enter the four-digit code from the TV, then your name.</p>
             </div>
@@ -90,7 +90,7 @@
                     </div>
                 </div>
                 <div class="players-list">
-                    <div id="playersList" class="players-grid"></div>
+                    <div id="playersList" class="player-pasture"></div>
                     
                     <!-- Player Details Modal -->
                     <div id="playerModal" class="modal" style="display: none;">
@@ -400,7 +400,7 @@
     <script src="apply-state.js?v=2026-11-18T21-20-00"></script>
     <script src="answer-match.js?v=2026-11-22T10-45-00"></script>
     <script src="player-submit.js?v=2026-11-22T07-55-00"></script>
-    <script src="script.js?v=2026-11-22T22-20-00"></script>
+    <script src="script.js?v=2026-11-22T22-35-00"></script>
   <!-- Removed sticky player footer -->
 </body>
 </html>
