@@ -2897,7 +2897,7 @@ function schedulePlayerWander(el) {
 }
 
 function wanderPlayerEwe(el) {
-    if (!playerEweOnStage(el) || el.classList.contains('is-thinking')) {
+    if (!playerEweOnStage(el) || el.classList.contains('is-thinking') || el.classList.contains('is-joining')) {
         schedulePlayerWander(el);
         return;
     }
@@ -2962,6 +2962,40 @@ function armJoinGrazers() {
     });
 }
 
+function playPlayerJoinPoof(el) {
+    if (!el) return;
+    clearPlayerWander(el);
+    el.classList.add('is-joining');
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduce) {
+        el.classList.add('is-poofing');
+        const poof = document.createElement('span');
+        poof.className = 'player-ewe-poof';
+        poof.setAttribute('aria-hidden', 'true');
+        poof.innerHTML = '<i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>';
+        el.appendChild(poof);
+        window.setTimeout(() => {
+            el.classList.remove('is-poofing');
+            if (poof.parentNode) poof.remove();
+        }, 900);
+    }
+    const done = () => {
+        if (!el.classList.contains('is-joining')) return;
+        el.classList.remove('is-joining');
+        schedulePlayerWander(el);
+    };
+    const onEnd = (event) => {
+        if (event.animationName && event.animationName !== 'playerEweJump') return;
+        el.removeEventListener('animationend', onEnd);
+        done();
+    };
+    el.addEventListener('animationend', onEnd);
+    window.setTimeout(() => {
+        el.removeEventListener('animationend', onEnd);
+        done();
+    }, 700);
+}
+
 function paintPlayerLobbyFlock(players) {
     const pasture = document.getElementById('playersList');
     if (!pasture) return;
@@ -2990,13 +3024,16 @@ function paintPlayerLobbyFlock(players) {
             el.remove();
         }
     });
-    const occupied = [...pasture.querySelectorAll('.player-ewe')].map((el) => ({
+    const hadFlock = pasture.querySelectorAll('.player-ewe:not(.is-thinking)').length > 0;
+    const occupied = [...pasture.querySelectorAll('.player-ewe:not(.is-thinking)')].map((el) => ({
         gx: parseFloat(el.style.getPropertyValue('--gx')) || 50,
         gy: parseFloat(el.style.getPropertyValue('--gy')) || 70
     }));
-    const myName = String(sessionStorage.getItem('playerName') || '').toLowerCase();
+    const myName = String(sessionStorage.getItem('playerName') || currentPlayerName || '').toLowerCase();
+    const born = [];
     wanted.forEach((player, id) => {
         let el = pasture.querySelector(`.player-ewe[data-id="${CSS.escape(id)}"]`);
+        let created = false;
         if (!el) {
             const spot = playerPastureSpot(id, occupied, PLAYER_LOBBY_FIELD);
             occupied.push(spot);
@@ -3007,13 +3044,19 @@ function paintPlayerLobbyFlock(players) {
             el.innerHTML = `<span class="player-ewe-art" aria-hidden="true"><span class="player-ewe-strip"></span></span><figcaption></figcaption>`;
             pinPlayerEwe(el, spot);
             pasture.appendChild(el);
-            schedulePlayerWander(el);
+            created = true;
         }
         el.dataset.coat = String(playerCoatOf(player));
         const mine = String(player.name || '').toLowerCase() === myName || player.id === (typeof socket !== 'undefined' && socket && socket.id);
         el.classList.toggle('is-you', !!mine);
         const tag = el.querySelector('figcaption');
         if (tag) tag.textContent = player.name || 'Sheep';
+        if (created) born.push(el);
+    });
+    born.forEach((el) => {
+        const poof = hadFlock || born.length === 1 || el.classList.contains('is-you');
+        if (poof) playPlayerJoinPoof(el);
+        else schedulePlayerWander(el);
     });
 }
 

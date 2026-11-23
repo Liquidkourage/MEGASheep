@@ -386,6 +386,12 @@ body.player-app .player-quiet {
     body.player-app .player-pasture .player-ewe {
         transition: none;
     }
+
+    .player-ewe-poof,
+    body.player-app .player-pasture .player-ewe.is-poofing .player-ewe-art,
+    body.player-app .player-pasture .player-ewe.is-poofing figcaption {
+        animation: none !important;
+    }
 }
 
 /* Join */
@@ -477,6 +483,95 @@ body.player-app .player-pasture .player-ewe[data-coat="3"].is-walking .player-ew
 
 @keyframes playerEweWalk {
     to { transform: translateX(-94.444%); }
+}
+
+.player-ewe-poof {
+    position: absolute;
+    left: 50%;
+    top: 36%;
+    width: 240%;
+    height: 210%;
+    transform: translate(-50%, -52%);
+    pointer-events: none;
+    z-index: 4;
+}
+
+.player-ewe-poof i {
+    position: absolute;
+    left: 50%;
+    top: 52%;
+    width: 38%;
+    aspect-ratio: 1;
+    margin: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 34% 30%, #f7f1e4 0%, #d8cdb3 40%, rgba(168, 158, 138, 0.78) 60%, rgba(90, 84, 74, 0) 76%);
+    box-shadow: 0 0 12px 6px rgba(214, 204, 180, 0.32);
+    opacity: 0;
+    animation: playerEwePoof 0.82s ease-out forwards;
+}
+
+.player-ewe-poof i:nth-child(1) { --dx: -92; --dy: -10; --s: 1.35; }
+.player-ewe-poof i:nth-child(2) { --dx: 88; --dy: -28; --s: 1.22; width: 34%; animation-delay: 0.04s; }
+.player-ewe-poof i:nth-child(3) { --dx: -6; --dy: -96; --s: 1.4; width: 42%; animation-delay: 0.02s; }
+.player-ewe-poof i:nth-child(4) { --dx: 14; --dy: 72; --s: 1.2; width: 32%; animation-delay: 0.06s; }
+.player-ewe-poof i:nth-child(5) { --dx: -78; --dy: 52; --s: 1.14; width: 30%; animation-delay: 0.05s; }
+.player-ewe-poof i:nth-child(6) { --dx: 74; --dy: 44; --s: 1.18; width: 32%; animation-delay: 0.08s; }
+.player-ewe-poof i:nth-child(7) { --dx: -48; --dy: -62; --s: 1.05; width: 24%; animation-delay: 0.03s; }
+.player-ewe-poof i:nth-child(8) { --dx: 52; --dy: -58; --s: 1.02; width: 22%; animation-delay: 0.07s; }
+
+body.player-app .player-pasture .player-ewe.is-poofing .player-ewe-art {
+    z-index: 2;
+    animation: playerEwePopIn 0.46s cubic-bezier(0.14, 1.38, 0.32, 1) both;
+}
+
+body.player-app .player-pasture .player-ewe.is-poofing figcaption {
+    position: relative;
+    z-index: 3;
+    animation: playerEwePopIn 0.4s 0.08s cubic-bezier(0.14, 1.38, 0.32, 1) backwards;
+}
+
+body.player-app .player-pasture .player-ewe.is-joining .player-ewe-strip {
+    width: 1200%;
+    background-image: url("sprites/sheep-01-jump.png?v=2026-11-18T21-40-00");
+    animation: playerEweJump 0.5s steps(12, jump-none) forwards;
+}
+
+body.player-app .player-pasture .player-ewe[data-coat="2"].is-joining .player-ewe-strip {
+    background-image: url("sprites/sheep-02-jump.png?v=2026-11-18T21-40-00");
+}
+
+body.player-app .player-pasture .player-ewe[data-coat="3"].is-joining .player-ewe-strip {
+    background-image: url("sprites/sheep-03-jump.png?v=2026-11-18T21-40-00");
+}
+
+@keyframes playerEwePoof {
+    0% {
+        transform: translate(-50%, -50%) scale(0.28);
+        opacity: 0.95;
+    }
+    26% {
+        transform: translate(calc(-50% + var(--dx) * 0.45%), calc(-50% + var(--dy) * 0.45%)) scale(1.02);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(calc(-50% + var(--dx) * 1%), calc(-50% + var(--dy) * 1%)) scale(var(--s, 1.22));
+        opacity: 0;
+    }
+}
+
+@keyframes playerEwePopIn {
+    0% { transform: scale(0.12); opacity: 0; }
+    68% { transform: scale(1.12); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes playerEweJump {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-91.6667%, 0, 0); }
+}
+
+body.player-app #lobbyScreen #playersList.player-pasture {
+    overflow: visible;
 }
 
 body.player-app .player-ai-disclosure-btn {
