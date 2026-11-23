@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T17-58-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-22T18-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -1774,7 +1774,7 @@
             }
             return rest.map((player, index) => {
                 const spot = slots[index] || slots[0];
-                const gx = Math.min(66, Math.max(3, spot.x));
+                const gx = Math.min(58, Math.max(3, spot.x));
                 const gy = Math.min(61, Math.max(52, spot.y));
                 return resultSlot(player, names, {
                     x: gx,
@@ -5669,9 +5669,9 @@
                 ${tvRankSignHtml(players, {
                     boardId: 'finalRankBoard',
                     cols: 1,
-                    x: 86,
-                    y: 63,
-                    width: 18,
+                    x: 80.5,
+                    y: 86,
+                    width: 30,
                     subhead: 'Grand Total'
                 })}
                 ${tvPodiumHtml(players)}

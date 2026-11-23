@@ -3484,9 +3484,10 @@ html, body {
 }
 
 .tv-final .tv-score-ranks {
-    width: var(--w, 18vw);
+    z-index: 8;
+    width: var(--w, 30vw);
     aspect-ratio: 769 / 986;
-    max-height: 42vh;
+    max-height: 74vh;
 }
 
 .tv-final .tv-score-ranks .tv-sign-art {
@@ -3504,12 +3505,26 @@ html, body {
     color: #8a5a12;
 }
 
+.tv-final .tv-rank-kicker {
+    font-size: clamp(1.7rem, 3.3vh, 2.55rem);
+}
+
+.tv-final .tv-rank-sub {
+    font-size: clamp(2.4rem, 4.8vh, 3.7rem);
+}
+
+.tv-final .tv-score-ranks .tv-rank-n,
+.tv-final .tv-score-ranks .tv-rank-name,
+.tv-final .tv-score-ranks .tv-rank-pts {
+    font-size: clamp(1.9rem, 3.7vh, 2.95rem);
+}
+
 .tv-final .tv-podium {
-    left: 18%;
-    right: 30%;
+    left: 8%;
+    right: 40%;
     top: auto;
     bottom: 2.4%;
-    height: 36vh;
+    height: 34vh;
     z-index: 12;
 }
 
