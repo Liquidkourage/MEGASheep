@@ -1225,15 +1225,82 @@ body.player-app.keyboard-open #gameScreen #questionText {
 }
 
 body.player-app .player-comm-panel {
-    position: absolute;
-    left: 10px;
-    right: 10px;
-    bottom: 10px;
-    z-index: 6;
-    padding: 16px 18px 14px;
-    background: url("sprites/player-plaque.png?v=2026-11-22T01-20-00") center / 100% 100% no-repeat;
-    border: 0;
-    box-shadow: none;
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    top: auto !important;
+    z-index: 3;
+    flex: 0 0 auto;
+    flex-shrink: 0;
+    align-self: center;
+    width: min(100%, 58rem);
+    margin: 0 0 4px;
+    padding: 10px 12px 10px;
+    background: var(--cream);
+    border: 3px solid var(--ink);
+    border-radius: 20px;
+    box-shadow: 3px 4px 0 #1a140c;
+}
+
+body.player-app #gameScreen.is-messaging .player-play-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    justify-content: flex-start;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+body.player-app #gameScreen.is-messaging #questionText,
+body.player-app #gameScreen.is-messaging .question-text {
+    flex: 0 0 auto;
+    min-height: 0;
+    overflow: visible !important;
+    font-size: clamp(1.35rem, 3.2vw + 0.8vh, 2.1rem) !important;
+    padding: 16px 20px 18px;
+}
+
+body.player-app #gameScreen.is-messaging .player-answer-hint {
+    display: none;
+}
+
+body.player-app #gameScreen.is-messaging .player-edit-banner {
+    padding: 8px 10px;
+    font-size: 0.88rem;
+}
+
+body.player-app #gameScreen.is-messaging #playerAnswerForm.player-thought-bubble {
+    padding: 10px 12px 8px;
+}
+
+body.player-app #gameScreen.is-messaging #playerAnswerForm.player-thought-bubble .player-sign-face {
+    gap: 8px;
+}
+
+body.player-app #gameScreen.is-messaging .player-submit-pasture {
+    height: clamp(4.4rem, 12vh, 6.4rem);
+}
+
+body.player-app #gameScreen.is-messaging .player-submit-pasture .player-ewe {
+    width: clamp(88px, 24vw, 128px);
+}
+
+body.player-app #gameScreen.is-messaging .player-think-stack {
+    padding-bottom: 20px;
+}
+
+body.player-app .player-comm-last {
+    margin: 0 0 8px;
+    color: var(--wood);
+    font-family: var(--title);
+    font-size: 0.98rem;
+    font-weight: 800;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+body.player-app .player-comm-last[hidden] {
+    display: none !important;
 }
 
 body.player-app .player-comm-row,
@@ -1244,6 +1311,7 @@ body.player-app #playerCommRow {
 }
 
 body.player-app #playerCommRow #answerStatus {
+    position: relative;
     min-height: 44px;
     margin: 0;
     padding: 10px 12px;
@@ -1254,13 +1322,34 @@ body.player-app #playerCommRow #answerStatus {
     text-align: left;
 }
 
+body.player-app #playerCommRow #answerStatus::before,
+body.player-app #answerStatus::before {
+    content: none;
+}
+
+body.player-app #playerCommRow #answerStatus[data-empty="true"]::before {
+    content: attr(data-placeholder) !important;
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--wood-soft);
+    font-style: italic;
+    pointer-events: none;
+}
+
+body.player-app #playerCommRow #answerStatus:not([data-empty="true"])::before,
+body.player-app #answerStatus:not([data-empty="true"])::before {
+    content: none !important;
+}
+
 body.player-app #playerCommRow #askHostBtn {
     width: 100%;
 }
 
 body.player-app #dmHistory {
-    color: var(--wood);
-    font-size: 0.85rem;
+    display: none !important;
 }
 
 /* Results */
@@ -2932,6 +3021,95 @@ body.player-app #lobbyScreen .player-masthead {
 
     body.player-app #gameScreen .player-submit-pasture .player-ewe {
         width: 80px;
+    }
+
+    body.player-app #gameScreen.is-messaging .question-container {
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        overflow-x: hidden;
+        overflow-y: auto;
+        gap: 6px;
+        padding-bottom: 6px;
+    }
+
+    body.player-app #gameScreen.is-messaging .player-play-stage {
+        flex: 1 1 0;
+        min-height: 0;
+        flex-direction: row;
+        align-items: stretch;
+        overflow: hidden !important;
+        gap: 10px;
+    }
+
+    body.player-app #gameScreen.is-messaging .player-think-stack {
+        flex: 1 1 42%;
+        min-height: 0;
+        padding-bottom: 0;
+        overflow: hidden;
+        justify-content: flex-start;
+    }
+
+    body.player-app #gameScreen.is-messaging .player-thought-tail,
+    body.player-app #gameScreen.is-messaging .player-submit-pasture,
+    body.player-app #gameScreen.is-messaging .player-answer-label {
+        display: none;
+    }
+
+    body.player-app #gameScreen.is-messaging #playerAnswerForm.player-thought-bubble,
+    body.player-app #gameScreen.is-messaging #playerAnswerForm.player-sign.player-thought-bubble {
+        max-height: 100%;
+        min-height: 0;
+        overflow: hidden;
+        padding: 6px 8px 8px;
+        gap: 6px;
+    }
+
+    body.player-app #gameScreen.is-messaging #playerAnswerForm.player-thought-bubble .player-sign-face {
+        gap: 6px;
+    }
+
+    body.player-app #gameScreen.is-messaging .player-edit-banner {
+        padding: 4px 8px;
+        font-size: 0.8rem;
+    }
+
+    body.player-app #gameScreen.is-messaging #submitAnswerBtn {
+        min-height: 44px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    body.player-app #gameScreen.is-messaging .player-comm-panel {
+        position: relative !important;
+        left: auto !important;
+        right: auto !important;
+        width: 100%;
+        margin: 0;
+        padding: 6px 8px 8px;
+    }
+
+    body.player-app #gameScreen.is-messaging .player-comm-last {
+        margin-bottom: 4px;
+        font-size: 0.85rem;
+    }
+
+    body.player-app #gameScreen.is-messaging #playerCommRow {
+        flex-direction: row;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    body.player-app #gameScreen.is-messaging #playerCommRow #answerStatus {
+        flex: 1 1 auto;
+        min-width: 0;
+        min-height: 44px;
+    }
+
+    body.player-app #gameScreen.is-messaging #playerCommRow #askHostBtn {
+        width: auto;
+        min-width: 7.5rem;
+        flex: 0 0 auto;
     }
 }
 

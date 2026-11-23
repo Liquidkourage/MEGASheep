@@ -165,6 +165,29 @@ function setPlayerAnswerChrome({ locked = false, editing = false, reason = '' } 
     if (typeof IS_PLAYER_ROUTE !== 'undefined' && IS_PLAYER_ROUTE) syncPlayerSubmitScene();
 }
 
+function setPlayerCommLast(text) {
+    const last = document.getElementById('playerCommLast');
+    if (!last) return;
+    const value = String(text || '').trim();
+    last.hidden = !value;
+    last.textContent = value;
+}
+
+function setPlayerCommOpen(open) {
+    const panel = document.getElementById('playerCommPanel');
+    const btn = document.getElementById('toggleHostMsgBtn');
+    const play = document.getElementById('gameScreen');
+    if (panel) {
+        if (open) panel.removeAttribute('hidden');
+        else panel.setAttribute('hidden', '');
+    }
+    if (btn) {
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.classList.toggle('is-open', !!open);
+    }
+    if (play) play.classList.toggle('is-messaging', !!open);
+}
+
 function setPlayerSubmitEnabled(enabled) {
     const form = document.getElementById('playerAnswerForm');
     const input = document.getElementById('answerInput');
@@ -920,10 +943,7 @@ function setupEventListeners() {
             try {
                 socket.once('playerQuestionAck', (ack) => {
                     console.log('💬 [player] playerQuestionAck (once):', ack);
-                    const statusEl = document.getElementById('answerStatus');
-                    if (statusEl) {
-                        statusEl.textContent = ack && ack.ok ? `💬 You: ${q} ✓` : `⚠️ Not delivered: ${q} (${(ack && (ack.reason||ack.message))||'unknown'})`;
-                    }
+                    setPlayerCommLast(ack && ack.ok ? `You: ${q}` : `Not delivered: ${q}`);
                     appendDmHistory('You', q, ack && ack.ok ? ' ✓' : ' (not delivered)');
                 });
             } catch (_) {}
@@ -946,11 +966,7 @@ function setupEventListeners() {
             } catch (e) {
                 console.warn('💬 [player] Failed to emit playerQuestion', e);
             }
-            const statusEl = document.getElementById('answerStatus');
-            if (statusEl) {
-                if (isMultiBoxEditable) statusEl.innerText = `💬 You: ${q} …`;
-                else statusEl.textContent = `💬 You: ${q} …`;
-            }
+            setPlayerCommLast(`You: ${q}`);
             setText('');
             setPlaceholderIfEmpty();
         };
@@ -969,11 +985,7 @@ function setupEventListeners() {
         const hostMsgPanel = document.getElementById('playerCommPanel');
         if (toggleHostMsgBtn && hostMsgPanel && !isHost) {
             toggleHostMsgBtn.addEventListener('click', () => {
-                const open = hostMsgPanel.hasAttribute('hidden');
-                if (open) hostMsgPanel.removeAttribute('hidden');
-                else hostMsgPanel.setAttribute('hidden', '');
-                toggleHostMsgBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-                toggleHostMsgBtn.classList.toggle('is-open', open);
+                setPlayerCommOpen(hostMsgPanel.hasAttribute('hidden'));
             });
         }
         // Placeholder styling for contenteditable
@@ -988,37 +1000,19 @@ function setupEventListeners() {
         try {
             socket.on('playerQuestionAck', (ack) => {
                 console.log('💬 [player] playerQuestionAck received:', ack);
-                const statusEl = document.getElementById('answerStatus');
-                if (!statusEl) return;
-                if (ack && ack.ok) {
-                    statusEl.textContent = `${statusEl.textContent || '💬 Sent to host'} ✓`;
-                } else {
-                    const reason = (ack && ack.reason) || (ack && ack.message) || 'unknown';
-                    statusEl.textContent = `⚠️ Not delivered (${reason}).`;
-                }
+                if (ack && ack.ok) setPlayerCommLast(ack.question ? `You: ${ack.question}` : 'Sent.');
+                else setPlayerCommLast('Not delivered.');
             });
             socket.on('hostAnswer', (data) => {
                 console.log('💬 [player] hostAnswer received:', data);
                 try {
                     const msg = data && data.answer ? data.answer : '';
                     if (!msg) return;
-                    
-                    // Show toast notification for host response
-                    showToast(`💬 Host responded: ${msg}`, 'info');
-                    
-                    const statusEl = document.getElementById('answerStatus');
-                    if (statusEl && statusEl.getAttribute('contenteditable') === 'true') {
-                        statusEl.innerText = `💬 Host: ${msg}`;
-                    } else if (statusEl) {
-                        statusEl.textContent = `💬 Host: ${msg}`;
-                    }
-                    appendDmHistory('Host', msg);
-                    const hostMsgPanel = document.getElementById('playerCommPanel');
-                    const toggleHostMsgBtn = document.getElementById('toggleHostMsgBtn');
-                    if (hostMsgPanel) hostMsgPanel.removeAttribute('hidden');
-                    if (toggleHostMsgBtn) {
-                        toggleHostMsgBtn.setAttribute('aria-expanded', 'true');
-                        toggleHostMsgBtn.classList.add('is-open');
+                    setPlayerCommLast(`Host: ${msg}`);
+                    setPlayerCommOpen(true);
+                    const composer = document.getElementById('answerStatus');
+                    if (composer && !(composer.innerText || '').trim()) {
+                        composer.setAttribute('data-empty', 'true');
                     }
                 } catch (_) {}
             });

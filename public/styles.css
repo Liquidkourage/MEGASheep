@@ -8075,11 +8075,11 @@ body.player-app #gameScreen .players-status {
 }
 
 body.player-app .player-comm-panel {
-    position: absolute;
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
-    z-index: 6;
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    z-index: 3;
     background: rgba(8, 12, 22, 0.96);
     border: 1px solid #8ba3d0;
     border-radius: 12px;
@@ -8509,9 +8509,13 @@ body.player-app .player-waiting-card p {
 }
 
 body.player-app #answerStatus[data-placeholder]:empty::before,
-body.player-app #answerStatus[data-empty="true"]::before {
+body.player-app #answerStatus[data-empty="true"]:empty::before {
     content: attr(data-placeholder);
     color: #9aa7bd;
+}
+
+body.player-app #answerStatus:not(:empty)::before {
+    content: none;
 }
 
 body.player-app .loading-spinner {
