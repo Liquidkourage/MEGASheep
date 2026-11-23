@@ -4256,12 +4256,8 @@ function updateGamePlayersList() {
 
         if (compactStatus) {
             if (currentPlayer) {
-                const sortedPlayers = [...gameState.players].sort((a, b) =>
-                    (gameState.scores[b.id] || 0) - (gameState.scores[a.id] || 0)
-                );
-                const rank = sortedPlayers.findIndex(p => p.id === currentPlayer.id) + 1;
                 const pts = gameState.scores[currentPlayer.id] || 0;
-                compactStatus.textContent = `${currentPlayer.name} · ${pts} pts · #${rank}`;
+                compactStatus.textContent = `${pts} pts`;
             } else {
                 compactStatus.textContent = '';
             }

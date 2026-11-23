@@ -770,56 +770,62 @@ body.player-app #gameScreen .game-header {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    padding: 8px 12px 8px clamp(62px, 8vw, 92px);
+    gap: 10px;
+    min-height: 56px;
+    padding: 8px 10px 8px clamp(56px, 8vw, 92px);
     background: none;
     border: 0;
 }
 
 body.player-app #gameScreen .game-info {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
     min-width: 0;
+    flex: 1 1 auto;
 }
 
 body.player-app #gameScreen .question-counter,
 body.player-app .player-compact-status {
     font-family: var(--title);
-    color: var(--cream);
-    text-shadow: 0 2px 0 #0b1018;
+    font-size: clamp(1.45rem, 6.5vw, 2rem);
+    font-weight: 800;
+    line-height: 1.1;
+    white-space: nowrap;
+    color: #1a3878;
+    -webkit-text-stroke: 0.07em #f6e6b2;
+    paint-order: stroke fill;
+    filter: drop-shadow(0 0 1px #0b1018) drop-shadow(1px 2px 0 #0b1018);
+    text-shadow: none;
 }
 
 body.player-app #gameScreen .question-counter {
-    font-size: clamp(1.05rem, 2.4vw, 1.55rem);
+    flex-shrink: 0;
 }
 
 body.player-app .player-compact-status {
-    font-size: clamp(0.82rem, 1.8vw, 1.15rem);
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 body.player-app .game-header-actions {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
 }
 
 body.player-app .player-icon-btn {
     width: auto;
-    min-width: 52px;
-    min-height: clamp(44px, 6.2vw, 56px);
-    padding: 0 clamp(12px, 1.6vw, 18px);
+    min-width: 48px;
+    min-height: 48px;
+    padding: 0 12px;
     border: 0;
     border-radius: 14px;
     background: url("sprites/player-wood-btn.png?v=2026-11-22T01-35-00") center / 100% 100% no-repeat;
     color: var(--ink);
     font-family: var(--title);
-    font-size: clamp(0.86rem, 1.8vw, 1.12rem);
+    font-size: 1.05rem;
     font-weight: 700;
     letter-spacing: 0.02em;
 }
