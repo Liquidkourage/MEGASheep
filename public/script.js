@@ -3812,7 +3812,7 @@ function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints,
 
     const holder = others[0] ? playerScoreWho(others[0]) : null;
     const extras = others.slice(holder ? 1 : 0);
-    const extraLabel = extras.join(', ');
+    const under = extras.map((name) => playerScoreEweHtml(playerScoreWho(name), { mini: true })).join('');
     return wrap('is-hit is-shared', `<div class="player-score-unit is-cloth">
         <div class="player-score-flag is-cloth">
             <img class="player-score-flag-art" src="sprites/parade-banner.png?v=2026-11-19T23-20-00" alt="">
@@ -3825,7 +3825,7 @@ function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints,
             ${playerScoreEweHtml(me, { you: true })}
             ${holder ? playerScoreEweHtml(holder) : ''}
         </div>
-        ${extraLabel ? `<p class="player-score-extras">${escapePlayer(extraLabel)}</p>` : ''}
+        ${under ? `<div class="player-score-under">${under}</div>` : ''}
         ${rankChip}
     </div>`);
 }
@@ -4038,28 +4038,55 @@ function playerPtsOf(player) {
     return player && player.total != null ? player.total : playerScoreOf(player);
 }
 
-function playerCrateHtml(player, rank, pts, options) {
-    const extra = options || {};
-    const delay = ((rank % 7) * 0.12).toFixed(2);
-    const classes = [
-        extra.row ? 'player-board-row' : 'player-podium-spot',
-        playerBoardPlace(rank),
-        extra.mine ? 'is-you' : '',
-        extra.hero ? 'is-hero' : ''
-    ].filter(Boolean).join(' ');
-    const meta = extra.meta
-        ? `<p class="player-crate-meta">${escapePlayer(extra.meta)}</p>`
-        : '';
-    return `<div class="${classes}">
-        <figure class="player-ewe player-board-ewe${extra.hero ? ' is-hero' : ''}" data-coat="${playerCoatOf(player)}" style="--idle:${delay}s" aria-hidden="true">
-            <span class="player-ewe-art"><span class="player-ewe-strip"></span></span>
-        </figure>
+function playerEweMarkHtml(player, extra) {
+    const delay = extra && extra.delay != null ? extra.delay : '0s';
+    const hero = extra && extra.hero ? ' is-hero' : '';
+    return `<figure class="player-ewe player-board-ewe${hero}" data-coat="${playerCoatOf(player)}" style="--idle:${delay}" aria-hidden="true">
+        <span class="player-ewe-art"><span class="player-ewe-strip"></span></span>
+    </figure>`;
+}
+
+function playerPodiumSpotHtml(player, place, myName) {
+    if (!player) return `<div class="player-podium-spot is-${place} is-empty" aria-hidden="true"></div>`;
+    const mine = playerIsMine(player, myName);
+    const pts = playerPtsOf(player);
+    return `<div class="player-podium-spot is-${place}${mine ? ' is-you' : ''}">
+        ${playerEweMarkHtml(player, { hero: place === 1, delay: `${place * 0.08}s` })}
         <div class="player-crate">
-            <span class="player-crate-place">${rank}</span>
+            <span class="player-crate-place">${place}</span>
             <p class="player-crate-name">${escapePlayer(player.name || 'Sheep')}</p>
-            ${meta}
             <b class="player-crate-score">${pts}</b>
         </div>
+    </div>`;
+}
+
+function playerYouMetaHtml(pts, youMeta) {
+    if (!youMeta) return '';
+    const raw = String(youMeta).trim();
+    const num = parseInt(raw, 10);
+    if (Number.isFinite(num) && num === Number(pts)) return '';
+    const labeled = /total/i.test(raw) ? raw : `${raw} total`;
+    return `<span class="player-you-total">${escapePlayer(labeled)}</span>`;
+}
+
+function playerYouStripHtml(player, rank, pts, extra) {
+    const meta = playerYouMetaHtml(pts, extra && extra.youMeta);
+    return `<section class="player-board-you" aria-label="Your standing, rank ${rank}">
+        ${playerEweMarkHtml(player, { hero: true })}
+        <p class="player-you-rank">#${rank}</p>
+        <div class="player-you-copy">
+            <p class="player-you-name">${escapePlayer(player.name || 'Sheep')}</p>
+            ${meta}
+        </div>
+        <b class="player-you-score">${pts}</b>
+    </section>`;
+}
+
+function playerBoardRowHtml(player, rank, pts, mine) {
+    return `<div class="player-board-row ${playerBoardPlace(rank)}${mine ? ' is-you' : ''}">
+        <span class="player-board-rank">${rank}</span>
+        <p class="player-board-name">${escapePlayer(player.name || 'Sheep')}</p>
+        <b class="player-board-pts">${pts}</b>
     </div>`;
 }
 
@@ -4074,33 +4101,26 @@ function playerBoardHtml(ranked, extras) {
         { player: list[1], place: 2 },
         { player: list[0], place: 1 },
         { player: list[2], place: 3 }
-    ].map(({ player, place }) => {
-        if (!player) return `<div class="player-podium-spot is-${place}"></div>`;
-        return playerCrateHtml(player, place, playerPtsOf(player), {
-            mine: playerIsMine(player, myName),
-            hero: place === 1
-        });
-    }).join('')}</div>`;
-    const youCard = (you && youRank > 3)
-        ? `<section class="player-board-you">${playerCrateHtml(you, youRank, youPts, {
-            mine: true,
-            hero: true,
-            meta: extra.youMeta
-        })}</section>`
-        : '';
-    const rows = list.map((player, index) => playerCrateHtml(player, index + 1, playerPtsOf(player), {
-        row: true,
-        mine: playerIsMine(player, myName)
-    })).join('');
+    ].map(({ player, place }) => playerPodiumSpotHtml(player, place, myName)).join('')}</div>`;
+    const youCard = (you && youRank > 3) ? playerYouStripHtml(you, youRank, youPts, extra) : '';
+    const rest = list.slice(3);
+    const rows = rest.map((player, index) => {
+        const rank = index + 4;
+        return playerBoardRowHtml(player, rank, playerPtsOf(player), playerIsMine(player, myName));
+    }).join('');
+    const rowCount = Math.max(1, Math.ceil(rest.length / 2));
     const kind = extra.kind ? ` is-${extra.kind}` : '';
-    const title = extra.title
-        ? `<h3 class="player-board-title">${escapePlayer(extra.title)}</h3>`
+    const titleText = extra.title || 'Bleat-erboard';
+    const standings = rest.length
+        ? `<section class="player-board-standings" aria-label="${escapePlayer(titleText)}">
+            <h3 class="player-board-title">${escapePlayer(titleText)}</h3>
+            <div class="player-board-list" style="--board-rows:${rowCount}">${rows}</div>
+        </section>`
         : '';
     return `<div class="player-board${kind}">
         ${podium}
         ${youCard}
-        ${title}
-        <div class="player-board-list">${rows}</div>
+        ${standings}
     </div>`;
 }
 
