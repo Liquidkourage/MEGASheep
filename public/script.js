@@ -286,7 +286,9 @@ function syncPlayerJoinCode() {
     const ok = /^\d{4}$/.test(code);
     document.querySelectorAll('[data-player-join-code]').forEach((el) => {
         el.hidden = !ok;
-        el.textContent = ok ? code : '';
+        const num = el.querySelector('.player-join-code-num');
+        if (num) num.textContent = ok ? code : '';
+        else el.textContent = ok ? code : '';
         if (ok) el.setAttribute('aria-label', `Player code ${code}`);
         else el.removeAttribute('aria-label');
     });

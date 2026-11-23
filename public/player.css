@@ -826,7 +826,6 @@ body.player-app #gameScreen .game-info {
     flex: 1 1 auto;
 }
 
-body.player-app .player-join-code,
 body.player-app #gameScreen .question-counter,
 body.player-app .player-compact-status {
     font-family: var(--title);
@@ -841,40 +840,63 @@ body.player-app .player-compact-status {
     text-shadow: none;
 }
 
-body.player-app .player-join-code[hidden] {
-    display: none !important;
-}
-
 body.player-app .player-join-code-hud {
     position: absolute;
-    top: max(10px, env(safe-area-inset-top, 0px));
-    right: max(12px, env(safe-area-inset-right, 0px));
-    left: auto;
-    bottom: auto;
+    left: max(10px, env(safe-area-inset-left, 0px));
+    right: auto;
+    top: auto;
+    bottom: max(10px, env(safe-area-inset-bottom, 0px));
     z-index: 8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
     margin: 0;
+    padding: 6px 10px 7px;
+    background: #f3e2b4;
+    border: 3px solid #1a140c;
+    border-radius: 10px;
+    box-shadow: 3px 4px 0 #1a140c;
     pointer-events: none;
-    letter-spacing: 0.08em;
+    color: #1a140c;
+    filter: none;
+    -webkit-text-stroke: 0;
+    text-shadow: none;
 }
 
-body.player-app:has(#joinGameScreen.active) .player-join-code-hud,
-body.player-app:has(#lobbyScreen.active) .player-join-code-hud,
-body.player-app:has(#gameOverScreen.active) .player-join-code-hud {
-    top: max(46px, calc(env(safe-area-inset-top, 0px) + 38px));
-}
-
-body.player-app:has(#gameScreen.active) .player-join-code-hud {
+body.player-app .player-join-code-hud[hidden] {
     display: none !important;
 }
 
-body.player-app:has(#scoringScreen.active) .player-join-code-hud {
-    right: auto;
-    left: max(12px, env(safe-area-inset-left, 0px));
+body.player-app .player-join-code-kicker {
+    font-family: var(--body);
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
 }
 
-body.player-app #gameScreen .player-join-code {
-    flex-shrink: 0;
-    letter-spacing: 0.08em;
+body.player-app .player-join-code-num {
+    font-family: var(--title);
+    font-size: 1.28rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    line-height: 1.05;
+}
+
+body.player-app:has(#joinGameScreen.active) .player-join-code-hud {
+    display: none !important;
+}
+
+body.player-app:has(.player-join-code-hud:not([hidden])):has(#lobbyScreen.active) #lobbyScreen .screen-content,
+body.player-app:has(.player-join-code-hud:not([hidden])):has(#gameOverScreen.active) #gameOverScreen .screen-content,
+body.player-app:has(.player-join-code-hud:not([hidden])):has(#scoringScreen.active) #scoringScreen .screen-content {
+    padding-bottom: 4.8rem;
+}
+
+body.player-app:has(.player-join-code-hud:not([hidden])):has(#gameScreen.active) .player-think-stack {
+    padding-bottom: max(4.75rem, calc(env(safe-area-inset-bottom, 0px) + 4.4rem));
 }
 
 body.player-app #gameScreen .question-counter {

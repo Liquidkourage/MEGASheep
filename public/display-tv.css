@@ -939,28 +939,43 @@ html, body {
     text-shadow: 0 4px 18px rgba(4, 10, 18, 0.55);
 }
 
-.tv-play-meta .tv-join-code {
-    letter-spacing: 0.08em;
+.tv-corner-code {
+    position: absolute;
+    left: max(1.6vw, 18px);
+    bottom: max(1.8vh, 16px);
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.12em;
+    margin: 0;
+    padding: 0.42em 0.7em 0.48em;
+    background: #f3e2b4;
+    border: 0.16em solid #1a140c;
+    border-radius: 0.42em;
+    box-shadow: 0.12em 0.16em 0 #1a140c;
+    pointer-events: none;
 }
 
-.tv-sky-code {
-    position: absolute;
-    right: 3.2%;
-    top: 3.4%;
-    z-index: 5;
+.tv-corner-code-kicker {
     margin: 0;
-    font-family: Fredoka, Outfit, "Segoe UI", sans-serif;
-    font-size: clamp(2.4rem, 6.2vh, 4.6rem);
+    font-family: Outfit, "Segoe UI", sans-serif;
+    font-size: clamp(0.95rem, 2.1vh, 1.45rem);
     font-weight: 800;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     line-height: 1;
-    color: #1a3878;
-    -webkit-text-stroke: 0.08em #f6e6b2;
-    paint-order: stroke fill;
-    filter:
-        drop-shadow(0 0 1.2px #0b1018)
-        drop-shadow(2px 3px 0 #0b1018);
-    pointer-events: none;
+    text-transform: uppercase;
+    color: #1a140c;
+}
+
+.tv-corner-code-num {
+    margin: 0;
+    font-family: Outfit, Fredoka, "Segoe UI", sans-serif;
+    font-size: clamp(2.2rem, 5.6vh, 4.2rem);
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    color: #1a140c;
 }
 
 .display-mode .timer-display {

@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>MEGASheep Display</title>
     <link rel="stylesheet" href="styles.css?v=2026-11-18T14-00-00">
-    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T18-50-00">
+    <link rel="stylesheet" href="display-tv.css?v=2026-11-23T19-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask-nibble.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/sign-bite-mask.png?v=2026-11-19T01-05-00">
     <link rel="preload" as="image" href="sprites/parade-banner.png?v=2026-11-19T23-20-00">
@@ -578,14 +578,11 @@
             return /^\d{4}$/.test(code) ? code : '';
         }
 
-        function tvJoinCodeMetaHtml() {
+        function tvCornerCodeHtml() {
             const code = tvJoinCode();
-            return code ? `<span class="tv-join-code">${code}</span>` : '';
-        }
-
-        function tvSkyCodeHtml() {
-            const code = tvJoinCode();
-            return code ? `<p class="tv-sky-code">${code}</p>` : '';
+            return code
+                ? `<aside class="tv-corner-code" aria-label="Player code ${code}"><p class="tv-corner-code-kicker">Player Code</p><p class="tv-corner-code-num">${code}</p></aside>`
+                : '';
         }
 
         function pitchCopyHtml() {
@@ -2941,7 +2938,7 @@
                     ${pastureSceneHtml({ pen: true, pastureId: 'responseIndicator' })}
                     <div class="tv-play-top">
                         <div class="tv-play-copy">
-                            <p class="tv-play-meta"><span>Round ${roundNumber}</span><span>${questionInRound} of ${perRound}</span>${tvJoinCodeMetaHtml()}</p>
+                            <p class="tv-play-meta"><span>Round ${roundNumber}</span><span>${questionInRound} of ${perRound}</span></p>
                             <h1 class="question-prompt">${currentQuestion ? currentQuestion.prompt : 'Loading question...'}</h1>
                         </div>
                         <div class="timer-display">
@@ -2950,6 +2947,7 @@
                             </div>
                         </div>
                     </div>
+                    ${tvCornerCodeHtml()}
                 </div>
             `;
             renderFlock(gameState.players);
@@ -4809,15 +4807,14 @@
             if (kind !== 'tv-score') scoreParadeGen += 1;
             preventAllScrolling();
             const sky = (kind === 'tv-score' || kind === 'tv-standings') ? '' : skyNameHtml();
-            const skyCode = (kind === 'tv-score' || kind === 'tv-standings') ? '' : tvSkyCodeHtml();
             const fair = kind === 'tv-final' ? tvFairHtml() : '';
             document.getElementById('displayScreen').innerHTML = `
                 <div class="tv-stage ${kind}">
                     ${pastureSceneHtml({ pen: false })}
                     ${sky}
-                    ${skyCode}
                     ${fair}
                     ${overlayHtml}
+                    ${tvCornerCodeHtml()}
                 </div>
             `;
             renderFlock(players || (gameState && gameState.players) || []);
@@ -5432,7 +5429,7 @@
             const prompt = currentPromptText();
             paintMeadowScreen('tv-score', `
                 <div class="tv-score-top">
-                    <p class="tv-play-meta"><span>Round ${meta.roundNumber}</span><span>${meta.questionInRound} of ${meta.perRound}</span>${tvJoinCodeMetaHtml()}</p>
+                    <p class="tv-play-meta"><span>Round ${meta.roundNumber}</span><span>${meta.questionInRound} of ${meta.perRound}</span></p>
                     <h1 class="question-prompt">${escapeDisplayText(prompt)}</h1>
                 </div>
                 ${tvScoreBannerHtml()}
@@ -5668,7 +5665,7 @@
             const players = rankedPlayers(roundData.players || gameState.players);
             paintMeadowScreen('tv-standings', `
                 <div class="tv-score-top">
-                    <p class="tv-play-meta"><span>Round ${escapeDisplayText(roundData.roundNumber)}</span>${tvJoinCodeMetaHtml()}</p>
+                    <p class="tv-play-meta"><span>Round ${escapeDisplayText(roundData.roundNumber)}</span></p>
                     </div>
                 <div class="tv-board-stack is-round">
                     ${tvRankSignHtml(players, {
