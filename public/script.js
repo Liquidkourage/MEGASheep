@@ -248,10 +248,11 @@ function syncPlayerSubmitScene() {
     const readout = document.getElementById('playerLockedReadout');
     if (!readout) return;
     if (locked) {
-        const typed = (document.getElementById('answerInput') && document.getElementById('answerInput').value) || '';
-        const answer = String(typed || getMyAnswerForCurrentQuestion() || '').trim();
+        const answer = String(getMyAnswerForCurrentQuestion() || '').trim();
         readout.hidden = false;
-        readout.textContent = answer ? `Locked in — ${answer}` : 'Locked in';
+        readout.textContent = (window.MEGASheepSubmit && window.MEGASheepSubmit.lockedAnswerReadout)
+            ? window.MEGASheepSubmit.lockedAnswerReadout(answer)
+            : (answer ? `Locked in — ${answer}` : 'Locked in');
     } else {
         readout.hidden = true;
         readout.textContent = '';
@@ -281,17 +282,34 @@ function playerGameCode() {
 }
 
 function getMyAnswerForCurrentQuestion() {
+    const q = currentQIndex();
+    let stored = '';
     try {
-        if (gameState && gameState.myAnswer) return String(gameState.myAnswer);
-        const q = currentQIndex();
         const code = playerGameCode();
-        if (code) {
-            const keyed = localStorage.getItem(`player.answer.${code}.q${q}`) || '';
-            if (keyed) return keyed;
-        }
+        if (code) stored = localStorage.getItem(`player.answer.${code}.q${q}`) || '';
+    } catch (_) {}
+    const pending = findMyPendingEdit(gameState && gameState.pendingEdits);
+    const localSubmitted = String(window.lastSubmittedAnswer || '').trim();
+    const stalePending = !!(pending
+        && window.lastSubmittedQuestionIndex === q
+        && localSubmitted
+        && localSubmitted.toLowerCase() !== String(pending.originalAnswer || '').trim().toLowerCase());
+    if (window.MEGASheepSubmit && window.MEGASheepSubmit.currentLockedAnswer) {
+        return window.MEGASheepSubmit.currentLockedAnswer({
+            pending: !!(pending && !stalePending),
+            lastSubmitted: window.lastSubmittedAnswer,
+            lastQ: window.lastSubmittedQuestionIndex,
+            currentQ: q,
+            myAnswer: gameState && gameState.myAnswer,
+            stored
+        });
+    }
+    try {
         if (window.lastSubmittedQuestionIndex === q && window.lastSubmittedAnswer) {
-            return window.lastSubmittedAnswer;
+            return String(window.lastSubmittedAnswer);
         }
+        if (gameState && gameState.myAnswer && !pending) return String(gameState.myAnswer);
+        if (stored) return stored;
     } catch (_) {}
     return '';
 }
@@ -2359,9 +2377,31 @@ function applyPlayerState(packet, source) {
         }
 
         const pending = findMyPendingEdit(packet.pendingEdits);
-        if (pending) {
+        const qNow = (typeof packet.currentQuestion === 'number') ? packet.currentQuestion : currentQIndex();
+        const localSubmitted = String(window.lastSubmittedAnswer || '').trim();
+        const staleSendBack = !!(pending
+            && window.lastSubmittedQuestionIndex === qNow
+            && localSubmitted
+            && localSubmitted.toLowerCase() !== String(pending.originalAnswer || '').trim().toLowerCase());
+        if (pending && !staleSendBack && !window._submitInFlight) {
             presentSendBack(pending.reason, pending.originalAnswer);
             return;
+        }
+
+        if (staleSendBack) {
+            window._playerEditing = false;
+            window._playerEditReason = '';
+            try {
+                const code = playerGameCode();
+                if (code) localStorage.setItem(`player.submitted.${code}.q${qNow}`, '1');
+            } catch (_) {}
+            setPlayerSubmitEnabled(false);
+        }
+
+        if (!pending && packet.myAnswer && window.lastSubmittedQuestionIndex === qNow && !localSubmitted) {
+            rememberSubmittedAnswer(packet.myAnswer, qNow);
+        } else if (!pending && packet.myAnswer && window.lastSubmittedQuestionIndex !== qNow) {
+            rememberSubmittedAnswer(packet.myAnswer, qNow);
         }
 
         const phase = packet.gameState;
@@ -2723,13 +2763,17 @@ function handleAnswerSubmitted() {
     window._submitInFlight = false;
     window._playerEditing = false;
     window._playerEditReason = '';
-    // Player already sees the locked form and sheep walk to paddock.
     try {
+        const input = document.getElementById('answerInput');
+        const typed = input && String(input.value || '').trim();
+        if (typed) rememberSubmittedAnswer(typed);
+        if (gameState && typed) gameState.myAnswer = typed;
         const code = gameState?.gameCode || sessionStorage.getItem('gameCode') || localStorage.getItem('player.gameCode') || '';
         const qIndex = (typeof gameState?.currentQuestion === 'number') ? gameState.currentQuestion : (typeof currentQuestionIndex === 'number' ? currentQuestionIndex : 0);
         if (code) localStorage.setItem(`player.submitted.${code}.q${qIndex}`, '1');
     } catch(_) {}
     setPlayerSubmitEnabled(false);
+    try { syncPlayerSubmitScene(); } catch (_) {}
 }
 
 function handleAnswerError(data) {

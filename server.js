@@ -598,6 +598,31 @@ class Game {
         } catch (_) {}
     }
 
+    findPendingEdit(socketId) {
+        if (!socketId || !this.answersNeedingEdit) return null;
+        if (this.answersNeedingEdit.has(socketId)) {
+            return { sid: socketId, info: this.answersNeedingEdit.get(socketId) };
+        }
+        const player = this.players && this.players.get(socketId);
+        if (!player) return null;
+        const name = String(player.name || '').toLowerCase();
+        const stable = player.stableId;
+        for (const [sid, info] of this.answersNeedingEdit.entries()) {
+            const other = this.players.get(sid);
+            if (stable && other && other.stableId === stable) return { sid, info };
+            if (name && other && String(other.name || '').toLowerCase() === name) return { sid, info };
+        }
+        return null;
+    }
+
+    clearPendingEdit(socketId) {
+        const hit = this.findPendingEdit(socketId);
+        if (!hit) return false;
+        this.answersNeedingEdit.delete(hit.sid);
+        if (hit.sid !== socketId) this.answersNeedingEdit.delete(socketId);
+        return true;
+    }
+
     submitAnswer(socketId, answer) {
         try {
             // SIMPLIFIED: Basic answer submission with edit permission check
@@ -605,9 +630,10 @@ class Game {
                 logger.warn('submitAnswer called with invalid game state');
                 return false;
             }
-            
+
+            const pending = this.findPendingEdit(socketId);
             // Allow submission during playing OR if player has pending edit
-            if (this.gameState !== 'playing' && !this.answersNeedingEdit.has(socketId)) {
+            if (this.gameState !== 'playing' && !pending) {
                 logger.warn(`submitAnswer: Invalid game state ${this.gameState} for socket ${socketId}`);
                 return false;
             }
@@ -620,7 +646,7 @@ class Game {
             }
 
             // Check if this is a clarification submission
-            const isClarification = this.answersNeedingEdit.has(socketId);
+            const isClarification = !!pending;
 
             // HARD SERVER-SIDE LOCK by stable identity
             const stableId = player.stableId || socketId;
@@ -649,13 +675,14 @@ class Game {
 
             // Set the answer - this replaces any existing answer
             this.answers.set(socketId, trimmed);
+            if (pending && pending.sid !== socketId) this.answers.delete(pending.sid);
             // Mark this stableId as answered for this question
             try { this.answeredStableIds = this.answeredStableIds || new Set(); this.answeredStableIds.add(stableId); } catch(_) {}
             logger.info(`📝 ${player.name} submitted: "${trimmed}"${isClarification ? ' (clarification)' : ''}`);
             
             // If this was a clarification, clear the edit flag
             if (isClarification) {
-                this.answersNeedingEdit.delete(socketId);
+                this.clearPendingEdit(socketId);
                 logger.info(`✅ Cleared clarification flag for ${player.name}`);
             }
             
@@ -2138,10 +2165,10 @@ function broadcastAcceptedAnswer(game, playerSocketId, answer, playerName, wasCl
 function acceptVirtualAnswer(game, playerId, answer, playerName) {
     const player = game.players.get(playerId);
     if (!player || !isVirtualPlayer(player, playerId)) return false;
-    const wasClarity = game.answersNeedingEdit.has(playerId);
+    const wasClarity = !!game.findPendingEdit(playerId);
     if (!game.submitAnswer(playerId, answer)) return false;
-    if (wasClarity && game.answersNeedingEdit.has(playerId)) {
-        game.answersNeedingEdit.delete(playerId);
+    if (wasClarity && game.findPendingEdit(playerId)) {
+        game.clearPendingEdit(playerId);
     }
     broadcastAcceptedAnswer(game, playerId, String(answer).trim(), playerName || player.name, wasClarity);
     return true;
@@ -2810,7 +2837,7 @@ io.on('connection', (socket) => {
             }
             
             // Check if this is a clarification submission BEFORE calling submitAnswer
-            const wasClarity = game.answersNeedingEdit.has(socket.id);
+            const wasClarity = !!game.findPendingEdit(socket.id);
             const playerName = playerInfo.playerName;
             
             logger.info(`🔍 Processing answer submission: ${playerName} → "${answer}"${wasClarity ? ' (clarification)' : ''}`);
@@ -2823,12 +2850,9 @@ io.on('connection', (socket) => {
                 // CRITICAL: Rebuild answer groups immediately after submission
                 // This ensures grading interface gets updated in real-time
                 // For clarifications, ensure the flag is cleared before rebuilding
-                if (wasClarity) {
-                    // Double-check that the clarification flag is cleared
-                    if (game.answersNeedingEdit.has(socket.id)) {
-                        game.answersNeedingEdit.delete(socket.id);
-                        logger.info(`🔧 Force-cleared clarification flag for ${playerName}`);
-                    }
+                if (wasClarity && game.findPendingEdit(socket.id)) {
+                    game.clearPendingEdit(socket.id);
+                    logger.info(`🔧 Force-cleared clarification flag for ${playerName}`);
                 }
                 
                 try {

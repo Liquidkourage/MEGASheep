@@ -40,4 +40,29 @@ assert.strictEqual(locked.attributes['aria-disabled'], 'true');
 
 syncPlayerSubmitButton(null, false);
 
+const { currentLockedAnswer, lockedAnswerReadout } = require('./public/player-submit');
+assert.strictEqual(
+    currentLockedAnswer({
+        pending: false,
+        lastSubmitted: 'North Dakota',
+        lastQ: 2,
+        currentQ: 2,
+        myAnswer: 'ND',
+        stored: 'ND'
+    }),
+    'North Dakota'
+);
+assert.strictEqual(
+    currentLockedAnswer({
+        pending: true,
+        lastSubmitted: 'ND',
+        lastQ: 2,
+        currentQ: 2,
+        myAnswer: 'ND',
+        stored: 'ND'
+    }),
+    ''
+);
+assert.strictEqual(lockedAnswerReadout('North Dakota'), 'Locked in — North Dakota');
+
 console.log('player-submit tests passed');

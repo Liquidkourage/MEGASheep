@@ -14,7 +14,21 @@ function syncPlayerSubmitButton(btn, submitted) {
     else btn.removeAttribute('aria-disabled');
 }
 
-const api = { syncPlayerSubmitButton };
+function currentLockedAnswer({ pending, lastSubmitted, lastQ, currentQ, myAnswer, stored } = {}) {
+    if (pending) return '';
+    const q = currentQ;
+    const submitted = String(lastSubmitted || '').trim();
+    if (typeof lastQ === 'number' && lastQ === q && submitted) return submitted;
+    if (myAnswer) return String(myAnswer).trim();
+    return String(stored || '').trim();
+}
+
+function lockedAnswerReadout(answer) {
+    const text = String(answer || '').trim();
+    return text ? `Locked in — ${text}` : 'Locked in';
+}
+
+const api = { syncPlayerSubmitButton, currentLockedAnswer, lockedAnswerReadout };
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = api;
