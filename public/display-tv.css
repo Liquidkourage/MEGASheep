@@ -3465,20 +3465,6 @@ html, body {
     transform: translateX(-50%);
 }
 
-.tv-fair-ring {
-    position: absolute;
-    left: 32%;
-    top: 62%;
-    width: 36%;
-    height: 28%;
-    border: 0.55vw solid rgba(228, 197, 107, 0.78);
-    border-radius: 50%;
-    box-shadow:
-        0 0 2.6vw rgba(255, 210, 110, 0.38),
-        inset 0 0 2.2vw rgba(255, 220, 140, 0.2);
-    transform: translate(-50%, -12%);
-}
-
 .tv-final .tv-flock {
     z-index: 4;
 }
@@ -3523,21 +3509,36 @@ html, body {
     left: 6%;
     right: 40%;
     top: auto;
-    bottom: 11%;
-    height: 50vh;
+    bottom: 8%;
+    height: 58vh;
     z-index: 12;
+    align-items: end;
+}
+
+.tv-final .tv-podium-spot {
+    justify-content: flex-end;
+}
+
+.tv-final .tv-crate {
+    position: relative;
+    flex: 0 0 auto;
+    justify-content: flex-start;
+    padding-top: 0.45em;
 }
 
 .tv-final .tv-podium-spot.is-1 .tv-crate {
-    min-height: 13vh;
+    height: 26vh;
+    min-height: 26vh;
 }
 
 .tv-final .tv-podium-spot.is-2 .tv-crate {
-    min-height: 10vh;
+    height: 17vh;
+    min-height: 17vh;
 }
 
 .tv-final .tv-podium-spot.is-3 .tv-crate {
-    min-height: 8vh;
+    height: 11vh;
+    min-height: 11vh;
 }
 
 .tv-final .tv-podium-name {
@@ -3545,10 +3546,6 @@ html, body {
     text-shadow:
         0 0 18px rgba(255, 210, 96, 0.45),
         0 4px 18px rgba(4, 10, 18, 0.7);
-}
-
-.tv-final .tv-crate {
-    position: relative;
 }
 
 .tv-final .tv-podium-spot.is-1 .tv-crate::before {
