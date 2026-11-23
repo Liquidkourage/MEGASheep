@@ -3691,13 +3691,11 @@ function playerScoreCardHtml(group, mine) {
     const names = ((group && group.players) || []).map(playerScoreNameOf).filter(Boolean);
     const pts = Math.max(0, Number(group && group.points) || 0);
     const answer = String((group && group.answer) || '').trim() || 'Answer';
-    const miss = pts <= 0;
     const who = names.length ? names.join(', ') : 'No one';
-    const label = miss ? escapePlayer(answer) : `${escapePlayer(answer)}, +${pts}`;
-    return `<article class="player-score-card${mine ? ' is-mine' : ''}${miss ? ' is-miss' : ''}" aria-label="${label}">
+    return `<article class="player-score-card${mine ? ' is-mine' : ''}" aria-label="${escapePlayer(answer)}, +${pts}">
         <div class="player-score-card-head">
             <p class="player-score-card-word">${escapePlayer(answer)}</p>
-            ${miss ? '' : `<b class="player-score-card-pts">+${pts}</b>`}
+            <b class="player-score-card-pts">+${pts}</b>
         </div>
         <p class="player-score-card-who">${escapePlayer(who)}</p>
     </article>`;
@@ -3713,13 +3711,38 @@ function playerScoreLeftoverHtml(missedCorrect) {
     </aside>`;
 }
 
+function playerScoreMissesHtml(groups, myName, playerAnswer) {
+    const chips = groups.map((group) => {
+        const answer = String((group && group.answer) || '').trim() || 'No answer';
+        const mine = playerScoreGroupMine(group, myName, playerAnswer);
+        return `<li${mine ? ' class="is-mine"' : ''}>${escapePlayer(answer)}</li>`;
+    }).join('');
+    if (!chips) return '';
+    return `<ul class="player-score-misses" aria-label="Wrong answers">${chips}</ul>`;
+}
+
 function playerScoreSupportHtml(playerAnswer, playerAnswerGroup, missedCorrect) {
     const groups = Array.isArray(gameState && gameState.currentAnswerGroups) ? gameState.currentAnswerGroups : [];
     const myName = sessionStorage.getItem('playerName') || currentPlayerName || '';
-    const cards = groups.map((group) => playerScoreCardHtml(group, playerScoreGroupMine(group, myName, playerAnswer))).join('');
+    const scored = [];
+    const misses = [];
+    groups.forEach((group) => {
+        if ((Number(group && group.points) || 0) > 0) scored.push(group);
+        else misses.push(group);
+    });
+    scored.sort((a, b) => {
+        const aMine = playerScoreGroupMine(a, myName, playerAnswer) ? 0 : 1;
+        const bMine = playerScoreGroupMine(b, myName, playerAnswer) ? 0 : 1;
+        if (aMine !== bMine) return aMine - bMine;
+        const pts = (Number(b.points) || 0) - (Number(a.points) || 0);
+        if (pts) return pts;
+        return String(a.answer || '').localeCompare(String(b.answer || ''), undefined, { sensitivity: 'base' });
+    });
+    const scoredCards = scored.map((group) => playerScoreCardHtml(group, playerScoreGroupMine(group, myName, playerAnswer))).join('');
     const leftover = playerScoreLeftoverHtml(missedCorrect);
-    if (!cards && !leftover) return '';
-    return `<div class="player-score-support">${cards ? `<div class="player-score-grid">${cards}</div>` : ''}${leftover}</div>`;
+    const missBlock = playerScoreMissesHtml(misses, myName, playerAnswer);
+    if (!scoredCards && !leftover && !missBlock) return '';
+    return `<div class="player-score-support">${scoredCards ? `<div class="player-score-grid">${scoredCards}</div>` : ''}${leftover}${missBlock}</div>`;
 }
 
 function createPlayerScoreScene({ playerAnswer, playerAnswerGroup, playerPoints, playerRank, totalPlayers, missedCorrect }) {
