@@ -525,9 +525,8 @@ body.player-app .player-pasture .player-ewe.is-poofing .player-ewe-art {
 }
 
 body.player-app .player-pasture .player-ewe.is-poofing figcaption {
-    position: relative;
     z-index: 3;
-    animation: playerEwePopIn 0.4s 0.08s cubic-bezier(0.14, 1.38, 0.32, 1) backwards;
+    animation: playerEweTagPopIn 0.4s 0.08s cubic-bezier(0.14, 1.38, 0.32, 1) backwards;
 }
 
 body.player-app .player-pasture .player-ewe.is-joining .player-ewe-strip {
@@ -563,6 +562,12 @@ body.player-app .player-pasture .player-ewe[data-coat="3"].is-joining .player-ew
     0% { transform: scale(0.12); opacity: 0; }
     68% { transform: scale(1.12); opacity: 1; }
     100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes playerEweTagPopIn {
+    0% { transform: translateX(-50%) scale(0.12); opacity: 0; }
+    68% { transform: translateX(-50%) scale(1.12); opacity: 1; }
+    100% { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 
 @keyframes playerEweJump {
