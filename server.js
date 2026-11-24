@@ -12,6 +12,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { loadQuestionsFromFile } = require('./loadQuestions');
 const library = require('./library');
 const lockstep = require('./lockstep');
+const connectSession = require('./connect-session');
 const {
     mergeRoundGroups,
     scoresFromAnswerGroups,
@@ -52,7 +53,7 @@ const io = socketIo(server, {
   upgradeTimeout: 30000,
   maxHttpBufferSize: 1e6,
   connectionStateRecovery: {
-    maxDisconnectionDuration: 30000,  // 30s recovery window (was 60s)
+    maxDisconnectionDuration: 45000,
     skipMiddlewares: true
   }
 });
@@ -366,8 +367,9 @@ const connectedPlayers = new Map(); // Map of socketId -> PlayerInfo
 const activeGameCodes = new Set(); // Track active 4-digit codes
 // Defer cleanup of empty games to allow brief reconnects
 const emptyGameCleanupTimers = new Map(); // gameCode -> timeoutId
-// Temporary display pairing codes: code -> { socketId, createdAt }
+// Temporary display pairing codes: code -> { socketId, displayId, createdAt, gameCode }
 const displayPairings = new Map();
+const cancelledSeatRemovals = new Set();
 
 // Generate unique 4-digit game code
 function generateGameCode() {
@@ -392,7 +394,8 @@ function emitLockstepToSocket(socketId, full, aliasEvent, extra) {
     const view = lockstep.redactStateForViewer(full, {
         role: viewerRoleForSocket(socketId),
         socketId,
-        playerName: info.playerName
+        playerName: info.playerName,
+        stableId: info.stableId
     });
     const payload = extra && typeof extra === 'object' ? { ...view, ...extra } : view;
     sock.emit('state', payload);
@@ -428,7 +431,53 @@ function leaderboardToolBlock(game) {
 
 function sendStateToSocket(socket, game, aliasEvent, extra) {
     if (!socket || !game) return;
-    emitLockstepToSocket(socket.id, game.getGameState(), aliasEvent, extra);
+    emitLockstepToSocket(socket.id, game.getGameState(), aliasEvent, { resync: true, ...(extra || {}) });
+    if (game.gameState === 'playing' && Number.isFinite(Number(game.timeLeft))) {
+        try { socket.emit('timerUpdate', { timeLeft: game.timeLeft }); } catch (_) {}
+    }
+}
+
+function cancelEmptyGameCleanup(gameCode) {
+    const timer = emptyGameCleanupTimers.get(gameCode);
+    if (!timer) return;
+    clearTimeout(timer);
+    emptyGameCleanupTimers.delete(gameCode);
+}
+
+function gameHasLiveCaretaker(gameCode) {
+    const game = activeGames.get(gameCode);
+    return connectSession.shouldKeepGameAlive({
+        hostConnected: connectSession.liveRoleConnected(connectedPlayers, io, gameCode, (info) => info.isHost),
+        displayConnected: connectSession.liveRoleConnected(connectedPlayers, io, gameCode, (info) => info.isDisplay),
+        seatedPlayers: game ? game.players.size : 0
+    });
+}
+
+function scheduleEmptyGameCleanup(gameCode) {
+    if (!gameCode) return;
+    cancelEmptyGameCleanup(gameCode);
+    const timer = setTimeout(() => {
+        emptyGameCleanupTimers.delete(gameCode);
+        if (gameHasLiveCaretaker(gameCode)) return;
+        const game = activeGames.get(gameCode);
+        if (!game) return;
+        try { game.cleanup(); } catch (_) {}
+        activeGames.delete(gameCode);
+        console.log(`🏠 Removed empty game: ${gameCode}`);
+    }, connectSession.EMPTY_GAME_TTL_MS);
+    emptyGameCleanupTimers.set(gameCode, timer);
+}
+
+function bindSocketToGame(socket, game, flags) {
+    if (!socket || !game) return null;
+    cancelEmptyGameCleanup(game.gameCode);
+    game.lastActivityAt = Date.now();
+    const info = connectSession.bindConnectionInfo(connectedPlayers, socket.id, {
+        gameCode: game.gameCode,
+        ...(flags || {})
+    });
+    socket.join(game.gameCode);
+    return info;
 }
 
 // Game management class
@@ -473,6 +522,9 @@ class Game {
         this.processedEventIds = new Set(); // de-duplication of critical events
         this.answeredStableIds = new Set();
         this.seq = 0;
+        this.hostSocketId = null;
+        this.pairedDisplayIds = new Set();
+        this.lastActivityAt = Date.now();
     }
 
     addPlayer(socketId, playerName, stablePlayerId = null, options = {}) {
@@ -534,6 +586,12 @@ class Game {
     // Replace an existing player's socket with a new one for the same stable identity
     replacePlayerSocket(stableId, oldSocketId, newSocketId, playerName) {
         try {
+            if (oldSocketId && oldSocketId === newSocketId) {
+                this.socketByStableId = this.socketByStableId || new Map();
+                if (stableId) this.socketByStableId.set(stableId, newSocketId);
+                return;
+            }
+            if (oldSocketId) cancelledSeatRemovals.add(oldSocketId);
             const oldPlayer = oldSocketId ? this.players.get(oldSocketId) : null;
             const wasVirtual = isVirtualPlayer(oldPlayer, oldSocketId)
                 || isVirtualPlayer(null, newSocketId)
@@ -1215,6 +1273,7 @@ class Game {
                     const player = this.players ? this.players.get(sid) : null;
                     return {
                       socketId: sid,
+                      stableId: player?.stableId || null,
                       playerName: player?.name || 'Unknown',
                       originalAnswer: info?.originalAnswer || '',
                       reason: info?.reason || 'Please be more specific',
@@ -2363,13 +2422,15 @@ io.on('connection', (socket) => {
                 try { socket.emit('playerQuestionAck', { ok: false, reason: 'not-in-game' }); } catch (_) {}
                 return;
             }
-            const hostEntry = Array.from(connectedPlayers.entries()).find(([_, info]) => info.gameCode === gameCode && info.isHost);
-            if (!hostEntry) {
+            const game = activeGames.get(gameCode);
+            const hostSocketId = (game && game.hostSocketId)
+                || (Array.from(connectedPlayers.entries()).find(([_, info]) => info.gameCode === gameCode && info.isHost) || [])[0];
+            if (!hostSocketId) {
                 try { socket.emit('playerQuestionAck', { ok: false, reason: 'no-host' }); } catch (_) {}
                 return;
             }
             const at = Date.now();
-            io.to(hostEntry[0]).emit('playerQuestion', { gameCode, playerName, playerSocketId: socket.id, question, at });
+            io.to(hostSocketId).emit('playerQuestion', { gameCode, playerName, playerSocketId: socket.id, question, at });
             sbInsert(SB_TABLES.qa, { game_code: gameCode, player_name: playerName, player_socket_id: socket.id, question, at: new Date(at).toISOString() });
             sbLogEvent(gameCode, 'player_question', { playerName });
             try { socket.emit('playerQuestionAck', { ok: true }); } catch (_) {}
@@ -2411,139 +2472,66 @@ io.on('connection', (socket) => {
 
     socket.on('displayPing', () => {});
 
-    // Host reconnection
-    socket.on('reconnectHost', (data) => {
-        const { gameCode, hostName, hostToken } = data || {};
-        
-        if (!gameCode || !hostName) {
-            socket.emit('error', { message: 'Game code and host name are required' });
-      return;
+    function attachHost(game, aliasEvent) {
+        game.hostSocketId = socket.id;
+        bindSocketToGame(socket, game, {
+            playerName: game.hostId,
+            isHost: true,
+            isDisplay: false,
+            isGradingInterface: false
+        });
+        try { ensurePendingVirtualClarifications(game); } catch (_) {}
+        sendStateToSocket(socket, game, aliasEvent || 'gameCreated', { hostToken: game.hostToken });
+        console.log(`🏠 Host ${game.hostId} attached to game ${game.gameCode}`);
     }
 
+    function attachHostFromPayload(data, { requireName = false, errorEvent = 'gameError' } = {}) {
+        const { gameCode, hostName, hostToken } = data || {};
+        if (!gameCode) {
+            socket.emit(errorEvent, { message: requireName ? 'Game code and host name are required' : 'Game code is required for reconnection' });
+            return;
+        }
         const game = activeGames.get(gameCode);
         if (!game) {
-            socket.emit('error', { message: 'Game not found. Please check the game code.' });
+            socket.emit(errorEvent, { message: 'Game not found. Please check the game code.' });
             return;
         }
-
         if (game.hostToken && hostToken !== game.hostToken) {
-            socket.emit('error', { message: 'Host credentials do not match this game.' });
+            socket.emit(errorEvent, { message: 'Host credentials do not match this game.' });
             return;
         }
-        
-        if (game.hostId !== hostName) {
-            socket.emit('error', { message: 'You are not the host of this game.' });
+        if (requireName && hostName && game.hostId !== hostName) {
+            socket.emit(errorEvent, { message: 'You are not the host of this game.' });
             return;
         }
-        
-        // Update connection info
-        const playerInfo = connectedPlayers.get(socket.id);
-        if (playerInfo) {
-            playerInfo.gameCode = gameCode;
-            playerInfo.playerName = hostName;
-            playerInfo.isHost = true;
-        }
-        
-        socket.join(gameCode);
-        try { ensurePendingVirtualClarifications(game); } catch (_) {}
-        sendStateToSocket(socket, game, 'hostReconnected');
-        
-        console.log(`🔄 Host ${hostName} reconnected to game ${gameCode} and joined room`);
-    });
+        attachHost(game, 'gameCreated');
+    }
 
-    // Create game (legacy socket event for host joining room)
+    socket.on('reconnectHost', (data) => attachHostFromPayload(data, { requireName: true, errorEvent: 'error' }));
+    socket.on('host-reconnect', (data) => attachHostFromPayload(data, { requireName: false, errorEvent: 'gameError' }));
+
     socket.on('createGame', (data) => {
-        // Prefer explicit gameCode from client (same request cycle as REST creation)
         const requestedCode = data && data.gameCode ? String(data.gameCode) : null;
         if (!requestedCode || !activeGames.has(requestedCode)) {
             socket.emit('gameError', { message: 'No game found. Create a game first, then join with that code.' });
             return;
         }
-        const hostGame = activeGames.get(requestedCode);
-        // Update connection info securely for this host socket
-        const playerInfo = connectedPlayers.get(socket.id);
-        if (playerInfo) {
-            playerInfo.gameCode = hostGame.gameCode;
-            playerInfo.playerName = hostGame.hostId;
-            playerInfo.isHost = true;
-        }
-        socket.join(hostGame.gameCode);
-        sendStateToSocket(socket, hostGame, 'gameCreated', { hostToken: hostGame.hostToken });
-        console.log(`🏠 Host ${hostGame.hostId} joined room for game ${hostGame.gameCode}`);
+        attachHost(activeGames.get(requestedCode), 'gameCreated');
     });
 
-    // Host reconnect
-    socket.on('host-reconnect', (data) => {
-        const { gameCode, hostToken } = data || {};
-        
-        if (!gameCode) {
-            socket.emit('gameError', { message: 'Game code is required for reconnection' });
-            return;
-        }
-        
-        const game = activeGames.get(gameCode);
-        if (!game) {
-            socket.emit('gameError', { message: 'Game not found. Please check the game code.' });
-            return;
-        }
-
-        if (game.hostToken) {
-            if (!hostToken || hostToken !== game.hostToken) {
-                socket.emit('gameError', { message: 'Host credentials do not match this game.' });
-                return;
-            }
-        }
-        
-        // Update connection info
-        const playerInfo = connectedPlayers.get(socket.id);
-        if (playerInfo) {
-            playerInfo.gameCode = gameCode;
-            playerInfo.playerName = game.hostId;
-            playerInfo.isHost = true;
-        }
-        
-        // Host joins the Socket.IO room
-        socket.join(gameCode);
-        
-        sendStateToSocket(socket, game, 'gameCreated', { hostToken: game.hostToken });
-        
-        console.log(`🏠 Host ${game.hostId} reconnected to game ${gameCode}`);
-    });
-
-    // Join game (allow mid-game joins; returning names can rebind)
-    socket.on('joinGame', (data) => {
-        // Reduced verbose logging in production for joinGame
-        const { gameCode, playerName, playerId } = data;
-        
+    function joinPlayer(data) {
+        const { gameCode, playerName, playerId } = data || {};
         if (!gameCode || !playerName) {
-            console.log('❌ joinGame: Missing gameCode or playerName');
             socket.emit('gameError', { message: 'Game code and player name are required' });
             return;
         }
-        
-        // console.log(`🔍 joinGame: Looking for game ${gameCode}`);
         const game = activeGames.get(gameCode);
         if (!game) {
-            console.log(`❌ joinGame: Game ${gameCode} not found`);
             socket.emit('gameError', { message: 'Game not found. Please check the game code.' });
             return;
         }
-        
-        // Reduced verbose logging for player lists
-        
-        // Mid-game join policy: allow new players to join anytime; they simply won't be counted for the current question
-        
+
         try {
-            // console.log(`🔍 joinGame: Processing join for ${playerName} to game ${gameCode}`);
-            
-            // Update connection info first
-            const playerInfo = connectedPlayers.get(socket.id);
-            if (playerInfo) {
-                playerInfo.gameCode = gameCode;
-                playerInfo.playerName = playerName;
-                playerInfo.isHost = false;
-            }
-            
             const nameKey = String(playerName).toLowerCase();
             const priorByStable = playerId
                 ? Array.from(game.players.entries()).find(([, p]) => p && p.stableId === playerId)
@@ -2553,6 +2541,16 @@ io.on('connection', (socket) => {
                 socket.emit('gameError', { message: 'That name is already in this game.' });
                 return;
             }
+
+            const stable = playerId || priorByStable?.[1]?.stableId || priorByName?.[1]?.stableId || socket.id;
+            bindSocketToGame(socket, game, {
+                playerName,
+                stableId: stable,
+                isHost: false,
+                isDisplay: false,
+                isGradingInterface: false
+            });
+
             const alreadyInGame = !!(priorByStable || priorByName);
             if (!alreadyInGame) {
                 game.addPlayer(socket.id, playerName, playerId || null);
@@ -2561,10 +2559,8 @@ io.on('connection', (socket) => {
                 if (game.gameState === 'playing' && game.expectedResponders instanceof Set) {
                     try { game.expectedResponders.add(socket.id); } catch(_) {}
                 }
-                broadcastState(game, 'playerJoined');
             } else {
                 const prior = priorByStable || priorByName;
-                const stable = (playerId || prior?.[1]?.stableId || socket.id);
                 if (prior) {
                     game.replacePlayerSocket(stable, prior[0], socket.id, playerName);
                 } else {
@@ -2575,11 +2571,10 @@ io.on('connection', (socket) => {
                 if (game.gameState === 'playing' && game.expectedResponders instanceof Set) {
                     try { game.expectedResponders.add(socket.id); } catch(_) {}
                 }
-                broadcastState(game, 'playerJoined');
                 sbLogEvent(gameCode, 'player_rebound', { playerName });
             }
 
-            let editInfo = game.answersNeedingEdit.get(socket.id);
+            let editInfo = game.findPendingEdit(socket.id);
             if (!editInfo) {
                 for (const [sid, info] of game.answersNeedingEdit.entries()) {
                     const p = game.players.get(sid);
@@ -2588,27 +2583,25 @@ io.on('connection', (socket) => {
                             game.answersNeedingEdit.delete(sid);
                             game.answersNeedingEdit.set(socket.id, info);
                         }
-                        editInfo = info;
+                        editInfo = { sid: socket.id, info };
                         break;
                     }
                 }
             }
-            if (editInfo) {
-                io.to(socket.id).emit('requireAnswerEdit', { reason: editInfo.reason, originalAnswer: editInfo.originalAnswer });
+            if (editInfo && editInfo.info) {
+                io.to(socket.id).emit('requireAnswerEdit', { reason: editInfo.info.reason, originalAnswer: editInfo.info.originalAnswer });
                 logger.info(`✏️ Re-sent edit request to reconnecting ${playerName}`);
             }
-            
-            // console.log(`🔍 joinGame: Adding socket to room ${gameCode}`);
-            socket.join(gameCode);
-            
-            // Confirm to player
-            // console.log(`🔍 joinGame: Sending gameJoined response`);
+
             sendStateToSocket(socket, game, 'gameJoined');
+            broadcastState(game, 'playerJoined');
         } catch (error) {
             console.error('❌ joinGame error:', error);
             socket.emit('gameError', { message: error.message });
         }
-    });
+    }
+
+    socket.on('joinGame', joinPlayer);
 
   // SIMPLIFIED: Host requests a player's answer edit ("Send Back")
     socket.on('hostRequestEdit', (data) => {
@@ -3399,120 +3392,103 @@ io.on('connection', (socket) => {
         sbLogEvent(gameCode, 'game_finished', {});
     });
 
-    // Join display room for specific game
+    function attachDisplay(game, displayId) {
+        if (displayId) {
+            game.pairedDisplayIds = game.pairedDisplayIds || new Set();
+            game.pairedDisplayIds.add(displayId);
+            connectSession.rebindPairingSocket(displayPairings, { socketId: socket.id, displayId });
+        }
+        bindSocketToGame(socket, game, {
+            isDisplay: true,
+            isHost: false,
+            isGradingInterface: false,
+            displayId: displayId || null
+        });
+        sendStateToSocket(socket, game, 'displayGameState');
+        console.log(`📺 Display connected to game ${game.gameCode}`);
+    }
+
     socket.on('joinDisplayRoom', (data) => {
-        const { gameCode } = data;
-        
+        const gameCode = data && data.gameCode;
+        const displayId = data && data.displayId;
         if (!gameCode) {
             socket.emit('displayError', { message: 'Game code is required' });
             return;
         }
-        
         const game = activeGames.get(gameCode);
         if (!game) {
             socket.emit('displayError', { message: 'Game not found' });
             return;
         }
-        
-        // Update connection info for display
-        const playerInfo = connectedPlayers.get(socket.id);
-        if (playerInfo) {
-            playerInfo.gameCode = gameCode;
-            playerInfo.isDisplay = true;
-        }
-        
-        // Join the game room to receive updates
-        socket.join(gameCode);
-        
-        // Send current game state to display
-        sendStateToSocket(socket, game, 'displayGameState');
-        
-        console.log(`📺 Display connected to game ${gameCode}`);
+        attachDisplay(game, displayId);
     });
 
-    // Generate a short pairing code for a display screen
-    socket.on('requestDisplayPairingCode', () => {
-        // Generate unique 4-letter code (A-Z)
-        function generateCode() {
-            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            let code = '';
-            for (let i = 0; i < 4; i++) code += letters[Math.floor(Math.random() * letters.length)];
-            return code;
+    socket.on('requestDisplayPairingCode', (data) => {
+        const displayId = data && data.displayId;
+        const issued = connectSession.issueOrReusePairing(displayPairings, {
+            socketId: socket.id,
+            displayId
+        });
+        if (issued.paired && issued.gameCode && activeGames.has(issued.gameCode)) {
+            attachDisplay(activeGames.get(issued.gameCode), displayId);
         }
-        let code;
-        do { code = generateCode(); } while (displayPairings.has(code));
-        displayPairings.set(code, { socketId: socket.id, createdAt: Date.now() });
-        socket.emit('displayPairingCode', { code });
-        console.log(`📺 Issued display pairing code ${code} for socket ${socket.id}`);
+        socket.emit('displayPairingCode', { code: issued.code });
+        console.log(`📺 ${issued.reused ? 'Reused' : 'Issued'} display pairing code ${issued.code} for socket ${socket.id}`);
     });
 
-    // Host pairs a display (identified by pairing code) to a game
     socket.on('pairDisplayToGame', (data) => {
         const { pairingCode, gameCode } = data || {};
         if (!pairingCode || !gameCode) return;
         const hostInfo = connectedPlayers.get(socket.id);
         if (!hostInfo || !hostInfo.isHost) return;
-        const pairing = displayPairings.get((pairingCode || '').toUpperCase());
+        const code = String(pairingCode).toUpperCase();
+        const pairing = displayPairings.get(code);
         const game = activeGames.get(gameCode);
         if (!pairing || !game) {
             io.to(socket.id).emit('pairDisplayResult', { ok: false, message: 'Invalid code or game not found' });
             return;
         }
-        const displaySocketId = pairing.socketId;
-        const displaySocket = io.sockets.sockets.get(displaySocketId);
-        if (!displaySocket) {
-            displayPairings.delete((pairingCode || '').toUpperCase());
-            io.to(socket.id).emit('pairDisplayResult', { ok: false, message: 'Display disconnected' });
+        connectSession.bindPairingToGame(displayPairings, code, gameCode, pairing.socketId);
+        if (pairing.displayId) {
+            game.pairedDisplayIds = game.pairedDisplayIds || new Set();
+            game.pairedDisplayIds.add(pairing.displayId);
+        }
+        const displaySocket = io.sockets.sockets.get(pairing.socketId);
+        if (displaySocket) {
+            const previous = socket;
+            const target = displaySocket;
+            bindSocketToGame(target, game, {
+                isDisplay: true,
+                isHost: false,
+                isGradingInterface: false,
+                displayId: pairing.displayId || null
+            });
+            sendStateToSocket(target, game, 'displayGameState');
+            io.to(previous.id).emit('pairDisplayResult', { ok: true, message: `Display paired to game ${gameCode}` });
+            console.log(`🔗 Paired display ${target.id} -> game ${gameCode} via code ${pairingCode}`);
             return;
         }
-        // Update display connection info
-        const info = connectedPlayers.get(displaySocketId) || { id: displaySocketId };
-        info.gameCode = gameCode;
-        info.isDisplay = true;
-        connectedPlayers.set(displaySocketId, info);
-        // Join room and send current game state to display
-        displaySocket.join(gameCode);
-        sendStateToSocket(displaySocket, game, 'displayGameState');
-        // Clear the pairing code (one-time use)
-        displayPairings.delete((pairingCode || '').toUpperCase());
-        // Ack host
-        io.to(socket.id).emit('pairDisplayResult', { ok: true, message: `Display paired to game ${gameCode}` });
-        console.log(`🔗 Paired display ${displaySocketId} -> game ${gameCode} via code ${pairingCode}`);
+        io.to(socket.id).emit('pairDisplayResult', { ok: true, message: `Display will join ${gameCode} when it reconnects` });
+        console.log(`🔗 Reserved display pairing ${code} -> game ${gameCode} until reconnect`);
     });
 
-    // Join game room for grading interface
-    socket.on('joinGameRoom', (data) => {
-        const { gameCode } = data;
-        
-        if (!gameCode) {
-            console.log('⚠️ joinGameRoom event received with no gameCode');
-            return;
-        }
-        
-        const game = activeGames.get(gameCode);
-        if (!game) {
-            console.log(`❌ Game ${gameCode} not found for joinGameRoom`);
-            return;
-        }
-        
-        // Update connection info for grading interface
-        const playerInfo = connectedPlayers.get(socket.id);
-        if (playerInfo) {
-            playerInfo.gameCode = gameCode;
-            playerInfo.isGradingInterface = true;
-        }
-        
-        // Join the game room to receive real-time updates
-        socket.join(gameCode);
-        sendStateToSocket(socket, game, 'gameStateResponse');
-
-        console.log(`📝 Grading interface joined game room ${gameCode}`);
-        console.log(`📝 Room ${gameCode} now has sockets:`, Array.from(io.sockets.adapter.rooms.get(gameCode) || []));
-        console.log(`📝 Socket ${socket.id} connection info:`, {
-            gameCode: playerInfo?.gameCode,
-            isGradingInterface: playerInfo?.isGradingInterface,
-            isHost: playerInfo?.isHost
+    function attachGrading(game, extra) {
+        bindSocketToGame(socket, game, {
+            isGradingInterface: true,
+            isHost: false,
+            isDisplay: false,
+            ...(extra || {})
         });
+        sendStateToSocket(socket, game, 'gameStateResponse');
+        console.log(`📝 Grading interface joined game room ${game.gameCode}`);
+    }
+
+    socket.on('joinGameRoom', (data) => {
+        const gameCode = data && data.gameCode;
+        if (!gameCode) return;
+        const game = activeGames.get(gameCode);
+        if (!game) return;
+        attachGrading(game);
     });
 
     // Join grading session for collaborative grading interfaces
@@ -3532,17 +3508,14 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // Update connection info for grading interface
+        bindSocketToGame(socket, game, {
+            isGradingInterface: true,
+            isHost: false,
+            isDisplay: false,
+            graderId,
+            questionIndex
+        });
         const playerInfo = connectedPlayers.get(socket.id);
-        if (playerInfo) {
-            playerInfo.gameCode = gameCode;
-            playerInfo.isGradingInterface = true;
-            playerInfo.graderId = graderId;
-            playerInfo.questionIndex = questionIndex;
-        }
-        
-        // Join the game room to receive real-time updates
-        socket.join(gameCode);
         
         // Count current graders in this game room
         const roomSockets = io.sockets.adapter.rooms.get(gameCode) || new Set();
@@ -3695,7 +3668,39 @@ io.on('connection', (socket) => {
         const gameCode = (typeof data === 'string') ? data : data && data.gameCode;
         if (!gameCode) return;
         const game = activeGames.get(gameCode);
-        if (game) sendStateToSocket(socket, game);
+        if (!game) return;
+        const info = connectedPlayers.get(socket.id);
+        if (info && info.gameCode === gameCode) socket.join(gameCode);
+        sendStateToSocket(socket, game);
+    });
+
+    socket.on('identify', (data) => {
+        const role = data && data.role;
+        if (role === 'host') {
+            attachHostFromPayload(data, { requireName: false, errorEvent: 'gameError' });
+            return;
+        }
+        if (role === 'display') {
+            if (data && data.gameCode && activeGames.has(data.gameCode)) {
+                attachDisplay(activeGames.get(data.gameCode), data.displayId);
+                return;
+            }
+            const issued = connectSession.issueOrReusePairing(displayPairings, {
+                socketId: socket.id,
+                displayId: data && data.displayId
+            });
+            if (issued.paired && issued.gameCode && activeGames.has(issued.gameCode)) {
+                attachDisplay(activeGames.get(issued.gameCode), data && data.displayId);
+            }
+            socket.emit('displayPairingCode', { code: issued.code });
+            return;
+        }
+        if (role === 'grading' && data && data.gameCode) {
+            const game = activeGames.get(data.gameCode);
+            if (game) attachGrading(game, { graderId: data.graderId });
+            return;
+        }
+        if (role === 'player') joinPlayer(data);
     });
 
     socket.on('loadQuestions', async (data) => {
@@ -4004,6 +4009,7 @@ io.on('connection', (socket) => {
                 game.removePlayer(socket.id);
                 console.log(`👋 Removed player ${playerName} from game ${gameCode}`);
                 broadcastState(game, 'playerLeft');
+                if (!gameHasLiveCaretaker(gameCode)) scheduleEmptyGameCleanup(gameCode);
             }
             
             // Remove from connected players
@@ -4012,57 +4018,56 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Disconnect
     socket.on('disconnect', () => {
         const playerInfo = connectedPlayers.get(socket.id);
-        
-        if (playerInfo && playerInfo.gameCode) {
-            const game = activeGames.get(playerInfo.gameCode);
-            if (game) {
-                if (playerInfo.isDisplay || playerInfo.isGradingInterface) {
-                    console.log(`${playerInfo.isDisplay ? '📺 Display' : '📝 Grading'} disconnected from game ${playerInfo.gameCode}`);
-                } else {
-                    // Delay removal to tolerate hall Wi-Fi reconnects
-                    setTimeout(() => {
-                        const stillConnected = connectedPlayers.has(socket.id);
-                        if (stillConnected) return;
-                        const player = game.players.get(socket.id);
-                        const keepSeat = !!(player && (
-                            game.answers.has(socket.id) ||
-                            game.answersNeedingEdit.has(socket.id) ||
-                            (player.stableId && game.answeredStableIds && game.answeredStableIds.has(player.stableId))
-                        ));
-                        if (keepSeat) {
-                            console.log(`⏳ Keeping seat for ${player?.name || socket.id} after disconnect`);
-                            return;
-                        }
-                        try { if (game.expectedResponders instanceof Set) game.expectedResponders.delete(socket.id); } catch(_) {}
-                        game.removePlayer(socket.id);
-                        broadcastState(game, 'playerLeft');
-                        if (game.players.size === 0) {
-                            const code = playerInfo.gameCode;
-                            setTimeout(() => {
-                                const g = activeGames.get(code);
-                                if (g && g.players.size === 0) {
-                                    g.cleanup();
-                                    activeGames.delete(code);
-                                    console.log(`🏠 Removed empty game: ${code}`);
-                                }
-                            }, 5000);
-                        }
-                    }, 20000);
+        const gameCode = playerInfo && playerInfo.gameCode;
+        const game = gameCode ? activeGames.get(gameCode) : null;
+
+        if (playerInfo && playerInfo.isHost && game && game.hostSocketId === socket.id) {
+            game.hostSocketId = null;
+        }
+
+        if (playerInfo && (playerInfo.isDisplay || playerInfo.isGradingInterface)) {
+            console.log(`${playerInfo.isDisplay ? '📺 Display' : '📝 Grading'} disconnected from game ${gameCode || ''}`);
+            if (gameCode && !gameHasLiveCaretaker(gameCode)) scheduleEmptyGameCleanup(gameCode);
+        } else if (playerInfo && game && !playerInfo.isHost) {
+            setTimeout(() => {
+                if (cancelledSeatRemovals.has(socket.id)) {
+                    cancelledSeatRemovals.delete(socket.id);
+                    connectedPlayers.delete(socket.id);
+                    return;
                 }
-            }
+                if (io.sockets.sockets.get(socket.id)) return;
+                const liveGame = activeGames.get(gameCode);
+                if (!liveGame) {
+                    connectedPlayers.delete(socket.id);
+                    return;
+                }
+                const player = liveGame.players.get(socket.id);
+                const keepSeat = !!(player && (
+                    liveGame.answers.has(socket.id) ||
+                    liveGame.answersNeedingEdit.has(socket.id) ||
+                    (player.stableId && liveGame.answeredStableIds && liveGame.answeredStableIds.has(player.stableId))
+                ));
+                if (keepSeat) {
+                    console.log(`⏳ Keeping seat for ${player?.name || socket.id} after disconnect`);
+                    connectedPlayers.delete(socket.id);
+                    return;
+                }
+                try { if (liveGame.expectedResponders instanceof Set) liveGame.expectedResponders.delete(socket.id); } catch(_) {}
+                liveGame.removePlayer(socket.id);
+                broadcastState(liveGame, 'playerLeft');
+                connectedPlayers.delete(socket.id);
+                if (!gameHasLiveCaretaker(gameCode)) scheduleEmptyGameCleanup(gameCode);
+            }, connectSession.PLAYER_DISCONNECT_GRACE_MS);
+        } else if (gameCode && !gameHasLiveCaretaker(gameCode)) {
+            scheduleEmptyGameCleanup(gameCode);
         }
-        
-        // Defer deletion until after grace: mark a timestamp so rebind can be detected
+
         setTimeout(() => {
-            connectedPlayers.delete(socket.id);
-        }, 20000);
-        // Cleanup any pairing codes issued to this socket
-        for (const [code, entry] of displayPairings.entries()) {
-            if (entry.socketId === socket.id) displayPairings.delete(code);
-        }
+            if (!io.sockets.sockets.get(socket.id)) connectedPlayers.delete(socket.id);
+        }, connectSession.PLAYER_DISCONNECT_GRACE_MS);
+        connectSession.forgetSocketPairings(displayPairings, socket.id);
         console.log('🔌 User disconnected:', socket.id);
     });
 });

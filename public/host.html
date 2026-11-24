@@ -7,7 +7,8 @@
     <link rel="stylesheet" href="styles.css?v=2026-11-18T20-00-00">
     <link rel="stylesheet" href="grading-board.css?v=2026-11-22T09-22-00">
     <script src="/socket.io/socket.io.js"></script>
-    <script src="apply-state.js?v=2026-11-18T20-00-00"></script>
+    <script src="apply-state.js?v=2026-11-23T23-40-00"></script>
+    <script src="connect.js?v=2026-11-23T23-40-00"></script>
     <style>
         /* Floating Q&A indicator */
         .qa-fab {
@@ -1843,7 +1844,7 @@
 
     <script>window.MEGASHEEP_GRADING_EMBEDDED = true;</script>
     <script src="answer-match.js?v=2026-11-23T21-45-00"></script>
-    <script src="grading-board.js?v=2026-11-23T21-45-00"></script>
+    <script src="grading-board.js?v=2026-11-23T23-40-00"></script>
     <script>
         // Socket.IO connection
         let socket = null;
@@ -2034,43 +2035,32 @@
 
         // Initialize connection
         function initializeConnection() {
-            socket = io({
+            const Connect = window.MEGASheepConnect;
+            socket = io(Connect && Connect.ioOptions ? Connect.ioOptions() : {
                 transports: ['websocket', 'polling'],
                 timeout: 20000,
-                forceNew: false,
                 reconnection: true,
-                reconnectionAttempts: 25,
+                reconnectionAttempts: Infinity,
                 reconnectionDelay: 500,
                 reconnectionDelayMax: 3000,
-                maxReconnectionAttempts: 25,
                 autoConnect: true
             });
             try { window.MEGASheepGrading && window.MEGASheepGrading.attach({ socket }); } catch (_) {}
-            
+
+            function rejoinHostSession() {
+                const savedGameCode = localStorage.getItem('gameCode');
+                if (!savedGameCode) return;
+                socket.emit('host-reconnect', { gameCode: savedGameCode, hostToken: getHostToken() });
+                try { socket.emit('requestState', { gameCode: savedGameCode }); } catch (_) {}
+            }
+
             socket.on('connect', () => {
                 updateConnectionStatus(true);
                 console.log('🔌 Host connected');
-                // Check if we have a saved game session
-                const savedGameCode = localStorage.getItem('gameCode');
-                
-                if (savedGameCode) {
-                    // Add a timeout for reconnection
-                    const reconnectTimeout = setTimeout(() => {
-                        console.log('Reconnection timeout - clearing saved game code');
-                        clearHostSession();
-                        document.getElementById('noGameState').style.display = 'block';
-                        document.getElementById('activeGameState').style.display = 'none';
-                    }, 10000); // 10s tolerance
-                    
-                    socket.emit('host-reconnect', { gameCode: savedGameCode, hostToken: getHostToken() });
-                    try { socket.emit('requestState', { gameCode: savedGameCode }); } catch (_) {}
-                    
-                    // Clear timeout if reconnection succeeds
-                    socket.once('gameCreated', () => {
-                        clearTimeout(reconnectTimeout);
-                    });
-                }
+                rejoinHostSession();
             });
+            if (socket.connected) rejoinHostSession();
+            if (Connect && typeof Connect.onResume === 'function') Connect.onResume(socket, rejoinHostSession);
             
             socket.on('disconnect', () => {
                 updateConnectionStatus(false);
@@ -2078,6 +2068,7 @@
             
             socket.on('state', (data) => applyHostState(data, 'state'));
 
+            socket.on('hostReconnected', (data) => applyHostState(data, 'hostReconnected'));
             socket.on('gameCreated', (data) => {
                 if (data && (data.hostToken || data.gameCode)) saveHostSession(data.gameCode || currentGame?.gameCode, data.hostToken);
                 if (creatingNewGame) {

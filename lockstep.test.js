@@ -99,6 +99,32 @@ function testApplyIgnoresStaleSeq() {
   assert.strictEqual(dup.applied, false);
 }
 
+function testResyncAppliesSameSeq() {
+  const ctx = { lastSeq: 5, lastEpoch: '1234:1:playing', lastGameCode: '1234' };
+  const result = applyServerState(sampleState({ seq: 5, timeLeft: 17, resync: true }), ctx);
+  assert.strictEqual(result.applied, true);
+  assert.strictEqual(result.reason, 'resync');
+  assert.strictEqual(ctx.lastSeq, 5);
+  assert.strictEqual(result.epochChanged, false);
+}
+
+function testResyncAdoptsServerClock() {
+  const ctx = { lastSeq: 12, lastEpoch: '1234:1:playing', lastGameCode: '1234' };
+  const result = applyServerState(sampleState({ seq: 8, resync: true }), ctx);
+  assert.strictEqual(result.applied, true);
+  assert.strictEqual(ctx.lastSeq, 8);
+}
+
+function testFindMyAnswerAfterSocketChange() {
+  const view = redactStateForViewer(sampleState({
+    players: [
+      { id: 's9', stableId: 's1', name: 'Ada', score: 0, answers: [] }
+    ],
+    answersBySocket: { s9: 'Mars' }
+  }), { role: 'player', socketId: 's9', playerName: 'Ada', stableId: 's1' });
+  assert.strictEqual(view.myAnswer, 'Mars');
+}
+
 function testApplyEpochChangeOnNextQuestion() {
   const ctx = { lastSeq: 4, lastEpoch: gameEpoch('1234', 1, 'scoring') };
   const next = sampleState({
@@ -179,6 +205,9 @@ testRedactDisplayKeepsGoldTrimAfterScoring();
 testRedactPlayerSeesResultsAfterScoring();
 testRedactDisplayNeverGetsLiveAnswers();
 testApplyIgnoresStaleSeq();
+testResyncAppliesSameSeq();
+testResyncAdoptsServerClock();
+testFindMyAnswerAfterSocketChange();
 testApplyEpochChangeOnNextQuestion();
 testCompleteGradingWhilePlayingDoesNotChangePhase();
 testNewGameResetsSeqGate();

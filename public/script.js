@@ -704,15 +704,14 @@ function resolveGameCodeValue() {
 function initializeSocket() {
     console.log('🎮 Script.js: Initializing socket connection...');
     
-    socket = io({
+    const Connect = window.MEGASheepConnect;
+    socket = io(Connect && Connect.ioOptions ? Connect.ioOptions() : {
         transports: ['websocket', 'polling'],
         timeout: 20000,
-        forceNew: false,
         reconnection: true,
-        reconnectionAttempts: 25,
+        reconnectionAttempts: Infinity,
         reconnectionDelay: 500,
         reconnectionDelayMax: 3000,
-        maxReconnectionAttempts: 25,
         autoConnect: true
     });
     
@@ -730,10 +729,7 @@ function initializeSocket() {
         hasHadSocketDisconnect = true;
     });
     
-    socket.on('connect', () => {
-        console.log('✅ Connected to server with ID:', socket.id);
-        if (!hasHadSocketDisconnect) return;
-        if (!joinedLiveGame) return;
+    function rejoinLivePlayer() {
         const ident = getSavedIdentity();
         if (!ident) return;
         autoResumeInProgress = true;
@@ -748,7 +744,14 @@ function initializeSocket() {
             autoResumeInProgress = false;
             console.warn('Live-session rejoin failed:', e);
         }
+    }
+
+    socket.on('connect', () => {
+        console.log('✅ Connected to server with ID:', socket.id);
+        rejoinLivePlayer();
     });
+    if (socket.connected) rejoinLivePlayer();
+    if (Connect && typeof Connect.onResume === 'function') Connect.onResume(socket, rejoinLivePlayer);
 
     // Host-triggered: show round results on player UI
     socket.on('playerShowRoundResults', (state) => applyPlayerState(state, 'playerShowRoundResults'));
@@ -792,6 +795,8 @@ function initializeSocket() {
 
 // Stable player identity across reconnects
 function getOrCreatePlayerId() {
+    const Connect = window.MEGASheepConnect;
+    if (Connect && typeof Connect.getOrCreatePlayerId === 'function') return Connect.getOrCreatePlayerId();
     try {
         let pid = localStorage.getItem('player.id');
         if (!pid) {
@@ -800,7 +805,6 @@ function getOrCreatePlayerId() {
         }
         return pid;
     } catch (_) {
-        // Fallback to ephemeral if storage unavailable
         return 'p_' + Math.random().toString(36).slice(2);
     }
 }
@@ -2357,7 +2361,11 @@ function applyPlayerState(packet, source) {
             packet = packet.gameState;
         }
         if (typeof packet.gameCode !== 'string') return;
-        if (IS_PLAYER_ROUTE && !joinedLiveGame) return;
+        if (IS_PLAYER_ROUTE && !joinedLiveGame) {
+            const ident = getSavedIdentity();
+            if (!ident || ident.gameCode !== packet.gameCode) return;
+            joinedLiveGame = true;
+        }
         const LS = window.MEGASheepLockstep;
         const result = (LS && LS.applyServerState)
             ? LS.applyServerState(packet, lockstepCtx)
@@ -2405,6 +2413,10 @@ function applyPlayerState(packet, source) {
         }
 
         const phase = packet.gameState;
+        if (typeof packet.timeLeft === 'number') {
+            timeLeft = packet.timeLeft;
+            try { updateTimerDisplay(); } catch (_) {}
+        }
         if (!result.epochChanged) {
             if (phase === 'waiting') updateLobbyDisplay();
             if (phase === 'playing') {

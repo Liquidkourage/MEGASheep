@@ -6,6 +6,7 @@
     <title>MEGASheep - Game</title>
     <link rel="stylesheet" href="styles.css?v=2025-08-17T14-48-07">
     <script src="/socket.io/socket.io.js"></script>
+    <script src="connect.js?v=2026-11-23T23-40-00"></script>
     <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
     <style>
         /* Player interface enhancements */
@@ -230,15 +231,14 @@
             console.log('Player: Socket.IO version check - io object:', typeof io);
             console.log('Player: Socket.IO version check - io function:', io);
             
-            socket = io({
+            const Connect = window.MEGASheepConnect;
+            socket = io(Connect && Connect.ioOptions ? Connect.ioOptions() : {
                 transports: ['websocket', 'polling'],
                 timeout: 20000,
-                forceNew: false,
                 reconnection: true,
-                reconnectionAttempts: 25,
+                reconnectionAttempts: Infinity,
                 reconnectionDelay: 500,
                 reconnectionDelayMax: 3000,
-                maxReconnectionAttempts: 25,
                 autoConnect: true
             });
             console.log('Player: Socket object created:', socket);
@@ -582,8 +582,22 @@
                 socket.emit('ping', { message: 'Player interface ping' });
                 
                 console.log('Player: Sending joinGame event...');
-                socket.emit('joinGame', { gameCode, playerName });
+                const playerId = (Connect && typeof Connect.getOrCreatePlayerId === 'function')
+                    ? Connect.getOrCreatePlayerId()
+                    : null;
+                socket.emit('joinGame', { gameCode, playerName, playerId });
+                socket.emit('requestState', { gameCode });
             });
+            if (Connect && typeof Connect.onResume === 'function') {
+                Connect.onResume(socket, function () {
+                    if (!gameCode || !playerName) return;
+                    const playerId = (Connect && typeof Connect.getOrCreatePlayerId === 'function')
+                        ? Connect.getOrCreatePlayerId()
+                        : null;
+                    socket.emit('joinGame', { gameCode, playerName, playerId });
+                    socket.emit('requestState', { gameCode });
+                });
+            }
             
             console.log('Player: Socket initialization complete');
         }

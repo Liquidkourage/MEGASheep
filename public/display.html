@@ -45,7 +45,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script src="apply-state.js?v=2026-11-18T14-00-00"></script>
+    <script src="apply-state.js?v=2026-11-23T23-40-00"></script>
+    <script src="connect.js?v=2026-11-23T23-40-00"></script>
     <script src="sheep-coat.js?v=2026-11-22T23-00-00"></script>
     <script>
         // Check if QRCode library loaded
@@ -259,6 +260,9 @@
 
                 if (!result.epochChanged && gameState) {
                     gameState = state;
+                    if (typeof state.timeLeft === 'number') {
+                        try { updateDisplayTimer(state.timeLeft); } catch (_) {}
+                    }
                     if (state.gameState === 'waiting') {
                         updatePlayersOnly(state);
                         return;
@@ -294,70 +298,57 @@
         }
         
         function initializeSocket() {
-            socket = io({
+            const Connect = window.MEGASheepConnect;
+            socket = io(Connect && Connect.ioOptions ? Connect.ioOptions() : {
                 transports: ['websocket', 'polling'],
                 timeout: 20000,
-                forceNew: false,
                 reconnection: true,
-                reconnectionAttempts: 25,
+                reconnectionAttempts: Infinity,
                 reconnectionDelay: 500,
                 reconnectionDelayMax: 3000,
-                maxReconnectionAttempts: 25,
                 autoConnect: true
             });
-            
-            socket.on('connect', () => {
-                console.log('🔌 Display connected to server');
-                // Request a pairing code so host can attach this display to a game
-                try { socket.emit('requestDisplayPairingCode'); } catch (_) {}
-                
-                // Check for stored game code first (for reconnections)
+
+            function displayId() {
+                return (Connect && typeof Connect.getOrCreateDisplayId === 'function')
+                    ? Connect.getOrCreateDisplayId()
+                    : null;
+            }
+
+            function rejoinDisplay() {
                 const storedGameCode = sessionStorage.getItem('displayGameCode');
-                
-                // Check URL parameters
                 const urlParams = new URLSearchParams(window.location.search);
                 const codeFromUrl = urlParams.get('game');
                 const resetParam = urlParams.get('reset');
-                
-                // Force reset if ?reset=true
+
                 if (resetParam === 'true') {
-                    console.log('🔄 Display reset requested via URL parameter');
                     displayGameCode = null;
                     sessionStorage.removeItem('displayGameCode');
                     window.currentGameCode = null;
                 } else if (codeFromUrl) {
                     displayGameCode = codeFromUrl;
                     sessionStorage.setItem('displayGameCode', displayGameCode);
-                    console.log('📺 Using game code from URL:', displayGameCode);
                 } else if (storedGameCode) {
                     displayGameCode = storedGameCode;
-                    console.log('🔄 Using stored game code for reconnection:', displayGameCode);
-                } else {
-                    displayGameCode = null;
-                    console.log('📺 No game code available');
                 }
-                
-                // Auto-rejoin game if we have any code
-                try {
-                    if (displayGameCode) {
-                        console.log('🔄 Auto-joining display to game:', displayGameCode);
-                        socket.emit('joinDisplayRoom', { gameCode: displayGameCode });
-                        socket.emit('requestState', { gameCode: displayGameCode });
-                        socket.emit('getGameState', { gameCode: displayGameCode });
-                    }
-                } catch (e) {
-                    console.warn('Display auto-rejoin failed:', e);
-                }
-                
+
+                const id = displayId();
                 if (displayGameCode) {
-                    console.log('📺 Display connecting to game:', displayGameCode);
-                    // Join the specific game room
-                    socket.emit('joinDisplayRoom', { gameCode: displayGameCode });
-                } else {
-                    console.log('📺 No game code specified, showing welcome screen for pairing');
-                    showIntroScreen();
+                    socket.emit('joinDisplayRoom', { gameCode: displayGameCode, displayId: id });
+                    socket.emit('requestState', { gameCode: displayGameCode });
+                    socket.emit('getGameState', { gameCode: displayGameCode });
+                    return;
                 }
+                try { socket.emit('requestDisplayPairingCode', { displayId: id }); } catch (_) {}
+                try { showIntroScreen(); } catch (_) {}
+            }
+            
+            socket.on('connect', () => {
+                console.log('🔌 Display connected to server');
+                rejoinDisplay();
             });
+            if (socket.connected) rejoinDisplay();
+            if (Connect && typeof Connect.onResume === 'function') Connect.onResume(socket, rejoinDisplay);
             socket.on('displayPairingCode', (data) => {
                 const code = data?.code || '----';
                 window.displayPairingCode = code;
@@ -405,6 +396,9 @@
                 sessionStorage.removeItem('displayGameCode');
                 window.currentGameCode = null;
                 showIntroScreen();
+                try {
+                    socket.emit('requestDisplayPairingCode', { displayId: displayId() });
+                } catch (_) {}
                 }
             });
             

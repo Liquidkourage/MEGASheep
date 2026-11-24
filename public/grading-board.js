@@ -251,15 +251,14 @@
         }
 
         function initializeConnection() {
-            socket = io({
+            const Connect = global.MEGASheepConnect;
+            socket = io(Connect && Connect.ioOptions ? Connect.ioOptions() : {
                 transports: ['websocket', 'polling'],
                 timeout: 20000,
-                forceNew: false,
                 reconnection: true,
-                reconnectionAttempts: 25,
+                reconnectionAttempts: Infinity,
                 reconnectionDelay: 500,
                 reconnectionDelayMax: 3000,
-                maxReconnectionAttempts: 25,
                 autoConnect: true
             });
 
@@ -283,28 +282,23 @@
                 window.__qaToastTimer = setTimeout(()=>{ toast.style.display = 'none'; }, 3000);
             };
             
+            function rejoinGrading() {
+                const parentCode = (window.parent && window.parent.getCurrentGameCode)
+                    ? window.parent.getCurrentGameCode()
+                    : null;
+                const urlCode = new URLSearchParams(window.location.search).get('gameCode');
+                const gameCode = (currentGame && currentGame.gameCode) || parentCode || urlCode;
+                if (gameCode) connectToHostGame(gameCode);
+                else loadActiveGames();
+            }
+
             socket.on('connect', () => {
                 updateConnectionStatus(true);
                 console.log('🔌 Socket connected, attempting to connect to game');
-                
-                // Get the game code from the parent window (host.html)
-                const gameCode = window.parent.getCurrentGameCode ? window.parent.getCurrentGameCode() : null;
-                if (gameCode) {
-                    console.log('🎮 Game code from parent window:', gameCode);
-                    connectToHostGame(gameCode);
-                } else {
-                    // Fallback: try to get from URL parameters
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const gameCodeFromUrl = urlParams.get('gameCode');
-                    if (gameCodeFromUrl) {
-                        console.log('🎮 Game code from URL:', gameCodeFromUrl);
-                        connectToHostGame(gameCodeFromUrl);
-                    } else {
-                        console.log('⚠️ No game code found, loading active games');
-                        loadActiveGames();
-                    }
-                }
+                rejoinGrading();
             });
+            if (socket.connected) rejoinGrading();
+            if (Connect && typeof Connect.onResume === 'function') Connect.onResume(socket, rejoinGrading);
             
             socket.on('disconnect', () => {
                 updateConnectionStatus(false);

@@ -94,11 +94,25 @@ function findMyAnswer(state, viewer) {
     return String(state.answersBySocket[viewer.socketId]);
   }
   const name = String(viewer.playerName || '').toLowerCase();
+  const stable = viewer.stableId ? String(viewer.stableId) : '';
+  const players = Array.isArray(state.players) ? state.players : [];
+  if (state.answersBySocket) {
+    for (const player of players) {
+      if (!player) continue;
+      const match = (stable && String(player.stableId || '') === stable)
+        || (name && String(player.name || '').toLowerCase() === name);
+      if (!match) continue;
+      const sid = player.id;
+      if (sid != null && state.answersBySocket[sid] != null) {
+        return String(state.answersBySocket[sid]);
+      }
+    }
+  }
   if (!name) return null;
   const groups = Array.isArray(state.currentAnswerGroups) ? state.currentAnswerGroups : [];
   for (const group of groups) {
-    const players = Array.isArray(group.players) ? group.players : [];
-    if (players.some((p) => String(p || '').toLowerCase() === name)) {
+    const groupPlayers = Array.isArray(group.players) ? group.players : [];
+    if (groupPlayers.some((p) => String(p || '').toLowerCase() === name)) {
       return group.answer != null ? String(group.answer) : null;
     }
   }
@@ -149,10 +163,12 @@ function redactStateForViewer(state, viewer) {
 
   const name = String((viewer && viewer.playerName) || '').toLowerCase();
   const sid = viewer && viewer.socketId;
+  const stable = viewer && viewer.stableId ? String(viewer.stableId) : '';
   const pending = Array.isArray(state.pendingEdits) ? state.pendingEdits : [];
   const mine = pending.filter((p) => {
     if (!p) return false;
     if (sid && p.socketId === sid) return true;
+    if (stable && p.stableId && String(p.stableId) === stable) return true;
     if (name && String(p.playerName || '').toLowerCase() === name) return true;
     return false;
   });
@@ -181,14 +197,15 @@ function applyServerState(packet, ctx) {
 
   const seq = Number(packet.seq);
   const lastSeq = Number(box.lastSeq);
-  if (Number.isFinite(seq) && Number.isFinite(lastSeq) && seq <= lastSeq) {
+  const resync = packet.resync === true;
+  if (!resync && Number.isFinite(seq) && Number.isFinite(lastSeq) && seq <= lastSeq) {
     return { applied: false, epochChanged: false, reason: 'stale', state: packet };
   }
   const epoch = typeof packet.epoch === 'string' ? packet.epoch : '';
   const epochChanged = !!(epoch && epoch !== box.lastEpoch);
   if (Number.isFinite(seq)) box.lastSeq = seq;
   if (epoch) box.lastEpoch = epoch;
-  return { applied: true, epochChanged, reason: 'ok', state: packet };
+  return { applied: true, epochChanged, reason: resync ? 'resync' : 'ok', state: packet };
 }
 
 module.exports = {

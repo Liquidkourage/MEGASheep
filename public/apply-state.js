@@ -19,14 +19,15 @@
 
     var seq = Number(packet.seq);
     var lastSeq = Number(box.lastSeq);
-    if (isFinite(seq) && isFinite(lastSeq) && seq <= lastSeq) {
+    var resync = packet.resync === true;
+    if (!resync && isFinite(seq) && isFinite(lastSeq) && seq <= lastSeq) {
       return { applied: false, epochChanged: false, reason: 'stale', state: packet };
     }
     var epoch = typeof packet.epoch === 'string' ? packet.epoch : '';
     var epochChanged = !!(epoch && epoch !== box.lastEpoch);
     if (isFinite(seq)) box.lastSeq = seq;
     if (epoch) box.lastEpoch = epoch;
-    return { applied: true, epochChanged: epochChanged, reason: 'ok', state: packet };
+    return { applied: true, epochChanged: epochChanged, reason: resync ? 'resync' : 'ok', state: packet };
   }
 
   function unwrapGameState(data) {
