@@ -108,6 +108,67 @@
             align-items: center;
             gap: 10px;
         }
+        .tv-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .tv-status.is-on {
+            background: rgba(40, 167, 69, 0.28);
+            color: #9af0b4;
+            border: 1px solid rgba(40, 167, 69, 0.55);
+        }
+        .tv-status.is-off {
+            background: rgba(255, 255, 255, 0.08);
+            color: #cfd8dc;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .host-command-strip {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.88);
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            flex: 0 0 auto;
+        }
+        .host-command-strip .host-primary-btn {
+            flex: 1;
+            min-height: 52px;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border-radius: 10px;
+        }
+        .host-end-btn {
+            flex: 0 0 auto;
+            min-height: 52px;
+            padding: 8px 14px;
+            background: transparent;
+            border: 1px solid rgba(231, 76, 60, 0.65);
+            color: #ffb4b0;
+            border-radius: 10px;
+            font-weight: 700;
+        }
+        .host-end-btn:hover {
+            background: rgba(231, 76, 60, 0.18);
+        }
+        .results-tv-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 0 0 12px;
+        }
         .host-timer,
         .grade-strip-timer {
             display: inline-flex;
@@ -334,13 +395,6 @@
             flex: 1;
             min-height: 0;
         }
-        #panelPlay.is-live-grading .play-layout,
-        #panelPlay.is-live-grading .live-question-card,
-        #panelPlay.is-live-grading .dashboard-panel:has(#playerList),
-        #panelPlay.is-live-grading #answerProgressPanel {
-            display: none !important;
-        }
-        #panelPlay.is-live-grading,
         #panelGrade:not([hidden]),
         #panelResults:not([hidden]) {
             flex: 1;
@@ -349,7 +403,6 @@
             min-height: 0;
             margin-bottom: 0;
         }
-        #panelPlay.is-live-grading #playGradeMount,
         #panelGrade:not([hidden]) .host-grade-mount {
             flex: 1;
             min-height: 0;
@@ -1501,10 +1554,9 @@
                     <button class="copy-btn" type="button" onclick="copyGameCode()">Copy</button>
                 </div>
                 <div class="quick-actions">
-                    <a href="/" target="_blank" class="action-btn">👤 Players</a>
-                    <a href="/display" target="_blank" class="action-btn">📺 Display</a>
+                    <span id="tvStatus" class="tv-status is-off">TV not paired</span>
                     <input id="displayPairCode" placeholder="TV CODE" maxlength="4" aria-label="Display pairing code" style="width:96px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);color:#fff;text-transform:uppercase;" />
-                    <button class="action-btn" id="pairDisplayBtn" type="button" title="Pair display by code">🔗 Pair TV</button>
+                    <button class="action-btn" id="pairDisplayBtn" type="button" title="Pair display by code">Pair TV</button>
                 </div>
             </div>
 
@@ -1516,6 +1568,15 @@
                 </span>
             </div>
 
+            <div class="host-command-strip" id="hostCommandStrip">
+                <button id="startGameBtn" class="control-btn success host-primary-btn" type="button">Start game</button>
+                <button id="endQuestionGradeBtn" class="control-btn warning host-primary-btn" type="button" hidden>Close answering</button>
+                <button id="applyCategorizationBtn" class="control-btn success host-primary-btn" type="button" hidden>Score question</button>
+                <button id="resultsNextQuestionBtn" class="control-btn success host-primary-btn" type="button" hidden>Next question</button>
+                <button id="nextQuestionBtn" class="control-btn primary" type="button" hidden>Next question</button>
+                <button id="endGameMainBtn" class="host-end-btn" type="button" title="End the entire game for every player.">End game</button>
+            </div>
+
             <div class="tabs" role="tablist">
                 <button type="button" id="tabPlay" class="tab-btn active" data-host-tab="play">Play</button>
                 <button type="button" id="tabGrade" class="tab-btn" data-host-tab="grade">Grade</button>
@@ -1523,7 +1584,7 @@
                 <button type="button" id="tabQa" class="tab-btn" data-host-tab="qa">Q&amp;A <span id="qaBadge" class="tab-count" style="display:none">0</span></button>
                 <button type="button" id="tabResults" class="tab-btn" data-host-tab="results">Results</button>
                 <button type="button" id="tabSettings" class="tab-btn" data-host-tab="settings">Settings</button>
-                <button type="button" id="showToolsBtn" class="tab-btn">🧰 Tools</button>
+                <button type="button" id="showToolsBtn" class="tab-btn">Rehearsal</button>
             </div>
 
             <section id="panelPlay" class="tab-panel" data-host-panel="play">
@@ -1534,14 +1595,9 @@
                     </div>
                     <div class="dashboard-panel">
                         <div class="panel-header">
-                            <h3>⏰ Live controls</h3>
+                            <h3>Waiting on</h3>
                         </div>
-                        <div class="play-actions">
-                            <button id="startGameBtn" class="control-btn success">START GAME</button>
-                            <button id="endQuestionNowBtn" class="control-btn warning" title="Stop this question now. Players can no longer submit.">Close answering</button>
-                            <button id="gradingBtn" class="control-btn secondary">📝 GRADE</button>
-                        </div>
-                        <div id="answerProgressPanel" class="host-info" style="display:none; margin-top:14px; text-align:left; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); padding:10px 12px; border-radius:8px;">
+                        <div id="answerProgressPanel" class="host-info" style="display:none; text-align:left; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); padding:10px 12px; border-radius:8px;">
                             <div class="answer-status" style="margin-bottom:6px;">
                                 <span id="answersReceived">0</span> / <span id="totalPlayers">0</span> answers received
                             </div>
@@ -1558,7 +1614,14 @@
                         <div class="player-list" id="playerList"></div>
                     </div>
                 </div>
-                <div id="playGradeMount" class="host-grade-mount">
+            </section>
+
+            <section id="panelGrade" class="tab-panel" data-host-panel="grade" hidden>
+                <div id="gradeIdleNote" class="live-question-card is-idle">
+                    <div class="live-q-meta">Grade</div>
+                    <p class="live-q-prompt">Start a question to grade live answers here.</p>
+                </div>
+                <div id="gradeTabMount" class="host-grade-mount">
                 <div id="gradingInterface" class="grading-interface grading-board is-inbox" style="display: none;">
                     <div class="grade-command-strip">
                         <div class="grade-strip-copy">
@@ -1568,11 +1631,6 @@
                             <p class="grade-strip-hint">Click an answer, then click a target. Drop an answer on empty space among the correct targets to make its own bucket. Double-click files a strong guess. Right-click marks it wrong.</p>
                         </div>
                         <div class="grade-strip-timer" id="gradeStripTimer" hidden aria-live="polite">0:00</div>
-                        <div class="grade-strip-actions">
-                            <button id="endQuestionGradeBtn" class="control-btn warning" type="button" title="Stop this question now. Players can no longer submit. You can keep sorting, then press Score question.">Close answering</button>
-                            <button id="applyCategorizationBtn" class="control-btn success" type="button" title="Lock in your sorting and score this question. Available after answering is closed.">Score question</button>
-                            <button id="nextQuestionBtn" class="control-btn primary" type="button" style="display: none;">Next Question</button>
-                        </div>
                     </div>
                     <div class="question-section">
                         <div id="questionDisplay" class="question-display" style="display: none;">
@@ -1623,14 +1681,6 @@
                     </div>
                 </div>
                 </div>
-            </section>
-
-            <section id="panelGrade" class="tab-panel" data-host-panel="grade" hidden>
-                <div id="gradeIdleNote" class="live-question-card is-idle">
-                    <div class="live-q-meta">Grade</div>
-                    <p class="live-q-prompt">Start a question to grade live answers here.</p>
-                </div>
-                <div id="gradeTabMount" class="host-grade-mount"></div>
             </section>
 
             <section id="panelQuestions" class="tab-panel" data-host-panel="questions" hidden>
@@ -1703,8 +1753,12 @@
             <section id="panelResults" class="tab-panel" data-host-panel="results" hidden>
                 <div class="scoring-panel" id="scoringPanel">
                     <div class="scoring-header">
-                        <h3>🏆 Question Results</h3>
-                        <button id="resultsNextQuestionBtn" class="control-btn success" type="button" hidden>Next Question</button>
+                        <h3>What the TV should show</h3>
+                    </div>
+                    <div class="results-tv-actions">
+                        <button id="showRoundLbBtn" class="control-btn secondary" type="button">Show round standings</button>
+                        <button id="showOverallLbBtn" class="control-btn secondary" type="button">Show grand total</button>
+                        <button id="historyBtn" class="control-btn secondary" type="button">History</button>
                     </div>
                     <div class="scoring-content" id="scoringContent">
                         <div class="answer-group">Score a question to see results here.</div>
@@ -1718,14 +1772,6 @@
                         <h3>⚙️ Game Settings</h3>
                     </div>
                     <div class="settings-grid">
-                        <div class="setting-group">
-                            <label for="questionSet">Question Set:</label>
-                            <select id="questionSet">
-                                <option value="supabase">Show questions (database, then file bank)</option>
-                                <option value="demo">Demo questions</option>
-                            </select>
-                            <div class="setting-description">Show questions use Supabase when reachable, otherwise sample-questions.txt</div>
-                        </div>
                         <div class="setting-group">
                             <label for="timerDuration">Timer Duration (seconds):</label>
                             <input type="number" id="timerDuration" value="180" min="30" max="600">
@@ -1789,7 +1835,7 @@
     <div id="showToolsModal" class="modal" style="display: none;">
         <div class="modal-content compact">
             <div class="modal-header">
-                <h2>🧰 Show tools</h2>
+                <h2>Rehearsal</h2>
                 <span class="close" id="closeShowToolsBtn">&times;</span>
             </div>
             <div class="modal-body">
@@ -1798,15 +1844,11 @@
                         <label for="virtualPlayerCount">Players
                             <input id="virtualPlayerCount" type="number" min="1" max="100" value="10">
                         </label>
-                        <button id="virtualTestBtn" class="control-btn warning" type="button">🎭 VIRTUAL TEST</button>
+                        <button id="virtualTestBtn" class="control-btn warning" type="button">Add virtual players</button>
                     </div>
-                    <button id="showRoundLbBtn" class="control-btn secondary" type="button">📊 ROUND LEADERBOARD</button>
-                    <button id="showOverallLbBtn" class="control-btn secondary" type="button">🏆 OVERALL LEADERBOARD</button>
-                    <button id="historyBtn" class="control-btn secondary" type="button">📚 HISTORY</button>
-                    <button id="showEndDemoBtn" class="control-btn secondary" type="button">🎉 END DEMO</button>
-                    <button id="openExtraGraderBtn" class="control-btn secondary" type="button">📝 EXTRA GRADER WINDOW</button>
+                    <button id="showEndDemoBtn" class="control-btn secondary" type="button">End-game demo</button>
+                    <button id="openExtraGraderBtn" class="control-btn secondary" type="button">Second grader window</button>
                     <button id="resyncBtn" class="control-btn secondary" type="button" title="Reload the latest game snapshot if this board looks out of date." onclick="resyncGameData()">Re-sync</button>
-                    <button id="endGameMainBtn" class="control-btn warning" type="button" title="End the entire game for every player. This is not just this question.">End game</button>
                 </div>
             </div>
         </div>
@@ -1946,15 +1988,18 @@
 
                 if (source !== 'questionRescored' && hostRescoreIndex == null && (phase === 'scoring' || phase === 'roundComplete' || phase === 'overallLeaderboard')) {
                     lastAutoGradeEpoch = '';
-                    try { switchHostTab('results'); } catch (_) {}
+                    const tab = document.querySelector('.tab-btn.active')?.getAttribute('data-host-tab') || 'play';
+                    if (tab === 'play' || tab === 'grade' || tab === 'results') {
+                        try { switchHostTab('results'); } catch (_) {}
+                    }
                 } else if (phase === 'playing' || phase === 'grading') {
                     const tab = document.querySelector('.tab-btn.active')?.getAttribute('data-host-tab') || 'play';
-                    const jumpToGrade = result.epochChanged || tab === 'results' || tab === 'play';
-                    if (jumpToGrade) {
+                    if (tab === 'play' || tab === 'results') {
                         lastAutoGradeEpoch = '';
                         try { switchHostTab('grade'); } catch (_) {}
                     }
                 }
+                try { updateTvStatus(state); } catch (_) {}
 
                 syncHostGradingBoard(state, result);
                 if (typeof state.timeLeft === 'number') updateHostTimer(state.timeLeft);
@@ -2068,6 +2113,15 @@
             
             socket.on('state', (data) => applyHostState(data, 'state'));
 
+            socket.on('displayStatus', (data) => {
+                if (!currentGame || !data) return;
+                if (data.gameCode && data.gameCode !== currentGame.gameCode) return;
+                const wasConnected = !!currentGame.displayConnected;
+                currentGame.displayConnected = !!data.connected;
+                currentGame.displayCount = Number(data.count) || 0;
+                updateTvStatus(currentGame);
+                if (wasConnected && !data.connected) showHostToast('TV disconnected.', 'error');
+            });
             socket.on('hostReconnected', (data) => applyHostState(data, 'hostReconnected'));
             socket.on('gameCreated', (data) => {
                 if (data && (data.hostToken || data.gameCode)) saveHostSession(data.gameCode || currentGame?.gameCode, data.hostToken);
@@ -2349,20 +2403,18 @@
                 const match = panel.getAttribute('data-host-panel') === tab;
                 panel.hidden = !match;
             });
-            placeGradingBoard(tab);
+            placeGradingBoard();
             if (tab === 'questions') {
                 if (!qpAll.length) qpLoad();
                 renderRundown();
             }
         }
 
-        function placeGradingBoard(tab) {
+        function placeGradingBoard() {
             const board = document.getElementById('gradingInterface');
-            const playMount = document.getElementById('playGradeMount');
             const gradeMount = document.getElementById('gradeTabMount');
-            if (!board) return;
-            if (tab === 'grade' && gradeMount) gradeMount.appendChild(board);
-            else if (playMount) playMount.appendChild(board);
+            if (!board || !gradeMount || board.parentElement === gradeMount) return;
+            gradeMount.appendChild(board);
         }
 
         function updateCompleteGradingButton(phase) {
@@ -2395,6 +2447,7 @@
                     btn.textContent = 'Rescore question';
                     btn.title = 'Apply this sorting to the former question without changing the TV scene.';
                 }
+                showHostPrimary('applyCategorizationBtn');
                 return;
             }
             if (phase === 'playing' || phase === 'grading') {
@@ -2427,6 +2480,18 @@
             if (!modal) return;
             modal.classList.remove('is-open');
             modal.style.display = 'none';
+        }
+
+        function updateTvStatus(state) {
+            const el = document.getElementById('tvStatus');
+            if (!el) return;
+            const connected = !!(state && (state.displayConnected || Number(state.displayCount) > 0));
+            const count = Number(state && state.displayCount) || (connected ? 1 : 0);
+            el.classList.toggle('is-on', connected);
+            el.classList.toggle('is-off', !connected);
+            el.textContent = connected
+                ? (count > 1 ? 'TV paired ×' + count : 'TV paired')
+                : 'TV not paired';
         }
 
         function updateGamePhaseBanner() {
@@ -2495,13 +2560,11 @@
         }
 
         function updateGradeCommandStrip() {
-            const play = document.getElementById('panelPlay');
             const qEl = document.getElementById('gradeStripQuestion');
             const pEl = document.getElementById('gradeStripProgress');
             const kicker = document.getElementById('gradeStripKicker');
             const phase = hostPhase();
             const live = phase === 'playing' || phase === 'grading';
-            if (play) play.classList.toggle('is-live-grading', live);
             if (!qEl) return;
             const prompt = document.getElementById('liveQuestionPrompt')?.textContent || '';
             qEl.textContent = live ? prompt : 'Waiting for a question';
@@ -2582,26 +2645,20 @@
                 const playerItem = document.createElement('div');
                 playerItem.className = 'player-item';
                 
-                // Check if player has a response for the current question
                 let responseDisplay = '';
-                if (gameState === 'playing' || gameState === 'grading') {
+                const live = gameState === 'playing' || gameState === 'grading';
+                if (live) {
                     window._answersByName = answersByNameFromState(currentGame);
-                    const answerText = window._answersByName[player.name] || '';
-                    if (answerText) {
-                        responseDisplay = `
-                            <div class="player-response">
-                                <span class="response-label">Answer:</span>
-                                <span class="response-text">"${answerText}"</span>
-                            </div>
-                        `;
-                    } else {
-                        responseDisplay = `
+                    const pending = Array.isArray(currentGame.pendingEdits)
+                        && currentGame.pendingEdits.some((entry) => String(entry && entry.playerName || '').toLowerCase() === String(player.name || '').toLowerCase());
+                    const inFlock = !!(window._answersByName && window._answersByName[player.name]);
+                    const status = pending ? 'Sent back' : (inFlock ? 'In' : 'Waiting');
+                    responseDisplay = `
                             <div class="player-response">
                                 <span class="response-label">Status:</span>
-                                <span class="response-status waiting">Waiting for answer...</span>
+                                <span class="response-status">${status}</span>
                             </div>
                         `;
-                    }
                 }
                 
                 playerItem.innerHTML = `
@@ -2657,37 +2714,48 @@
         }
 
         // Update game controls
+        function showHostPrimary(id) {
+            ['startGameBtn', 'endQuestionGradeBtn', 'applyCategorizationBtn', 'resultsNextQuestionBtn'].forEach((btnId) => {
+                const btn = document.getElementById(btnId);
+                if (!btn) return;
+                btn.hidden = btnId !== id;
+            });
+        }
+
         function updateGameControls() {
             const startBtn = document.getElementById('startGameBtn');
             const endBtnMain = document.getElementById('endGameMainBtn');
             const resultsNext = document.getElementById('resultsNextQuestionBtn');
             const phase = hostPhase();
             const advance = hostAdvanceLabel();
-            
+            if (endBtnMain) endBtnMain.disabled = phase === 'finished';
+
             if (phase === 'waiting') {
-                startBtn.textContent = 'START GAME';
-                startBtn.className = 'control-btn success';
-                startBtn.disabled = false;
-                if (endBtnMain) endBtnMain.disabled = false;
-            } else if (phase === 'playing' || phase === 'grading') {
-                startBtn.textContent = 'GAME IN PROGRESS';
-                startBtn.className = 'control-btn secondary';
-                startBtn.disabled = true;
-                if (endBtnMain) endBtnMain.disabled = false;
+                showHostPrimary('startGameBtn');
+                if (startBtn) {
+                    startBtn.textContent = 'Start game';
+                    startBtn.className = 'control-btn success host-primary-btn';
+                    startBtn.disabled = false;
+                }
+            } else if (phase === 'playing') {
+                showHostPrimary('endQuestionGradeBtn');
+            } else if (phase === 'grading') {
+                showHostPrimary('applyCategorizationBtn');
             } else if (phase === 'scoring' || phase === 'roundComplete' || phase === 'overallLeaderboard') {
-                startBtn.textContent = advance.text;
-                startBtn.className = advance.disabled ? 'control-btn secondary' : 'control-btn success';
-                startBtn.disabled = advance.disabled;
-                if (endBtnMain) endBtnMain.disabled = false;
+                showHostPrimary('resultsNextQuestionBtn');
+                if (resultsNext) {
+                    resultsNext.textContent = advance.text;
+                    resultsNext.hidden = !advance.show;
+                    resultsNext.disabled = advance.disabled;
+                    resultsNext.className = advance.disabled ? 'control-btn secondary host-primary-btn' : 'control-btn success host-primary-btn';
+                }
+            } else {
+                showHostPrimary('');
             }
-            if (resultsNext) {
-                resultsNext.textContent = advance.text;
-                resultsNext.hidden = !advance.show;
-                resultsNext.disabled = advance.disabled;
-                resultsNext.className = advance.disabled ? 'control-btn secondary' : 'control-btn success';
-            }
+            updateCompleteGradingButton(phase);
             updateGamePhaseBanner();
             updateLiveQuestionPrompt();
+            updateTvStatus(currentGame);
         }
 
         // Update player list when answers are submitted
@@ -3146,17 +3214,6 @@
             }
     }
 
-        // Grading interface buttons
-        document.getElementById('gradingBtn').addEventListener('click', () => {
-            switchHostTab('play');
-            const board = document.getElementById('playGradeMount') || document.getElementById('gradingInterface');
-            if (board && typeof board.scrollIntoView === 'function') {
-                board.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        });
-
-        // Removed multi-user grading button and binding
-
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
             initializeConnection();
@@ -3192,7 +3249,7 @@
                 socket.on('pairDisplayResult', (res) => {
                     if (res && res.ok) {
                         console.log('Display paired:', res.message);
-                        showHostToast('TV paired to this game.', 'success');
+                        showHostToast(res.message || 'TV paired to this game.', 'success');
                     } else if (res) {
                         showHostToast(res.message || 'TV pairing failed.', 'error');
                     }
@@ -3211,7 +3268,7 @@
             if (!socket || !currentGame || !currentGame.gameCode) return;
             socket.emit('updateGameSettings', {
                 gameCode: currentGame.gameCode,
-                questionSet: document.getElementById('questionSet')?.value,
+                questionSet: (currentGame.settings && currentGame.settings.questionSet) || 'supabase',
                 timerDuration: Number(document.getElementById('timerDuration')?.value),
                 maxPlayers: Number(document.getElementById('maxPlayers')?.value),
                 questionsPerRound: Number(document.getElementById('questionsPerRound')?.value),
@@ -3818,6 +3875,7 @@
             }
             hostRescoreIndex = index;
             switchHostTab('grade');
+            showHostPrimary('applyCategorizationBtn');
             const idle = document.getElementById('gradeIdleNote');
             const board = document.getElementById('gradingInterface');
             if (idle) idle.hidden = true;
@@ -3828,6 +3886,7 @@
                 btn.disabled = false;
                 btn.textContent = 'Rescore question';
             }
+            showHostPrimary('applyCategorizationBtn');
             try {
                 window.MEGASheepGrading && window.MEGASheepGrading.applyRescore(currentGame, log);
             } catch (e) {
@@ -3841,11 +3900,10 @@
             return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
         }
 
-        ['questionSet', 'timerDuration', 'maxPlayers', 'questionsPerRound', 'banditAt'].forEach((id) => {
+        ['timerDuration', 'maxPlayers', 'questionsPerRound', 'banditAt'].forEach((id) => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('change', () => {
                 emitGameSettings();
-                if (id === 'questionSet') qpLoad();
             });
         });
         const qpSearch = document.getElementById('qpSearch');

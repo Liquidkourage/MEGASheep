@@ -480,6 +480,25 @@ function bindSocketToGame(socket, game, flags) {
     return info;
 }
 
+function liveDisplayCount(gameCode) {
+    let count = 0;
+    for (const [sid, info] of connectedPlayers.entries()) {
+        if (!info || info.gameCode !== gameCode || !info.isDisplay) continue;
+        if (io.sockets.sockets.get(sid)) count += 1;
+    }
+    return count;
+}
+
+function emitDisplayStatus(game) {
+    if (!game || !game.gameCode) return;
+    const count = liveDisplayCount(game.gameCode);
+    io.to(game.gameCode).emit('displayStatus', {
+        gameCode: game.gameCode,
+        connected: count > 0,
+        count
+    });
+}
+
 // Game management class
 class Game {
   constructor(hostId, gameCode = null) {
@@ -1260,6 +1279,8 @@ class Game {
               },
               createdAt: this.createdAt || new Date().toISOString(),
               playerCount: this.players ? this.players.size : 0,
+              displayCount: liveDisplayCount(this.gameCode),
+              displayConnected: liveDisplayCount(this.gameCode) > 0,
               isTestMode: this.isTestMode || false,
               questionBankSource: this.questionBankSource || null,
         seq: this.seq || 0,
@@ -3405,6 +3426,7 @@ io.on('connection', (socket) => {
             displayId: displayId || null
         });
         sendStateToSocket(socket, game, 'displayGameState');
+        emitDisplayStatus(game);
         console.log(`📺 Display connected to game ${game.gameCode}`);
     }
 
@@ -3464,6 +3486,7 @@ io.on('connection', (socket) => {
                 displayId: pairing.displayId || null
             });
             sendStateToSocket(target, game, 'displayGameState');
+            emitDisplayStatus(game);
             io.to(previous.id).emit('pairDisplayResult', { ok: true, message: `Display paired to game ${gameCode}` });
             console.log(`🔗 Paired display ${target.id} -> game ${gameCode} via code ${pairingCode}`);
             return;
@@ -4029,6 +4052,7 @@ io.on('connection', (socket) => {
 
         if (playerInfo && (playerInfo.isDisplay || playerInfo.isGradingInterface)) {
             console.log(`${playerInfo.isDisplay ? '📺 Display' : '📝 Grading'} disconnected from game ${gameCode || ''}`);
+            if (playerInfo.isDisplay && game) emitDisplayStatus(game);
             if (gameCode && !gameHasLiveCaretaker(gameCode)) scheduleEmptyGameCleanup(gameCode);
         } else if (playerInfo && game && !playerInfo.isHost) {
             setTimeout(() => {
