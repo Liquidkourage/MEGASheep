@@ -196,6 +196,44 @@ body.player-app #gameScreen .players-status {
     text-shadow: none;
 }
 
+.player-restore-wait {
+    position: relative;
+    z-index: 2;
+    width: min(100%, 28rem);
+    margin: 8px auto 0;
+    padding: 18px 16px 16px;
+    text-align: center;
+    color: var(--wood);
+    background: rgba(246, 230, 178, 0.94);
+    border: 3px solid #2a1c0e;
+    border-radius: 16px;
+}
+
+.player-restore-kicker {
+    margin: 0 0 6px;
+    font-family: var(--title);
+    font-size: 1.25rem;
+    font-weight: 800;
+}
+
+.player-restore-wait p {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.35;
+}
+
+.player-restore-code {
+    margin: 10px 0 14px !important;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+}
+
+body.player-app #joinGameScreen.is-waiting-restore .player-sign {
+    display: none;
+}
+
 body.player-app .form-group {
     margin: 0;
     text-align: left;

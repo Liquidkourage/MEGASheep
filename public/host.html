@@ -1359,9 +1359,11 @@
         /* No Game State */
         .no-game-state {
             text-align: center;
-            padding: 50px;
+            padding: 50px 24px;
             color: #cccccc;
             font-size: 18px;
+            max-width: 760px;
+            margin: 0 auto;
         }
 
         .create-game-form {
@@ -1371,7 +1373,103 @@
             padding: 25px;
             margin-bottom: 25px;
             max-width: 400px;
-            margin: 0 auto;
+            margin: 0 auto 28px;
+        }
+
+        .recoverable-panel {
+            text-align: left;
+            background: rgba(0, 0, 0, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 18px 20px 12px;
+        }
+
+        .recoverable-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .recoverable-head h3 {
+            margin: 0;
+            color: #fff;
+            font-size: 18px;
+        }
+
+        .recoverable-head .control-btn {
+            padding: 8px 14px;
+            font-size: 13px;
+            width: auto;
+        }
+
+        .recoverable-hint {
+            margin: 0 0 12px;
+            color: #9aa4b2;
+            font-size: 14px;
+        }
+
+        .recoverable-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .recoverable-row {
+            display: grid;
+            grid-template-columns: 88px 1fr auto;
+            gap: 12px;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+
+        .recoverable-row.is-yours {
+            border-color: #17a2b8;
+        }
+
+        .recoverable-row.is-live {
+            border-color: #28a745;
+        }
+
+        .recoverable-code {
+            font-family: ui-monospace, Consolas, monospace;
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            color: #fff;
+        }
+
+        .recoverable-meta {
+            min-width: 0;
+            color: #cfd8dc;
+            font-size: 14px;
+            line-height: 1.35;
+        }
+
+        .recoverable-meta strong {
+            display: block;
+            color: #fff;
+            font-size: 15px;
+        }
+
+        .recoverable-row .control-btn {
+            width: auto;
+            padding: 10px 16px;
+            font-size: 14px;
+        }
+
+        .restore-banner {
+            background: rgba(23, 162, 184, 0.16);
+            border: 1px solid #17a2b8;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin: 0 0 12px;
+            color: #fff;
+            font-weight: 600;
         }
 
         .form-group {
@@ -1536,13 +1634,18 @@
         <!-- No Game State -->
         <div id="noGameState" class="no-game-state">
             <h2>🐑 MEGASheep Host Console</h2>
-            <p>Create a new game to get started</p>
+            <p>Create a new game, or restore a saved show.</p>
             <div class="create-game-form">
                 <button id="createGameBtn" class="control-btn">Create New Game</button>
-                <div style="margin-top:10px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-                    <button id="recoverGameBtn" class="control-btn secondary" title="Recover a game from snapshots">🔁 Recover Game</button>
-                </div>
             </div>
+            <section class="recoverable-panel" aria-labelledby="recoverableHeading">
+                <div class="recoverable-head">
+                    <h3 id="recoverableHeading">Saved shows</h3>
+                    <button id="refreshRecoverableBtn" class="control-btn secondary" type="button">Refresh</button>
+                </div>
+                <p id="recoverableHint" class="recoverable-hint">Loading saved shows…</p>
+                <div id="recoverableList" class="recoverable-list"></div>
+            </section>
         </div>
 
         <!-- Active Game State -->
@@ -1567,6 +1670,7 @@
                     Players: <span id="playerCountTop" data-player-count>0</span>
                 </span>
             </div>
+            <div id="restoreBanner" class="restore-banner" hidden role="status"></div>
 
             <div class="host-command-strip" id="hostCommandStrip">
                 <button id="startGameBtn" class="control-btn success host-primary-btn" type="button">Start game</button>
@@ -2120,6 +2224,7 @@
                 currentGame.displayConnected = !!data.connected;
                 currentGame.displayCount = Number(data.count) || 0;
                 updateTvStatus(currentGame);
+                updateRestoreBanner();
                 if (wasConnected && !data.connected) showHostToast('TV disconnected.', 'error');
             });
             socket.on('hostReconnected', (data) => applyHostState(data, 'hostReconnected'));
@@ -2172,17 +2277,24 @@
             });
             
             socket.on('gameError', (error) => {
-                console.error('Game error:', error);
-                
-                // If it's a reconnection error, clear the saved game code and show the create game form
-                if (error.message.includes('Game not found') || error.message.includes('No game found') || error.message.includes('Host credentials')) {
+                const msg = error && error.message ? String(error.message) : 'Game error';
+                console.error('Game error:', msg);
+                if (/Game not found|No game found/i.test(msg)) {
+                    document.getElementById('noGameState').style.display = 'block';
+                    document.getElementById('activeGameState').style.display = 'none';
+                    loadRecoverableGames();
+                    showHostToast('That show is not live. Recover it from the list if a snapshot is here.', 'info');
+                    return;
+                }
+                if (/Host credentials/i.test(msg)) {
                     clearHostSession();
                     document.getElementById('noGameState').style.display = 'block';
                     document.getElementById('activeGameState').style.display = 'none';
-                    console.log('Cleared saved game code due to reconnection error');
-                } else {
-                    alert('Game error: ' + error.message);
+                    loadRecoverableGames();
+                    showHostToast('Host credentials do not match this game.', 'error');
+                    return;
                 }
+                showHostToast(msg, 'error');
             });
             
             socket.on('gameStarted', (data) => applyHostState(data, 'gameStarted'));
@@ -2510,6 +2622,28 @@
             label.textContent = labels[phase] || 'Game ready';
         }
 
+        function updateRestoreBanner() {
+            const banner = document.getElementById('restoreBanner');
+            if (!banner) return;
+            if (!currentGame || !currentGame.recovered) {
+                banner.hidden = true;
+                banner.textContent = '';
+                return;
+            }
+            const tvBack = !!(currentGame.displayConnected || Number(currentGame.displayCount) > 0);
+            const livePlayers = Number(currentGame.livePlayerCount);
+            if (tvBack && livePlayers > 0) {
+                banner.hidden = true;
+                banner.textContent = '';
+                return;
+            }
+            const waiting = [];
+            if (!tvBack) waiting.push('TV');
+            if (!(livePlayers > 0)) waiting.push('flock');
+            banner.hidden = false;
+            banner.textContent = 'Show restored. Waiting for the ' + waiting.join(' and ') + ' to rejoin.';
+        }
+
         function setPlayerCountDisplay(n) {
             document.querySelectorAll('[data-player-count]').forEach((el) => {
                 el.textContent = String(n);
@@ -2615,6 +2749,7 @@
             document.getElementById('gameCodeDisplay').textContent = currentGame.gameCode;
             setPlayerCountDisplay(Array.isArray(currentGame.players) ? currentGame.players.length : 0);
             updateGamePhaseBanner();
+            updateRestoreBanner();
             updateLiveQuestionPrompt();
             
             updatePlayerList();
@@ -3009,33 +3144,121 @@
             }
         });
 
-        // Recover Game handler
-        const recoverBtn = document.getElementById('recoverGameBtn');
-        if (recoverBtn) recoverBtn.addEventListener('click', async () => {
+        function recoverPhaseLabel(state) {
+            const labels = {
+                waiting: 'Lobby',
+                playing: 'Answering',
+                grading: 'Grading',
+                scoring: 'Scoring',
+                roundComplete: 'Round standings',
+                overallLeaderboard: 'Championship',
+                finished: 'Finished',
+                question_started: 'Answering',
+                question_complete: 'Scoring',
+                grading_complete: 'Scoring',
+                round_complete: 'Round standings',
+                game_finished: 'Finished',
+                game_created: 'Lobby',
+                game_recovered: 'Restored'
+            };
+            return labels[state] || 'Saved show';
+        }
+
+        function formatRecoveredAt(iso) {
+            const date = new Date(iso);
+            if (!Number.isFinite(date.getTime())) return '';
+            return date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        }
+
+        async function loadRecoverableGames() {
+            const list = document.getElementById('recoverableList');
+            const hint = document.getElementById('recoverableHint');
+            if (!list || !hint) return;
+            hint.textContent = 'Loading saved shows…';
             try {
-                const code = (prompt('Enter 4-digit game code to recover:','') || '').trim();
-                if (!/^\d{4}$/.test(code)) { alert('Please enter a valid 4-digit game code.'); return; }
+                const res = await fetch('/api/recoverable-games');
+                const json = await res.json();
+                const games = Array.isArray(json && json.games) ? json.games : [];
+                const lastCode = (() => { try { return localStorage.getItem('gameCode') || ''; } catch (_) { return ''; } })();
+                if (!games.length) {
+                    list.innerHTML = '';
+                    hint.textContent = lastCode
+                        ? `No snapshot for ${lastCode} yet. After a restart, tonight’s show will appear here.`
+                        : 'No saved shows yet. After a restart, tonight’s show will appear here.';
+                    return;
+                }
+                const listedLast = lastCode && games.some((game) => String(game.gameCode) === lastCode);
+                hint.textContent = listedLast
+                    ? `Your last show is ${lastCode}. Recover it to tell the room you’re back.`
+                    : 'Pick a show to restore. Phones and the TV will rejoin on their own.';
+                list.innerHTML = games.map((game) => {
+                    const code = escapeHtml(String(game.gameCode || ''));
+                    const yours = lastCode && lastCode === String(game.gameCode);
+                    const live = !!game.live;
+                    const phase = recoverPhaseLabel(game.gameState || game.phase);
+                    const when = formatRecoveredAt(game.savedAt);
+                    const round = Number(game.currentRound) > 0 ? ` · Round ${Number(game.currentRound)}` : '';
+                    const meta = `${Number(game.playerCount) || 0} sheep${round}${when ? ' · ' + when : ''}${live ? ' · live' : ''}${yours ? ' · your last show' : ''}`;
+                    const action = live ? 'Rejoin' : 'Recover';
+                    return `<div class="recoverable-row${live ? ' is-live' : ''}${yours ? ' is-yours' : ''}">
+                        <div class="recoverable-code">${code}</div>
+                        <div class="recoverable-meta"><strong>${escapeHtml(phase)}</strong><span>${escapeHtml(meta)}</span></div>
+                        <button class="control-btn${live ? '' : ' secondary'}" type="button" data-recover="${code}">${action}</button>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                console.error('Load recoverable games failed', e);
+                list.innerHTML = '';
+                hint.textContent = 'Could not load saved shows. Try Refresh.';
+            }
+        }
+
+        async function recoverGame(code) {
+            const gameCode = String(code || '').trim();
+            if (!/^\d{4}$/.test(gameCode)) {
+                showHostToast('That show code is not valid.', 'error');
+                return;
+            }
+            try {
                 const res = await fetch('/api/recover-game', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ gameCode: code })
+                    body: JSON.stringify({ gameCode })
                 });
                 const json = await res.json();
                 if (json && json.status === 'success') {
-                    saveHostSession(code, json.hostToken);
-                    // Ensure socket exists and connect if needed
-                    if (!socket) { initializeConnection(); }
-                    const emitReconnect = () => { try { socket.emit('host-reconnect', { gameCode: code, hostToken: getHostToken() }); } catch(_) {} };
-                    if (socket && socket.connected) emitReconnect(); else socket && socket.once('connect', emitReconnect);
-                    alert(json.recovered ? 'Game recovered from snapshot.' : 'Game already active. Reconnected.');
-                } else {
-                    alert('Recovery failed: ' + (json && json.message ? json.message : 'Unknown error'));
+                    saveHostSession(gameCode, json.hostToken);
+                    if (!socket) initializeConnection();
+                    const emitReconnect = () => {
+                        try { socket.emit('host-reconnect', { gameCode, hostToken: getHostToken() }); } catch (_) {}
+                    };
+                    if (socket && socket.connected) emitReconnect();
+                    else if (socket) socket.once('connect', emitReconnect);
+                    if (json.gameState) applyHostState(json.gameState, 'recover');
+                    showHostToast(
+                        json.recovered
+                            ? 'Show restored. Tell the room we’re back — phones and TV will rejoin.'
+                            : 'Rejoined the live show.',
+                        'success'
+                    );
+                    return;
                 }
+                showHostToast('Recovery failed: ' + (json && json.message ? json.message : 'Unknown error'), 'error');
             } catch (e) {
                 console.error('Recover game failed', e);
-                alert('Failed to recover game.');
+                showHostToast('Failed to recover that show.', 'error');
             }
+        }
+
+        document.getElementById('refreshRecoverableBtn')?.addEventListener('click', () => {
+            loadRecoverableGames();
         });
+        document.getElementById('recoverableList')?.addEventListener('click', (event) => {
+            const btn = event.target.closest('[data-recover]');
+            if (!btn) return;
+            recoverGame(btn.getAttribute('data-recover'));
+        });
+        loadRecoverableGames();
 
         document.getElementById('startGameBtn').addEventListener('click', () => {
             if (!currentGame) return;

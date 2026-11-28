@@ -26,8 +26,10 @@ const {
     replacePostgresQuestions,
     insertPostgresSnapshot,
     loadLatestPostgresSnapshot,
-    listPostgresSnapshots
+    listPostgresSnapshots,
+    listLatestPostgresSnapshotSummaries
 } = require('./db');
+const recoverGames = require('./recover-games');
 
 const fs = require('fs');
 const crypto = require('crypto');
@@ -489,6 +491,24 @@ function liveDisplayCount(gameCode) {
     return count;
 }
 
+function livePlayerCount(gameCode) {
+    let count = 0;
+    for (const [sid, info] of connectedPlayers.entries()) {
+        if (!info || info.gameCode !== gameCode || info.isHost || info.isDisplay || info.isGradingInterface) continue;
+        if (io.sockets.sockets.get(sid)) count += 1;
+    }
+    return count;
+}
+
+function announceShowRestored(game, recovered) {
+    if (!game || !game.gameCode) return;
+    io.emit('showRestored', {
+        gameCode: game.gameCode,
+        gameState: game.gameState,
+        recovered: !!recovered
+    });
+}
+
 function emitDisplayStatus(game) {
     if (!game || !game.gameCode) return;
     const count = liveDisplayCount(game.gameCode);
@@ -514,6 +534,7 @@ class Game {
         this.scoresByStableId = new Map(); // stableId -> cumulative score
         this.roundHistory = [];
         this.createdAt = Date.now();
+        this.recoveredAt = null;
     this.settings = {
       questionSet: 'supabase',
       timerDuration: 180,
@@ -1281,6 +1302,8 @@ class Game {
               playerCount: this.players ? this.players.size : 0,
               displayCount: liveDisplayCount(this.gameCode),
               displayConnected: liveDisplayCount(this.gameCode) > 0,
+              livePlayerCount: livePlayerCount(this.gameCode),
+              recovered: !!this.recoveredAt,
               isTestMode: this.isTestMode || false,
               questionBankSource: this.questionBankSource || null,
         seq: this.seq || 0,
@@ -1705,15 +1728,26 @@ app.get('/api/snapshots/:gameCode', async (req, res) => {
   res.json(results);
 });
 
+app.get('/api/recoverable-games', async (req, res) => {
+  try {
+    const games = await listRecoverableGames();
+    return res.json({ status: 'success', games });
+  } catch (e) {
+    console.error('❌ recoverable-games failed:', e?.message);
+    return res.status(500).json({ status: 'error', message: 'Could not list recoverable games', games: [] });
+  }
+});
+
 // Recover game from latest snapshot
 app.post('/api/recover-game', async (req, res) => {
   try {
     const { gameCode } = req.body || {};
     if (!gameCode) return res.status(400).json({ status: 'error', message: 'gameCode required' });
-    // If game already exists, return its state
-    const existing = activeGames.get(gameCode);
+    const existing = activeGames.get(String(gameCode));
     if (existing) {
       if (!existing.hostToken) existing.hostToken = crypto.randomBytes(24).toString('hex');
+      cancelEmptyGameCleanup(existing.gameCode);
+      announceShowRestored(existing, false);
       return res.json({ status: 'success', recovered: false, hostToken: existing.hostToken, gameState: existing.getGameState() });
     }
     const snap = await loadLatestSnapshot(String(gameCode));
@@ -1721,9 +1755,11 @@ app.post('/api/recover-game', async (req, res) => {
     const game = restoreGameFromSnapshot(snap);
     if (!game) return res.status(500).json({ status: 'error', message: 'Failed to restore game' });
     if (!game.hostToken) game.hostToken = crypto.randomBytes(24).toString('hex');
-    // Announce recovery in events log
+    game.recoveredAt = Date.now();
+    cancelEmptyGameCleanup(game.gameCode);
     sbLogEvent(game.gameCode, 'game_recovered', { phase: snap?.phase, at: snap?.at });
-    // Return state; clients will rebind via join/reconnect
+    try { persistSnapshot(game, 'game_recovered'); } catch (_) {}
+    announceShowRestored(game, true);
     return res.json({ status: 'success', recovered: true, hostToken: game.hostToken, gameState: game.getGameState() });
   } catch (e) {
     console.error('❌ recover-game failed:', e?.message);
@@ -1853,6 +1889,79 @@ async function loadLatestSnapshot(gameCode) {
   }
 }
 
+function listDiskSnapshotSummaries() {
+  try {
+    const files = fs.readdirSync(snapshotsDir).filter((name) => name.endsWith('.json'));
+    return recoverGames.groupDiskSnapshotFiles(files).map((entry) => {
+      try {
+        const payload = JSON.parse(fs.readFileSync(path.join(snapshotsDir, entry.filename), 'utf8'));
+        return recoverGames.summarizeSnapshot(payload, {
+          gameCode: entry.gameCode,
+          phase: entry.phase,
+          at: payload.at
+        });
+      } catch (_) {
+        return recoverGames.summarizeStoreRow({
+          game_code: entry.gameCode,
+          phase: entry.phase,
+          at: entry.atMs ? new Date(entry.atMs).toISOString() : null
+        });
+      }
+    }).filter(Boolean);
+  } catch (_) {
+    return [];
+  }
+}
+
+async function listLatestSupabaseSnapshotSummaries() {
+  if (!supabase || !supabaseConfigured) return [];
+  try {
+    const { data, error } = await supabase
+      .from(SB_TABLES.snapshots)
+      .select('game_code, phase, at')
+      .order('at', { ascending: false })
+      .limit(200);
+    if (error || !Array.isArray(data)) return [];
+    const latest = new Map();
+    for (const row of data) {
+      const summary = recoverGames.summarizeStoreRow(row);
+      if (!summary) continue;
+      const prev = latest.get(summary.gameCode);
+      if (!prev || summary.savedAtMs > prev.savedAtMs) latest.set(summary.gameCode, summary);
+    }
+    return Array.from(latest.values());
+  } catch (e) {
+    console.warn('⚠️ Supabase recoverable list failed:', e?.message);
+    return [];
+  }
+}
+
+async function listRecoverableGames() {
+  const snapshots = [];
+  try {
+    snapshots.push(...(await listLatestPostgresSnapshotSummaries()).map((row) => recoverGames.summarizeStoreRow(row)).filter(Boolean));
+  } catch (_) {}
+  try {
+    snapshots.push(...await listLatestSupabaseSnapshotSummaries());
+  } catch (_) {}
+  try {
+    snapshots.push(...listDiskSnapshotSummaries());
+  } catch (_) {}
+  const live = [];
+  for (const game of activeGames.values()) {
+    live.push(recoverGames.summarizeLiveGame({
+      gameCode: game.gameCode,
+      gameState: game.gameState,
+      playerCount: game.players ? game.players.size : 0,
+      currentRound: game.currentRound,
+      currentQuestion: game.currentQuestion,
+      recoveredAt: game.recoveredAt,
+      createdAt: game.createdAt
+    }));
+  }
+  return recoverGames.mergeRecoverableGames({ live, snapshots });
+}
+
 function restoreGameFromSnapshot(snap) {
   try {
     const s = snap?.snapshot || snap; // accept raw snapshot
@@ -1914,8 +2023,10 @@ function restoreGameFromSnapshot(snap) {
       }
     }
     
+    game.recoveredAt = Date.now();
     activeGames.set(game.gameCode, game);
     activeGameCodes.add(game.gameCode);
+    cancelEmptyGameCleanup(game.gameCode);
     console.log(`✅ Restored game ${game.gameCode} from snapshot (state=${game.gameState})`);
     try {
       if (game.gameState === 'playing') {
@@ -1981,7 +2092,8 @@ app.post('/api/join-game', (req, res) => {
     if (!game) {
         return res.status(404).json({ 
             status: 'error', 
-            message: 'Game not found. Please check the game code.' 
+            message: 'Game not found. Please check the game code.',
+            recoverable: true
         });
     }
     
@@ -2514,7 +2626,7 @@ io.on('connection', (socket) => {
         }
         const game = activeGames.get(gameCode);
         if (!game) {
-            socket.emit(errorEvent, { message: 'Game not found. Please check the game code.' });
+            socket.emit(errorEvent, { message: 'Game not found. Please check the game code.', recoverable: true });
             return;
         }
         if (game.hostToken && hostToken !== game.hostToken) {
@@ -2548,7 +2660,7 @@ io.on('connection', (socket) => {
         }
         const game = activeGames.get(gameCode);
         if (!game) {
-            socket.emit('gameError', { message: 'Game not found. Please check the game code.' });
+            socket.emit('gameError', { message: 'Game not found. Please check the game code.', recoverable: true });
             return;
         }
 
@@ -3439,7 +3551,7 @@ io.on('connection', (socket) => {
         }
         const game = activeGames.get(gameCode);
         if (!game) {
-            socket.emit('displayError', { message: 'Game not found' });
+            socket.emit('displayError', { message: 'Game not found', recoverable: true, gameCode });
             return;
         }
         attachDisplay(game, displayId);

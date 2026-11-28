@@ -384,6 +384,8 @@ let autoResumeAttempted = false;
 let autoResumeInProgress = false;
 let joinedLiveGame = false;
 let hasHadSocketDisconnect = false;
+let restoreWaitActive = false;
+let restoreRetryTimer = null;
 
 // Lightweight identity persistence for player auto-resume
 function savePlayerIdentity(gameCode, playerName) {
@@ -411,6 +413,7 @@ function clearPlayerIdentity() {
         autoResumeAttempted = true;
         autoResumeInProgress = false;
         joinedLiveGame = false;
+        hidePlayerRestoreWait();
         clearPlayerQuestionLocks(code);
     } catch (_) {}
 }
@@ -432,6 +435,69 @@ function getSavedIdentity() {
         }
     } catch (_) {}
     return null;
+}
+
+function stopPlayerRestoreRetry() {
+    if (restoreRetryTimer) {
+        clearTimeout(restoreRetryTimer);
+        restoreRetryTimer = null;
+    }
+}
+
+function hidePlayerRestoreWait() {
+    restoreWaitActive = false;
+    stopPlayerRestoreRetry();
+    const wait = document.getElementById('playerRestoreWait');
+    const join = document.getElementById('joinGameScreen');
+    if (wait) wait.hidden = true;
+    if (join) join.classList.remove('is-waiting-restore');
+}
+
+function beginPlayerRestoreWait(ident) {
+    const identity = ident || getSavedIdentity();
+    if (!identity) return;
+    restoreWaitActive = true;
+    autoResumeInProgress = true;
+    const wait = document.getElementById('playerRestoreWait');
+    const copy = document.getElementById('playerRestoreCopy');
+    const codeEl = document.getElementById('playerRestoreCode');
+    const join = document.getElementById('joinGameScreen');
+    const codeInput = document.getElementById('gameCode');
+    const nameInput = document.getElementById('playerName');
+    if (codeInput) codeInput.value = identity.gameCode;
+    if (nameInput) nameInput.value = identity.playerName;
+    if (copy) copy.textContent = 'The host is bringing the show back. Stay on this screen.';
+    if (codeEl) codeEl.textContent = identity.gameCode;
+    if (wait) wait.hidden = false;
+    if (join) join.classList.add('is-waiting-restore');
+    showScreen('joinGame');
+    schedulePlayerRestoreRetry();
+}
+
+function emitPlayerRestoreJoin() {
+    const ident = getSavedIdentity();
+    if (!ident || !socket) return;
+    autoResumeInProgress = true;
+    try {
+        socket.emit('joinGame', {
+            gameCode: ident.gameCode,
+            playerName: ident.playerName,
+            playerId: getOrCreatePlayerId()
+        });
+        socket.emit('requestState', { gameCode: ident.gameCode });
+    } catch (e) {
+        console.warn('Restore rejoin failed:', e);
+    }
+}
+
+function schedulePlayerRestoreRetry() {
+    stopPlayerRestoreRetry();
+    if (!restoreWaitActive) return;
+    restoreRetryTimer = setTimeout(() => {
+        if (!restoreWaitActive) return;
+        emitPlayerRestoreJoin();
+        schedulePlayerRestoreRetry();
+    }, 4000);
 }
 
 function attemptAutoResume() {
@@ -750,6 +816,12 @@ function initializeSocket() {
         console.log('✅ Connected to server with ID:', socket.id);
         rejoinLivePlayer();
     });
+    socket.on('showRestored', (data) => {
+        const ident = getSavedIdentity();
+        if (!ident || !data || ident.gameCode !== String(data.gameCode || '')) return;
+        autoResumeInProgress = true;
+        rejoinLivePlayer();
+    });
     if (socket.connected) rejoinLivePlayer();
     if (Connect && typeof Connect.onResume === 'function') Connect.onResume(socket, rejoinLivePlayer);
 
@@ -821,6 +893,14 @@ function setupEventListeners() {
     // Join game screen (default)
     const joinGameSubmitBtn = document.getElementById('joinGameSubmitBtn');
     if (joinGameSubmitBtn) joinGameSubmitBtn.addEventListener('click', joinGame);
+    const playerRestoreLeaveBtn = document.getElementById('playerRestoreLeaveBtn');
+    if (playerRestoreLeaveBtn) {
+        playerRestoreLeaveBtn.addEventListener('click', () => {
+            hidePlayerRestoreWait();
+            clearPlayerIdentity();
+            showScreen('joinGame');
+        });
+    }
 
     const aiDisclosureBtn = document.getElementById('aiDisclosureBtn');
     const aiDisclosureModal = document.getElementById('aiDisclosureModal');
@@ -1329,6 +1409,12 @@ async function joinGame() {
                 throw socketError;
             }
         } else {
+            const ident = getSavedIdentity();
+            if (/not found/i.test(result.message || '') && ident && ident.gameCode === gameCode) {
+                beginPlayerRestoreWait(ident);
+                emitPlayerRestoreJoin();
+                return;
+            }
             showError(result.message);
         }
     } catch (error) {
@@ -2365,6 +2451,7 @@ function applyPlayerState(packet, source) {
             const ident = getSavedIdentity();
             if (!ident || ident.gameCode !== packet.gameCode) return;
             joinedLiveGame = true;
+            hidePlayerRestoreWait();
         }
         const LS = window.MEGASheepLockstep;
         const result = (LS && LS.applyServerState)
@@ -2507,6 +2594,7 @@ function handleGameJoined(data) {
     const showResumeToast = joinedLiveGame && autoResumeInProgress && hasHadSocketDisconnect;
     autoResumeInProgress = false;
     joinedLiveGame = true;
+    hidePlayerRestoreWait();
     if (showResumeToast && !IS_PLAYER_ROUTE) {
         try { showToast('Reconnected', 'success'); } catch (_) {}
     }
@@ -2840,11 +2928,19 @@ function handleTimerUpdate(data) {
 function handleError(data) {
     try {
         const msg = data && data.message ? data.message : 'An error occurred';
-        const resumeFailed = autoResumeInProgress && /already started|not found|cannot join|invalid|missing/i.test(msg);
+        const ident = getSavedIdentity();
+        const waitingRestore = /not found/i.test(msg) && ident && (restoreWaitActive || autoResumeInProgress || data.recoverable || joinedLiveGame);
+        if (waitingRestore) {
+            joinedLiveGame = false;
+            beginPlayerRestoreWait(ident);
+            return;
+        }
+        const resumeFailed = autoResumeInProgress && /already started|cannot join|invalid|missing/i.test(msg);
         if (resumeFailed) {
             autoResumeInProgress = false;
             if (!joinedLiveGame) {
                 clearPlayerIdentity();
+                hidePlayerRestoreWait();
                 showScreen('joinGame');
                 return;
             }

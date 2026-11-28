@@ -237,6 +237,8 @@
         let gameState = null;
         let socket = null;
         let displayGameCode = null;
+        let restoreWaitActive = false;
+        let restoreRetryTimer = null;
         let scoreParadeGen = 0;
         const lockstepCtx = { lastSeq: -1, lastEpoch: '' };
         let playGateCache = null;
@@ -251,6 +253,11 @@
                     ? LS.applyServerState(state, lockstepCtx)
                     : { applied: true, epochChanged: true, state };
                 if (!result.applied) return;
+                restoreWaitActive = false;
+                if (restoreRetryTimer) {
+                    clearTimeout(restoreRetryTimer);
+                    restoreRetryTimer = null;
+                }
 
                 if (state.gameCode) {
                     displayGameCode = state.gameCode;
@@ -258,7 +265,8 @@
                     window.currentGameCode = displayGameCode;
                 }
 
-                if (!result.epochChanged && gameState) {
+                const waitingOnIntro = !!document.querySelector('.tv-intro');
+                if (!result.epochChanged && gameState && !waitingOnIntro) {
                     gameState = state;
                     if (typeof state.timeLeft === 'number') {
                         try { updateDisplayTimer(state.timeLeft); } catch (_) {}
@@ -313,6 +321,34 @@
                 return (Connect && typeof Connect.getOrCreateDisplayId === 'function')
                     ? Connect.getOrCreateDisplayId()
                     : null;
+            }
+
+            function stopDisplayRestoreRetry() {
+                if (restoreRetryTimer) {
+                    clearTimeout(restoreRetryTimer);
+                    restoreRetryTimer = null;
+                }
+            }
+
+            function scheduleDisplayRestoreRetry() {
+                stopDisplayRestoreRetry();
+                if (!restoreWaitActive) return;
+                restoreRetryTimer = setTimeout(() => {
+                    if (!restoreWaitActive) return;
+                    rejoinDisplay();
+                    scheduleDisplayRestoreRetry();
+                }, 4000);
+            }
+
+            function beginDisplayRestoreWait(code) {
+                const stored = String(code || displayGameCode || sessionStorage.getItem('displayGameCode') || '').trim();
+                if (!stored) return;
+                restoreWaitActive = true;
+                displayGameCode = stored;
+                sessionStorage.setItem('displayGameCode', stored);
+                window.currentGameCode = stored;
+                showRestoreWaitScreen();
+                scheduleDisplayRestoreRetry();
             }
 
             function rejoinDisplay() {
@@ -382,23 +418,45 @@
             socket.on('state', (gameStateData) => applyDisplayState(gameStateData, 'state'));
             socket.on('displayGameState', (gameStateData) => {
                 if (!gameStateData) {
+                    if (displayGameCode || sessionStorage.getItem('displayGameCode')) {
+                        beginDisplayRestoreWait();
+                        return;
+                    }
                     showIntroScreen();
                     return;
                 }
                 applyDisplayState(gameStateData, 'displayGameState');
             });
 
+            socket.on('showRestored', (data) => {
+                const code = String((data && data.gameCode) || '');
+                const stored = displayGameCode || sessionStorage.getItem('displayGameCode');
+                if (!code || !stored || code !== String(stored)) return;
+                restoreWaitActive = true;
+                rejoinDisplay();
+            });
+
             socket.on('displayError', (data) => {
                 const msg = (data && data.message) ? String(data.message) : '';
                 console.error('📺 Display error:', msg);
-                if (/not found|no game|unpaired|invalid code|not paired|missing game/i.test(msg)) {
-                displayGameCode = null;
-                sessionStorage.removeItem('displayGameCode');
-                window.currentGameCode = null;
-                showIntroScreen();
-                try {
-                    socket.emit('requestDisplayPairingCode', { displayId: displayId() });
-                } catch (_) {}
+                if (/unpaired|invalid code|not paired/i.test(msg) && !/not found/i.test(msg)) {
+                    restoreWaitActive = false;
+                    stopDisplayRestoreRetry();
+                    displayGameCode = null;
+                    sessionStorage.removeItem('displayGameCode');
+                    window.currentGameCode = null;
+                    showIntroScreen();
+                    try { socket.emit('requestDisplayPairingCode', { displayId: displayId() }); } catch (_) {}
+                    return;
+                }
+                if (/not found|no game|missing game/i.test(msg)) {
+                    const stored = displayGameCode || sessionStorage.getItem('displayGameCode') || (data && data.gameCode);
+                    if (stored) {
+                        beginDisplayRestoreWait(stored);
+                        return;
+                    }
+                    showIntroScreen();
+                    try { socket.emit('requestDisplayPairingCode', { displayId: displayId() }); } catch (_) {}
                 }
             });
             
@@ -748,6 +806,27 @@
                 fitPitchCopy();
                 fitJoinQr();
             });
+        }
+
+        function showRestoreWaitScreen() {
+            preventAllScrolling();
+            gameState = null;
+            const code = displayGameCode || sessionStorage.getItem('displayGameCode') || '----';
+            document.getElementById('displayScreen').innerHTML = `
+                <div class="tv-stage tv-intro">
+                    ${pastureSceneHtml({ pen: false })}
+                    ${skyNameHtml({ byline: true })}
+                    <aside class="tv-sign tv-intro-sign">
+                        <img class="tv-sign-art" src="sprites/meadow-sign.png?v=2026-11-21T12-00-00" alt="" aria-hidden="true">
+                        <div class="tv-sign-face">
+                            <p class="tv-pair-kicker">The host is bringing<br>this show back</p>
+                            <p class="tv-lobby-code">${code}</p>
+                            <p class="tv-pair-kicker">Hold tight</p>
+                        </div>
+                    </aside>
+                    <div class="tv-intro-wait">${waitSheepHtml()}</div>
+                </div>
+            `;
         }
 
         function showIntroScreen() {

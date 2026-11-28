@@ -357,6 +357,29 @@ async function listPostgresSnapshots(gameCode) {
     }
 }
 
+async function listLatestPostgresSnapshotSummaries() {
+    const p = await ensurePool();
+    if (!p) return [];
+    try {
+        const { rows } = await p.query(
+            `SELECT DISTINCT ON (game_code)
+                game_code,
+                phase,
+                at,
+                COALESCE(jsonb_array_length(snapshot->'players'), 0) AS player_count,
+                COALESCE(snapshot->>'gameState', phase) AS game_state,
+                COALESCE((snapshot->>'currentRound')::int, 0) AS current_round,
+                COALESCE((snapshot->>'currentQuestion')::int, 0) AS current_question
+             FROM snapshots
+             ORDER BY game_code, at DESC`
+        );
+        return rows;
+    } catch (e) {
+        console.warn('Postgres snapshot list failed:', e.message);
+        return [];
+    }
+}
+
 module.exports = {
     postgresEnabled,
     initPostgres,
@@ -371,5 +394,6 @@ module.exports = {
     setPostgresQuestionPlaylists,
     insertPostgresSnapshot,
     loadLatestPostgresSnapshot,
-    listPostgresSnapshots
+    listPostgresSnapshots,
+    listLatestPostgresSnapshotSummaries
 };
