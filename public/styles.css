@@ -8154,8 +8154,7 @@ body.player-app #scoringScreen .scores-fab {
 }
 
 body.player-app #scoringScreen #standardAnswersDisplay > h3,
-body.player-app #scoringScreen .scoring-actions,
-body.player-app #scoringScreen #hostAnswerCategorization {
+body.player-app #scoringScreen .scoring-actions {
     display: none;
 }
 

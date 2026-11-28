@@ -1689,12 +1689,12 @@ app.get(['/game', '/game.html'], (req, res) => {
     res.redirect(302, '/');
 });
 
+app.get(['/upload', '/upload.html'], (req, res) => {
+    res.redirect(302, '/host');
+});
+
 // Static file middleware AFTER custom routes
 app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/upload', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'upload.html'));
-});
 
 
 

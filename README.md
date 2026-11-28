@@ -9,9 +9,9 @@ Real-time multiplayer trivia. Host on a laptop, players on phones, answers on a 
 | Host | `/host` |
 | Players | `/` |
 | Projector / TV | `/display` |
-| Grading | `/grading-single` (opens from the host console) |
+| Extra grader | `/grading-single` (Rehearsal → Second grader window) |
 
-Do not use `/game` or `/grading`. Those redirect to the live player and grading pages.
+Old `/game`, `/grading`, and `/upload` URLs redirect to the live pages. Grade from the host Grade tab.
 
 ## Local
 

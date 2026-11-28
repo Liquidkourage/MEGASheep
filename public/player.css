@@ -110,15 +110,6 @@ body.player-app .screen-content h2 {
     letter-spacing: 0.01em;
 }
 
-body.player-app #hostGamePanel,
-body.player-app #playerModal,
-body.player-app #hostControls,
-body.player-app #hostAnswerCategorization,
-body.player-app #gradingModal,
-body.player-app #playersActions,
-body.player-app .players-actions,
-body.player-app #nextQuestionBtn,
-body.player-app #endGameBtn,
 body.player-app #scoringScreen .scoring-actions,
 body.player-app #scoringScreen #standardAnswersDisplay > h3,
 body.player-app #gameScreen .players-status {

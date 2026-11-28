@@ -1537,16 +1537,6 @@
             border-radius: 0;
         }
 
-        /* Default fullscreen for grading modal */
-        #gradingSingleModalContent {
-            width: 100%;
-            height: 100%;
-            max-width: none;
-            max-height: none;
-            margin: 0;
-            border-radius: 0;
-        }
-
         .modal-header {
             display: flex;
             justify-content: space-between;
@@ -1605,20 +1595,8 @@
         }
 
         .modal-body {
-            padding: 0;
-            height: calc(100% - 80px);
-            overflow: hidden;
-        }
-
-        .modal-body iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            border-radius: 0 0 18px 18px;
-        }
-
-        .modal-content.fullscreen .modal-body iframe {
-            border-radius: 0;
+            padding: 16px 20px 20px;
+            overflow: auto;
         }
 
     </style>
@@ -1907,35 +1885,6 @@
         💬 Q&A <span id="qaFabCount" class="count">0</span>
     </button>
 
-    <!-- Single User Grading Interface Modal -->
-    <div id="gradingSingleModal" class="modal" style="display: none;">
-        <div class="modal-content" id="gradingSingleModalContent">
-            <div class="modal-header">
-                <h2>📝 Single User Grading Interface</h2>
-                <div class="modal-controls">
-                    <button id="fullscreenSingleBtn" class="control-btn small" title="Toggle Fullscreen" onclick="toggleSingleModalFullscreen()">⛶</button>
-                    <span class="close" onclick="closeGradingSingleModal()">&times;</span>
-                </div>
-            </div>
-            <div class="modal-body">
-                <iframe id="gradingSingleFrame" src="about:blank" width="100%" height="600px" frameborder="0"></iframe>
-            </div>
-        </div>
-    </div>
-
-    <!-- Multi-User Grading Interface Modal -->
-    <div id="gradingMultiModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>👥 Multi-User Grading Interface</h2>
-                <span class="close" onclick="closeGradingMultiModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <iframe id="gradingMultiFrame" src="/grading" width="100%" height="600px" frameborder="0"></iframe>
-            </div>
-        </div>
-    </div>
-
     <div id="showToolsModal" class="modal" style="display: none;">
         <div class="modal-content compact">
             <div class="modal-header">
@@ -2006,7 +1955,6 @@
         let qpNewPlaylistMode = false;
         let hostRescoreIndex = null;
         let creatingNewGame = false;
-        let lastOpenedGradingQuestion = null;
         let lastAutoGradeEpoch = '';
         const lockstepCtx = { lastSeq: -1, lastEpoch: '' };
 
@@ -2081,12 +2029,8 @@
                     hostRescoreIndex = null;
                 }
                 if (result.epochChanged) {
-                    if (phase !== 'grading') lastOpenedGradingQuestion = null;
                     if (phase !== 'scoring' && phase !== 'roundComplete' && phase !== 'overallLeaderboard') {
                         hideScoringPanel();
-                    }
-                    if (phase !== 'grading') {
-                        try { closeGradingSingleModal(); } catch (_) {}
                     }
                 }
 
@@ -2111,7 +2055,6 @@
                 if (phase === 'grading') {
                     hideScoringPanel();
                 } else if (phase === 'scoring') {
-                    try { closeGradingSingleModal(); } catch (_) {}
                     showScoringPanel(state);
                     if (result.epochChanged) {
                         try {
@@ -2308,7 +2251,6 @@
             
             socket.on('gameEnded', (data) => {
                 gameState = 'finished';
-                lastOpenedGradingQuestion = null;
                 hideScoringPanel();
             });
             
@@ -3338,104 +3280,12 @@
             closeShowToolsModal();
         });
 
-        // Grading modal functions
-        function openGradingSingleModal() {
-            if (!currentGame || typeof currentGame !== 'object' || !currentGame.gameCode) {
-                console.warn('openGradingSingleModal skipped: currentGame is not a valid game object');
-                return;
-            }
-            document.getElementById('gradingSingleModal').style.display = 'block';
-            document.getElementById('gradingSingleModalContent').classList.add('fullscreen');
-            const gameCode = currentGame.gameCode;
-            const question = Number(currentGame.currentQuestion ?? currentGame.currentQuestionIndex ?? 0);
-            const url = `/grading-single?gameCode=${encodeURIComponent(gameCode)}&q=${question}`;
-            const frame = document.getElementById('gradingSingleFrame');
-            if (!frame) return;
-            const currentSrc = frame.getAttribute('src') || '';
-            let srcMatches = false;
-            try {
-                const parsed = new URL(currentSrc, window.location.origin);
-                srcMatches = parsed.searchParams.get('gameCode') === gameCode
-                    && parsed.searchParams.get('q') === String(question);
-            } catch (_) {}
-            if (!srcMatches || lastOpenedGradingQuestion !== question) {
-                lastOpenedGradingQuestion = question;
-                frame.src = url;
-            } else {
-                try {
-                    frame.contentWindow?.postMessage({
-                        type: 'megasheep-refresh-grading',
-                        gameCode,
-                        questionIndex: question
-                    }, '*');
-                } catch (_) {}
-            }
-        }
-
-        // Function to get current game code for the grading interface
-        function getCurrentGameCode() {
-            return currentGame ? currentGame.gameCode : null;
-        }
-
-        function closeGradingSingleModal() {
-            document.getElementById('gradingSingleModal').style.display = 'none';
-            // Remove fullscreen class when closing
-            document.getElementById('gradingSingleModalContent').classList.remove('fullscreen');
-        }
-
-        window.addEventListener('message', (event) => {
-            const data = event && event.data;
-            if (!data || data.type !== 'megasheep-grading-complete') return;
-            try { closeGradingSingleModal(); } catch (_) {}
-        });
-
-        function openGradingMultiModal() {
-            document.getElementById('gradingMultiModal').style.display = 'block';
-            // Refresh the iframe content
-            document.getElementById('gradingMultiFrame').src = '/grading';
-        }
-
-            function closeGradingMultiModal() {
-        document.getElementById('gradingMultiModal').style.display = 'none';
-    }
-
-    function toggleSingleModalFullscreen() {
-        const modalContent = document.getElementById('gradingSingleModalContent');
-        const fullscreenBtn = document.getElementById('fullscreenSingleBtn');
-        
-        if (modalContent.classList.contains('fullscreen')) {
-            // Exit fullscreen
-            modalContent.classList.remove('fullscreen');
-            fullscreenBtn.textContent = '⛶';
-            fullscreenBtn.title = 'Enter Fullscreen';
-        } else {
-            // Enter fullscreen
-            modalContent.classList.add('fullscreen');
-            fullscreenBtn.textContent = '⛶';
-            fullscreenBtn.title = 'Exit Fullscreen';
-        }
-    }
-
-    // Close modals when clicking outside of them
-    window.onclick = function(event) {
-        const singleModal = document.getElementById('gradingSingleModal');
-        const multiModal = document.getElementById('gradingMultiModal');
+        window.onclick = function(event) {
             const histModal = document.getElementById('historyModal');
-        
-        if (event.target === singleModal) {
-            closeGradingSingleModal();
-        }
-        if (event.target === multiModal) {
-            closeGradingMultiModal();
-        }
-            if (event.target === histModal) {
-                closeHistoryModal();
-            }
+            if (event.target === histModal) closeHistoryModal();
             const toolsModal = document.getElementById('showToolsModal');
-            if (event.target === toolsModal) {
-                closeShowToolsModal();
-            }
-    }
+            if (event.target === toolsModal) closeShowToolsModal();
+        }
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', () => {
@@ -4208,26 +4058,6 @@
                 renderRundown();
             } catch (e) {
                 setQpNotice(e.message || 'Could not import that CSV.');
-            }
-        });
-
-        // Keyboard shortcuts for modal fullscreen
-        document.addEventListener('keydown', (e) => {
-            const singleModal = document.getElementById('gradingSingleModal');
-            const modalContent = document.getElementById('gradingSingleModalContent');
-            
-            // Only handle keyboard shortcuts when the single user grading modal is open
-            if (singleModal.style.display === 'block') {
-                // F11 key to toggle fullscreen
-                if (e.key === 'F11') {
-                    e.preventDefault();
-                    toggleSingleModalFullscreen();
-                }
-                
-                // Escape key to exit fullscreen
-                if (e.key === 'Escape' && modalContent.classList.contains('fullscreen')) {
-                    toggleSingleModalFullscreen();
-                }
             }
         });
 

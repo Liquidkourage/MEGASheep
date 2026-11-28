@@ -1005,26 +1005,6 @@ function setupEventListeners() {
     const uploadQuestionsBtn = document.getElementById('uploadQuestionsBtn');
     if (uploadQuestionsBtn) uploadQuestionsBtn.addEventListener('click', uploadQuestions);
     
-    // Player management
-    const kickPlayerBtn = document.getElementById('kickPlayerBtn');
-    if (kickPlayerBtn) kickPlayerBtn.addEventListener('click', kickSelectedPlayer);
-    
-    const kickPlayerModalBtn = document.getElementById('kickPlayerModalBtn');
-    if (kickPlayerModalBtn) kickPlayerModalBtn.addEventListener('click', kickPlayerFromModal);
-    
-    const mutePlayerBtn = document.getElementById('mutePlayerBtn');
-    if (mutePlayerBtn) mutePlayerBtn.addEventListener('click', mutePlayer);
-    
-    // Modal controls
-    const closeBtn = document.querySelector('.close');
-    if (closeBtn) closeBtn.addEventListener('click', closePlayerModal);
-    window.addEventListener('click', (event) => {
-        const modal = document.getElementById('playerModal');
-        if (event.target === modal) {
-            closePlayerModal();
-        }
-    });
-    
     // Game screen
     const submitAnswerBtn = document.getElementById('submitAnswerBtn');
     if (submitAnswerBtn) submitAnswerBtn.addEventListener('click', submitAnswer);
@@ -2217,52 +2197,6 @@ function exportResults() {
     
     URL.revokeObjectURL(url);
     showSuccess('Results exported!');
-}
-
-// Player management functions
-let selectedPlayerId = null;
-
-function kickSelectedPlayer() {
-    if (!selectedPlayerId) {
-        showError('Please select a player first');
-        return;
-    }
-    
-    if (confirm('Are you sure you want to kick this player?')) {
-        socket.emit('kickPlayer', { gameCode: gameState.gameCode, playerId: selectedPlayerId });
-        selectedPlayerId = null;
-    }
-}
-
-function kickPlayerFromModal() {
-    const playerName = document.getElementById('modalPlayerName').textContent;
-    if (confirm(`Are you sure you want to kick ${playerName}?`)) {
-        socket.emit('kickPlayer', { gameCode: gameState.gameCode, playerId: selectedPlayerId });
-        closePlayerModal();
-    }
-}
-
-function mutePlayer() {
-    if (!selectedPlayerId) {
-        showError('Please select a player first');
-        return;
-    }
-    
-    socket.emit('mutePlayer', { gameCode: gameState.gameCode, playerId: selectedPlayerId });
-    showSuccess('Player muted');
-}
-
-function closePlayerModal() {
-    const modal = document.getElementById('playerModal');
-    modal.style.display = 'none';
-    selectedPlayerId = null;
-}
-
-function openPlayerModal(playerId, playerName, playerScore) {
-    selectedPlayerId = playerId;
-    document.getElementById('modalPlayerName').textContent = playerName;
-    document.getElementById('modalPlayerScore').textContent = `Score: ${playerScore || 0}`;
-    document.getElementById('playerModal').style.display = 'block';
 }
 
 // Question file upload functions
@@ -3574,28 +3508,11 @@ function displayCurrentQuestion() {
     
 
     
-    // Show different interfaces for host vs players
     if (isHost) {
-        // Host view
-        document.getElementById('playerAnswerForm').style.display = 'none';
-        document.getElementById('hostControls').style.display = 'block';
-        document.getElementById('totalPlayers').textContent = gameState.players?.length || 0;
-        document.getElementById('answersReceived').textContent = gameState.answers ? Object.keys(gameState.answers).length : '0';
-        
-        // Ensure host controls are visible in test mode
-        if (gameState.isTestMode) {
-            console.log('🧪 Test mode: Host controls should be visible');
-        }
-        
-        // Show/hide End Question button based on game state
-        const endQuestionBtn = document.getElementById('endQuestionBtn');
-        if (endQuestionBtn) {
-            endQuestionBtn.style.display = (gameState.gameState === 'playing') ? 'inline-block' : 'none';
-        }
+        const form = document.getElementById('playerAnswerForm');
+        if (form) form.style.display = 'none';
     } else {
-        // Player view
         document.getElementById('playerAnswerForm').style.display = 'flex';
-        document.getElementById('hostControls').style.display = 'none';
 
         // Each question starts open. A lock from an earlier question must not stick.
         const input = document.getElementById('answerInput');
@@ -3774,33 +3691,6 @@ function displayQuestionResults() {
             });
     }
     
-    // Show/hide buttons for host (only show after grading is complete)
-    const nextQuestionBtn = document.getElementById('nextQuestionBtn');
-    const endGameBtn = document.getElementById('endGameBtn');
-    
-    if (isHost && gameState.gameState === 'scoring') {
-        // Only show buttons after grading is complete
-        if (currentQuestionIndex < questions.length - 1) {
-            nextQuestionBtn.style.display = 'inline-block';
-            endGameBtn.style.display = 'none';
-            // Rename Next Question -> End Round on every 5th question
-            try {
-                const questionsPerRound = gameState.questionsPerRound || 5;
-                // We are viewing results for question at currentQuestionIndex; moving next will start next question.
-                // If this one completes the round, label should be End Round.
-                const questionNumberJustFinished = currentQuestionIndex + 1;
-                const isEndOfRound = (questionNumberJustFinished % questionsPerRound === 0);
-                nextQuestionBtn.textContent = isEndOfRound ? 'End Round' : 'Next Question';
-            } catch (_) {}
-        } else {
-            nextQuestionBtn.style.display = 'none';
-            endGameBtn.style.display = 'inline-block';
-        }
-    } else {
-        // Hide buttons during grading or for players
-        nextQuestionBtn.style.display = 'none';
-        endGameBtn.style.display = 'none';
-    }
 }
 function renderMissedCorrectSection(missed) {
     const items = missed.map(a => `<div class="compact-answer"><span class="text">"${a}"</span><span class="points-pill">—</span></div>`).join('');
@@ -4763,12 +4653,8 @@ function initializeAnswerCategorization() {
     const categorizationElement = document.getElementById('hostAnswerCategorization');
     const standardDisplay = document.getElementById('standardAnswersDisplay');
     
-    if (categorizationElement) {
-        categorizationElement.style.display = 'block';
-        console.log('✅ Categorization interface shown');
-    } else {
-        console.error('❌ Could not find hostAnswerCategorization element');
-    }
+    if (!categorizationElement) return;
+    categorizationElement.style.display = 'block';
     
     if (standardDisplay) {
         standardDisplay.style.display = 'none';
@@ -5394,9 +5280,10 @@ function applyCategorization() {
     const preview = calculateCategorizedScoring();
     gameState.currentAnswerGroups = preview;
     
-    // Hide categorization interface
-    document.getElementById('hostAnswerCategorization').style.display = 'none';
-    document.getElementById('standardAnswersDisplay').style.display = 'block';
+    const categorizationElement = document.getElementById('hostAnswerCategorization');
+    if (categorizationElement) categorizationElement.style.display = 'none';
+    const standardDisplay = document.getElementById('standardAnswersDisplay');
+    if (standardDisplay) standardDisplay.style.display = 'block';
     
     answerCategorization.isCategorizationMode = false;
     

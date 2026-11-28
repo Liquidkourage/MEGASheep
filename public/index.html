@@ -83,44 +83,11 @@
                     <p class="lobby-subtitle">The flock is gathering.</p>
                 </div>
                 
-                <!-- Host Game Management Panel intentionally hidden on player page -->
-                <div id="hostGamePanel" class="host-game-panel" style="display: none;"></div>
-                
                 <div class="players-header">
                     <h3>The flock (<span id="playerCount">0</span>)</h3>
-                    <div class="players-actions" id="playersActions" style="display: none;">
-                        <button id="kickPlayerBtn" class="btn btn-danger btn-small">
-                            <span class="btn-icon">🚫</span>
-                            Kick Player
-                        </button>
-                    </div>
                 </div>
                 <div class="players-list">
                     <div id="playersList" class="player-pasture"></div>
-                    
-                    <!-- Player Details Modal -->
-                    <div id="playerModal" class="modal" style="display: none;">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h4>Player Details</h4>
-                                <span class="close">&times;</span>
-                            </div>
-                            <div class="modal-body">
-                                <div class="player-info">
-                                    <div class="player-avatar">👤</div>
-                                    <div class="player-details">
-                                        <h5 id="modalPlayerName">Player Name</h5>
-                                        <p id="modalPlayerScore">Score: 0</p>
-                                        <p id="modalPlayerStatus">Status: Active</p>
-                                    </div>
-                                </div>
-                                <div class="player-actions">
-                                    <button id="kickPlayerModalBtn" class="btn btn-danger">Kick Player</button>
-                                    <button id="mutePlayerBtn" class="btn btn-warning">Mute Player</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <div class="scoring-explanation">
@@ -166,20 +133,6 @@
                         <div id="playerSubmitPasture" class="player-pasture player-submit-pasture" aria-hidden="true"></div>
                     </div>
                 </div>
-                
-                <!-- Host Controls (hidden for players) -->
-                <div id="hostControls" class="host-controls" style="display: none;">
-                    <div class="host-info">
-                        <p>Players are answering...</p>
-                        <div class="answer-status">
-                            <span id="answersReceived">0</span> / <span id="totalPlayers">0</span> answers received
-                        </div>
-                    </div>
-                    <div class="host-actions">
-                        <button id="endQuestionBtn" class="btn btn-warning">End Question</button>
-                        <a class="btn btn-primary" href="/host">Open Host Console</a>
-                    </div>
-                </div>
             </div>
 
             <div class="players-status" hidden>
@@ -193,66 +146,9 @@
                 <h2 id="scoringTitle">Round 1 · Q1</h2>
                 <button id="scoresFab" class="scores-fab" type="button" title="Bleat-erboard">Board</button>
 
-                
-                <!-- Host Answer Categorization Interface -->
-                <div id="hostAnswerCategorization" class="answer-categorization" style="display: none;">
-                    <h3>🎯 Categorize Answers (Host Only)</h3>
-                    <p class="categorization-instructions">Drag answers to group similar responses together. Click to mark as correct/incorrect.</p>
-                    
-                    <div class="categorization-container">
-                        <!-- Correct Answer Buckets (dynamically created) -->
-                        <div class="correct-answer-buckets-section">
-                            <h4>✅ Correct Answer Buckets</h4>
-                            <div id="correctAnswerBuckets" class="correct-answer-buckets">
-                                <!-- Correct answer buckets will be created here -->
-                            </div>
-                        </div>
-                        
-                        <!-- Uncategorized Answers -->
-                        <div class="answer-bucket uncategorized-bucket">
-                            <h4>📝 Uncategorized Answers</h4>
-                            <div id="uncategorizedAnswers" class="answer-items" data-bucket="uncategorized">
-                                <!-- Uncategorized answers will be populated here -->
-                            </div>
-                        </div>
-                        
-                        <!-- Wrong Answers Bucket -->
-                        <div class="answer-bucket wrong-bucket">
-                            <h4>❌ Wrong Answers</h4>
-                            <div id="wrongAnswers" class="answer-items" data-bucket="wrong">
-                                <!-- Wrong answers will be populated here -->
-                            </div>
-                        </div>
-                        
-                        <!-- Custom Buckets Container -->
-                        <div class="custom-buckets-container">
-                            <h4>📦 Custom Groups</h4>
-                            <div class="bucket-controls">
-                                <button id="addBucketBtn" class="btn btn-small">➕ Add Group</button>
-                                <button id="mergeBucketsBtn" class="btn btn-small">🔗 Merge Selected</button>
-                            </div>
-                            <div id="customBuckets" class="custom-buckets">
-                                <!-- Custom buckets will be created here -->
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="categorization-actions">
-                        <button id="previewScoringBtn" class="btn btn-primary">Preview Scoring</button>
-                        <button id="applyCategorizationBtn" class="btn btn-success">Apply & Continue</button>
-                        <button id="autoCategorizeBtn" class="btn btn-secondary">Auto-Categorize</button>
-                    </div>
-                </div>
-                
-                <!-- Standard Answers Display (for players and after categorization) -->
                 <div id="standardAnswersDisplay" class="answers-display">
                     <h3>Answers & Points:</h3>
                     <div id="answersList" class="answers-grid"></div>
-                </div>
-                
-                <div class="scoring-actions top-actions">
-                    <button id="nextQuestionBtn" class="btn btn-primary" style="display: none;">Next Question</button>
-                    <button id="endGameBtn" class="btn btn-secondary" style="display: none;">End Game</button>
                 </div>
             </div>
         </div>
@@ -315,93 +211,6 @@
         </div>
 
         
-
-        <!-- Grading Interface Modal -->
-        <div id="gradingModal" class="modal" style="display: none;">
-            <div class="modal-content grading-modal">
-                <div class="modal-header">
-                    <h4>🎯 Answer Grading Interface</h4>
-                    <div class="modal-controls">
-                        <button id="toggleFullscreenBtn" class="btn btn-small" title="Toggle Full Screen">
-                            <span class="btn-icon">⛶</span>
-                        </button>
-                        <span class="close" id="closeGradingModal">&times;</span>
-                    </div>
-                </div>
-                <div class="modal-body">
-                    <!-- Question Selection -->
-                    <div class="question-selector">
-                        <label for="gradingQuestionSelect">Select Question:</label>
-                        <select id="gradingQuestionSelect" class="grading-input">
-                            <option value="">Choose a question...</option>
-                        </select>
-                    </div>
-                    
-                    <!-- Question Display -->
-                    <div id="gradingQuestionDisplay" class="grading-question-display" style="display: none;">
-                        <h5 id="gradingQuestionText"></h5>
-                        <p class="grading-question-info">
-                            <span id="gradingQuestionNumber"></span> • 
-                            <span id="gradingAnswerCount">0 answers</span>
-                        </p>
-                    </div>
-                    
-                    <!-- Answer Categorization Interface -->
-                    <div id="gradingAnswerCategorization" class="answer-categorization" style="display: none;">
-                        <p class="categorization-instructions">Drag answers to group similar responses together. Click to mark as correct/incorrect.</p>
-                        
-                        <div class="categorization-container">
-                            <!-- Correct Answer Buckets (dynamically created) -->
-                            <div class="correct-answer-buckets-section">
-                                <h4>✅ Correct Answer Buckets</h4>
-                                <div id="gradingCorrectAnswerBuckets" class="correct-answer-buckets">
-                                    <!-- Correct answer buckets will be created here -->
-                                </div>
-                            </div>
-                            
-                            <!-- Uncategorized Answers -->
-                            <div class="answer-bucket uncategorized-bucket">
-                                <h4>📝 Uncategorized Answers</h4>
-                                <div id="gradingUncategorizedAnswers" class="answer-items" data-bucket="uncategorized">
-                                    <!-- Uncategorized answers will be populated here -->
-                                </div>
-                            </div>
-                            
-                            <!-- Wrong Answers Bucket -->
-                            <div class="answer-bucket wrong-bucket">
-                                <h4>❌ Wrong Answers</h4>
-                                <div id="gradingWrongAnswers" class="answer-items" data-bucket="wrong">
-                                    <!-- Wrong answers will be populated here -->
-                                </div>
-                            </div>
-                            
-                            <!-- Custom Buckets Container -->
-                            <div class="custom-buckets-container">
-                                <h4>📦 Custom Groups</h4>
-                                <div class="bucket-controls">
-                                    <button id="gradingAddBucketBtn" class="btn btn-small">➕ Add Group</button>
-                                    <button id="gradingMergeBucketsBtn" class="btn btn-small">🔗 Merge Selected</button>
-                                </div>
-                                <div id="gradingCustomBuckets" class="custom-buckets">
-                                    <!-- Custom buckets will be created here -->
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="categorization-actions">
-                            <button id="gradingPreviewScoringBtn" class="btn btn-primary">Preview Scoring</button>
-                            <button id="gradingApplyCategorizationBtn" class="btn btn-success">Apply Changes</button>
-                            <button id="gradingAutoCategorizeBtn" class="btn btn-secondary">Auto-Categorize</button>
-                        </div>
-                    </div>
-                    
-                    <!-- No Question Selected Message -->
-                    <div id="gradingNoQuestionMessage" class="grading-no-question">
-                        <p>Please select a question to begin grading.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Overall Leaderboard Screen -->
         <div id="gameOverScreen" class="screen">
